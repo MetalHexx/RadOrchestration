@@ -11,14 +11,15 @@
 //
 // After any write action (fresh / upgrade / self-heal):
 //   - Folder mutex (FR-11, AD-12): copilot-cli ↔ copilot-vscode share ~/.copilot/.
-//     The partner is removed from the registry and a single-line notice is
-//     emitted on stderr.
-//   - Cross-channel coexistence (FR-13, AD-15): claude and claude-plugin can
-//     coexist on disk, but a multi-line WARNING is emitted to encourage
-//     consolidation. Text is verbatim from installer/lib/install/install-harness.js
-//     lines 50–60.
+//     The cross-UI standard partner is removed from the registry; no stderr
+//     line is emitted here because the wizard now confirms eviction pre-install.
+//   - Plugin coexistence (FR-13, AD-15): a standard install can coexist with
+//     a plugin partner in the same harness folder (claude ↔ claude-plugin,
+//     copilot-cli ↔ copilot-cli-plugin or copilot-vscode-plugin, etc.). The
+//     plugin's registry entry is PRESERVED; an stderr notice is emitted so
+//     headless `--yes` runs still surface the situation.
 //
-// NFR-4 (best-effort): the mutex + cross-channel emit is wrapped in a single
+// NFR-4 (best-effort): the mutex + coexistence emit is wrapped in a single
 // try/catch. If stderr write fails, the install still completes.
 
 import fs from 'node:fs';
@@ -33,10 +34,10 @@ import {
   loadRegistry,
   cmpSemver,
   resolveFolderConflict,
-  detectChannelOverlap,
+  detectPluginCoexistence,
 } from './install-json.js';
 
-const LEGACY_CHANNEL = 'legacy-installer';
+const STANDARD_CHANNEL = 'standard';
 
 /**
  * Install or upgrade a single harness. The caller (P04's index.js) loops over
@@ -159,7 +160,7 @@ function doFreshInstall({
   const priorInstalledAt = registry.harnesses[installKey]?.installed_at;
   registry.harnesses[installKey] = {
     version: deliveringVersion,
-    channel: LEGACY_CHANNEL,
+    channel: STANDARD_CHANNEL,
     installed_at: priorInstalledAt ?? new Date().toISOString(),
     last_writer_version: deliveringVersion,
   };
@@ -192,7 +193,7 @@ function doUpgrade({
   // Preserve installed_at on upgrade; bump version + last_writer_version.
   registry.harnesses[installKey] = {
     version: deliveringVersion,
-    channel: LEGACY_CHANNEL,
+    channel: STANDARD_CHANNEL,
     installed_at: existingEntry.installed_at,
     last_writer_version: deliveringVersion,
   };
@@ -207,22 +208,23 @@ function doUpgrade({
 }
 
 /**
- * Folder mutex (FR-11, AD-12) eviction + cross-channel coexistence (FR-13,
- * AD-15) warning. Wrapped in a try/catch so stderr write failures do not
- * abort the install (NFR-4). The mutex eviction is now confirmed pre-install
- * by the wizard, so this function only performs the registry mutation here —
- * no stderr line about it. The cross-channel coexistence WARNING is still
- * surfaced post-install since coexistence cases proceed without a prompt.
+ * Folder mutex (FR-11, AD-12) eviction + plugin coexistence (FR-13, AD-15)
+ * notice. Wrapped in a try/catch so stderr write failures do not abort the
+ * install (NFR-4). The mutex eviction is now confirmed pre-install by the
+ * wizard, so this function only performs the registry mutation here — no
+ * stderr line about it. Plugin coexistence is surfaced post-install via a
+ * uniform stderr notice so headless `--yes` runs still record the situation;
+ * the plugin's registry entry is left intact.
  */
 function emitPostInstallNotices({ registry, installKey, stderr }) {
   try {
-    // Mutex eviction: prune cross-UI partners from the registry. Already
-    // confirmed by the user at the picker, so no stderr line here.
+    // Cross-UI standard mutex eviction. Plugin partners are absent from the mutex
+    // map (see install-json.js) and are NOT removed by this call.
     resolveFolderConflict(registry.harnesses, installKey);
 
-    const overlap = detectChannelOverlap(registry.harnesses, installKey);
-    if (overlap) {
-      emitCrossChannelWarning(installKey, overlap, stderr);
+    const coexist = detectPluginCoexistence(registry.harnesses, installKey);
+    if (coexist.length > 0) {
+      emitCoexistNotice(installKey, coexist, stderr);
     }
   } catch {
     /* NFR-4: best-effort — swallow stderr failures and continue. */
@@ -230,24 +232,23 @@ function emitPostInstallNotices({ registry, installKey, stderr }) {
 }
 
 /**
- * Cross-channel coexistence WARNING. Text is verbatim from the legacy
- * installer's emitCrossChannelWarning at installer/lib/install/install-harness.js
- * lines 50–60.
+ * Plugin coexistence stderr notice. Uniform across all three standard harnesses.
+ * Fires when a standard install proceeds alongside one or more plugin partners
+ * sharing the harness folder. Standard installer and plugins write to
+ * non-overlapping subtrees, so nothing on disk is overwritten — but the harness
+ * loads BOTH subtrees and surfaces duplicate `rad-orc:<name>` entries.
  */
-function emitCrossChannelWarning(installKey, partner, stderr) {
-  if (installKey === 'claude' && partner === 'claude-plugin') {
-    stderr.write(
-      'WARNING: A Claude Code plugin install of rad-orchestration is already registered (claude-plugin).\n' +
-      'The plugin is the recommended install channel. The legacy installer\'s `claude` harness will\n' +
-      'coexist with the plugin in ~/.claude/ — the most recent install\'s files will be on disk.\n' +
-      '\n' +
-      'To use only the plugin (recommended), cancel this install and remove the legacy install you\n' +
-      'were about to create. To use only the legacy installer, first run `/plugin uninstall\n' +
-      'rad-orchestration` inside Claude Code, then re-run this installer.\n' +
-      '\n' +
-      'Continuing legacy install of `claude` harness.\n',
-    );
-  }
+function emitCoexistNotice(installKey, coexist, stderr) {
+  const partnerSummary = coexist
+    .map(({ partner, entry }) => entry ? `${partner} v${entry.version}` : `${partner} (on disk)`)
+    .join(', ');
+  stderr.write(
+    `WARNING: a plugin install is already present alongside this standard install (${partnerSummary}).\n` +
+    `Both channels' agents and skills are now on disk in separate subtrees, so the harness\n` +
+    `will load DUPLICATE rad-orc:<name> entries for every shared agent and skill.\n` +
+    `To avoid duplicates, run \`/plugin uninstall rad-orc\` inside the affected harness\n` +
+    `before re-installing the standard variant.\n`,
+  );
 }
 
 /** Best-effort stderr write that swallows write failures (NFR-4). */

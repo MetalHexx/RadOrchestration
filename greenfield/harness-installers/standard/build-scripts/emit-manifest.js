@@ -68,7 +68,7 @@ export async function emitManifest({ harnessOutputDir, harness, version, manifes
   // Stable diffs — sort by bundlePath.
   files.sort((a, b) => a.bundlePath < b.bundlePath ? -1 : a.bundlePath > b.bundlePath ? 1 : 0);
 
-  const manifest = { version, channel: 'legacy-installer', files };
+  const manifest = { version, channel: 'standard', files };
   const outPath = path.join(manifestDir, `v${version}.json`);
   const tmpPath = outPath + '.tmp';
 

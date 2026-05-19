@@ -1,6 +1,6 @@
 {
   "version": "1.0.0-alpha.9",
-  "channel": "legacy-installer",
+  "channel": "standard",
   "files": [
     {
       "bundlePath": "agents/brainstormer.agent.md",
@@ -280,7 +280,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "82e075924e90ee07e3bab95647da84d5b00c1ac779c1a612cec09732c436a9b9"
+      "sha256": "eff9fd82a396e5e5cc3d8c1caaac134acb454a2d805e77199da2a18604a42d44"
     },
     {
       "bundlePath": "skills/rad-orchestration/scripts/setup-hooks.js",

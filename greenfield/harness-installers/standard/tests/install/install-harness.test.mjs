@@ -132,7 +132,7 @@ test('fresh-install: install.json absent → action fresh-install, files copied,
 
     const installJson = JSON.parse(fs.readFileSync(path.join(tmp, 'home/.radorch/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses.claude.version, '1.0.0');
-    assert.strictEqual(installJson.harnesses.claude.channel, 'legacy-installer');
+    assert.strictEqual(installJson.harnesses.claude.channel, 'standard');
 
     // Files were copied into ~/.claude/.
     const sentinel = path.join(tmp, 'home/.claude/skills/rad-orchestration/scripts/radorch.mjs');
@@ -169,7 +169,7 @@ test('upgrade-complete: install.json registers lower version → prior manifest 
         harnesses: {
           claude: {
             version: '1.0.0',
-            channel: 'legacy-installer',
+            channel: 'standard',
             installed_at: installedAt,
             last_writer_version: '1.0.0',
           },
@@ -218,7 +218,7 @@ test('noop: install.json claims delivering version AND sentinel present → acti
       harnesses: {
         claude: {
           version: '1.0.0',
-          channel: 'legacy-installer',
+          channel: 'standard',
           installed_at: '2024-01-01T00:00:00.000Z',
           last_writer_version: '1.0.0',
         },
@@ -265,7 +265,7 @@ test('sentinel-self-heal: install.json claims installed but sentinel missing →
         harnesses: {
           claude: {
             version: '1.0.0',
-            channel: 'legacy-installer',
+            channel: 'standard',
             installed_at: '2024-01-01T00:00:00.000Z',
             last_writer_version: '1.0.0',
           },
@@ -311,7 +311,7 @@ test('downgrade-refused: install.json registers higher version → non-zero code
         harnesses: {
           claude: {
             version: '2.0.0',
-            channel: 'legacy-installer',
+            channel: 'standard',
             installed_at: '2024-01-01T00:00:00.000Z',
             last_writer_version: '2.0.0',
           },
@@ -351,7 +351,7 @@ test('folder-mutex: install copilot-vscode while copilot-cli registered → part
         harnesses: {
           'copilot-cli': {
             version: '1.0.0',
-            channel: 'legacy-installer',
+            channel: 'standard',
             installed_at: '2024-01-01T00:00:00.000Z',
             last_writer_version: '1.0.0',
           },
@@ -428,6 +428,122 @@ test('cross-channel coexistence: install claude while claude-plugin registered �
   }
 });
 
+test('plugin-coexist: install copilot-cli while copilot-cli-plugin registered → notice emitted, plugin entry preserved', async () => {
+  const tmp = mkTmp('std-ih-coex-cli-');
+  const restoreHome = withHome(path.join(tmp, 'home'));
+  try {
+    const bundle = path.join(tmp, 'bundle');
+    buildBundle(bundle, { version: '1.0.0' });
+
+    const home = path.join(tmp, 'home');
+    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.radorch/install.json'),
+      JSON.stringify({
+        harnesses: {
+          'copilot-cli-plugin': {
+            version: '1.0.0',
+            channel: 'plugin',
+            installed_at: '2024-01-01T00:00:00.000Z',
+            last_writer_version: '1.0.0',
+          },
+        },
+      }, null, 2),
+    );
+
+    const stderr = captureStderr();
+    const result = await installHarness({ bundleRoot: bundle, harness: 'copilot-cli', stderr: stderr.stream });
+
+    assert.strictEqual(result.action, 'fresh-install');
+    assert.strictEqual(result.code, 0);
+    assert.match(stderr.text, /copilot-cli-plugin/, 'notice names the plugin partner');
+
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    assert.strictEqual(installJson.harnesses['copilot-cli-plugin'].version, '1.0.0', 'plugin entry preserved');
+    assert.strictEqual(installJson.harnesses['copilot-cli'].version, '1.0.0');
+  } finally {
+    restoreHome();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('plugin-coexist: install copilot-vscode while copilot-vscode-plugin registered → notice emitted, plugin entry preserved', async () => {
+  const tmp = mkTmp('std-ih-coex-vscode-');
+  const restoreHome = withHome(path.join(tmp, 'home'));
+  try {
+    const bundle = path.join(tmp, 'bundle');
+    buildBundle(bundle, { version: '1.0.0' });
+
+    const home = path.join(tmp, 'home');
+    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.radorch/install.json'),
+      JSON.stringify({
+        harnesses: {
+          'copilot-vscode-plugin': {
+            version: '1.0.0',
+            channel: 'plugin',
+            installed_at: '2024-01-01T00:00:00.000Z',
+            last_writer_version: '1.0.0',
+          },
+        },
+      }, null, 2),
+    );
+
+    const stderr = captureStderr();
+    const result = await installHarness({ bundleRoot: bundle, harness: 'copilot-vscode', stderr: stderr.stream });
+
+    assert.strictEqual(result.action, 'fresh-install');
+    assert.match(stderr.text, /copilot-vscode-plugin/);
+
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    assert.strictEqual(installJson.harnesses['copilot-vscode-plugin'].version, '1.0.0', 'plugin entry preserved');
+    assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.0');
+  } finally {
+    restoreHome();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('plugin-coexist regression: install copilot-vscode while copilot-cli-plugin registered → CROSS-UI plugin entry preserved (no eviction)', async () => {
+  const tmp = mkTmp('std-ih-coex-crossui-');
+  const restoreHome = withHome(path.join(tmp, 'home'));
+  try {
+    const bundle = path.join(tmp, 'bundle');
+    buildBundle(bundle, { version: '1.0.0' });
+
+    const home = path.join(tmp, 'home');
+    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.radorch/install.json'),
+      JSON.stringify({
+        harnesses: {
+          'copilot-cli-plugin': {
+            version: '1.0.0',
+            channel: 'plugin',
+            installed_at: '2024-01-01T00:00:00.000Z',
+            last_writer_version: '1.0.0',
+          },
+        },
+      }, null, 2),
+    );
+
+    const stderr = captureStderr();
+    const result = await installHarness({ bundleRoot: bundle, harness: 'copilot-vscode', stderr: stderr.stream });
+
+    assert.strictEqual(result.action, 'fresh-install');
+    assert.match(stderr.text, /copilot-cli-plugin/, 'cross-UI plugin partner surfaced in notice');
+
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    assert.ok(installJson.harnesses['copilot-cli-plugin'], 'cross-UI plugin entry NOT evicted (regression guard)');
+    assert.strictEqual(installJson.harnesses['copilot-cli-plugin'].version, '1.0.0');
+    assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.0');
+  } finally {
+    restoreHome();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('NFR-4 best-effort: stderr write throws during mutex/cross-channel emission → install still completes', async () => {
   const tmp = mkTmp('std-ih-besteff-');
   const restoreHome = withHome(path.join(tmp, 'home'));
@@ -445,7 +561,7 @@ test('NFR-4 best-effort: stderr write throws during mutex/cross-channel emission
         harnesses: {
           'copilot-cli': {
             version: '1.0.0',
-            channel: 'legacy-installer',
+            channel: 'standard',
             installed_at: '2024-01-01T00:00:00.000Z',
             last_writer_version: '1.0.0',
           },

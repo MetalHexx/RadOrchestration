@@ -4,10 +4,22 @@
 // Two-step picker:
 //   1. If the registry has at least one entry AND we're not headless AND
 //      caller didn't force an action via `forceAction`, ask whether the user
-//      wants to install or uninstall.
+//      wants to install or uninstall. The "Uninstall a harness" option is
+//      only offered when at least one *standard* harness is installed —
+//      registries that contain only plugin entries skip the uninstall path
+//      entirely (see below).
 //   2. Then a sub-picker:
 //        install   — three-variant single-select (today's behavior).
-//        uninstall — single-select over currently-installed harnesses only.
+//        uninstall — single-select over currently-installed *standard*
+//                    harnesses only. Plugin install-keys
+//                    (`claude-plugin`, `copilot-cli-plugin`,
+//                    `copilot-vscode-plugin`) are excluded — the standard
+//                    installer does not own plugin lifecycle. Plugin entries
+//                    in install.json are informational; manage plugins via
+//                    `/plugin install`/`uninstall` in the harness, at the
+//                    scope they were installed (user / project / system).
+//                    The headless `--uninstall --harness <plugin-key>` path
+//                    refuses with `PLUGIN_NOT_UNINSTALLABLE_HERE`.
 //
 // Confirmation:
 //   install   — explicit Y/N (default No) only when the pick would overwrite
@@ -24,13 +36,24 @@ import fs from 'node:fs';
 import { select, confirm } from '@inquirer/prompts';
 import { INQUIRER_THEME, THEME, sectionHeader } from './theme.js';
 import { userDataPaths } from './install/user-data-paths.js';
-import { loadRegistry, detectFolderConflicts, cmpSemver } from './install/install-json.js';
+import { loadRegistry, detectFolderConflicts, detectPluginCoexistence, cmpSemver } from './install/install-json.js';
 
 const HARNESS_CHOICES = [
   { value: 'claude',         name: 'Claude Code' },
   { value: 'copilot-vscode', name: 'GitHub Copilot (VS Code)' },
   { value: 'copilot-cli',    name: 'GitHub Copilot CLI' },
 ];
+
+// Install-keys written into install.json by the *plugin* installers (not the
+// standard installer). The standard installer never owns these — plugin
+// lifecycle lives entirely inside the harness via `/plugin install/uninstall`.
+// These keys are filtered out of the uninstall picker and rejected in the
+// headless `--uninstall` path.
+const PLUGIN_INSTALL_KEYS = new Set([
+  'claude-plugin',
+  'copilot-cli-plugin',
+  'copilot-vscode-plugin',
+]);
 
 const HARNESS_DISPLAY_NAME = {
   'claude':                'Claude Code',
@@ -77,8 +100,9 @@ function buildInstallChoices({ withCancel } = {}) {
   return choices;
 }
 
-function buildUninstallChoices(harnesses) {
+export function buildUninstallChoices(harnesses) {
   return Object.keys(harnesses)
+    .filter((key) => !PLUGIN_INSTALL_KEYS.has(key))
     .sort()
     .map((key) => ({ value: key, name: HARNESS_DISPLAY_NAME[key] ?? key }));
 }
@@ -106,6 +130,11 @@ function renderInstalledSummary(harnesses) {
   for (const r of rows) {
     console.log(`    ${THEME.body(r.name.padEnd(nameCol, ' '))}${THEME.secondary('v' + r.version)}`);
   }
+
+  if (entries.some(([key]) => PLUGIN_INSTALL_KEYS.has(key))) {
+    console.log('');
+    console.log(`  ${THEME.hint('Plugin entries are informational — manage plugins via `/plugin install`/`uninstall` in your harness.')}`);
+  }
 }
 
 /**
@@ -113,12 +142,23 @@ function renderInstalledSummary(harnesses) {
  * pre-wrapped lines (for clean rendering above the `Continue?` prompt) or
  * null if no confirmation is needed.
  *
+ * Three independent trigger blocks compose the prompt body, concatenated in
+ * order with blank-line separators when more than one fires:
+ *   1. Folder-mutex (legacy↔legacy) — partner will be evicted.
+ *   2. Plugin coexistence — plugin partner shares the harness folder; its
+ *      registry entry will be preserved but its files on disk will be
+ *      overwritten by the legacy install.
+ *   3. Downgrade — installing an older version of the same harness.
+ *
  * @param {Record<string, { version: string }>} harnesses
  * @param {string} pick
  * @param {string} deliveringVersion
  * @returns {string[] | null}
  */
-function installDestructivePromptLines(harnesses, pick, deliveringVersion) {
+export function installDestructivePromptLines(harnesses, pick, deliveringVersion, opts = {}) {
+  const blocks = [];
+
+  // Block 1 — folder-mutex (legacy↔legacy only).
   const conflicts = detectFolderConflicts(harnesses, pick);
   if (conflicts.length > 0) {
     const newUi = COPILOT_UI_LABEL[pick];
@@ -126,20 +166,50 @@ function installDestructivePromptLines(harnesses, pick, deliveringVersion) {
     const partnerSummary = conflicts
       .map((c) => `${HARNESS_DISPLAY_NAME[c.key]} (v${c.entry.version})`)
       .join(' and ');
-    return [
+    blocks.push([
       `Installing ${HARNESS_DISPLAY_NAME[pick]} will replace your existing ${partnerSummary}.`,
       '',
       `Agents will model-route correctly in ${newUi} after the switch, but no`,
       `longer in ${oldUi} — ${oldUi} will run every agent on its main-chat model.`,
-    ];
+    ]);
   }
+
+  // Block 2 — plugin coexistence (registry OR disk).
+  const coexist = detectPluginCoexistence(harnesses, pick, opts);
+  if (coexist.length > 0) {
+    const ui = HARNESS_DISPLAY_NAME[pick];
+    const lines = [];
+    for (const { partner, source, entry } of coexist) {
+      const partnerName = HARNESS_DISPLAY_NAME[partner] ?? partner;
+      const versionSuffix = entry ? ` (v${entry.version})` : '';
+      const sourceTag = source === 'disk' ? ' detected on disk' : '';
+      lines.push(`A ${partnerName}${versionSuffix} install is already present${sourceTag}.`);
+    }
+    lines.push('');
+    lines.push(`Installing ${ui} will leave both channels' agents and skills on disk,`);
+    lines.push(`so the harness will load DUPLICATE rad-orc:<name> entries for every`);
+    lines.push(`shared agent and skill.`);
+    lines.push('');
+    lines.push(`To avoid duplicates, cancel and run \`/plugin uninstall rad-orc\` inside`);
+    lines.push(`${ui} before re-installing the standard variant.`);
+    blocks.push(lines);
+  }
+
+  // Block 3 — downgrade.
   const same = harnesses[pick];
   if (same && cmpSemver(deliveringVersion, same.version) < 0) {
-    return [
+    blocks.push([
       `Installing v${deliveringVersion} will downgrade ${HARNESS_DISPLAY_NAME[pick]} from v${same.version}.`,
-    ];
+    ]);
   }
-  return null;
+
+  if (blocks.length === 0) return null;
+  const out = [];
+  for (let i = 0; i < blocks.length; i++) {
+    if (i > 0) out.push('');
+    out.push(...blocks[i]);
+  }
+  return out;
 }
 
 /**
@@ -192,11 +262,25 @@ export async function runWizard({
   const registry = loadRegistry(paths.installJson);
   const harnesses = registry.harnesses ?? {};
   const installedCount = Object.keys(harnesses).length;
+  // Standard installer only owns non-plugin entries — plugin keys are
+  // informational. The uninstall picker and the "Uninstall a harness"
+  // action-picker option both gate on this narrower count.
+  const standardInstalledCount = Object.keys(harnesses)
+    .filter((key) => !PLUGIN_INSTALL_KEYS.has(key)).length;
 
   // ─── Headless path ─────────────────────────────────────────────────────
   if (cliOverrides.harnesses !== undefined && cliOverrides.harnesses.length > 0) {
     const pick = cliOverrides.harnesses[0];
     const action = forceAction ?? 'install';
+
+    if (action === 'uninstall' && PLUGIN_INSTALL_KEYS.has(pick)) {
+      const err = new Error(
+        `'${pick}' is a harness plugin — uninstall it from inside the harness with ` +
+        `\`/plugin uninstall rad-orc\` at the scope it was installed (user / project / system).`,
+      );
+      err.code = 'PLUGIN_NOT_UNINSTALLABLE_HERE';
+      throw err;
+    }
 
     if (action === 'uninstall' && !harnesses[pick]) {
       const err = new Error(`Cannot uninstall '${pick}' — not currently installed.`);
@@ -233,21 +317,22 @@ export async function runWizard({
   let actionPickerShown = false;
   if (forceAction) {
     action = forceAction;
-    if (action === 'uninstall' && installedCount === 0) {
+    if (action === 'uninstall' && standardInstalledCount === 0) {
       const err = new Error('No harnesses are installed. Nothing to uninstall.');
       err.code = 'NOTHING_TO_UNINSTALL';
       throw err;
     }
   } else if (installedCount > 0) {
     actionPickerShown = true;
+    const actionChoices = [{ value: 'install', name: 'Install or reinstall a harness' }];
+    if (standardInstalledCount > 0) {
+      actionChoices.push({ value: 'uninstall', name: 'Uninstall a harness' });
+    }
+    actionChoices.push({ value: EXIT_VALUE, name: 'Exit' });
     action = await select({
       message: 'What would you like to do?',
       theme: INQUIRER_THEME,
-      choices: [
-        { value: 'install',     name: 'Install or reinstall a harness' },
-        { value: 'uninstall',   name: 'Uninstall a harness' },
-        { value: EXIT_VALUE,    name: 'Exit' },
-      ],
+      choices: actionChoices,
     });
     if (action === EXIT_VALUE) {
       return { action: 'exit', harnesses: [], skipConfirmation };
