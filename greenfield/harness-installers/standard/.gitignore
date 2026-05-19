@@ -1,0 +1,11 @@
+# Built installer payload — emitted fresh by build-scripts/build.js on every
+# invocation. The folder is the publishable tarball staging area; it must
+# never enter git so contributors never accidentally commit build artifacts.
+# Named `output/` to match the convention used by claude-plugin/ and
+# harness-adapters/ across the greenfield tree.
+output/
+node_modules/
+
+# Packed tarballs produced by `npm pack` during smoke-tests. The publishable
+# tarball is regenerated on demand from the source tree, never committed.
+*.tgz

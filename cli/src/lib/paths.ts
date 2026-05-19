@@ -31,9 +31,6 @@ export function userDataPaths(): UserDataPaths {
 export interface InstallPaths {
   readonly root: string;
   readonly installJson: string;
-  readonly configYml: string;
-  readonly registryYml: string;
-  readonly harnessPointer: string;
   readonly gitignore: string;
   readonly projectsDir: string;
   readonly worktreesDir: string;
@@ -54,9 +51,6 @@ export function installPaths(root: string): InstallPaths {
   return {
     root,
     installJson: join(root, 'install.json'),
-    configYml: join(root, 'config.yml'),
-    registryYml: join(root, 'registry.yml'),
-    harnessPointer: join(root, '.harness'),
     gitignore: join(root, '.gitignore'),
     projectsDir: join(root, 'projects'),
     worktreesDir: join(root, 'worktrees'),

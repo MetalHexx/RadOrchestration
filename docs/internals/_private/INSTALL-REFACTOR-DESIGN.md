@@ -177,7 +177,7 @@ Each installer is a separately publishable npm package with its own `package.jso
 
 1. User runs `npx rad-orchestration` (or `npx ./<tarball>`).
 2. `harness-installers/standard/index.js` runs the wizard (or `--yes` headless mode) and collects harness selection.
-3. The bundled tarball contains `harness-installers/standard/dist/<harness>/` with translated agents/skills (sourced from `harness-adapters/output/<harness>/` at pack time), the bundled `radorch.mjs`, the built UI, and the manifest catalog.
+3. The bundled tarball contains `harness-installers/standard/output/<harness>/` with translated agents/skills (sourced from `harness-adapters/output/<harness>/` at pack time), the bundled `radorch.mjs`, the built UI, and the manifest catalog.
 4. `harness-installers/standard/lib/install/install-harness.js` reads `~/.radorch/install.json` to detect prior install version.
 5. On upgrade: loads prior version's manifest from `dist/<harness>/manifests/v<prior>.json`, calls `removeManifestFiles` to clean up old files at their templated destinations.
 6. Loads current version's manifest, calls `installManifestFiles` to copy from `dist/<harness>/` to `~/.claude/` or `~/.copilot/`.
@@ -320,7 +320,7 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 | `/skills/` | `greenfield/harness-files/skills/` | Copy verbatim (frontmatter stays inline, LCD authored). |
 | `/hooks/` | `harness-installers/claude-plugin/hooks/` | Move; update build script (becomes `harness-installers/claude-plugin/build-scripts/build.js`). |
 | `/installer/` | `harness-installers/standard/` | Rename; restructure subfolders per the target layout. |
-| `/installer/src/` | `harness-installers/standard/dist/` | Rename — currently misnamed as `src/`; gitignored except manifests. |
+| `/installer/src/` | `harness-installers/standard/output/` | Rename — currently misnamed as `src/`; gitignored except manifests. |
 | Manifest catalogs in `/installer/src/<h>/manifests/` | `harness-installers/standard/manifests/<h>/` | Pull out of `dist/`, commit to git separately. |
 | `/plugin/` | `harness-installers/claude-plugin/` | Rename; plugin manifest moves to `.claude-plugin/plugin.json`; `bin/` payload dropped (vestigial). The plugin's SessionStart/UserPromptSubmit entry is the hook scripts under `hooks/`, not an `index.js` (the parent design's earlier `index.js` reference is superseded by Iteration 1's hook-as-entry decision; see INSTALL-REFACTOR-CLAUDE-PLUGIN brainstorm). |
 | `/cli/src/commands/install.ts`, `install/skeleton.ts`, `install/harness-bundles.ts` | **Delete** | Vestigial install-shaped commands; absorbed into each installer's own state machine. |

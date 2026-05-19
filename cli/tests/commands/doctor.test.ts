@@ -6,23 +6,51 @@ import { runDoctor, doctorCommand, renderDoctorForTest } from '../../src/command
 import { validateEnvelope } from '../../src/framework/output.js';
 import { runPluginChecks, runInstallChecks, type CheckResult } from '../../src/commands/doctor/checks.js';
 
+// Step 1 (RED-GREEN): Pin that bootstrap-skeleton is retired and runRegistryChecks is gone.
+// The dynamic import fallback lets this compile even after the export is removed.
+describe('doctor — bootstrap-skeleton check retired', () => {
+  it('runPluginChecks does not emit a bootstrap-skeleton result', async () => {
+    const results = await runPluginChecks({ root: process.env['HOME'] ?? '', localVersion: '0.0.0' });
+    const names = results.map((r) => r.name);
+    expect(names).not.toContain('bootstrap-skeleton');
+  });
+  it('runRegistryChecks is not exported (registry surface retired)', async () => {
+    // Use dynamic import so this file compiles after the export is removed.
+    let runRegistryChecks: unknown = undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mod = await import('../../src/commands/doctor/checks.js') as any;
+      runRegistryChecks = mod.runRegistryChecks;
+    } catch {
+      // module failed to load — symbol definitely gone
+    }
+    expect(typeof runRegistryChecks).toBe('undefined');
+  });
+});
+
 /**
  * Seed a minimal ~/.radorch layout so doctor checks pass / warn.
  * Replaces the deleted writeInstallSkeleton helper — inline only the
  * files each test actually depends on.
  */
-async function seedRadorchDir(root: string, harness = 'claude'): Promise<void> {
+async function seedRadorchDir(root: string): Promise<void> {
   await fs.mkdir(root, { recursive: true });
   await fs.mkdir(path.join(root, 'projects'), { recursive: true });
   await fs.mkdir(path.join(root, 'worktrees'), { recursive: true });
   await fs.mkdir(path.join(root, 'logs'), { recursive: true });
   await fs.writeFile(
     path.join(root, 'install.json'),
-    JSON.stringify({ package_version: '0.0.0', installed_at: new Date().toISOString(), last_writer_version: '0.0.0', state_schema_version: 'v5' }, null, 2) + '\n',
+    JSON.stringify({
+      harnesses: {
+        claude: {
+          version: '0.0.0',
+          channel: 'legacy-installer',
+          installed_at: new Date().toISOString(),
+          last_writer_version: '0.0.0',
+        },
+      },
+    }, null, 2) + '\n',
   );
-  await fs.writeFile(path.join(root, 'config.yml'), `default_active_harness: ${harness}\n`);
-  await fs.writeFile(path.join(root, 'registry.yml'), 'repos: []\nworkspaces: []\n');
-  await fs.writeFile(path.join(root, '.harness'), `${harness}\n`);
 }
 
 let tmp: string;
@@ -45,16 +73,16 @@ describe('radorch doctor', () => {
     expect(installCategory.some((c) => c.status === 'fail')).toBe(true);
   });
 
-  it('reports all_passed=true with a Registry warn when installed but empty', async () => {
+  it('reports all_passed=true when installed (Environment + Install + Plugin only)', async () => {
     const root = path.join(tmp, '.radorch');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(true); // warns allowed; only fails block
-    const reg = result.checks.find((c) => c.category === 'Registry');
-    expect(reg?.status).toBe('warn');
-    expect(['Environment', 'Install', 'Registry', 'Plugin']).toEqual([
-      ...new Set(result.checks.map((c) => c.category)),
-    ]);
+    const categories = [...new Set(result.checks.map((c) => c.category))];
+    expect(categories).not.toContain('Registry');
+    expect(categories).toContain('Environment');
+    expect(categories).toContain('Install');
+    expect(categories).toContain('Plugin');
   });
 
   it('every check carries a closed-enum status', async () => {
@@ -91,25 +119,24 @@ describe('plugin-aware doctor checks', () => {
   beforeEach(async () => { home = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-doc-')); });
   afterEach(async () => { await fs.rm(home, { recursive: true, force: true }); });
 
-  it('reports bootstrap status, UI PID consistency, and version skew', async () => {
-    // Fresh home — bootstrap missing
+  it('reports UI PID consistency and version skew', async () => {
+    // Fresh home — no install.json yet
     let result = await runPluginChecks({ root: home, localVersion: '1.1.0' });
-    expect(result.find((c) => c.name === 'bootstrap-skeleton')?.status).toBe('fail');
     expect(result.find((c) => c.name === 'version-skew')?.status).toBe('pass'); // no install.json yet
     expect(result.find((c) => c.name === 'ui-pid-consistency')?.status).toBe('pass'); // no pid file
 
-    // Bootstrap manually
-    await fs.mkdir(path.join(home, 'projects'), { recursive: true });
-    await fs.writeFile(path.join(home, 'registry.yml'), 'repos: []\nworkspaces: []\n');
-    await fs.writeFile(path.join(home, 'config.yml'), 'default_active_harness: claude\n');
+    // Write install.json with a newer last_writer_version
     await fs.writeFile(path.join(home, 'install.json'), JSON.stringify({
-      package_version: '1.1.0',
-      installed_at: '2026-05-08T00:00:00.000Z',
-      last_writer_version: '1.5.0',
-      state_schema_version: 'v5',
+      harnesses: {
+        claude: {
+          version: '1.1.0',
+          channel: 'legacy-installer',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.5.0',
+        },
+      },
     }));
     result = await runPluginChecks({ root: home, localVersion: '1.1.0' });
-    expect(result.find((c) => c.name === 'bootstrap-skeleton')?.status).toBe('pass');
     expect(result.find((c) => c.name === 'version-skew')?.status).toBe('fail');
 
     // Stale PID file — process is dead
@@ -354,13 +381,12 @@ describe('doctor: 1.3 canonical checks', () => {
   });
 
   it('table renders one line per install-key with (channel) suffix', async () => {
-    // Stage a v6 install.json with all four install-keys present except one.
+    // Stage an install.json with all four install-keys present except one.
     const radorchDir = path.join(tmp13, '.radorch');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'claude': { version: '1.0.0-alpha.9', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
           'claude-plugin': { version: '1.0.0-alpha.9', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0-alpha.9' },
@@ -385,7 +411,6 @@ describe('doctor: 1.3 canonical checks', () => {
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'claude': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
           'claude-plugin': { version: '1.0.0', channel: 'plugin', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
@@ -405,7 +430,6 @@ describe('doctor: 1.3 canonical checks', () => {
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'copilot-cli': { version: '1.0.0', channel: 'legacy-installer', installed_at: '2026-01-01T00:00:00.000Z', last_writer_version: '1.0.0' },
         },
@@ -453,7 +477,6 @@ describe('Section 9 — plugin check noise suppression', () => {
       expect(result.find((c) => c.name === name)).toBeUndefined();
     }
     // Other checks still emit.
-    expect(result.find((c) => c.name === 'bootstrap-skeleton')).toBeDefined();
     expect(result.find((c) => c.name === 'multi-harness-install-table')).toBeDefined();
   });
 
@@ -485,13 +508,12 @@ describe('Section 9 — plugin check noise suppression', () => {
 
   it('S9-3: three plugin checks emit (not skipped) when claude-plugin is registered in install.json but env var absent', async () => {
     // Simulate running doctor outside a Claude Code session: env var absent but
-    // claude-plugin is registered in the v6 registry.
+    // claude-plugin is registered.
     const radorchDir = path.join(s9Home, '.radorch');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
       JSON.stringify({
-        state_schema_version: 'v6',
         harnesses: {
           'claude-plugin': {
             version: '1.0.0-alpha.9',
@@ -516,13 +538,11 @@ describe('Section 9 — plugin check noise suppression', () => {
   });
 });
 
-it('doctor renders every check from runDoctor under exactly the four canonical categories (regression guard for dynamic enumeration)', async () => {
+it('doctor renders every check from runDoctor under exactly the three canonical categories (regression guard for dynamic enumeration)', async () => {
   const fakeChecks: CheckResult[] = [
     { category: 'Environment', name: 'env-x', status: 'pass', detail: 'ok' },
     { category: 'Install',     name: 'inst-x', status: 'pass', detail: 'ok' },
-    { category: 'Registry',    name: 'reg-x', status: 'pass', detail: 'ok' },
     { category: 'Plugin',      name: 'bundle-integrity',            status: 'pass', detail: 'ok' },
-    { category: 'Plugin',      name: 'bootstrap-skeleton',          status: 'pass', detail: 'ok' },
     { category: 'Plugin',      name: 'ui-pid-consistency',          status: 'pass', detail: 'ok' },
     { category: 'Plugin',      name: 'version-skew',                status: 'pass', detail: 'ok' },
     { category: 'Plugin',      name: 'projects-base-path-readable', status: 'pass', detail: 'ok' },
@@ -536,7 +556,7 @@ it('doctor renders every check from runDoctor under exactly the four canonical c
   for (const name of pluginNames) {
     expect(out).toContain(name);
   }
-  // Exactly the four canonical category headings render — no new categories, no nested sub-rows.
-  const categoryHeadings = [...out.matchAll(/^(Environment|Install|Registry|Plugin)$/gm)].map(m => m[1]);
-  expect(categoryHeadings.sort()).toEqual(['Environment', 'Install', 'Plugin', 'Registry']);
+  // Exactly the three canonical category headings render — Registry is retired; no new categories, no nested sub-rows.
+  const categoryHeadings = [...out.matchAll(/^(Environment|Install|Plugin)$/gm)].map(m => m[1]);
+  expect(categoryHeadings.sort()).toEqual(['Environment', 'Install', 'Plugin']);
 });

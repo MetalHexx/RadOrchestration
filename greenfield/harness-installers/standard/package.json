@@ -1,0 +1,31 @@
+{
+  "name": "rad-orchestration",
+  "version": "1.0.0-alpha.9",
+  "private": true,
+  "type": "module",
+  "description": "Greenfield standard installer for the Rad orchestration system.",
+  "bin": {
+    "rad-orchestration": "index.js"
+  },
+  "files": [
+    "index.js",
+    "lib/",
+    "output/"
+  ],
+  "scripts": {
+    "build": "node build-scripts/build.js",
+    "test": "node --test tests/**/*.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "next": "^14.0.0",
+    "tsx": "^4.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.6.0",
+    "@inquirer/prompts": "^8.3.0",
+    "ora": "^9.3.0",
+    "figlet": "^1.11.0"
+  },
+  "engines": { "node": ">=18" }
+}

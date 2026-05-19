@@ -3,30 +3,15 @@ import path from 'node:path';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths, userDataPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
-import type { InstallJson, InstallJsonV5, InstallJsonV6 } from '../../lib/config.js';
-import { readRegistry } from '../../lib/registry.js';
-import { cmpSemver, isInstallJsonV6, readLastWriterVersion } from '../../lib/install-json.js';
+import { cmpSemver, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
 
-/** Pull a representative `version` from either v5 (top-level package_version)
- * or v6 (any entry's version). Used by doctor's install-shape checks where the
- * specific install-key isn't disambiguated. */
-function readAnyVersion(ij: InstallJson): string | undefined {
-  if (isInstallJsonV6(ij)) {
-    for (const entry of Object.values((ij as InstallJsonV6).harnesses)) {
-      if (entry?.version) return entry.version;
-    }
-    return undefined;
-  }
-  return (ij as InstallJsonV5).package_version;
-}
-
 const pkg = { version: getCliVersion() };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
-export type CheckCategory = 'Environment' | 'Install' | 'Registry' | 'Plugin';
+export type CheckCategory = 'Environment' | 'Install' | 'Plugin';
 
 export interface CheckResult {
   category: CheckCategory;
@@ -70,11 +55,11 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
   });
   if (!rootExists) return out;
 
-  // 2. install-json-shape — accepts both v5 (top-level package_version) and v6
-  // (any registered harness entry's version).
+  // 2. install-json-shape — single structural shape; pick any registered
+  // harness entry's version as the representative.
   try {
     const ij = await readInstallJson(p.installJson);
-    const version = readAnyVersion(ij);
+    const version = Object.values(ij.harnesses)[0]?.version;
     out.push({
       category: 'Install',
       name: 'install-json-shape',
@@ -151,16 +136,16 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
     }
   }
 
-  // 6. version-match — operates on the union; v6 picks the first registered entry.
+  // 6. version-match — picks the first registered harness entry's version.
   {
     let versionStatus: CheckStatus = 'pass';
     let versionDetail: string | undefined;
     try {
       const ij = await readInstallJson(p.installJson);
-      const installedVersion = readAnyVersion(ij);
+      const installedVersion = Object.values(ij.harnesses)[0]?.version;
       if (typeof installedVersion !== 'string') {
         versionStatus = 'warn';
-        versionDetail = 'install.json missing package_version';
+        versionDetail = 'install.json missing version';
       } else {
         const cliVersion = pkg.version;
         if (cliVersion) {
@@ -181,23 +166,6 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
   return out;
 }
 
-export async function runRegistryChecks(root: string): Promise<CheckResult[]> {
-  const p = installPaths(root);
-  const out: CheckResult[] = [];
-  try {
-    const reg = await readRegistry(p.registryYml);
-    const empty = (reg.repos ?? []).length === 0 && (reg.workspaces ?? []).length === 0;
-    out.push({
-      category: 'Registry',
-      name: 'registry has entries',
-      status: empty ? 'warn' : 'pass',
-      detail: empty ? 'nothing registered yet (lands in #1.1)' : undefined,
-    });
-  } catch (e) {
-    out.push({ category: 'Registry', name: 'registry shape', status: 'fail', detail: (e as Error).message });
-  }
-  return out;
-}
 
 export async function runPluginChecks(opts: {
   root: string;
@@ -251,16 +219,6 @@ export async function runPluginChecks(opts: {
       });
     }
   }
-  // Bootstrap skeleton
-  const required = [p.projectsDir, p.registryYml, p.configYml, p.installJson];
-  let bootstrapOk = true;
-  for (const f of required) if (!(await pathExists(f))) bootstrapOk = false;
-  out.push({
-    category: 'Plugin',
-    name: 'bootstrap-skeleton',
-    status: bootstrapOk ? 'pass' : 'fail',
-    detail: bootstrapOk ? undefined : 'missing one or more entries under ~/.radorch',
-  });
   // UI PID consistency
   const pidExists = await pathExists(p.uiPidFile);
   let pidStatus: CheckStatus = 'pass';

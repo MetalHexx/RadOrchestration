@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readInstallJson, writeInstallJson } from './config.js';
-import type { InstallJson, InstallJsonV5, InstallJsonV6, InstallEntry, InstallKey, InstallChannel } from './config.js';
+import type { InstallJson, InstallEntry, InstallKey, InstallChannel } from './config.js';
 import { pathExists } from './fs-helpers.js';
 
-// Section 6: install.json v6 multi-harness/multi-channel registry.
+// install.json multi-harness/multi-channel registry — single structural shape.
 //
 // Four valid install-keys:
 //  - `claude`         (legacy installer claude harness)
@@ -30,44 +30,6 @@ const CHANNEL_OVERLAP_PARTNER: Partial<Record<InstallKey, InstallKey>> = {
   'claude-plugin': 'claude',
 };
 
-export function isInstallJsonV6(ij: InstallJson | undefined | null): ij is InstallJsonV6 {
-  return !!ij && (ij as InstallJsonV6).state_schema_version === 'v6' && typeof (ij as InstallJsonV6).harnesses === 'object';
-}
-
-/**
- * Lazy migration from v5 (flat single-record) to v6 (multi-harness registry).
- *
- * If the input is already v6 it is returned as-is.
- *
- * For v5 inputs, builds a single v6 entry under `activeKey` using the v5 record's
- * fields and the supplied `channel`. The caller resolves the activeKey from the
- * filesystem (~/.radorch/.harness or config.yml's default_active_harness) and the
- * channel via heuristic (plugin folder presence → 'plugin'; otherwise
- * 'legacy-installer'; fallback 'unknown').
- */
-export function migrateInstallJson(
-  ij: InstallJson,
-  activeKey: InstallKey,
-  channel: InstallChannel,
-): InstallJsonV6 {
-  if (isInstallJsonV6(ij)) return ij;
-  const v5 = ij as InstallJsonV5;
-  const version = v5.package_version ?? 'unknown';
-  const installed_at = v5.installed_at ?? new Date().toISOString();
-  const last_writer_version = v5.last_writer_version ?? version;
-  return {
-    state_schema_version: 'v6',
-    harnesses: {
-      [activeKey]: {
-        version,
-        channel,
-        installed_at,
-        last_writer_version,
-      },
-    } as InstallJsonV6['harnesses'],
-  };
-}
-
 /**
  * Folder-shared mutual exclusion: copilot-cli ↔ copilot-vscode share ~/.copilot/.
  * If writing one variant while the other is registered, the prior partner is
@@ -78,7 +40,7 @@ export function migrateInstallJson(
  * partners (they coexist) — see `detectChannelOverlap`.
  */
 export function resolveFolderConflict(
-  harnesses: InstallJsonV6['harnesses'],
+  harnesses: InstallJson['harnesses'],
   installKey: InstallKey,
 ): { removed?: { key: InstallKey; entry: InstallEntry } } {
   const partner = FOLDER_MUTEX_PARTNER[installKey];
@@ -97,7 +59,7 @@ export function resolveFolderConflict(
  * can emit the channel-specific warning text. Does NOT mutate the registry.
  */
 export function detectChannelOverlap(
-  harnesses: InstallJsonV6['harnesses'],
+  harnesses: InstallJson['harnesses'],
   installKey: InstallKey,
 ): InstallKey | undefined {
   const partner = CHANNEL_OVERLAP_PARTNER[installKey];
@@ -106,11 +68,11 @@ export function detectChannelOverlap(
 }
 
 /**
- * Channel-detection heuristic for migration. The plugin and the legacy installer
- * both write install.json to the same path, so we cannot tell them apart from
- * file content alone. Signal: presence of ~/.claude/plugins/rad-orchestration/
- * implies the plugin is loaded → 'plugin'. Otherwise, if the install root exists,
- * presume 'legacy-installer'. If both signals are absent, fall back to 'unknown'.
+ * Channel-detection heuristic. The plugin and the legacy installer both write
+ * install.json to the same path, so we cannot tell them apart from file content
+ * alone. Signal: presence of ~/.claude/plugins/rad-orchestration/ implies the
+ * plugin is loaded → 'plugin'. Otherwise, if the install root exists, presume
+ * 'legacy-installer'. If both signals are absent, fall back to 'unknown'.
  */
 export function detectChannelHeuristic(opts?: { home?: string }): InstallChannel {
   const home = opts?.home ?? os.homedir();
@@ -128,35 +90,6 @@ export function detectChannelHeuristic(opts?: { home?: string }): InstallChannel
     // ignore
   }
   return 'unknown';
-}
-
-/**
- * Resolve the active harness key for v5→v6 migration.
- * Order: ~/.radorch/.harness pointer → ~/.radorch/config.yml default_active_harness.
- * Returns undefined if neither is present or parseable.
- */
-export function resolveActiveHarnessKey(opts?: { home?: string }): InstallKey | undefined {
-  const home = opts?.home ?? os.homedir();
-  const harnessPointer = path.join(home, '.radorch', '.harness');
-  try {
-    if (fs.existsSync(harnessPointer)) {
-      const raw = fs.readFileSync(harnessPointer, 'utf8').trim();
-      if (isInstallKey(raw)) return raw;
-    }
-  } catch {
-    // fall through
-  }
-  const configYml = path.join(home, '.radorch', 'config.yml');
-  try {
-    if (fs.existsSync(configYml)) {
-      const text = fs.readFileSync(configYml, 'utf8');
-      const m = text.match(/^\s*default_active_harness:\s*([a-z0-9-]+)\s*$/m);
-      if (m && isInstallKey(m[1]!)) return m[1] as InstallKey;
-    }
-  } catch {
-    // fall through
-  }
-  return undefined;
 }
 
 export function isInstallKey(value: string): value is InstallKey {
@@ -191,45 +124,34 @@ export function cmpSemver(a: string, b: string): number {
   return 0;
 }
 
-/** Returns the latest `last_writer_version` across all v6 harness entries, or
- * the v5 top-level field. Undefined if neither shape carries it. */
+/** Returns the latest `last_writer_version` across all harness entries, or
+ * undefined if the registry is empty. */
 export function readLastWriterVersion(ij: InstallJson): string | undefined {
-  if (isInstallJsonV6(ij)) {
-    let latest: string | undefined;
-    for (const entry of Object.values(ij.harnesses)) {
-      if (!entry) continue;
-      if (!latest || cmpSemver(entry.last_writer_version, latest) > 0) {
-        latest = entry.last_writer_version;
-      }
+  let latest: string | undefined;
+  for (const entry of Object.values(ij.harnesses)) {
+    if (!entry) continue;
+    if (!latest || cmpSemver(entry.last_writer_version, latest) > 0) {
+      latest = entry.last_writer_version;
     }
-    return latest;
   }
-  return (ij as InstallJsonV5).last_writer_version;
+  return latest;
 }
 
 export async function stampLastWriter(installJsonPath: string, version: string): Promise<void> {
   if (!(await pathExists(installJsonPath))) return;
   const ij = await readInstallJson(installJsonPath);
-  if (isInstallJsonV6(ij)) {
-    // v6: bump every harness entry's last_writer_version (best-effort: when the
-    // CLI runs, it represents whatever install loaded it).
-    let mutated = false;
-    for (const key of Object.keys(ij.harnesses) as InstallKey[]) {
-      const entry = ij.harnesses[key];
-      if (!entry) continue;
-      if (!entry.last_writer_version || cmpSemver(version, entry.last_writer_version) >= 0) {
-        entry.last_writer_version = version;
-        mutated = true;
-      }
+  // Bump every harness entry's last_writer_version (best-effort: when the
+  // CLI runs, it represents whatever install loaded it).
+  let mutated = false;
+  for (const key of Object.keys(ij.harnesses) as InstallKey[]) {
+    const entry = ij.harnesses[key];
+    if (!entry) continue;
+    if (!entry.last_writer_version || cmpSemver(version, entry.last_writer_version) >= 0) {
+      entry.last_writer_version = version;
+      mutated = true;
     }
-    if (mutated) await writeInstallJson(installJsonPath, ij);
-    return;
   }
-  const v5 = ij as InstallJsonV5;
-  if (!v5.last_writer_version || cmpSemver(version, v5.last_writer_version) >= 0) {
-    v5.last_writer_version = version;
-    await writeInstallJson(installJsonPath, v5);
-  }
+  if (mutated) await writeInstallJson(installJsonPath, ij);
 }
 
 export async function checkVersionSkew(opts: {
@@ -239,7 +161,7 @@ export async function checkVersionSkew(opts: {
   if (!(await pathExists(opts.installJsonPath))) return { ok: true };
   const ij = await readInstallJson(opts.installJsonPath);
   const lastWriter = readLastWriterVersion(ij);
-  // No-op fallback: if last_writer_version is absent (old schema or empty v6),
+  // No-op fallback: if last_writer_version is absent (empty registry),
   // skip the check.
   if (!lastWriter) return { ok: true };
   if (cmpSemver(opts.localVersion, lastWriter) < 0) {
