@@ -22,7 +22,7 @@ describe('install.json — single structural shape, no version literal', () => {
     // @ts-expect-error — exercising legacy shape input
     await writeInstallJson(tmp, { state_schema_version: 'v6', harnesses: { claude: { version: '1.0.0', channel: 'plugin', installed_at: 't', last_writer_version: '1.0.0' } } });
     const read = await readInstallJson(tmp);
-    expect((read as any).state_schema_version).toBeUndefined();
+    expect((read as Record<string, unknown>).state_schema_version).toBeUndefined();
     expect(read.harnesses.claude?.version).toBe('1.0.0');
   });
 });

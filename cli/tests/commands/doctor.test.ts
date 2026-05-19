@@ -16,7 +16,6 @@ describe('doctor — bootstrap-skeleton check retired', () => {
   });
   it('runRegistryChecks is not exported (registry surface retired)', async () => {
     // Use dynamic import so this file compiles after the export is removed.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let runRegistryChecks: unknown = undefined;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +33,7 @@ describe('doctor — bootstrap-skeleton check retired', () => {
  * Replaces the deleted writeInstallSkeleton helper — inline only the
  * files each test actually depends on.
  */
-async function seedRadorchDir(root: string, _harness = 'claude'): Promise<void> {
+async function seedRadorchDir(root: string): Promise<void> {
   await fs.mkdir(root, { recursive: true });
   await fs.mkdir(path.join(root, 'projects'), { recursive: true });
   await fs.mkdir(path.join(root, 'worktrees'), { recursive: true });
