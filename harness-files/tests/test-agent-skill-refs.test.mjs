@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
-const agentsDir = path.join(repoRoot, 'agents');
+const agentsDir = path.join(repoRoot, 'harness-files', 'agents');
 const FORBIDDEN = ['brainstorm', 'code-review', 'configure-system', 'create-agent', 'create-skill', 'execute-coding-task', 'log-error', 'orchestration', 'run-tests', 'source-control'];
 for (const file of readdirSync(agentsDir).filter(f => f.endsWith('.md'))) {
   const text = readFileSync(path.join(agentsDir, file), 'utf8');
