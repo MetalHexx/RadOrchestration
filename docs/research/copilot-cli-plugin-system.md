@@ -2,7 +2,7 @@
 
 > **Type:** Research / reference. Evergreen.
 > **Scope:** GitHub Copilot CLI (the local `copilot` CLI) plugin model — install layout, manifest schemas, hook contract, marketplace catalogs, runtime behavior.
-> **Last verified:** 2026-05-18 against `docs.github.com/en/copilot/...`. The docs evolve; re-verify before relying on a contract documented as "silent" or "undocumented".
+> **Last verified:** 2026-05-19 against `docs.github.com/en/copilot/...`. The docs evolve; re-verify before relying on a contract documented as "silent" or "undocumented".
 > **Audience:** Contributors authoring or maintaining a Copilot CLI plugin in this repo, or planning a port from another plugin platform.
 
 This document captures what the official Copilot CLI documentation and live marketplace JSON say about the plugin system. Where the docs are silent or where an implementation behavior is only indirectly attested, that is called out explicitly so a planner knows where a smoke test is required before relying on a behavior.
@@ -294,9 +294,9 @@ The plugin reference enumerates these forms for the `source` field on a marketpl
 | Git URL (string) | `"https://github.com/o/r.git"` | Arbitrary git source. |
 | Structured object | `{ "source": "github", "repo": "owner/repo", "path": "...", "ref": "..." }` | Most-attested form in real marketplaces. |
 
-### The `source: npm` form — schema-shaped but not attested in the canonical reference
+### `source: npm` belongs to VS Code agent-plugins, NOT Copilot CLI
 
-Community summaries (notably the DeepWiki page for `github/awesome-copilot`) describe an `external.json` mechanism that accepts:
+Community summaries (notably the DeepWiki page for `github/awesome-copilot`) describe `external.json` entries with shapes like:
 
 ```json
 { "source": "npm", "package": "@scope/pkg", "version": "1.0.0" }
@@ -304,9 +304,14 @@ Community summaries (notably the DeepWiki page for `github/awesome-copilot`) des
 { "source": "url", "url": "https://..." }
 ```
 
-However, inspection of `github/awesome-copilot`'s live `plugins/external.json` shows **only `source: github` objects in production** — no live npm, pip, or url examples as of the last verification date.
+These shapes are **part of the VS Code agent-plugins ecosystem**, not the Copilot CLI plugin model. The Copilot CLI plugin reference does not document `source: npm` as a valid source form. Inspection of live Copilot CLI marketplaces (`github/copilot-plugins`, `github/awesome-copilot`'s plugin catalog) confirms that **only relative-path strings and `source: github` objects appear in production** — no npm, pip, or url entries against a Copilot CLI plugin runtime.
 
-**Planner takeaway:** `source: npm` is consistent with the schema shape but is not directly attested by canonical GitHub Docs prose nor by live marketplace JSON. Treat the npm path as **schema-plausible but undocumented in the canonical reference** — smoke-test before publishing.
+**Planner takeaway:** if a port from VS Code or Claude is contemplating npm-based distribution, that path is not available on Copilot CLI under the current docs and live marketplace evidence. The attested distribution forms for Copilot CLI plugins are:
+
+- **Relative path** — plugin lives inside the marketplace-catalog repo.
+- **`source: github` object** — `{ "source": "github", "repo": "OWNER/REPO", "path": "...", "ref": "..." }`. The most-attested form in live Copilot CLI marketplaces.
+- **Git URL** — arbitrary git source (`source: url` with a full git URL, or a bare git URL string). Useful for GHES-portable distribution since `source: github` resolves against github.com only.
+- **Enterprise-Managed Plugins (May 2026 channel)** — a separate attested distribution channel where an enterprise admin curates plugins centrally and they appear in the user's CLI without per-user `plugin install`. Uses the same plugin payload contract (`plugin.json`, `hooks.json`, agents/skills dirs); the distribution mechanism is the management channel rather than the local marketplace catalog. The same `source: github`-style entries appear inside the enterprise's catalog; relative-path entries do not apply since there is no per-user catalog repo.
 
 ### Schema differences and precedence between `.github/plugin/` and `.claude-plugin/`
 
@@ -387,7 +392,7 @@ A user-level file at `~/.copilot/agents/coder.md` will **shadow** a plugin-shipp
 - **Hook event names support dual casing.** Both camelCase native and PascalCase VS-Code-compatible variants are accepted.
 - **Plugin naming:** kebab-case, letters/numbers/hyphens, max 64 chars. No underscore, no uppercase.
 - **`SKILL.md`** is the literal expected filename (capitalized). Agents use `.agent.md` suffix.
-- **`source: npm` is schema-shaped but unattested in live marketplaces.** Real marketplaces in `github/copilot-plugins` and `github/awesome-copilot` use `source: github` object form exclusively. Smoke-test any npm distribution path before publishing.
+- **`source: npm` is NOT a Copilot CLI plugin feature.** It belongs to the VS Code agent-plugins ecosystem. Real Copilot CLI marketplaces in `github/copilot-plugins` and `github/awesome-copilot` use relative paths and `source: github` object form exclusively. The Enterprise-Managed Plugins channel uses the same shape. There is no npm-based distribution path on Copilot CLI under the current docs.
 - **`plugin.json` at `.github/plugin/plugin.json` triggers issue #2390 for direct GitHub installs.** Either ship at repo root or constrain users to the marketplace install path.
 - **Cloud agent loads only `.github/hooks/*.json`** — plugin hooks are not loaded in cloud sandbox.
 - **Filesystem and line-endings:** the docs do not document charset/line-ending sensitivity. Hook scripts have a documented `chmod +x` requirement — Windows-cloned plugins may need explicit attention to executable bits if the user runs Copilot CLI on macOS/Linux.
@@ -400,7 +405,7 @@ These behaviors are silent or under-specified in the canonical docs. Smoke-test 
 
 1. **Default `cwd`** when omitted from a hook entry. **Empirically resolved:** `cwd` resolves relative to the CLI process's working directory (where the user launched the CLI). Omitting `cwd` is equivalent to `cwd: "."` relative to the CLI launch dir. Use `%COPILOT_PLUGIN_ROOT%` in the command string to reference plugin-bundled scripts.
 2. **Precedence** when both `.github/plugin/marketplace.json` and `.claude-plugin/marketplace.json` exist in the same repo.
-3. **`source: npm` end-to-end behavior:** does it support scoped packages, `dist-tags` (e.g., `version: "latest"`), private registries, postinstall scripts? What does Copilot do at install time with the fetched tarball?
+3. **`source: github` resolution against GHES hosts.** Does Copilot CLI's `source: github` with `repo: ORG/REPO` resolve against the user's authenticated GHES host, or only against github.com? No live marketplace entry has been observed against GHES, so this is unattested either way. A focused smoke test against a throwaway GHES-like setup (or a real GHES dev tenant if available) closes this. **This is the one open empirical question the publish-wiring iteration's brainstorm should pick up** — both plugins' distribution decisions depend on the answer.
 4. **`userPromptSubmitted` firing after `copilot plugin update`** — is it reliable on the user's first prompt of the next session, or only after a fresh `copilot` invocation?
 5. **Agent / skill user-vs-plugin shadowing resolution timing** — at load time or at dispatch time? Affects post-update behavior.
 6. **Behavior on malformed `plugin.json`** — silent skip, warning, or error? Affects observability design.

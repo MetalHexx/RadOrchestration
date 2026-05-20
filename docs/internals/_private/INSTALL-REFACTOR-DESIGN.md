@@ -1,7 +1,7 @@
 # Install Refactor — Design Document
 
-**Date:** 2026-05-13 (updated 2026-05-16)
-**Status:** Design aligned. The adapter subsystem has its own companion: [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md). Execution runs as a project series, all staged under `greenfield/`: the adapter subsystem rebuilds first, the installer subsystem rebuilds next (same greenfield pattern), and a final cutover iteration deletes the old root folders and promotes `greenfield/*` to the repo root.
+**Date:** 2026-05-13 (updated 2026-05-19 post-LIFT to reflect as-shipped reality)
+**Status:** Refactor in progress; this document is reality-grounded against the merged work through INSTALL-REFACTOR-LIFT. Execution shipped as a six-project series: [ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md) → [CLAUDE-PLUGIN](~/.radorch/projects/INSTALL-REFACTOR-CLAUDE-PLUGIN/INSTALL-REFACTOR-CLAUDE-PLUGIN-BRAINSTORMING.md) → [STANDARD](~/.radorch/projects/INSTALL-REFACTOR-STANDARD/INSTALL-REFACTOR-STANDARD-BRAINSTORMING.md) → [COPILOT-CLI](~/.radorch/projects/INSTALL-REFACTOR-COPILOT-CLI/INSTALL-REFACTOR-COPILOT-CLI-BRAINSTORMING.md) → [LIFT](~/.radorch/projects/INSTALL-REFACTOR-LIFT/INSTALL-REFACTOR-LIFT-BRAINSTORMING.md) (non-destructive lift of greenfield subtrees to repo root, merged) → [RETIRE-LEGACY](~/.radorch/projects/INSTALL-REFACTOR-RETIRE-LEGACY/INSTALL-REFACTOR-RETIRE-LEGACY-BRAINSTORMING.md) (destructive: deletes legacy folders, retires the legacy publish workflow without replacement, consolidates orientation docs) → publish-wiring iteration (designs and ships the new publish flow; ships `1.0.0-alpha.9` from the new shape). The greenfield staging pattern described below was the staging mechanism through the four subsystem iterations; LIFT promoted the subtrees to repo root, and `greenfield/` no longer exists.
 
 ---
 
@@ -111,11 +111,17 @@ This document captures the target architecture for the installer + bundler side.
     │   ├── output/                           # gitignored — build artifact; the publishable plugin payload
     │   └── tests/
     │
-    ├── copilot-cli-plugin/                   # placeholder — future Copilot CLI plugin installer
+    ├── copilot-cli-plugin/                   # shipped in INSTALL-REFACTOR-COPILOT-CLI — UserPromptSubmitted-triggered installer
     └── copilot-vscode-plugin/                # placeholder — future Copilot VS Code plugin installer
 ```
 
-The new structure stages under `greenfield/` across multiple project iterations while old folders at the repo root stay frozen and keep shipping. Cutover — deleting old folders and moving `greenfield/*` to root — is its own iteration, executed only after every greenfield subsystem (adapters + installers) is feature-complete and validated. Staging mechanics for the adapter side are in [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md).
+**Post-LIFT additions to the layout** (shipped, not shown in the block above):
+
+- `runtime-config/` at repo root — `orchestration.yml` template + `templates/` tier files. Both installers consume it via `emit-runtime-config` style helpers; the standard installer and both plugin installers hydrate `~/.radorch/` from here.
+- `harness-dogfood/` at repo root — the developer inner-loop build script plus a small set of cross-module tests. Carries its own minimal manifest-driven deploy library so it does NOT reach into any installer's `lib/install/` internals (decoupling principle landed in LIFT, reversing the pre-refactor coupling smell). See Decision 9 below.
+- `harness-files/tests/` — canonical-source integrity tests (e.g., that every `skills: -` ref in agent frontmatter resolves to a real skill). New folder added in LIFT to host the one survivor from the aggressive `tests/scripts/` cull.
+
+The four subsystem iterations (ADAPTERS, CLAUDE-PLUGIN, STANDARD, COPILOT-CLI) staged their output under `greenfield/` while legacy folders at the repo root stayed frozen and kept shipping. LIFT promoted the four greenfield subtrees (`harness-files/`, `harness-adapters/`, `harness-installers/`, `runtime-config/`) to repo root, consolidated the orphan dev-tooling folders into `harness-dogfood/`, retired the one-shot migration scripts, and aggressively culled accumulated cross-cutting tests. After LIFT, the legacy folders coexist at root as now-stale residual; the destructive RETIRE-LEGACY iteration deletes them.
 
 ---
 
@@ -280,11 +286,10 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - Dogfooding runs the adapter engine and then the installer locally with `--bundle-root` pointing at the freshly built `dist/`.
 - **Rationale:** dogfooding is a local execution of the real code paths. A parallel deploy mechanism with its own state tracking adds complexity and naming friction without delivering value.
 
-### Decision 10: Greenfield staging during rebuild
-- The new structure lives under `greenfield/` until the rebuild is feature-complete.
-- Old folders stay untouched during transition; `/agents/` and `/skills/` are frozen for the duration.
-- At cutover, old folders get deleted and `greenfield/` contents move to root.
-- **Rationale:** the old system keeps shipping while the new system grows in isolation. The freeze + cutover boundary keeps the working tree stable and the cutover clean.
+### Decision 10: Greenfield staging during rebuild (split cutover as shipped)
+- The new structure lived under `greenfield/` through the four subsystem iterations (ADAPTERS, CLAUDE-PLUGIN, STANDARD, COPILOT-CLI) while old folders at the repo root stayed frozen and kept shipping.
+- **The original "one cutover iteration" plan split into two sibling projects** because the orchestration system's one-project-one-PR model couldn't carry both halves cleanly. LIFT (non-destructive: lift greenfield subtrees to repo root, retarget consumers, retire migration scripts) ships first; RETIRE-LEGACY (destructive: delete legacy folders, retire publish workflow, consolidate orientation docs) ships second. A cutover gate — full automated tests + all three operator-driven smoke skills passing end-to-end against the new shape — gates both transitions: it's LIFT's exit criterion AND RETIRE-LEGACY's entry criterion, re-run at RETIRE-LEGACY's exit as belt-and-braces.
+- **Rationale:** the old system keeps shipping while the new system grows in isolation. The split cutover preserves reversibility through LIFT (rolling back means re-pointing consumers back at legacy paths) and makes the irreversible legacy-delete in RETIRE-LEGACY safe by demanding the gate pass against the new shape with the legacy still silently reachable, then re-running the gate after the legacy is gone.
 
 ### Decision 11: Destination-token substitution is an installer responsibility
 - The adapter subsystem is install-destination-blind. It translates harness vocabulary (tool names, frontmatter shape, filename conventions) and passes destination-shaped tokens through the body unchanged.
@@ -293,11 +298,12 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - **A second build-time transform exists for the plugin installer specifically:** agent-namespacing rewrite (`@coder` → `@rad-orchestration:coder` in dispatch contexts) — required because plugin-installed skills are namespaced by Claude Code. This transform is Claude-plugin-specific; the standard installer doesn't run it because standalone-installed skills aren't namespaced. Both transforms run in the same build pass over body content.
 - **Rationale:** the same Claude adapter output can serve both the legacy installer and the plugin installer because each runs its own destination pass. Mixing destination knowledge into the adapter would re-couple translation to packaging — the exact layering this rearchitecture exists to fix.
 
-### Decision 12: `publish.yml` updates at cutover, not during iteration rebuilds
-- During the greenfield iterations (claude-plugin in iteration 1, standard installer in iteration 2), `.github/workflows/publish.yml` stays unchanged. The legacy installer (`installer/`) and the legacy plugin build path (`cli/dist/marketplaces/claude/plugins/rad-orchestration/`) continue to publish from their current locations on git tag push.
-- At cutover, `publish.yml` updates in lockstep with the folder deletion: the `publish` job's `working-directory` swaps to the new standard installer location, and the `publish-plugin` job swaps to publish from `harness-installers/claude-plugin/output/` (or whichever location the new build emits to). Both swaps happen in the cutover commit alongside old-folder removal.
-- Per-iteration dev loops are local-only: build locally (`npm run build` in the installer package), test via `claude --plugin-dir ./output` or a local marketplace install. No npm publish during iteration rebuilds.
-- **Rationale:** keeps existing users on the legacy installer with no surprise upgrades during the rebuild. Cutover is the single atomic switchover from old paths to new paths — `publish.yml` is one of the files that participates in that switchover, alongside the folder deletion. Adding pre-release publish paths during iterations was considered and rejected as unnecessary CI complexity given that local-only testing covers the iteration dev loop.
+### Decision 12: Publish wiring is deferred to a follow-on iteration after RETIRE-LEGACY
+- **As originally planned:** `publish.yml` would update in lockstep with the legacy folder deletion — both `working-directory` swaps landing in the cutover commit alongside old-folder removal.
+- **As shipped:** Research commissioned during the LIFT brainstorm surfaced enough open architectural surface — GHES portability (the Claude `source: github` form is github.com-only; `source: url` with a full git URL is Anthropic's GHES-portable path), plugin distribution mechanism choice across both plugins, and NPM portability for the standard installer (trivially routable to GitHub Packages via one `.npmrc` line at GHES migration time) — that folding publish wiring into RETIRE-LEGACY would mean half-validated answers leaking into shipped CI. RETIRE-LEGACY therefore **deletes `.github/workflows/publish.yml` entirely with no replacement**. A dedicated publish-wiring iteration follows RETIRE-LEGACY and designs the new publish flow once the architectural decisions settle.
+- **Release implications:** `rad-orchestration@1.0.0-alpha.8` stays live on public npm as the last release from the legacy shape. No new alpha releases ship between RETIRE-LEGACY's merge and the publish-wiring iteration's completion. `1.0.0-alpha.9` ships from the new shape after the publish-wiring iteration completes. Neither the Claude plugin nor the Copilot CLI plugin has ever been published, so nothing dangles on either marketplace during the gap.
+- **Per-iteration dev loops remained local-only** through the four subsystem iterations and LIFT: build locally (`npm run build` in the installer package), test via `claude --plugin-dir ./output` or a local marketplace install. No npm publish during the rebuild.
+- **Rationale:** the cutover gate (LIFT's exit + RETIRE-LEGACY's belt-and-braces re-run) confirms the new shape works end-to-end through the install path. Publish wiring is a distinct concern that the cutover gate doesn't cover, and forcing it through the same merge as the legacy delete would couple two unrelated risk surfaces. Splitting them out lets the publish-wiring iteration ground its brainstorm in attested distribution behavior (notably the GHES `source: github` smoke test captured as a research-doc open question) instead of locking decisions before the smoke test runs.
 
 ### Decision 13: Marketplace catalog stays at repo root; plugin manifest lives in plugin payload
 - The repo-root file `/.claude-plugin/marketplace.json` is the **marketplace catalog** that Claude Code resolves when a user runs `/plugin marketplace add MetalHexx/RadOrchestration`. Per Anthropic docs, this location is load-bearing — the catalog MUST live at `<repo-root>/.claude-plugin/marketplace.json`. The rearchitecture does **not** move it.
@@ -314,10 +320,12 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 
 ## Migration scope
 
+The table below was the original migration map. The "Destination" column resolves to **repo root** (no `greenfield/` prefix) post-LIFT. Legacy `/agents/`, `/skills/`, `/adapters/`, `/installer/`, `/plugin/`, `/hooks/` still coexist at the time of writing and disappear in RETIRE-LEGACY.
+
 | Source | Destination | Notes |
 |---|---|---|
-| `/agents/` | `greenfield/harness-files/agents/` | Copy bodies; strip existing frontmatter; replace with `{{FRONTMATTER}}` token. Hand-author per-harness ymls alongside, using current `/adapters/<harness>/adapter.js` as the reference for each harness's expected frontmatter shape. |
-| `/skills/` | `greenfield/harness-files/skills/` | Copy verbatim (frontmatter stays inline, LCD authored). |
+| `/agents/` | `harness-files/agents/` | Copy bodies; strip existing frontmatter; replace with `{{FRONTMATTER}}` token. Hand-author per-harness ymls alongside, using current `/adapters/<harness>/adapter.js` as the reference for each harness's expected frontmatter shape. |
+| `/skills/` | `harness-files/skills/` | Copy verbatim (frontmatter stays inline, LCD authored). |
 | `/hooks/` | `harness-installers/claude-plugin/hooks/` | Move; update build script (becomes `harness-installers/claude-plugin/build-scripts/build.js`). |
 | `/installer/` | `harness-installers/standard/` | Rename; restructure subfolders per the target layout. |
 | `/installer/src/` | `harness-installers/standard/output/` | Rename — currently misnamed as `src/`; gitignored except manifests. |
@@ -326,11 +334,13 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 | `/cli/src/commands/install.ts`, `install/skeleton.ts`, `install/harness-bundles.ts` | **Delete** | Vestigial install-shaped commands; absorbed into each installer's own state machine. |
 | `/cli/src/commands/plugin-bootstrap/` | `harness-installers/claude-plugin/hooks/bootstrap.mjs` + `harness-installers/claude-plugin/lib/install/` | Subcommand absorbed; the hook script (renamed from `bootstrap-then-uninstall.mjs` to `bootstrap.mjs`) imports stages directly from `lib/install/` — no subprocess spawn. radorch loses this subcommand. |
 | `/cli/src/lib/upgrade/` | `harness-installers/claude-plugin/lib/install/` | Folds with plugin-bootstrap absorption. |
-| `/adapters/` | Read-only reference during migration; deleted at cutover. The new adapter subsystem lives in `greenfield/harness-adapters/`. The existing adapter code is the source of truth for per-harness frontmatter shapes while authoring the new ymls. |
-| `/scripts/build.js` and dogfood machinery | **Delete** | Per Decision 9. |
-| `/scripts/build-plugin.js` | `harness-installers/claude-plugin/build-scripts/build.js` | Move; gains shared helper imports. |
+| `/adapters/` | Read-only reference during migration; deleted in RETIRE-LEGACY. The new adapter subsystem lives at `harness-adapters/`. The existing adapter code is the source of truth for per-harness frontmatter shapes while authoring the new ymls. |
+| `/scripts/build.js` and dogfood machinery | Retired and reborn at `harness-dogfood/` | LIFT replaced the legacy dogfood loop with a decoupled minimal manifest-driven deploy library at `harness-dogfood/` rather than deleting outright. Per the Goal 3 decoupling principle, the new dogfood loop does NOT reach into any installer's `lib/install/`. |
+| `/scripts/build-plugin.js` | `harness-installers/claude-plugin/build-scripts/build.js` | Move; gains shared helper imports. The original `scripts/build-plugin.js` and its 3 test files were deleted as dead code in LIFT. |
 | `/scripts/build-*.test.js` | Distributed to each installer's `tests/` | Move with the scripts they cover. |
 | Shared bundle/UI emit logic | `harness-installers/shared/build-helpers/` | Extract from current `installer/scripts/sync-source.js` and `scripts/build-plugin.js`. |
+| `tests/scripts/` (32 cross-cutting tests) | **Aggressively culled in LIFT** | 30 deleted (already-covered-by-per-installer, markdown-shape anti-pattern, transitional guard, vestigial, or legacy-surface-gone), 1 moved to new `harness-files/tests/` (canonical-source integrity), 1 moved to `harness-dogfood/` (`publish-workflow-shape.test.mjs`). Empty `scripts/` and `tests/` folders removed. |
+| Runtime config (`orchestration.yml` template + `templates/` tier files) | `runtime-config/` at repo root | New top-level folder; consumed by both installer flavors via `emit-runtime-config`-style helpers. |
 
 References across the codebase update with every move — tests, CLAUDE.md, docs, build scripts, package.json `files` arrays.
 
@@ -351,8 +361,14 @@ References across the codebase update with every move — tests, CLAUDE.md, docs
 
 ## Sequencing
 
-The rearchitecture executes on a fresh branch, staged under `greenfield/`, after the in-flight installer-decouple PR merges. That PR contains the validated foundation (`destinationPath` routing-as-data, `installer/lib/install/` port, bridge deletion) that the rearchitecture builds on. The greenfield branch starts from main post-merge.
+The rearchitecture executed as a six-project series, each its own PR off `main`:
 
-Old code at the repo root stays untouched during the rebuild — `/agents/`, `/skills/`, `/adapters/`, `/installer/`, `/plugin/` continue to ship while new code grows in isolation. At cutover (rebuild feature-complete), old folders get deleted and `greenfield/` contents move to root in one coherent commit.
+1. **INSTALL-REFACTOR-ADAPTERS** — `harness-adapters/` translation subsystem under `greenfield/`.
+2. **INSTALL-REFACTOR-CLAUDE-PLUGIN** — `harness-installers/claude-plugin/` under `greenfield/`, hook-as-entry pivot, install-log + atomic-write + sentinel self-heal.
+3. **INSTALL-REFACTOR-STANDARD** — `harness-installers/standard/` under `greenfield/`, multi-harness tarball, wizard, copilot mutex.
+4. **INSTALL-REFACTOR-COPILOT-CLI** — `harness-installers/copilot-cli-plugin/` under `greenfield/`, idempotent marker-file bootstrap (cache-and-read hook semantics make claude-plugin's self-uninstall pattern unsafe).
+5. **INSTALL-REFACTOR-LIFT** (merged) — non-destructive lift of `greenfield/{harness-files, harness-adapters, harness-installers, runtime-config}` to repo root; retired the migration scripts; consolidated dev tooling into `harness-dogfood/`; aggressively culled `tests/scripts/` (30 deletes, 2 moves) and the dead `scripts/build-plugin*.js`; retargeted every internal consumer. Legacy folders still coexist at LIFT's merge.
+6. **INSTALL-REFACTOR-RETIRE-LEGACY** (next) — destructive cleanup: deletes legacy `agents/`, `skills/`, `adapters/`, `installer/`, `plugin/`, `hooks/`; deletes `.github/workflows/publish.yml` without replacement; consolidates repo-root orientation to a single `AGENTS.md` with `CLAUDE.md` collapsed to a hard-redirect stub; re-audits every module-level `AGENTS.md` against its new root path.
+7. **publish-wiring iteration** (follow-on) — designs and ships the new publish flow; resolves GHES portability and plugin distribution mechanism; converts `.agents/prompts/rad-release.prompt.md` to a skill; ships `1.0.0-alpha.9` from the new shape.
 
-An iteration plan that breaks the rebuild into concrete implementation steps will be authored separately.
+During iterations 1–4, old code at the repo root (`/agents/`, `/skills/`, `/adapters/`, `/installer/`, `/plugin/`) stayed frozen and kept shipping. LIFT made the new shape canonical at root; RETIRE-LEGACY commits to it irreversibly. The cutover gate (full automated tests + all three operator-driven smoke skills end-to-end against the new shape) is LIFT's exit criterion AND RETIRE-LEGACY's entry criterion, re-run at RETIRE-LEGACY's exit as belt-and-braces against residual coupling that LIFT's gate missed because the legacy was still silently reachable.
