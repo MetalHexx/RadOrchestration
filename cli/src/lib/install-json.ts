@@ -7,12 +7,13 @@ import { pathExists } from './fs-helpers.js';
 
 // install.json multi-harness/multi-channel registry — single structural shape.
 //
-// Five valid install-keys:
-//  - `claude`              (legacy installer claude harness)
-//  - `claude-plugin`       (Claude Code plugin install)
-//  - `copilot-cli`         (legacy installer copilot-cli harness)
-//  - `copilot-cli-plugin`  (Copilot CLI plugin install)
-//  - `copilot-vscode`      (legacy installer copilot-vscode harness)
+// Six valid install-keys:
+//  - `claude`                (legacy installer claude harness)
+//  - `claude-plugin`         (Claude Code plugin install)
+//  - `copilot-cli`           (legacy installer copilot-cli harness)
+//  - `copilot-cli-plugin`    (Copilot CLI plugin install)
+//  - `copilot-vscode`        (legacy installer copilot-vscode harness)
+//  - `copilot-vscode-plugin` (VS Code Copilot plugin install)
 //
 // Conflict semantics:
 //  - copilot-cli ↔ copilot-vscode share ~/.copilot/: mutually exclusive
@@ -21,7 +22,11 @@ import { pathExists } from './fs-helpers.js';
 //    `detectChannelOverlap` returns the partner keys for warning surfaces.
 //  - copilot-cli-plugin ↔ copilot-cli / copilot-vscode: both shadow agents
 //    through ~/.copilot/agents/; coexist in the registry with overlap warning.
-export const INSTALL_KEYS = ['claude', 'claude-plugin', 'copilot-cli', 'copilot-cli-plugin', 'copilot-vscode'] as const;
+//  - copilot-vscode-plugin ↔ copilot-vscode / copilot-cli: both shadow agents
+//    through ~/.copilot/; coexist in the registry with overlap warning.
+//    Additionally, copilot-vscode-plugin ↔ copilot-cli-plugin auto-imports
+//    into VS Code with CLI-shape model identifiers that break the resolver.
+export const INSTALL_KEYS = ['claude', 'claude-plugin', 'copilot-cli', 'copilot-cli-plugin', 'copilot-vscode', 'copilot-vscode-plugin'] as const;
 
 const FOLDER_MUTEX_PARTNER: Partial<Record<InstallKey, InstallKey>> = {
   'copilot-cli': 'copilot-vscode',
@@ -31,9 +36,10 @@ const FOLDER_MUTEX_PARTNER: Partial<Record<InstallKey, InstallKey>> = {
 const CHANNEL_OVERLAP_PARTNER: Partial<Record<InstallKey, InstallKey[]>> = {
   'claude': ['claude-plugin'],
   'claude-plugin': ['claude'],
-  'copilot-cli-plugin': ['copilot-cli', 'copilot-vscode'],
-  'copilot-cli': ['copilot-cli-plugin'],
-  'copilot-vscode': ['copilot-cli-plugin'],
+  'copilot-vscode-plugin': ['copilot-vscode', 'copilot-cli', 'copilot-cli-plugin'],
+  'copilot-cli': ['copilot-cli-plugin', 'copilot-vscode-plugin'],
+  'copilot-vscode': ['copilot-cli-plugin', 'copilot-vscode-plugin'],
+  'copilot-cli-plugin': ['copilot-cli', 'copilot-vscode', 'copilot-vscode-plugin'],
 };
 
 /**
@@ -66,6 +72,7 @@ export function resolveFolderConflict(
  * Overlap pairs:
  *  - claude ↔ claude-plugin (both write into ~/.claude/)
  *  - copilot-cli-plugin ↔ copilot-cli / copilot-vscode (both shadow ~/.copilot/agents/)
+ *  - copilot-vscode-plugin ↔ copilot-vscode / copilot-cli / copilot-cli-plugin
  *
  * Does NOT mutate the registry.
  */
