@@ -26,7 +26,7 @@ function step(name, fn) {
 
 /** @param {{ rootDir: string, skipAdapterEngine?: boolean, skipUiRunner?: boolean,
  *            skipBootstrap?: boolean, greenfieldRel?: string }} opts
- *  `rootDir` is the repo root. `greenfieldRel` (default 'greenfield') names
+ *  `rootDir` is the repo root. `greenfieldRel` (default '.') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems
  *  (`harness-installers/`, `runtime-config/`, `harness-files/`, `harness-adapters/`).
  *  Per parent design Decision 10, repo-root folders `cli/` and `ui/` stay at
