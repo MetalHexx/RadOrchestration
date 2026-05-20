@@ -46,14 +46,14 @@ function makeFixtureRoot() {
   fs.mkdirSync(join(installerDir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(installerDir, 'plugin.json'), JSON.stringify({
     name: 'rad-orc-vscode',
-    version: '1.0.0-alpha.1',
+    version: '1.0.0-alpha.9',
     author: { name: 'metalhexx' },
     license: 'MIT',
     hooks: 'hooks/hooks.json',
   }));
   fs.writeFileSync(join(installerDir, 'package.json'), JSON.stringify({
     name: '@rad-orchestration/copilot-vscode-plugin-source',
-    version: '1.0.0-alpha.1',
+    version: '1.0.0-alpha.9',
     private: true,
     type: 'module',
     license: 'MIT',
@@ -67,8 +67,8 @@ function makeFixtureRoot() {
   fs.writeFileSync(join(installerDir, 'hooks/launcher.cjs'), '// launcher verbatim\n');
   fs.writeFileSync(join(installerDir, 'hooks/hooks.json'),
     JSON.stringify({ hooks: { UserPromptSubmit: [], SessionStart: [] } }, null, 2));
-  fs.writeFileSync(join(installerDir, 'manifests/v1.0.0-alpha.1.json'),
-    JSON.stringify({ version: '1.0.0-alpha.1', channel: 'copilot-vscode-plugin', files: [] }));
+  fs.writeFileSync(join(installerDir, 'manifests/v1.0.0-alpha.9.json'),
+    JSON.stringify({ version: '1.0.0-alpha.9', channel: 'copilot-vscode-plugin', files: [] }));
   return root;
 }
 
@@ -95,7 +95,7 @@ test('runBuild produces a full output/ tree with plugin.json at the root, .agent
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'bundled bootstrap');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'verbatim drift-check');
     assert.ok(fs.existsSync(join(out, 'hooks/launcher.cjs')), 'verbatim launcher (FR-9)');
-    assert.ok(fs.existsSync(join(out, 'manifests/v1.0.0-alpha.1.json')));
+    assert.ok(fs.existsSync(join(out, 'manifests/v1.0.0-alpha.9.json')));
     // No .claude-plugin/ subfolder per FR-37.
     assert.ok(!fs.existsSync(join(out, '.claude-plugin')), '.claude-plugin/ absent — plugin.json at root');
   } finally {
@@ -142,7 +142,7 @@ test('synthesized output/package.json declares the published name @rad-orchestra
     await runBuild({ rootDir: root, skipAdapterEngine: true, skipBootstrap: true, skipUiRunner: true });
     const pkg = JSON.parse(fs.readFileSync(join(root, 'harness-installers/copilot-vscode-plugin/output/package.json'), 'utf8'));
     assert.strictEqual(pkg.name, '@rad-orchestration/copilot-vscode-plugin', 'published name (FR-33)');
-    assert.strictEqual(pkg.version, '1.0.0-alpha.1', 'version stamped from plugin.json');
+    assert.strictEqual(pkg.version, '1.0.0-alpha.9', 'version stamped from plugin.json');
     for (const f of ['plugin.json', 'agents/', 'skills/', 'hooks/', 'manifests/', 'orchestration.yml', 'templates/', 'ui/']) {
       assert.ok(pkg.files.includes(f), `files[] includes ${f}`);
     }
