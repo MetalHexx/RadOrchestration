@@ -164,7 +164,13 @@ export async function runBuild(opts) {
 }
 
 if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'))) {
-  runBuild({ rootDir: process.cwd() }).catch((err) => {
+  // Derive repo root from this script's location (3 levels up from build-scripts/).
+  // Using import.meta.url rather than process.cwd() so `npm run build` works when
+  // invoked from the plugin directory (harness-installers/copilot-vscode-plugin/).
+  const { fileURLToPath } = await import('node:url');
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(scriptDir, '../../..');
+  runBuild({ rootDir: repoRoot }).catch((err) => {
     process.stderr.write(`${err.message}\n`);
     process.exit(1);
   });
