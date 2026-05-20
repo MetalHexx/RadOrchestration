@@ -8,7 +8,7 @@ A self-contained npm package (`@rad-orchestration/copilot-vscode-plugin-source`)
 
 `build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes steps in fixed order, fail-fast. The build reads adapter output for the `copilot-vscode` harness, bundles the pipeline runtime and UI, esbuild-bundles `bootstrap.mjs` with `lib/install/*` inlined, runs `expand-tokens` (destination-token substitution only — no agent namespacing for VS Code either), copies `plugin.json` to the payload root (not under `.claude-plugin/`), synthesizes `output/package.json`, and runs structural validation.
 
-`opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'.'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
+`opts.rootDir` is the repo root. Three optional boolean flags — `opts.skipAdapterEngine`, `opts.skipUiRunner`, and `opts.skipBootstrap` — let tests bypass slow or environment-dependent steps when exercising the build orchestrator against a synthetic fixture tree.
 
 ## Source layout
 
@@ -35,7 +35,7 @@ A self-contained npm package (`@rad-orchestration/copilot-vscode-plugin-source`)
 | Hook event names | camelCase (`userPromptSubmitted`, `sessionStart`) | **PascalCase** (`UserPromptSubmit`, `SessionStart`) — VS Code's native form |
 | Hook dispatch layer | scripts self-resolve via `import.meta.url` | `launcher.cjs` dispatches to `bootstrap.mjs` / `drift-check.mjs`; docs are silent on whether `COPILOT_PLUGIN_ROOT` is injected for Copilot-format plugins (§5 of `docs/research/copilot-vscode-plugin-system.md`) |
 | Bootstrap env var | `COPILOT_CLI_PLUGIN_ROOT` | `COPILOT_VSCODE_PLUGIN_ROOT` |
-| Coexistence partners | two (`copilot-vscode`, `copilot-vscode-plugin`) | three (`copilot-cli`, `copilot-vscode`, `copilot-cli-plugin`) |
+| Coexistence partners | two (`copilot-cli`, `copilot-vscode`) | three (`copilot-cli`, `copilot-vscode`, `copilot-cli-plugin`) |
 | Model identifier shape | standard CLI-shaped | `(copilot)`-suffixed — the shape VS Code's model resolver requires; adapter-emitted upstream, not build-side |
 | Install paths | single flat `~/.copilot/` path | OS-specific `agentPlugins/` paths; the runtime handles them automatically |
 | Build step stderr prefix | `[build:copilot-cli-plugin]` | `[build:copilot-vscode-plugin]` |

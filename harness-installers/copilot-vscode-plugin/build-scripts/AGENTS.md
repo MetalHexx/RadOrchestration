@@ -20,7 +20,7 @@ Exports `runBuild(opts)` and executes the following fixed step sequence, fail-fa
 8. **emit-pipeline-bundle** — bundles the pipeline runtime TS via `emitPipelineBundle`.
 9. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`.
 10. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`.
-11. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` (with `lib/install/*` inlined) and copies verbatim files (`drift-check.mjs`, `launcher.cjs`, `hooks.json`) via `emitHookBundle`. Unlike the CLI plugin, `launcher.cjs` ships verbatim alongside the verbatim files.
+11. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` (with `lib/install/*` inlined) and copies verbatim files (`drift-check.mjs`, `launcher.cjs`, `hooks.json`, `AGENTS.md`) via `emitHookBundle`. Unlike the CLI plugin, `launcher.cjs` ships verbatim alongside the verbatim files.
 12. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens in `agents/` and `skills/` with their `${COPILOT_VSCODE_PLUGIN_ROOT}`-rooted forms. No agent namespacing — `agentNames` is not passed. Token target is `${COPILOT_VSCODE_PLUGIN_ROOT}` (vs the CLI plugin's `${COPILOT_CLI_PLUGIN_ROOT}`).
 13. **copy-plugin-manifest** — copies `plugin.json` from the package root to `output/plugin.json` (not under `output/.claude-plugin/`).
 14. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes `output/package.json`. Hard-codes `name: '@rad-orchestration/copilot-vscode-plugin'`.
@@ -46,7 +46,7 @@ Hard-codes `name: '@rad-orchestration/copilot-vscode-plugin'`. Merges wrapper `p
 | Dimension | copilot-cli-plugin | copilot-vscode-plugin |
 |-----------|--------------------|-----------------------|
 | `expand-tokens` token target | `${COPILOT_CLI_PLUGIN_ROOT}` | `${COPILOT_VSCODE_PLUGIN_ROOT}` |
-| `emit-hook-bundle` verbatim files | `drift-check.mjs`, `hooks.json` | `drift-check.mjs`, `launcher.cjs`, `hooks.json` |
+| `emit-hook-bundle` verbatim files | `drift-check.mjs`, `hooks.json`, `AGENTS.md` | `drift-check.mjs`, `launcher.cjs`, `hooks.json`, `AGENTS.md` |
 | `adapter-engine` flag | `--harness=copilot-cli` | `--harness=copilot-vscode` |
 | `REQUIRED_ARTIFACTS` | does not include launcher | includes `hooks/launcher.cjs` |
 | Step stderr prefix | `[build:copilot-cli-plugin]` | `[build:copilot-vscode-plugin]` |
