@@ -1,0 +1,37 @@
+# harness-installers/
+
+## Purpose
+
+Top-level container for every installer variant and the shared mechanical helpers that installer builds draw on. No code lives directly in this folder — it exists to group sibling packages with a shared discipline.
+
+## Organization
+
+- `claude-plugin/` — self-contained npm package that builds and publishes the Claude marketplace plugin. `build-scripts/build.js` is the entry point; `npm run build` drives the full 14-step pipeline.
+- `copilot-cli-plugin/` — self-contained npm package that builds and publishes the Copilot CLI marketplace plugin. Architectural sibling of `claude-plugin/`; the deltas are documented in `copilot-cli-plugin/AGENTS.md` (no `.claude-plugin/` folder, `.agent.md` agent filename suffix, no agent-namespacing transform, marker-file idempotency, two coexistence partners). `npm run build` drives the build via the same shared helpers.
+- `shared/build-helpers/` — five installer-blind helpers (`emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) shared by every installer build script. No installer-specific logic lives here.
+
+The legacy `/installer/` folder at the repo root remains untouched; it is not part of this subtree and is not referenced by anything here.
+
+## Inputs this layer consumes (but does not own)
+
+- `harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine
+- `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim into each build output
+- `cli/` and `ui/` at the repo root — bundled into the plugin output by `emitCliBundle` and `emitUiBundle`
+- `harness-files/skills/rad-orchestration/scripts/` — pipeline TypeScript source bundled by `emitPipelineBundle`
+
+## Coding conventions
+
+- Each installer variant is a standalone `npm` package with its own `package.json` and test suite.
+- Build outputs land in a gitignored `output/` folder inside each installer package; nothing generated is committed.
+- Cross-variant sharing happens only through `shared/build-helpers/`; no other cross-installer imports.
+
+## Rules for making updates
+
+- Adding a new installer variant: create a sibling folder, add `package.json`, consume `shared/build-helpers/` directly via relative path.
+- Changing what `shared/build-helpers/` exports: update every installer build script that imports the changed function — all callers are local to this subtree.
+- Never import from `shared/build-helpers/` at runtime (in hook code or install logic); these are build-time tools only.
+
+## Further reading
+
+- `claude-plugin/AGENTS.md` — build orchestration, output layout, and seams
+- `shared/build-helpers/AGENTS.md` — helper signatures and installer-blindness contract

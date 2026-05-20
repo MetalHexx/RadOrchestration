@@ -6,7 +6,7 @@
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 # ---------- Block 1: pipeline runtime (existing) ----------
-SCRIPTS_DIR="$REPO_ROOT/skills/rad-orchestration/scripts"
+SCRIPTS_DIR="$REPO_ROOT/harness-files/skills/rad-orchestration/scripts"
 cd "$SCRIPTS_DIR" || { echo "[type-check] ERROR: Could not cd into $SCRIPTS_DIR"; exit 1; }
 echo "[type-check] Running TypeScript type check on scripts/..."
 npx tsc --noEmit

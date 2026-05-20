@@ -29,16 +29,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # cli/tsconfig.json includes ../skills/rad-orchestration/scripts/lib/**/*.ts
+      # cli/tsconfig.json includes ../harness-files/skills/rad-orchestration/scripts/lib/**/*.ts
       # (the gate subcommands import engine/state-io/types from there). Under
       # moduleResolution: NodeNext, tsc resolves bare imports from each file's
-      # own directory, so it needs skills/rad-orchestration/scripts/node_modules/
+      # own directory, so it needs harness-files/skills/rad-orchestration/scripts/node_modules/
       # to exist before `tsc --noEmit` runs — cli/node_modules/ is not visible
-      # from that location. The same install is also required later for
-      # build:plugin (invoked by the plugin-bundle integration test), so this
-      # one step covers both. Do not reorder below the Typecheck step.
-      - name: Install pipeline scripts dependencies (required by tsc cross-package include and by build:plugin)
-        working-directory: skills/rad-orchestration/scripts
+      # from that location. Do not reorder below the Typecheck step.
+      - name: Install pipeline scripts dependencies (required by tsc cross-package include)
+        working-directory: harness-files/skills/rad-orchestration/scripts
         run: npm install
 
       - name: Typecheck (tsc --noEmit)
@@ -46,25 +44,6 @@ jobs:
 
       - name: Lint (ESLint flat config)
         run: npx eslint .
-
-      # The Vitest suite includes tests/integration/plugin-bundle.test.ts,
-      # whose beforeAll invokes `npm run build:plugin` when the plugin tree is
-      # absent (always true on clean CI). That meta-script bundles ui/ and
-      # skills/rad-orchestration/scripts/. The pipeline scripts deps are
-      # already installed above; ui deps are installed here.
-      - name: Install ui dependencies (for build:plugin in plugin-bundle integration test)
-        working-directory: ui
-        run: npm ci
-
-      # Pre-build the plugin tree up-front so plugin-bundle.test.ts's beforeAll
-      # short-circuits (its fs.stat check finds the tree and skips the in-test
-      # build). This avoids a heavy esbuild + Next build running concurrently
-      # with the rest of the vitest worker pool, which starves shorter tests
-      # (e.g. tests/bin/smoke.test.ts) of CPU and trips their default 5s
-      # testTimeout.
-      - name: Pre-build plugin tree (so plugin-bundle.test.ts beforeAll short-circuits)
-        working-directory: .
-        run: npm run build:plugin
 
       - name: Test (Vitest full suite)
         run: npx vitest run

@@ -17,6 +17,6 @@
     "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "../skills/rad-orchestration/scripts/lib/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests", "../skills/rad-orchestration/scripts/tests/**"]
+  "include": ["src/**/*.ts", "../harness-files/skills/rad-orchestration/scripts/lib/**/*.ts"],
+  "exclude": ["dist", "node_modules", "tests", "../harness-files/skills/rad-orchestration/scripts/tests/**"]
 }
