@@ -1,0 +1,153 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path, { join } from 'node:path';
+import { runBuild } from '../build-scripts/build.js';
+
+function makeFixtureRoot() {
+  const root = fs.mkdtempSync(join(os.tmpdir(), 'vsc-build-'));
+  // Synthetic adapter output for copilot-vscode. Agent filename suffix .agent.md per VS Code's filename rule.
+  fs.mkdirSync(join(root, 'harness-adapters/output/copilot-vscode/agents'), { recursive: true });
+  fs.mkdirSync(join(root, 'harness-adapters/output/copilot-vscode/skills/rad-x/references'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-adapters/output/copilot-vscode/agents/orchestrator.agent.md'),
+    'model: Claude Opus 4.7 (copilot)\nSee ${SKILLS_ROOT}/rad-x/SKILL.md and ${PLUGIN_ROOT}/hooks/.\n');
+  fs.writeFileSync(join(root, 'harness-adapters/output/copilot-vscode/skills/rad-x/SKILL.md'),
+    'subagent_type: coder\nSee ${SKILLS_ROOT}/rad-x/references/r.md\n');
+  fs.writeFileSync(join(root, 'harness-adapters/output/copilot-vscode/skills/rad-x/references/r.md'),
+    'Dispatch the coder, planner, and reviewer agents.\n');
+
+  // runtime-config/ inputs.
+  fs.mkdirSync(join(root, 'runtime-config/templates'), { recursive: true });
+  fs.writeFileSync(join(root, 'runtime-config/orchestration.yml'), 'pipeline: {}\n');
+  for (const t of ['extra-high', 'high', 'medium', 'low']) {
+    fs.writeFileSync(join(root, `runtime-config/templates/${t}.yml`), `name: ${t}\n`);
+  }
+
+  // Synthetic cli/ and ui/ stubs so emit-cli-bundle and emit-ui-bundle run.
+  fs.mkdirSync(join(root, 'cli/src/bin'), { recursive: true });
+  fs.writeFileSync(join(root, 'cli/src/bin/radorch.ts'), 'export const hi = () => "ok";\n');
+  fs.writeFileSync(join(root, 'cli/package.json'), JSON.stringify({ name: 'cli', type: 'module' }));
+  fs.mkdirSync(join(root, 'ui'), { recursive: true });
+
+  // Pipeline TS source — bypasses the adapter per AD-4.
+  fs.mkdirSync(join(root, 'harness-files/skills/rad-orchestration/scripts'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/pipeline.ts'), 'export const main = () => 1;\n');
+  fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/explode-master-plan.ts'), 'export const main = () => 2;\n');
+
+  // Canonical agents directory for validate gate 2.
+  fs.mkdirSync(join(root, 'harness-files/agents'), { recursive: true });
+  fs.writeFileSync(join(root, 'harness-files/agents/orchestrator.md'), '# orchestrator');
+
+  // The installer package itself — source-side plugin.json, hooks/, lib/install/, manifests/.
+  const installerDir = join(root, 'harness-installers/copilot-vscode-plugin');
+  fs.mkdirSync(join(installerDir, 'hooks'), { recursive: true });
+  fs.mkdirSync(join(installerDir, 'lib/install'), { recursive: true });
+  fs.mkdirSync(join(installerDir, 'manifests'), { recursive: true });
+  fs.writeFileSync(join(installerDir, 'plugin.json'), JSON.stringify({
+    name: 'rad-orc-vscode',
+    version: '1.0.0-alpha.1',
+    author: { name: 'metalhexx' },
+    license: 'MIT',
+    hooks: 'hooks/hooks.json',
+  }));
+  fs.writeFileSync(join(installerDir, 'package.json'), JSON.stringify({
+    name: '@rad-orchestration/copilot-vscode-plugin-source',
+    version: '1.0.0-alpha.1',
+    private: true,
+    type: 'module',
+    license: 'MIT',
+    engines: { node: '>=20' },
+  }));
+  fs.writeFileSync(join(installerDir, 'hooks/bootstrap.mjs'),
+    "import './../lib/install/run-install.js';\nconsole.error('boot');\n");
+  fs.writeFileSync(join(installerDir, 'lib/install/run-install.js'),
+    'export async function runInstall() { return { action: "noop" }; }\n');
+  fs.writeFileSync(join(installerDir, 'hooks/drift-check.mjs'), '// drift-check verbatim\n');
+  fs.writeFileSync(join(installerDir, 'hooks/launcher.cjs'), '// launcher verbatim\n');
+  fs.writeFileSync(join(installerDir, 'hooks/hooks.json'),
+    JSON.stringify({ hooks: { UserPromptSubmit: [], SessionStart: [] } }, null, 2));
+  fs.writeFileSync(join(installerDir, 'manifests/v1.0.0-alpha.1.json'),
+    JSON.stringify({ version: '1.0.0-alpha.1', channel: 'copilot-vscode-plugin', files: [] }));
+  return root;
+}
+
+test('runBuild produces a full output/ tree with plugin.json at the root, .agent.md filenames, bundles, hooks, manifests (FR-26, DD-5)', async () => {
+  const root = makeFixtureRoot();
+  try {
+    await runBuild({
+      rootDir: root,
+      skipAdapterEngine: true,
+      skipBootstrap: true,
+      skipUiRunner: true,
+    });
+    const out = join(root, 'harness-installers/copilot-vscode-plugin/output');
+    assert.ok(fs.existsSync(join(out, 'plugin.json')), 'plugin.json at payload root (FR-37)');
+    assert.ok(fs.existsSync(join(out, 'package.json')), 'synthesized package.json (FR-32)');
+    assert.ok(fs.existsSync(join(out, 'agents/orchestrator.agent.md')), 'agent .agent.md filename per VS Code (FR-26)');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-x/SKILL.md')));
+    assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'runtime-config copied verbatim');
+    assert.ok(fs.existsSync(join(out, 'templates/medium.yml')));
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'pipeline bundle (FR-39)');
+    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/explode-master-plan.js')));
+    assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')));
+    assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'bundled bootstrap');
+    assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'verbatim drift-check');
+    assert.ok(fs.existsSync(join(out, 'hooks/launcher.cjs')), 'verbatim launcher (FR-9)');
+    assert.ok(fs.existsSync(join(out, 'manifests/v1.0.0-alpha.1.json')));
+    // No .claude-plugin/ subfolder per FR-37.
+    assert.ok(!fs.existsSync(join(out, '.claude-plugin')), '.claude-plugin/ absent — plugin.json at root');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('expand-tokens substitutes destination tokens across agents+skills WITHOUT agent-namespacing (FR-3, FR-4, FR-29, AD-10, AD-17, NFR-13)', async () => {
+  const root = makeFixtureRoot();
+  try {
+    await runBuild({ rootDir: root, skipAdapterEngine: true, skipBootstrap: true, skipUiRunner: true });
+    const out = join(root, 'harness-installers/copilot-vscode-plugin/output');
+    const orch = fs.readFileSync(join(out, 'agents/orchestrator.agent.md'), 'utf8');
+    assert.ok(orch.includes('${COPILOT_VSCODE_PLUGIN_ROOT}/skills/rad-x/SKILL.md'), '${SKILLS_ROOT} substituted to COPILOT_VSCODE_PLUGIN_ROOT (FR-29)');
+    assert.ok(orch.includes('${COPILOT_VSCODE_PLUGIN_ROOT}/hooks/'), '${PLUGIN_ROOT} substituted (FR-29)');
+    assert.ok(!orch.includes('rad-orc-vscode:'), 'NO agent-namespacing transform (FR-4, AD-10)');
+    // The (copilot) model identifier suffix survives token substitution unchanged (FR-3 — adapter-shipped).
+    assert.ok(orch.includes('Claude Opus 4.7 (copilot)'), 'model identifier (copilot) suffix preserved verbatim (FR-3)');
+    const skill = fs.readFileSync(join(out, 'skills/rad-x/SKILL.md'), 'utf8');
+    assert.ok(skill.includes('subagent_type: coder'), 'subagent_type bare (no namespacing — AD-10)');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('hooks tree excluded from expand-tokens scope (FR-27)', async () => {
+  const root = makeFixtureRoot();
+  // Inject a token into the hooks source — it must NOT be substituted.
+  fs.writeFileSync(join(root, 'harness-installers/copilot-vscode-plugin/hooks/drift-check.mjs'),
+    '// references ${SKILLS_ROOT}/dummy unchanged at build time\n');
+  try {
+    await runBuild({ rootDir: root, skipAdapterEngine: true, skipBootstrap: true, skipUiRunner: true });
+    const out = join(root, 'harness-installers/copilot-vscode-plugin/output');
+    const drift = fs.readFileSync(join(out, 'hooks/drift-check.mjs'), 'utf8');
+    assert.ok(drift.includes('${SKILLS_ROOT}/dummy'), 'hooks tree NOT in expand-tokens scope (FR-27)');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('synthesized output/package.json declares the published name @rad-orchestration/copilot-vscode-plugin (FR-32, FR-33, DD-10)', async () => {
+  const root = makeFixtureRoot();
+  try {
+    await runBuild({ rootDir: root, skipAdapterEngine: true, skipBootstrap: true, skipUiRunner: true });
+    const pkg = JSON.parse(fs.readFileSync(join(root, 'harness-installers/copilot-vscode-plugin/output/package.json'), 'utf8'));
+    assert.strictEqual(pkg.name, '@rad-orchestration/copilot-vscode-plugin', 'published name (FR-33)');
+    assert.strictEqual(pkg.version, '1.0.0-alpha.1', 'version stamped from plugin.json');
+    for (const f of ['plugin.json', 'agents/', 'skills/', 'hooks/', 'manifests/', 'orchestration.yml', 'templates/', 'ui/']) {
+      assert.ok(pkg.files.includes(f), `files[] includes ${f}`);
+    }
+    assert.ok(!pkg.files.some((f) => f.startsWith('.claude-plugin/')), 'no .claude-plugin/ in files (FR-37)');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
