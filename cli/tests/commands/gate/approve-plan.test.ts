@@ -7,7 +7,7 @@ import { runCommand } from '../../../src/framework/command.js';
 
 // Resolve the canonical templates dir (one walk above the cli root) so
 // processEvent('start') can snapshot the medium template into the project.
-const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'skills', 'rad-orchestration', 'templates');
+const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'templates');
 
 function makeProject(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-approve-plan-'));
@@ -21,11 +21,11 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   // Reach into the pipeline lib directly to drive the project from start to
   // a state where plan_approved is the next legal event. Mirrors the
   // bring-up sequence in tests/fixtures/parity-states.ts.
-  const { processEvent } = await import('../../../../skills/rad-orchestration/scripts/lib/engine.js');
+  const { processEvent } = await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/engine.js');
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
-    await import('../../../../skills/rad-orchestration/scripts/lib/state-io.js');
+    await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js');
   const pathContext = {
-    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'skills', 'rad-orchestration', 'scripts'),
+    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
     templatesDir: TEMPLATES_DIR,
     orchRoot: path.basename(path.resolve(__dirname, '..', '..', '..', '..')),
   };

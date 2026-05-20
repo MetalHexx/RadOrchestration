@@ -5,7 +5,7 @@ import path from 'node:path';
 import { runApproveFinal, approveFinalCommand } from '../../../src/commands/gate/approve-final.js';
 import { runCommand } from '../../../src/framework/command.js';
 
-const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'skills', 'rad-orchestration', 'templates');
+const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'templates');
 
 /**
  * Build a project at the final_approval_gate. Cheaper than driving the full
@@ -16,11 +16,11 @@ const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'skills', 
 async function makeProjectAtFinalGate(): Promise<string> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-approve-final-'));
   fs.copyFileSync(path.join(TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
-  const { processEvent } = await import('../../../../skills/rad-orchestration/scripts/lib/engine.js');
+  const { processEvent } = await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/engine.js');
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
-    await import('../../../../skills/rad-orchestration/scripts/lib/state-io.js');
+    await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js');
   const pathContext = {
-    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'skills', 'rad-orchestration', 'scripts'),
+    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
     templatesDir: TEMPLATES_DIR,
     orchRoot: path.basename(path.resolve(__dirname, '..', '..', '..', '..')),
   };

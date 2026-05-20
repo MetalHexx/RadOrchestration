@@ -18,6 +18,10 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install adapter engine dependencies (yaml)
+        working-directory: harness-adapters/engine
+        run: npm install
+
       - name: Adapter unit tests (each capability surface)
         run: node --test harness-adapters/engine/__tests__/*.test.mjs
 
