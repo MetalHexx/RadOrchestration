@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "type": "command", "command": "node hooks/launcher.cjs bootstrap.mjs" }
+    ],
+    "SessionStart": [
+      { "type": "command", "command": "node hooks/launcher.cjs drift-check.mjs" }
+    ]
+  }
+}
