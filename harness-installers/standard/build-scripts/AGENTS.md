@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Single end-to-end build orchestrator that consumes canonical sources (`agents/`, `skills/`, `ui/`, `cli/`, `runtime-config/`) and produces `output/` ready for `npm pack`. Output from this stage is what the installer unpacks and deploys to user-level harness folders at install time.
+Single end-to-end build orchestrator that consumes canonical sources (`harness-files/agents/`, `harness-files/skills/`, `ui/`, `cli/`, `runtime-config/`) and produces `output/` ready for `npm pack`. Output from this stage is what the installer unpacks and deploys to user-level harness folders at install time.
 
 ## How it works
 
@@ -36,7 +36,7 @@ The steps, in execution order:
 
 ## Seams to other modules
 
-**Reads**: `harness-adapters/output/<harness>/` (pre-adapted agents, skills, and plugin definitions); `runtime-config/` (orchestration.yml template and tier templates); `cli/` (CLI source); `ui/` (dashboard source for compilation); `harness-files/skills/rad-orchestration/scripts/` (pipeline runtime); canonical sources `agents/` and `skills/` are consumed indirectly via the adapters.
+**Reads**: `harness-adapters/output/<harness>/` (pre-adapted agents, skills, and plugin definitions); `runtime-config/` (orchestration.yml template and tier templates); `cli/` (CLI source); `ui/` (dashboard source for compilation); `harness-files/skills/rad-orchestration/scripts/` (pipeline runtime); canonical sources `harness-files/agents/` and `harness-files/skills/` are consumed indirectly via the adapters.
 
 **Writes**: `output/` (gitignored) with per-harness bundles, shared runtime-config, CLI, UI, and manifests.
 

@@ -101,7 +101,7 @@ test-installer/
 # Plugin artifacts
 # NOTE: .claude/ (above) is the gitignored dogfood build output;
 # .claude-plugin/ is the COMMITTED Claude marketplace manifest folder
-# (under harness-installers/claude-plugin/dogfood-marketplace/.claude-plugin/).
+# (under harness-installers/claude-plugin/.claude-plugin/).
 # The plugin staging tree (cli/dist/marketplaces/) is fully gitignored.
 cli/dist/marketplaces/
 

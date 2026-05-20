@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This folder is a self-contained npm package that produces the publishable `rad-orchestration` tarball distributed to end users via `npx rad-orchestration`. The binary is `rad-orchestration` (matches the package name so `npx rad-orchestration` resolves under npm exec's name-match path), and the package coordinates remain the same as the legacy installer with the next version slot per the refactor direction. Contributors landing here are authoring the end-user installation experience that copies greenfield bundles to user-level harness folders (`~/.claude/`, `~/.copilot/`), generates `orchestration.yml`, and optionally sets up the dashboard.
+This folder is a self-contained npm package that produces the publishable `rad-orchestration` tarball distributed to end users via `npx rad-orchestration`. The binary is `rad-orchestration` (matches the package name so `npx rad-orchestration` resolves under npm exec's name-match path). Contributors landing here are authoring the end-user installation experience that copies greenfield bundles to user-level harness folders (`~/.claude/`, `~/.copilot/`), generates `orchestration.yml`, and optionally sets up the dashboard.
 
 ## How it works
 
-**Build stage** (`build-scripts/build.js`): Runs adapters over canonical sources (`agents/`, `skills/`) and emits per-harness bundles to `output/` (gitignored). The `npm pack` step operates from the `output/` directory, bundling the built artifacts into the tarball.
+**Build stage** (`build-scripts/build.js`): Runs adapters over canonical sources (`harness-files/agents/`, `harness-files/skills/`) and emits per-harness bundles to `output/` (gitignored). The `npm pack` step operates from the `output/` directory, bundling the built artifacts into the tarball.
 
 **User-facing wizard** (`lib/wizard.js`): Interactive CLI entry point whose only required output is harness selection — one or more InstallKey values plus a small set of configuration paths (AD-18). Planning-tier templates, gate behavior, and auto-commit settings are NOT collected by the wizard; they come from `runtime-config/orchestration.yml` shipping verbatim. There is no `lib/config-generator.js`.
 
@@ -43,5 +43,3 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 - **`~/.radorch/orchestration.yml`** — System configuration (user-owned; preserved on reinstall).
 - **`~/.radorch/templates/`** — Review-intensity tier templates (refreshed on each install to pick up upstream improvements).
 - **`~/.radorch/ui/`** — Dashboard code (if user opted in).
-
-**Freeze rule on legacy `installer/`**: The original `installer/` directory at the repo root is frozen in place. No new code is added to it; the standard installer is the sole entry point for new installations and reinstalls. Legacy installer files are not deleted (for auditing and offline reference), but all forward development happens here in `harness-installers/standard/`.

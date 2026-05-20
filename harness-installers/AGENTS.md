@@ -10,8 +10,6 @@ Top-level container for every installer variant and the shared mechanical helper
 - `copilot-cli-plugin/` — self-contained npm package that builds and publishes the Copilot CLI marketplace plugin. Architectural sibling of `claude-plugin/`; the deltas are documented in `copilot-cli-plugin/AGENTS.md` (no `.claude-plugin/` folder, `.agent.md` agent filename suffix, no agent-namespacing transform, marker-file idempotency, two coexistence partners). `npm run build` drives the build via the same shared helpers.
 - `shared/build-helpers/` — five installer-blind helpers (`emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) shared by every installer build script. No installer-specific logic lives here.
 
-The legacy `/installer/` folder at the repo root remains untouched; it is not part of this subtree and is not referenced by anything here.
-
 ## Inputs this layer consumes (but does not own)
 
 - `harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine

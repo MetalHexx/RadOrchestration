@@ -23,7 +23,7 @@ A self-contained npm package (`@rad-orchestration/claude-plugin-source`) whose `
 13. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`
 14. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, namespaced dispatch tokens, version manifest, and size budget
 
-`opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'greenfield'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
+`opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'.'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
 
 ## Source layout
 
