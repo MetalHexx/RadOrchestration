@@ -1,0 +1,10 @@
+# Built plugin payload — emitted fresh by build-scripts/build.js on every
+# invocation. The folder is the publishable tarball staging area; it must
+# never enter git so contributors never accidentally commit build artifacts.
+output/
+node_modules/
+
+# Ephemeral dogfood marketplace tree — created by rad-test-copilot-vscode-plugin
+# for local VS Code plugin install testing. Same gitignore posture the
+# claude-plugin and copilot-cli-plugin siblings take.
+dogfood-marketplace/
