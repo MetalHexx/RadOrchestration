@@ -12,7 +12,7 @@
     {
       "name": "rad-orc-vscode",
       "source": { "source": "github", "repo": "MetalHexx/RadOrchestration", "path": ".", "ref": "branch-pinned-payload" },
-      "description": "Document-driven, multi-agent orchestration loop for GitHub Copilot in VS Code (correctly-shaped model routing for VS Code's resolver).",
+      "description": "Document-driven, multi-agent orchestration loop for GitHub Copilot in VS Code.",
       "strict": true
     }
   ]
