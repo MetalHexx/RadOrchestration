@@ -8,7 +8,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 
 `build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes steps in fixed order, fail-fast. The build reads adapter output for the `copilot-cli` harness, bundles the pipeline runtime and UI, esbuild-bundles the bootstrap hook with `lib/install/*` inlined, runs `expand-tokens` (token substitution only — no agent namespacing for Copilot CLI), copies `plugin.json` to the output payload root (not under a `.claude-plugin/` subfolder), synthesizes `output/package.json`, and runs structural validation.
 
-`opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'greenfield'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
+`opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'.'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
 
 ## Source layout
 

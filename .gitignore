@@ -4,11 +4,6 @@ package-lock.json
 !cli/package-lock.json
 # Engine needs a committed lockfile for dependency repeatability
 !greenfield/harness-adapters/engine/package-lock.json
-# The plugin tree is now built into a gitignored staging dir
-# (cli/dist/marketplaces/claude/plugins/rad-orchestration/) and shipped via
-# `npm pack` of plugin/package.json — see scripts/build-plugin.js. The tree
-# under marketplace/plugins/rad-orchestration/ is no longer committed.
-plugin/node_modules/
 
 .vscode/mcp.json
 
@@ -28,7 +23,7 @@ plugin/node_modules/
 # up renamed/deleted rad files on the next build). Never committed.
 /dist/
 
-# esbuild bundle output — produced by `npm run bundle` in cli/ and skills/rad-orchestration/scripts/
+# esbuild bundle output — produced by `npm run bundle` in cli/ and harness-files/skills/rad-orchestration/scripts/
 dist-bundle/
 
 # Ephemeral installer test directory — created by rad-test-release prompt, never committed
@@ -106,9 +101,8 @@ test-installer/
 # Plugin artifacts
 # NOTE: .claude/ (above) is the gitignored dogfood build output;
 # .claude-plugin/ is the COMMITTED Claude marketplace manifest folder
-# (now living under plugin/.claude-plugin/ — staging at build time only).
-# The plugin staging tree (cli/dist/marketplaces/) is fully gitignored;
-# the published artifact is the npm tarball produced from plugin/package.json.
+# (under harness-installers/claude-plugin/.claude-plugin/).
+# The plugin staging tree (cli/dist/marketplaces/) is fully gitignored.
 cli/dist/marketplaces/
 
 # Next.js build output (root-level)

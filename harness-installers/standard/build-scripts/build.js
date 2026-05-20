@@ -45,7 +45,7 @@ function tokenMapFor(harness) {
 
 /** @param {{ rootDir: string, skipAdapterEngine?: boolean, skipUiRunner?: boolean,
  *            skipBootstrap?: boolean, greenfieldRel?: string }} opts
- *  `rootDir` is the repo root. `greenfieldRel` (default 'greenfield') names
+ *  `rootDir` is the repo root. `greenfieldRel` (default '.') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems.
  *  Unit tests construct a synthetic fixture without a parent folder,
  *  so they pass `greenfieldRel: '.'` to flatten the layout. */
