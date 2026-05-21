@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { emitCliBundle } from '../../shared/build-helpers/emit-cli-bundle.js';
 import { emitPipelineBundle } from '../../shared/build-helpers/emit-pipeline-bundle.js';
 import { emitHookBundle } from '../../shared/build-helpers/emit-hook-bundle.js';
@@ -172,11 +173,10 @@ export async function runBuild(opts) {
   }));
 }
 
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'))) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   // Derive repo root from this script's location (3 levels up from build-scripts/).
   // Using import.meta.url rather than process.cwd() so `npm run build` works when
   // invoked from the plugin directory (harness-installers/copilot-vscode-plugin/).
-  const { fileURLToPath } = await import('node:url');
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(scriptDir, '../../..');
   runBuild({ rootDir: repoRoot }).catch((err) => {

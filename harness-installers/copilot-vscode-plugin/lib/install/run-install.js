@@ -54,7 +54,7 @@ function emitCoexistenceWarning(stderr, partnersPresent) {
     `All install-keys coexist in ~/.radorch/install.json so neither install clobbers the other's metadata,\n` +
     `but the standard-installer's ~/.copilot/ writes can shadow plugin-shipped agents and skills per\n` +
     `VS Code's documented load order. The copilot-vscode-plugin ships correctly-shaped model identifiers\n` +
-    `for VS Code's resolver and is the recommended canonical channel for VS-Code-heavy users.${extra}`,
+    `for VS Code's resolver and is the recommended canonical channel for VS-Code-heavy users.\n${extra}`,
   );
 }
 
