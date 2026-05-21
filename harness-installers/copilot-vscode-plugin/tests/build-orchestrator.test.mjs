@@ -44,7 +44,8 @@ function makeFixtureRoot() {
   fs.mkdirSync(join(installerDir, 'hooks'), { recursive: true });
   fs.mkdirSync(join(installerDir, 'lib/install'), { recursive: true });
   fs.mkdirSync(join(installerDir, 'manifests'), { recursive: true });
-  fs.writeFileSync(join(installerDir, 'plugin.json'), JSON.stringify({
+  fs.mkdirSync(join(installerDir, '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(join(installerDir, '.claude-plugin/plugin.json'), JSON.stringify({
     name: 'rad-orc-vscode',
     version: '1.0.0-alpha.9',
     author: { name: 'metalhexx' },
@@ -71,7 +72,7 @@ function makeFixtureRoot() {
   return root;
 }
 
-test('runBuild produces a full output/ tree with plugin.json at the root, .agent.md filenames, bundles, hooks, manifests (FR-26, DD-5)', async () => {
+test('runBuild produces a full output/ tree with plugin.json under .claude-plugin/, .agent.md filenames, bundles, hooks, manifests (FR-26, DD-5)', async () => {
   const root = makeFixtureRoot();
   try {
     await runBuild({
@@ -81,7 +82,8 @@ test('runBuild produces a full output/ tree with plugin.json at the root, .agent
       skipUiRunner: true,
     });
     const out = join(root, 'harness-installers/copilot-vscode-plugin/output');
-    assert.ok(fs.existsSync(join(out, 'plugin.json')), 'plugin.json at payload root (FR-37)');
+    assert.ok(fs.existsSync(join(out, '.claude-plugin/plugin.json')), 'plugin.json under .claude-plugin/ (Claude format → CLAUDE_PLUGIN_ROOT injection)');
+    assert.ok(!fs.existsSync(join(out, 'plugin.json')), 'no root plugin.json (Copilot format would shadow Claude detection)');
     assert.ok(fs.existsSync(join(out, 'package.json')), 'synthesized package.json (FR-32)');
     assert.ok(fs.existsSync(join(out, 'agents/orchestrator.agent.md')), 'agent .agent.md filename per VS Code (FR-26)');
     assert.ok(fs.existsSync(join(out, 'skills/rad-x/SKILL.md')));
@@ -94,8 +96,6 @@ test('runBuild produces a full output/ tree with plugin.json at the root, .agent
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'bundled bootstrap');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'verbatim drift-check');
     assert.ok(fs.existsSync(join(out, 'manifests/v1.0.0-alpha.9.json')));
-    // No .claude-plugin/ subfolder per FR-37.
-    assert.ok(!fs.existsSync(join(out, '.claude-plugin')), '.claude-plugin/ absent — plugin.json at root');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -141,10 +141,10 @@ test('synthesized output/package.json declares the published name @rad-orchestra
     const pkg = JSON.parse(fs.readFileSync(join(root, 'harness-installers/copilot-vscode-plugin/output/package.json'), 'utf8'));
     assert.strictEqual(pkg.name, '@rad-orchestration/copilot-vscode-plugin', 'published name (FR-33)');
     assert.strictEqual(pkg.version, '1.0.0-alpha.9', 'version stamped from plugin.json');
-    for (const f of ['plugin.json', 'agents/', 'skills/', 'hooks/', 'manifests/', 'orchestration.yml', 'templates/', 'ui/']) {
+    for (const f of ['.claude-plugin/', 'agents/', 'skills/', 'hooks/', 'manifests/', 'orchestration.yml', 'templates/', 'ui/']) {
       assert.ok(pkg.files.includes(f), `files[] includes ${f}`);
     }
-    assert.ok(!pkg.files.some((f) => f.startsWith('.claude-plugin/')), 'no .claude-plugin/ in files (FR-37)');
+    assert.ok(!pkg.files.includes('plugin.json'), 'no root plugin.json in files (Claude format ships it under .claude-plugin/)');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

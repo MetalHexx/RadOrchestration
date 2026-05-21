@@ -22,7 +22,7 @@ Exports `runBuild(opts)` and executes the following fixed step sequence, fail-fa
 10. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`.
 11. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` (with `lib/install/*` inlined) and copies verbatim files (`drift-check.mjs`, `hooks.json`, `AGENTS.md`) via `emitHookBundle`. Hook dispatch happens via an inline `node -e` shim inside `hooks.json` — no separate launcher artifact ships.
 12. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens in `agents/` and `skills/` with their `${COPILOT_VSCODE_PLUGIN_ROOT}`-rooted forms. No agent namespacing — `agentNames` is not passed. Token target is `${COPILOT_VSCODE_PLUGIN_ROOT}` (vs the CLI plugin's `${COPILOT_CLI_PLUGIN_ROOT}`).
-13. **copy-plugin-manifest** — copies `plugin.json` from the package root to `output/plugin.json` (not under `output/.claude-plugin/`).
+13. **copy-plugin-manifest** — copies `plugin.json` from `.claude-plugin/plugin.json` (source) to `output/.claude-plugin/plugin.json` (output). The Claude-format manifest layout is the only documented way to get VS Code to inject `CLAUDE_PLUGIN_ROOT` into the hook process for self-location.
 14. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes `output/package.json`. Hard-codes `name: '@rad-orchestration/copilot-vscode-plugin'`.
 15. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`.
 16. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, version manifest, and size budget.
@@ -30,7 +30,7 @@ Exports `runBuild(opts)` and executes the following fixed step sequence, fail-fa
 **`validate.js` — `validatePluginTree(opts)`**
 
 Four gates:
-- **Gate 1** — required artifacts present. Includes `plugin.json` at the output root, the bundled `hooks/bootstrap.mjs` and verbatim `hooks/drift-check.mjs`, and all pipeline scripts. No launcher artifact — hook dispatch is the inline `node -e` shim in `hooks.json`.
+- **Gate 1** — required artifacts present. Includes `.claude-plugin/plugin.json` (Claude-format layout — see `copy-plugin-manifest` above for the rationale), the bundled `hooks/bootstrap.mjs` and verbatim `hooks/drift-check.mjs`, and all pipeline scripts. No launcher artifact — hook dispatch is the inline `node -e` shim in `hooks.json`.
 - **Gate 2** — every canonical agent appears at `output/agents/<name>.agent.md`.
 - **Gate 3** — per-version manifest present (`manifests/v${version}.json`).
 - **Gate 4** — tarball size within budget.
@@ -49,6 +49,7 @@ Hard-codes `name: '@rad-orchestration/copilot-vscode-plugin'`. Merges wrapper `p
 | `emit-hook-bundle` verbatim files | `drift-check.mjs`, `hooks.json`, `AGENTS.md` | `drift-check.mjs`, `hooks.json`, `AGENTS.md` (no launcher — hook dispatch is an inline `node -e` shim in `hooks.json`) |
 | `adapter-engine` flag | `--harness=copilot-cli` | `--harness=copilot-vscode` |
 | `REQUIRED_ARTIFACTS` | does not include launcher | does not include launcher (hook dispatch is inline in `hooks.json`) |
+| Manifest output path | `output/plugin.json` (root) | `output/.claude-plugin/plugin.json` (Claude-format layout for VS Code hook root-injection) |
 | Step stderr prefix | `[build:copilot-cli-plugin]` | `[build:copilot-vscode-plugin]` |
 | Published package name | `@rad-orchestration/copilot-cli-plugin` | `@rad-orchestration/copilot-vscode-plugin` |
 

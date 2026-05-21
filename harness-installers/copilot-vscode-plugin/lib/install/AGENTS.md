@@ -49,20 +49,15 @@ Best-effort append (entire body is in a `try/catch`; never throws). Valid `actio
 
 Reads `${pluginRoot}/manifests/v${version}.json`. Throws if absent. The manifest is always read from the new payload's bundled catalog because VS Code's flat `agentPlugins/` install path has no peer per-version directory from a prior install.
 
-**`bootstrap-marker.js`**
-
-- `readMarker(markerPath)` — reads and parses; returns `null` if absent or unparseable.
-- `writeMarker(markerPath, marker)` — atomic write via tmp+rename.
-
-The marker carries three states: `{ status: "success", version, at }`, `{ status: "error", version, at }`, or absent. `bootstrap.mjs` uses it for idempotency: success + version-match → silent noop; error or version-mismatch → fall through to `runInstall`. The marker lives under `~/.radorch/` (not under the `agentPlugins/` install root) because VS Code overwrites the OS-specific `agentPlugins/` path on upgrade, which would destroy a marker stored there.
-
 **`user-data-paths.js` — `userDataPaths(opts)`**
 
-Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorch')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`, `bootstrapMarker` (path to `~/.radorch/.copilot-vscode-plugin-bootstrap.json`).
+Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorch')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`.
+
+Idempotency for the `UserPromptSubmit` bootstrap lives in `hooks.json` itself (self-uninstall pattern), not in a marker file under `~/.radorch/`. `bootstrap.mjs` removes any legacy marker file from the prior idempotency design on a best-effort basis.
 
 ## Coding conventions
 
-- Atomic writes only: `writeInstallJson` and `writeMarker` both use write-to-tmp then `fs.renameSync`. No in-place overwrites of state files.
+- Atomic writes only: `writeInstallJson` uses write-to-tmp then `fs.renameSync` (and so does `selfUninstall` in `bootstrap.mjs` when rewriting `hooks.json`). No in-place overwrites of state files.
 - Log writes are best-effort: `appendInstallLog` wraps its entire body in `try/catch` and never propagates failures to the caller.
 - Destination escape guard: every file copy in `installManifestFiles` checks that the resolved destination starts with `paths.root` before writing.
 - No global state: all context flows through function parameters; `radHome` is always injected, never read from the environment inside this folder (env reads happen in `bootstrap.mjs` only).
@@ -83,4 +78,4 @@ Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.ra
 
 ## Seam to userDataPaths
 
-`userDataPaths` is the single anchor for every `~/.radorch/` path — including the bootstrap marker, which lives there rather than in the `agentPlugins/` install root because that root is overwritten by VS Code on upgrade.
+`userDataPaths` is the single anchor for every `~/.radorch/` path. There is no `bootstrapMarker` entry — the `UserPromptSubmit` idempotency lives inside `hooks.json` itself (the bootstrap self-uninstalls its own entry on success).

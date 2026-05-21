@@ -13,6 +13,5 @@ export function userDataPaths(opts = {}) {
     projects: path.join(root, 'projects'),
     logs: path.join(root, 'logs'),
     installLog: path.join(root, 'logs', 'install.log'),
-    bootstrapMarker: path.join(root, '.copilot-vscode-plugin-bootstrap.json'),
   };
 }

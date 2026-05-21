@@ -78,7 +78,7 @@ If the build fails, stop and report the failure. Do not continue.
 
 ### 4. Verify the staged plugin tree and capture the version
 
-Confirm that `{repoRoot}/harness-installers/copilot-vscode-plugin/output/plugin.json` exists at the payload root (NOT under `.claude-plugin/` — VS Code Copilot reads the Copilot-format manifest from the root, not the Claude-style nested path). Read its `version` field and remember it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
+Confirm that `{repoRoot}/harness-installers/copilot-vscode-plugin/output/.claude-plugin/plugin.json` exists. The Copilot VS Code plugin ships in **Claude-format manifest layout** (`.claude-plugin/plugin.json`, NOT a root `plugin.json`) — that's how VS Code knows to inject `CLAUDE_PLUGIN_ROOT` into the hook process so `bootstrap.mjs` / `drift-check.mjs` can self-locate. See `harness-installers/copilot-vscode-plugin/AGENTS.md` under "Why Claude-format manifest layout" for the full rationale. Read the manifest's `version` field and remember it as `{version}` — you will print it in the handoff message so the user can confirm it after install.
 
 If the file is missing, stop and report. Build must have silently produced an incomplete tree.
 
@@ -111,7 +111,7 @@ Confirm `$pluginDest\plugin.json` exists after the copy.
     {
       "name": "rad-orc-vscode",
       "source": "./plugins/rad-orc-vscode",
-      "description": "RAD multi-agent orchestration system for Copilot in VS Code (greenfield build).",
+      "description": "Rad Orc multi-agent orchestration system for Copilot in VS Code (dogfood build).",
       "strict": true
     }
   ]
@@ -122,12 +122,13 @@ After writing, parse the file back as JSON to confirm it is syntactically valid.
 
 ### 6. Print install instructions for the user
 
-Use `AskUserQuestion` to ask which of the two viable install methods the user wants to use, so they can pick the one that fits their workflow. Surface both options explicitly:
+Use `AskUserQuestion` to ask which of the three viable install methods the user wants to use, so they can pick the one that fits their workflow. Surface all three options explicitly:
 
-- **Question:** "The VS Code Copilot dogfood marketplace is staged. Plugin version: `{version}`. Which install method do you want to use? Option A (`chat.pluginLocations`) is preferred for the local dev iteration loop — it points VS Code directly at the plugin directory without going through a marketplace. Option B (`Chat: Install Plugin From Source`) goes through VS Code's standard plugin install flow and is useful for testing the catalog path end-to-end."
+- **Question:** "The VS Code Copilot dogfood marketplace is staged. Plugin version: `{version}`. Which install method do you want to use? Option A (`chat.pluginLocations`) is the lowest-friction dev loop — it points VS Code at the plugin directory without going through a marketplace at all. Option B (`chat.plugins.marketplaces` with a `file:///` URI) registers the dogfood marketplace permanently so the plugin appears in VS Code's plugin marketplace UI for normal install/uninstall — the closest dogfood path to the published-marketplace user experience. Option C (`Chat: Install Plugin From Source`) is a one-shot install via the Command Palette."
 - **Options:**
-  - **Option A — `chat.pluginLocations` (preferred for dev loop)** — "Open your VS Code user settings JSON (Ctrl+Shift+P → 'Open User Settings JSON') and add the `chat.pluginLocations` entry. VS Code picks up the plugin in place without a marketplace round-trip."
-  - **Option B — `Chat: Install Plugin From Source`** — "Open the Command Palette in VS Code (Ctrl+Shift+P) and run `Chat: Install Plugin From Source`, then paste the dogfood marketplace directory path when prompted."
+  - **Option A — `chat.pluginLocations` (lowest-friction dev loop)** — "Open your VS Code user settings JSON (Ctrl+Shift+P → 'Open User Settings JSON') and add the `chat.pluginLocations` entry. VS Code picks up the plugin in place without a marketplace round-trip."
+  - **Option B — `chat.plugins.marketplaces` with `file:///` URI (plugin shows up in VS Code's marketplace UI)** — "Open your VS Code user settings JSON and add a `file:///` entry to the `chat.plugins.marketplaces` array pointing at the dogfood marketplace folder. The plugin then appears alongside the official `github/copilot-plugins` and `github/awesome-copilot` catalogs, installable and uninstallable from the Chat → Plugins UI like a published plugin."
+  - **Option C — `Chat: Install Plugin From Source`** — "Open the Command Palette in VS Code (Ctrl+Shift+P) and run `Chat: Install Plugin From Source`, then paste the dogfood marketplace directory path when prompted."
 
 After the user picks, print the corresponding instructions substituting `{repoRoot}` and `{version}` with the values you captured. Use backslash-separated Windows paths.
 
@@ -152,6 +153,30 @@ After the user picks, print the corresponding instructions substituting `{repoRo
 > Come back here when you're done dogfooding — I'll offer cleanup.
 
 **If Option B** — print:
+
+> The VS Code Copilot dogfood marketplace is staged. Plugin version: **`{version}`**.
+>
+> **Before installing**, note: if the standard installer's `copilot-vscode` target is already active, or if Copilot CLI has a plugin installed at `~/.copilot/installed-plugins/` that VS Code auto-discovers, the plugin's `UserPromptSubmit` bootstrap hook will surface a three-partner coexistence warning on first use — this is expected behavior (FR-21), not an error. You do not need to remove prior installs to proceed.
+>
+> Open your VS Code **user settings JSON** (Ctrl+Shift+P → "Open User Settings JSON") and add a `file:///` entry to the `chat.plugins.marketplaces` array, alongside the two defaults:
+>
+> ```json
+> "chat.plugins.marketplaces": [
+>   "github/copilot-plugins",
+>   "github/awesome-copilot",
+>   "file:///{repoRoot-with-forward-slashes}/harness-installers/copilot-vscode-plugin/dogfood-marketplace/"
+> ]
+> ```
+>
+> Convert `{repoRoot}` to forward slashes for the URI (e.g. `file:///C:/dev/.../dogfood-marketplace/`). The trailing slash on the directory path is required. Save the file.
+>
+> Open VS Code's **Chat: Plugins** panel (or the Extensions view with the `@agentPlugins` filter). The `rad-orc-vscode` plugin from the `rad-orc-vscode-dogfood` marketplace should now appear alongside the published catalogs. Click install. Reload VS Code if prompted.
+>
+> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
+>
+> Come back here when you're done dogfooding — I'll offer cleanup. (To uninstall, remove via the Chat → Plugins UI AND remove the `file:///` entry from `chat.plugins.marketplaces` so the catalog stops appearing on next launch.)
+
+**If Option C** — print:
 
 > The VS Code Copilot dogfood marketplace is staged. Plugin version: **`{version}`**.
 >
@@ -194,6 +219,9 @@ Run it. Confirm the directory is gone. Print "Cleaned up the dogfood marketplace
 
 If the user picks **Leave it for another round**:
 
-Print the cleanup command above so they can run it later. Also remind them to remove the plugin from VS Code before switching channels: if they used `chat.pluginLocations`, remove the entry from user settings JSON; if they used `Chat: Install Plugin From Source`, uninstall via the Chat → Plugins panel in VS Code.
+Print the cleanup command above so they can run it later. Also remind them to remove the plugin from VS Code before switching channels:
+- If they used **Option A** (`chat.pluginLocations`): remove the entry from user settings JSON.
+- If they used **Option B** (`chat.plugins.marketplaces` `file:///` URI): uninstall the plugin via Chat → Plugins UI AND remove the `file:///` entry from the `chat.plugins.marketplaces` array in user settings JSON so the catalog stops appearing on next launch.
+- If they used **Option C** (`Chat: Install Plugin From Source`): uninstall via the Chat → Plugins panel in VS Code.
 
 That ends the skill. Do not run tests, npm pack, or any other E2E validation — those belong in CI or a separate workflow.

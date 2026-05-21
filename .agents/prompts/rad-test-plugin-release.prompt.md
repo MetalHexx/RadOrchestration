@@ -47,7 +47,7 @@ Write this exact JSON to `cli/dist/marketplaces/claude/.claude-plugin/marketplac
     {
       "name": "rad-orchestration",
       "source": "./plugins/rad-orchestration",
-      "description": "RAD multi-agent orchestration system for Claude Code."
+      "description": "Rad Orc multi-agent orchestration system for Claude Code."
     }
   ]
 }

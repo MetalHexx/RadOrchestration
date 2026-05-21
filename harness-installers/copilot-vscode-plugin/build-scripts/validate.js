@@ -2,12 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-// FR-31: REQUIRED_ARTIFACTS. plugin.json at payload root (no .claude-plugin/),
-// agent filename suffix on gate 2 is .agent.md (VS Code rule). Hook dispatch
-// happens via an inline `node -e` shim in hooks.json (no launcher.cjs file).
-// The claude-plugin's namespaced-token gate is intentionally DROPPED (AD-10).
+// FR-31: REQUIRED_ARTIFACTS. plugin.json lives under .claude-plugin/ so VS Code
+// detects the plugin as Claude format and injects CLAUDE_PLUGIN_ROOT for the hook
+// process (the only documented hook root-discovery mechanism for VS Code agent
+// plugins — Copilot format has none, per the format-vs-token table in the docs).
+// Agent filename suffix on gate 2 is .agent.md (VS Code rule). Hook dispatch
+// happens via an inline `node -e` shim in hooks.json that reads
+// process.env.CLAUDE_PLUGIN_ROOT. The claude-plugin's namespaced-token gate is
+// intentionally DROPPED (AD-10).
 const REQUIRED_ARTIFACTS = [
-  'plugin.json',
+  '.claude-plugin/plugin.json',
   'package.json',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
@@ -41,7 +45,7 @@ export function validatePluginTree(opts) {
     }
   }
 
-  const plugin = JSON.parse(fs.readFileSync(path.join(outputDir, 'plugin.json'), 'utf8'));
+  const plugin = JSON.parse(fs.readFileSync(path.join(outputDir, '.claude-plugin/plugin.json'), 'utf8'));
   const version = plugin.version;
 
   // Gate 2: every canonical agent appears at output/agents/<name>.agent.md (VS Code filename suffix).

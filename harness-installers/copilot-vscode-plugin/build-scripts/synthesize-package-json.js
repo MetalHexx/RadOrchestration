@@ -13,7 +13,7 @@ export function synthesizePackageJson({ wrapperPath, pluginJsonPath, outPath }) 
     license: wrapper.license ?? 'MIT',
     type: 'module',
     files: [
-      'plugin.json', 'agents/', 'skills/', 'hooks/',
+      '.claude-plugin/', 'agents/', 'skills/', 'hooks/',
       'manifests/', 'orchestration.yml', 'templates/', 'ui/',
     ],
     engines: wrapper.engines ?? { node: '>=20' },

@@ -7,7 +7,8 @@ import { validatePluginTree } from '../build-scripts/validate.js';
 
 function makeValidOutput(version) {
   const root = fs.mkdtempSync(join(os.tmpdir(), 'val-vsc-'));
-  fs.writeFileSync(join(root, 'plugin.json'), JSON.stringify({ name: 'rad-orc-vscode', version }));
+  fs.mkdirSync(join(root, '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(join(root, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'rad-orc-vscode', version }));
   fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-vscode-plugin', version }));
   fs.mkdirSync(join(root, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
@@ -35,6 +36,16 @@ test('gate 1: missing required artifact aborts (FR-31)', () => {
   assert.throws(() => validatePluginTree({
     outputDir: root, canonicalAgentsDir: canonicalDir, sizer: () => ({ unpackedSize: 1024 }),
   }), /missing.*hooks\/bootstrap\.mjs/);
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.rmSync(canonicalDir, { recursive: true, force: true });
+});
+
+test('gate 1: REQUIRED_ARTIFACTS includes .claude-plugin/plugin.json (Claude format detection)', () => {
+  const { root, canonicalDir } = makeValidOutput('1.0.0');
+  fs.rmSync(join(root, '.claude-plugin/plugin.json'));
+  assert.throws(() => validatePluginTree({
+    outputDir: root, canonicalAgentsDir: canonicalDir, sizer: () => ({ unpackedSize: 1024 }),
+  }), /missing.*\.claude-plugin\/plugin\.json/);
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(canonicalDir, { recursive: true, force: true });
 });

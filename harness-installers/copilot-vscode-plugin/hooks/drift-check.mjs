@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // drift-check.mjs — SessionStart hook. Compares plugin-delivered version
 // against ~/.radorch/install.json's copilot-vscode-plugin entry. Single
-// stdout line on mismatch; silent on match. Surfaces stale bootstrap-error
-// marker on its own line. Never self-uninstalls.
+// stdout line on mismatch; silent on match. Never self-uninstalls.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,8 +17,11 @@ if (!process.env.COPILOT_VSCODE_PLUGIN_ROOT) {
 }
 
 function run() {
-  const pj = readJsonSafe(path.join(process.env.COPILOT_VSCODE_PLUGIN_ROOT, 'plugin.json'));
-  const deliveringVersion = pj?.version;
+  // Read delivering version from the synthesized package.json — always at the
+  // payload root regardless of where plugin.json itself lives (which is now
+  // under .claude-plugin/ for Claude-format VS Code detection).
+  const pkg = readJsonSafe(path.join(process.env.COPILOT_VSCODE_PLUGIN_ROOT, 'package.json'));
+  const deliveringVersion = pkg?.version;
   if (!deliveringVersion) return;
   const radHome = process.env.RAD_HOME ?? path.join(os.homedir(), '.radorch');
   const installed = readJsonSafe(path.join(radHome, 'install.json'));
@@ -29,14 +31,6 @@ function run() {
       `[rad-orchestration drift] ~/.radorch/install.json is at version ${installedVersion}. ` +
       `The Copilot in VS Code plugin's bundled rad-orchestration is at version ${deliveringVersion}. ` +
       `Reinstall the plugin (or re-run the standard installer) to keep them in sync.\n`,
-    );
-  }
-  // DD-11: surface stale bootstrap-error marker on its own line.
-  const marker = readJsonSafe(path.join(radHome, '.copilot-vscode-plugin-bootstrap.json'));
-  if (marker?.status === 'error') {
-    process.stdout.write(
-      `[rad-orchestration drift] The most recent bootstrap attempt recorded status=error at ${marker.at}. ` +
-      `The next user prompt will retry; if failures persist, inspect ~/.radorch/logs/install.log.\n`,
     );
   }
 }

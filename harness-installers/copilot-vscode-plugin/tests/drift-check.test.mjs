@@ -8,23 +8,21 @@ import { spawnSync } from 'node:child_process';
 
 const DRIFT_CHECK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../hooks/drift-check.mjs');
 
-function makeCase(pluginVer, installedVer, markerStatus) {
+function makeCase(pluginVer, installedVer) {
   const pluginRoot = fs.mkdtempSync(join(os.tmpdir(), 'vsc-dc-pr-'));
-  fs.writeFileSync(join(pluginRoot, 'plugin.json'), JSON.stringify({ name: 'rad-orc-vscode', version: pluginVer }));
+  // drift-check reads the synthesized package.json for the delivering version (always at payload root).
+  fs.writeFileSync(join(pluginRoot, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-vscode-plugin', version: pluginVer }));
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'vsc-dc-rh-'));
   if (installedVer) {
     fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
       harnesses: { 'copilot-vscode-plugin': { version: installedVer, channel: 'copilot-vscode-plugin', installed_at: 'x', last_writer_version: installedVer } },
     }));
   }
-  if (markerStatus) {
-    fs.writeFileSync(join(radHome, '.copilot-vscode-plugin-bootstrap.json'), JSON.stringify({ version: pluginVer, status: markerStatus, at: '2026-05-20T00:00:00Z' }));
-  }
   return { pluginRoot, radHome };
 }
 
 test('drift-check emits a single stdout line on version mismatch naming both versions (DD-11, FR-6)', () => {
-  const { pluginRoot, radHome } = makeCase('1.1.0', '1.0.0', null);
+  const { pluginRoot, radHome } = makeCase('1.1.0', '1.0.0');
   const result = spawnSync(process.execPath, [DRIFT_CHECK], {
     env: { ...process.env, COPILOT_VSCODE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome }, encoding: 'utf8',
   });
@@ -38,14 +36,14 @@ test('drift-check emits a single stdout line on version mismatch naming both ver
 });
 
 test('drift-check is silent on version match and absent install.json (FR-6)', () => {
-  const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0', null);
+  const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0');
   const r1 = spawnSync(process.execPath, [DRIFT_CHECK], {
     env: { ...process.env, COPILOT_VSCODE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome }, encoding: 'utf8',
   });
   assert.strictEqual(r1.status, 0);
   assert.strictEqual(r1.stdout, '');
   // Also silent on absent install.json.
-  const { pluginRoot: pr2, radHome: rh2 } = makeCase('1.0.0', null, null);
+  const { pluginRoot: pr2, radHome: rh2 } = makeCase('1.0.0', null);
   const r2 = spawnSync(process.execPath, [DRIFT_CHECK], {
     env: { ...process.env, COPILOT_VSCODE_PLUGIN_ROOT: pr2, RAD_HOME: rh2 }, encoding: 'utf8',
   });
@@ -57,14 +55,3 @@ test('drift-check is silent on version match and absent install.json (FR-6)', ()
   fs.rmSync(rh2, { recursive: true, force: true });
 });
 
-test('drift-check surfaces a stale-error marker on its own line (DD-11)', () => {
-  const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0', 'error');
-  const result = spawnSync(process.execPath, [DRIFT_CHECK], {
-    env: { ...process.env, COPILOT_VSCODE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome }, encoding: 'utf8',
-  });
-  assert.strictEqual(result.status, 0);
-  const lines = result.stdout.split('\n').filter((l) => l.trim().length > 0);
-  assert.ok(lines.some((l) => /bootstrap.*error/i.test(l)), 'stale bootstrap error surfaced');
-  fs.rmSync(pluginRoot, { recursive: true, force: true });
-  fs.rmSync(radHome, { recursive: true, force: true });
-});

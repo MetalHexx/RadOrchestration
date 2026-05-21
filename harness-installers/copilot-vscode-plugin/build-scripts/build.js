@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // build.js — Single entry point for the Copilot in VS Code marketplace plugin build.
 // Fixed step order, fail-fast on any step. Sibling of harness-installers/copilot-cli-plugin/build-scripts/build.js
-// with VS-Code-specific deltas: COPILOT_VSCODE_PLUGIN_ROOT token target, inline `node -e` shim in hooks.json
-// (no launcher artifact), PascalCase hook event names live in hooks.json (FR-7).
+// with VS-Code-specific deltas: COPILOT_VSCODE_PLUGIN_ROOT token target, plugin.json lives at .claude-plugin/
+// (Claude-format manifest layout so VS Code injects CLAUDE_PLUGIN_ROOT for hook self-location), inline
+// `node -e` shim in hooks.json reads process.env.CLAUDE_PLUGIN_ROOT, PascalCase hook event names live in
+// hooks.json (FR-7).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -138,14 +140,21 @@ export async function runBuild(opts) {
     fs.rmSync(staging, { recursive: true, force: true });
   });
 
-  // FR-37: plugin.json at the payload root, NOT under .claude-plugin/.
+  // Claude-format manifest layout: plugin.json lives at .claude-plugin/plugin.json so VS Code detects
+  // the plugin as Claude format and injects CLAUDE_PLUGIN_ROOT for hook self-location. FR-37 amended
+  // from "root plugin.json" because Copilot format has no documented hook root-discovery mechanism
+  // (per docs/research/copilot-vscode-plugin-system.md §2 format-vs-token table).
   await step('copy-plugin-manifest', () => {
-    fs.copyFileSync(path.join(installerDir, 'plugin.json'), path.join(out, 'plugin.json'));
+    fs.mkdirSync(path.join(out, '.claude-plugin'), { recursive: true });
+    fs.copyFileSync(
+      path.join(installerDir, '.claude-plugin/plugin.json'),
+      path.join(out, '.claude-plugin/plugin.json'),
+    );
   });
 
   await step('synthesize-package-json', () => synthesizePackageJson({
     wrapperPath: path.join(installerDir, 'package.json'),
-    pluginJsonPath: path.join(installerDir, 'plugin.json'),
+    pluginJsonPath: path.join(installerDir, '.claude-plugin/plugin.json'),
     outPath: path.join(out, 'package.json'),
   }));
 
