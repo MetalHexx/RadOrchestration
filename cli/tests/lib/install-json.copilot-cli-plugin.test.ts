@@ -3,9 +3,9 @@ import { INSTALL_KEYS, detectChannelOverlap } from '../../src/lib/install-json.j
 import type { InstallJson } from '../../src/lib/config.js';
 
 describe('install-key taxonomy — copilot-cli-plugin joins the registry', () => {
-  it('INSTALL_KEYS contains five entries including copilot-cli-plugin', () => {
+  it('INSTALL_KEYS contains six entries including copilot-cli-plugin', () => {
     expect([...INSTALL_KEYS].sort()).toEqual(
-      ['claude', 'claude-plugin', 'copilot-cli', 'copilot-cli-plugin', 'copilot-vscode'].sort(),
+      ['claude', 'claude-plugin', 'copilot-cli', 'copilot-cli-plugin', 'copilot-vscode', 'copilot-vscode-plugin'].sort(),
     );
   });
 
