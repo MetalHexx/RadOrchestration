@@ -80,13 +80,12 @@ test('bakeAbsolutePaths does not touch files under hooks/', () => {
   }
 });
 
-test('bakeAbsolutePaths skips .md files that contain no token (no needless rewrite)', () => {
+test('bakeAbsolutePaths skips .md files that contain no token (no needless rewrite)', async () => {
   const root = makeTree();
   try {
     const before = fs.statSync(join(root, 'skills/no-token.md'));
-    // Sleep briefly so mtime would change if a write occurred.
-    const sleep = Date.now() + 20;
-    while (Date.now() < sleep) { /* spin */ }
+    // Async wait so mtime would advance observably if a write occurred — no busy-wait.
+    await new Promise((resolve) => setTimeout(resolve, 20));
     bakeAbsolutePaths(root);
     const after = fs.statSync(join(root, 'skills/no-token.md'));
     assert.strictEqual(before.mtimeMs, after.mtimeMs, 'no write to token-free file');

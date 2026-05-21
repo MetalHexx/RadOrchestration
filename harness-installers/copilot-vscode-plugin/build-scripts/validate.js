@@ -47,6 +47,11 @@ export function validatePluginTree(opts) {
 
   const plugin = JSON.parse(fs.readFileSync(path.join(outputDir, '.claude-plugin/plugin.json'), 'utf8'));
   const version = plugin.version;
+  // Validate version up front so a missing/empty/non-string field surfaces as a
+  // clear gate-1 error instead of a downstream "missing manifests/vundefined.json".
+  if (typeof version !== 'string' || version.length === 0) {
+    throw new Error(`validate: .claude-plugin/plugin.json is missing a non-empty "version" string (gate 1)`);
+  }
 
   // Gate 2: every canonical agent appears at output/agents/<name>.agent.md (VS Code filename suffix).
   const canonical = fs.existsSync(canonicalAgentsDir)
