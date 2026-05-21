@@ -95,7 +95,13 @@ test('bakeAbsolutePaths skips .md files that contain no token (no needless rewri
   }
 });
 
-test('bakeAbsolutePaths normalizes backslashes in pluginRoot to forward slashes in the output', () => {
+test('bakeAbsolutePaths normalizes backslashes in pluginRoot to forward slashes in the output', {
+  // Windows-only: the test feeds a backslash-separated path (the form
+  // `path.dirname(fileURLToPath(...))` produces on Windows) and asserts that
+  // bake normalises it to forward slashes. On POSIX, backslashes aren't path
+  // separators and `bakeAbsolutePaths` would see a non-existent root.
+  skip: process.platform !== 'win32' ? 'Windows-only path-normalization test' : false,
+}, () => {
   const root = makeTree();
   try {
     // Use a backslashed plugin-root string (the form Windows `path.dirname(fileURLToPath(...))`

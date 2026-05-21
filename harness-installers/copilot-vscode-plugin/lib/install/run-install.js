@@ -13,18 +13,48 @@ const INSTALL_KEY = 'copilot-vscode-plugin';
 const COEXISTENCE_PARTNERS = ['copilot-vscode', 'copilot-cli', 'copilot-cli-plugin'];
 
 function cmpSemver(a, b) {
-  const pa = a.split(/[.-]/).map((p) => /^\d+$/.test(p) ? Number(p) : p);
-  const pb = b.split(/[.-]/).map((p) => /^\d+$/.test(p) ? Number(p) : p);
-  const n = Math.max(pa.length, pb.length);
+  // Split release (major.minor.patch) from prerelease (`-alpha.1` etc) before
+  // tokenising so we can apply the SemVer §11.3 rule "release > prerelease of
+  // the same release" without conflating it with §11.4.4's "longer prerelease
+  // wins". A naive single-pass split on /[.-]/ can't distinguish a missing
+  // identifier because pa never entered prerelease from a missing identifier
+  // because pa's prerelease is just shorter than pb's.
+  function parse(v) {
+    // Split on the first `-` only — `split('-', 2)` would silently drop
+    // content past a second hyphen in a prerelease identifier (e.g. the
+    // `-hotfix` suffix in `1.0.0-rc.1-hotfix`).
+    const dashIdx = v.indexOf('-');
+    const main = dashIdx === -1 ? v : v.slice(0, dashIdx);
+    const pre = dashIdx === -1 ? '' : v.slice(dashIdx + 1);
+    const release = main.split('.').map(Number);
+    const prerelease = pre ? pre.split('.').map((p) => /^\d+$/.test(p) ? Number(p) : p) : [];
+    return { release, prerelease };
+  }
+  const pa = parse(a);
+  const pb = parse(b);
+  for (let i = 0; i < 3; i++) {
+    const x = pa.release[i] ?? 0;
+    const y = pb.release[i] ?? 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  // SemVer §11.3: a version without prerelease outranks one with prerelease at the same release.
+  if (pa.prerelease.length === 0 && pb.prerelease.length > 0) return 1;
+  if (pa.prerelease.length > 0 && pb.prerelease.length === 0) return -1;
+  const n = Math.max(pa.prerelease.length, pb.prerelease.length);
   for (let i = 0; i < n; i++) {
-    const x = pa[i]; const y = pb[i];
-    if (x === undefined) return typeof y === 'string' ? 1 : -1;
-    if (y === undefined) return typeof x === 'string' ? -1 : 1;
-    if (typeof x === 'number' && typeof y === 'number') { if (x !== y) return x < y ? -1 : 1; }
-    // SemVer §11.4.3: numeric identifiers always have lower precedence than non-numeric ones.
-    else if (typeof x === 'number') return -1;
-    else if (typeof y === 'number') return 1;
-    else if (x !== y) return x < y ? -1 : 1;
+    const x = pa.prerelease[i];
+    const y = pb.prerelease[i];
+    if (x === undefined) return -1; // §11.4.4: shorter prerelease has lower precedence.
+    if (y === undefined) return 1;
+    if (typeof x === 'number' && typeof y === 'number') {
+      if (x !== y) return x < y ? -1 : 1;
+    } else if (typeof x === 'number') {
+      return -1; // §11.4.3: numeric identifiers have lower precedence than non-numeric.
+    } else if (typeof y === 'number') {
+      return 1;
+    } else if (x !== y) {
+      return x < y ? -1 : 1;
+    }
   }
   return 0;
 }

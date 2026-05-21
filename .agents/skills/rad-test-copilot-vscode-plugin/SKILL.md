@@ -98,7 +98,7 @@ New-Item -ItemType Directory -Force -Path (Split-Path $pluginDest) | Out-Null
 Copy-Item -Recurse -Force "{repoRoot}\harness-installers\copilot-vscode-plugin\output" $pluginDest
 ```
 
-Confirm `$pluginDest\plugin.json` exists after the copy.
+Confirm `$pluginDest\.claude-plugin\plugin.json` exists after the copy (the plugin ships in Claude-format manifest layout — see step 4).
 
 **(b)** Write this exact JSON to `{repoRoot}/harness-installers/copilot-vscode-plugin/dogfood-marketplace/.github/plugin/marketplace.json` (create the nested `.github/plugin/` directory first):
 

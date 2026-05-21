@@ -35,7 +35,7 @@ Run the following commands to collect the information you'll need for the questi
    **Plugin authoritative version sources** (`"version"` field, bump in-place — copied into `output/package.json` by each plugin's `synthesize-package-json.js`, and the per-version manifest filename is derived from it by `validate.js` Gate 3):
    - `harness-installers/claude-plugin/.claude-plugin/plugin.json`
    - `harness-installers/copilot-cli-plugin/plugin.json`
-   - `harness-installers/copilot-vscode-plugin/plugin.json`
+   - `harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json`
 
    **Per-version committed manifest catalogs** (`git mv` rename to the new version, then bump the internal `"version"` field to match the new filename):
    - `harness-installers/claude-plugin/manifests/v{current}.json`
@@ -106,7 +106,7 @@ Run the steps below in order. **Do not commit until step 6.**
    **Plugin authoritative version sources:**
    - `harness-installers/claude-plugin/.claude-plugin/plugin.json`
    - `harness-installers/copilot-cli-plugin/plugin.json`
-   - `harness-installers/copilot-vscode-plugin/plugin.json`
+   - `harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json`
 
    **Hardcoded version literals in build/test code:**
    - `harness-installers/claude-plugin/build-scripts/parity-check.js`
@@ -172,7 +172,7 @@ Run the steps below in order. **Do not commit until step 6.**
      harness-installers/copilot-vscode-plugin/package.json \
      harness-installers/claude-plugin/.claude-plugin/plugin.json \
      harness-installers/copilot-cli-plugin/plugin.json \
-     harness-installers/copilot-vscode-plugin/plugin.json \
+     harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json \
      harness-installers/claude-plugin/manifests/v{version}.json \
      harness-installers/copilot-cli-plugin/manifests/v{version}.json \
      harness-installers/copilot-vscode-plugin/manifests/v{version}.json \
@@ -344,7 +344,7 @@ If the user chooses to bump:
      harness-installers/copilot-vscode-plugin/package.json \
      harness-installers/claude-plugin/.claude-plugin/plugin.json \
      harness-installers/copilot-cli-plugin/plugin.json \
-     harness-installers/copilot-vscode-plugin/plugin.json \
+     harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json \
      harness-installers/claude-plugin/manifests/ \
      harness-installers/copilot-cli-plugin/manifests/ \
      harness-installers/copilot-vscode-plugin/manifests/ \
