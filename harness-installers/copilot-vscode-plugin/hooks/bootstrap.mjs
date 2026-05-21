@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInstall } from '../lib/install/run-install.js';
+import { bakeAbsolutePaths } from '../lib/install/bake-paths.js';
 
 function log(msg) { process.stderr.write(`[rad-orchestration:copilot-vscode-bootstrap] ${msg}\n`); }
 
@@ -50,6 +51,8 @@ async function main() {
   try {
     const result = await runInstall({ pluginRoot: process.env.COPILOT_VSCODE_PLUGIN_ROOT, radHome });
     log(`install action=${result.action}`);
+    const bake = bakeAbsolutePaths(process.env.COPILOT_VSCODE_PLUGIN_ROOT);
+    log(`bake baked=${bake.baked} scanned=${bake.scanned}`);
     selfUninstall(process.env.COPILOT_VSCODE_PLUGIN_ROOT);
     cleanupLegacyMarker(radHome);
     return 0;

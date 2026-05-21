@@ -58,6 +58,21 @@ To get VS Code to inject `CLAUDE_PLUGIN_ROOT` into the hook process, the plugin 
 
 The CLI-side sibling (`harness-installers/copilot-cli-plugin/`) keeps Copilot format because the Copilot CLI runtime **does** inject `%COPILOT_PLUGIN_ROOT%` per its own docs — the issue is specific to VS Code's hook dispatch for Copilot-format plugins. Each installer picks the format that gets it the discovery mechanism it needs for its target runtime; the two are independently packaged regardless.
 
+## Why SKILL.md tokens are baked to absolute paths at install time
+
+The token-swap pipeline this installer shares with its Claude and Copilot CLI siblings:
+
+1. Adapter source skill content (`harness-files/skills/**/SKILL.md`) carries the generic token `${PLUGIN_ROOT}`.
+2. `harness-adapters/` emits the same generic token unchanged (`bodyTokens: {}` for all three harness adapters).
+3. The installer's `expand-tokens` build step swaps `${PLUGIN_ROOT}` to its per-harness variant — this installer produces `${COPILOT_VSCODE_PLUGIN_ROOT}`, the Claude installer produces `${CLAUDE_PLUGIN_ROOT}`, the Copilot CLI installer produces `${COPILOT_CLI_PLUGIN_ROOT}`.
+4. The token is meant to be substituted by the harness runtime in the agent's chat-shell at the moment a SKILL.md bash block is invoked.
+
+Step 4 works for the Claude and Copilot CLI siblings because their runtimes populate the per-harness env var inside the agent's chat-shell. **VS Code doesn't.** The agent-plugins documentation's format-vs-token table covers env-var/token substitution only for *hook processes* (and only for Claude-format / OpenPlugin manifests). The agent's chat-shell — where bash blocks from `SKILL.md` actually execute — is a separate process with no plugin-root env var injected, regardless of manifest format. The literal `${COPILOT_VSCODE_PLUGIN_ROOT}` survives into the shell, where bash treats it as empty and PowerShell either treats it as empty or mis-parses it.
+
+To close the gap, this installer adds an install-time bake step. `hooks/bootstrap.mjs` calls `bakeAbsolutePaths(pluginRoot)` from `lib/install/bake-paths.js` after `runInstall()` succeeds and before the `hooks.json` self-uninstall. It walks `skills/**/*.md` and substitutes the token literal for the real absolute install path (forward-slashed so the result is quote-safe in both bash and PowerShell on Windows). The bake scope is `skills/` only — `hooks/bootstrap.mjs`, `hooks/drift-check.mjs`, and `hooks/AGENTS.md` reference the same token in their own env-var logic and prose and must not be substituted. The bake is idempotent: post-bake there are no token literals left, so subsequent runs no-op at the scan. Plugin upgrades naturally re-trigger the bake because the new tarball re-introduces the token via fresh `SKILL.md` files and the new `hooks.json` re-introduces `UserPromptSubmit`, restoring the cycle.
+
+The Claude and Copilot CLI sibling installers don't need this and remain unchanged — they continue to rely on their runtimes' env-var injection. Encapsulation rule holds: this fix is local to `harness-installers/copilot-vscode-plugin/` (a new `lib/install/bake-paths.js` module + a wiring call in `hooks/bootstrap.mjs`); no imports or references cross between sibling installers.
+
 ## Seams
 
 - **Upstream**: `harness-adapters/` produces the agent and skill files this build copies. The `(copilot)`-suffixed model identifier shape is emitted there, not here — the build does not translate model identifiers.

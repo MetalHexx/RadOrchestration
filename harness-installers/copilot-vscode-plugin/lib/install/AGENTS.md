@@ -49,6 +49,10 @@ Best-effort append (entire body is in a `try/catch`; never throws). Valid `actio
 
 Reads `${pluginRoot}/manifests/v${version}.json`. Throws if absent. The manifest is always read from the new payload's bundled catalog because VS Code's flat `agentPlugins/` install path has no peer per-version directory from a prior install.
 
+**`bake-paths.js` — `bakeAbsolutePaths(pluginRoot)`**
+
+Post-install fix-up that closes the VS Code agent-chat-shell gap. Walks `${pluginRoot}/skills/**/*.md` synchronously and substitutes the literal token `${COPILOT_VSCODE_PLUGIN_ROOT}` with `pluginRoot` normalized to forward slashes. Forward-slashed form survives both bash and PowerShell double-quoted arguments to native commands (notably `node`). Atomic tmp + rename per file. Idempotent — once baked, no token literals remain, so subsequent runs are no-ops at the file scan. Scope is intentionally `skills/` only: `hooks/bootstrap.mjs`, `hooks/drift-check.mjs`, and `hooks/AGENTS.md` reference the same token in their own env-var logic and prose and must not be substituted. Called by `bootstrap.mjs` between `runInstall()` success and `selfUninstall()` — see `hooks/AGENTS.md` for sequencing and the root `AGENTS.md` for the full "why this is VS Code-only" rationale.
+
 **`user-data-paths.js` — `userDataPaths(opts)`**
 
 Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorch')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`.
