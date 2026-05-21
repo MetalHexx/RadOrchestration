@@ -48,7 +48,7 @@ options:
 
 Save the choice as `{harness}`.
 
-### Step 2 — Resolve repo root and pre-install build-helpers dependencies
+### Step 2 — Resolve repo root and preflight dependency health
 
 Resolve the repo root:
 
@@ -58,18 +58,59 @@ git rev-parse --show-toplevel
 
 Use the result as `{repoRoot}` for every subsequent path.
 
-Before running the build, check whether `{repoRoot}/harness-installers/shared/build-helpers/node_modules` exists. If it does not, install it now — this is the only package that must exist before `build.js` is invoked, because `build.js` imports from it at module-load time:
+Before running the build, run a dependency-health preflight. Why this is required: `build.js` only checks whether each package has a `node_modules/` directory; it does **not** verify that required executables exist. A partial or stale `node_modules/` (for example, `ui/node_modules` exists but `next` is missing) will make the build skip bootstrap and then fail later in `emit-ui-bundle` with `'next' is not recognized`.
+
+Run this PowerShell block:
 
 ```powershell
-$bhDir = "{repoRoot}\harness-installers\shared\build-helpers"
-if (-not (Test-Path "$bhDir\node_modules")) {
-    npm install --prefix $bhDir
+$ErrorActionPreference = 'Stop'
+
+$bhDir = Join-Path "{repoRoot}" 'harness-installers\shared\build-helpers'
+$engineDir = Join-Path "{repoRoot}" 'harness-adapters\engine'
+$scriptsDir = Join-Path "{repoRoot}" 'harness-files\skills\rad-orchestration\scripts'
+$cliDir = Join-Path "{repoRoot}" 'cli'
+$uiDir = Join-Path "{repoRoot}" 'ui'
+
+function Ensure-NodeModules([string]$pkgDir) {
+  if (-not (Test-Path (Join-Path $pkgDir 'node_modules'))) {
+    npm install --prefix $pkgDir
+  }
+}
+
+# build-helpers must exist before build.js can import shared helpers.
+Ensure-NodeModules $bhDir
+
+# Keep the remaining package roots healthy for bootstrap/build steps.
+Ensure-NodeModules $engineDir
+Ensure-NodeModules $scriptsDir
+Ensure-NodeModules $cliDir
+Ensure-NodeModules $uiDir
+
+# Guard against partial installs: verify required executables exist.
+if (-not (Test-Path (Join-Path $uiDir 'node_modules\.bin\next.cmd')) -and -not (Test-Path (Join-Path $uiDir 'node_modules\.bin\next'))) {
+  npm install --prefix $uiDir
+}
+if (-not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild.cmd')) -and -not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild'))) {
+  npm install --prefix $cliDir
+}
+if (-not (Test-Path (Join-Path $scriptsDir 'node_modules\.bin\tsx.cmd')) -and -not (Test-Path (Join-Path $scriptsDir 'node_modules\.bin\tsx'))) {
+  npm install --prefix $scriptsDir
 }
 ```
 
-Expected: `npm install` completes (or is skipped because `node_modules` already exists). If `npm install` fails, stop and report — the build cannot proceed.
+Expected: missing or unhealthy dependencies are installed and required binaries (`next`, `esbuild`, `tsx`) exist. If any `npm install` fails, stop and report — the build cannot proceed.
 
-The build's own `bootstrap-deps` step will handle the remaining three packages (`harness-adapters/engine`, `cli/`, `ui/`) during the build run; those do not need pre-installation.
+The build's own `bootstrap-deps` still runs during build, but this preflight prevents false-green `node_modules` checks from causing late failures.
+
+If Step 3 later fails with a Next.js SWC-native error such as `Failed to load SWC binary for win32/x64` or `next-swc... is not a valid Win32 application`, treat `ui/node_modules` as unhealthy and repair it before retrying:
+
+```powershell
+$uiDir = Join-Path "{repoRoot}" 'ui'
+Remove-Item -Recurse -Force (Join-Path $uiDir 'node_modules') -ErrorAction SilentlyContinue
+npm install --prefix $uiDir
+```
+
+Then re-run Step 3 once.
 
 ### Step 3 — Build the greenfield standard installer
 
@@ -81,7 +122,7 @@ node harness-installers/standard/build-scripts/build.js
 
 > Expected: exit 0; `harness-installers/standard/output/` populated; `output/<harness>/manifests/v<version>.json` exists. (The publish `package.json` lives at the source root `standard/package.json` — the build does not write a top-level `output/package.json`.)
 >
-> On first run (or any run after `cli/` or `ui/` `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs. The `ui/` install is the largest (~1 min on a cold network).
+> On first run (or any run after one of the package `node_modules` folders was removed), expect one or more `npm install` operations from Step 2 and/or `bootstrap-deps`. The `ui/` install is typically the longest (~1 min on a cold network).
 >
 > On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 
