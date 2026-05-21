@@ -1,5 +1,5 @@
 name: source-control
-description: "Thin source control router. Invokes `radorch git commit` or `radorch git pr` using arguments from the spawn prompt. Never reads state.json."
+description: "Commits worktree changes and opens GitHub pull requests for the orchestration pipeline."
 model: haiku
 user-invocable: false
 tools: Read, Bash, TodoWrite

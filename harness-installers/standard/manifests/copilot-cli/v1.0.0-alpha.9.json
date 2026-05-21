@@ -40,7 +40,7 @@
     {
       "bundlePath": "agents/source-control.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/source-control.agent.md",
-      "sha256": "b3b2dd7605333be478848943cdd8138412b60addaa394b53068d7574647d74b6"
+      "sha256": "e127fc934bc66fd4f7635370e2dd48341fbd8da5c96e873672ccdffde8f2e71f"
     },
     {
       "bundlePath": "skills/rad-approve-plan/SKILL.md",

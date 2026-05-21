@@ -116,11 +116,10 @@ export const gitPrCommand = defineCommand({
   },
   flags: {},
   handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
-    // Note: missing required args are NOT thrown as UserError here — that would lose
-    // the `precondition_failure` discriminator (FR-2 / NFR-1 require it to survive
-    // verbatim from the legacy script). Instead we forward whatever the parser gave us
-    // and let the core ghPr() return the `precondition_failure` result, which the
-    // framework wraps in the envelope's `data` (alongside the other discriminators).
+    // runCommand throws UserError for missing required args before reaching this
+    // handler, so the `?? ''` fallbacks below are type-checker satisfaction only.
+    // The `precondition_failure` gate inside ghPr() remains for direct programmatic
+    // callers (unit tests exercise it by passing empty strings).
     return ghPr({
       worktreePath: args['worktree-path'] ?? '',
       branch: args.branch ?? '',
