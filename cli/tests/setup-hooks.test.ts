@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const setupHooksPath = path.resolve(__dirname, '..', '..', 'skills', 'rad-orchestration', 'scripts', 'setup-hooks.js');
+const setupHooksPath = path.resolve(__dirname, '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts', 'setup-hooks.js');
 const committedHookPath = path.resolve(__dirname, '..', '..', '.githooks', 'pre-commit');
 
 describe('setup-hooks.js parity', () => {

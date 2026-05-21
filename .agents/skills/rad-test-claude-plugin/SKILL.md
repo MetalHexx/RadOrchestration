@@ -113,7 +113,7 @@ Confirm `$pluginDest\.claude-plugin\plugin.json` exists after the copy.
     {
       "name": "rad-orc",
       "source": "./plugins/rad-orc",
-      "description": "RAD multi-agent orchestration system for Claude Code (greenfield build)."
+      "description": "Rad Orc multi-agent orchestration system for Claude Code (dogfood build)."
     }
   ]
 }

@@ -33,6 +33,43 @@ export function detectCopilotCliPlugin(opts?: {
   }
 }
 
+export const COPILOT_VSCODE_PLUGIN_ORG = 'MetalHexx';
+export const COPILOT_VSCODE_PLUGIN_REPO = 'RadOrchestration';
+
+/**
+ * Probes the OS-specific `agentPlugins/github.com/<org>/<repo>/` install
+ * paths for VS Code Copilot plugin presence. macOS / Linux / Windows each
+ * have their own `Code/` user-data root; the probe iterates the platform-
+ * matched one and returns true on first directory match.
+ *
+ * Override parameters are exposed so tests can swap home / org / repo
+ * (the actual derivation rule VS Code uses in production may differ;
+ * DD-15 captures this as a watch-item).
+ */
+export function detectCopilotVscodePlugin(opts?: {
+  home?: string;
+  org?: string;
+  repo?: string;
+}): boolean {
+  const home = opts?.home ?? os.homedir();
+  const org = opts?.org ?? COPILOT_VSCODE_PLUGIN_ORG;
+  const repo = opts?.repo ?? COPILOT_VSCODE_PLUGIN_REPO;
+  const candidates: string[] = [];
+  if (process.platform === 'darwin') {
+    candidates.push(path.join(home, 'Library', 'Application Support', 'Code', 'agentPlugins', 'github.com', org, repo));
+  } else if (process.platform === 'linux') {
+    candidates.push(path.join(home, '.config', 'Code', 'agentPlugins', 'github.com', org, repo));
+  } else {
+    // Windows: %APPDATA% defaults to ~/AppData/Roaming when not explicitly set.
+    const appData = opts?.home != null ? path.join(home, 'AppData', 'Roaming') : (process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming'));
+    candidates.push(path.join(appData, 'Code', 'agentPlugins', 'github.com', org, repo));
+  }
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) return true; } catch { /* ignore */ }
+  }
+  return false;
+}
+
 /**
  * doctor reads ~/.radorch/install.json directly and emits one row per
  * install-key in the registry.

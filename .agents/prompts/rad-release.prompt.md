@@ -2,8 +2,8 @@
 description: "Run the full release process — version bump, optional merge to main, tag, push, and generate release notes."
 ---
 
-> **⚠ Before the next release — re-sweep this prompt AND `.github/workflows/publish.yml`.**
-> The list of authoritative version carriers below is curated by hand. When new packages are added to the repo (especially under `greenfield/` during the install-refactor), they will not auto-appear here. The same applies to the version-match gates in `publish.yml`. Verify both surfaces match the current repo before running this prompt to avoid silently shipping inconsistent versions.
+> **⚠ Before the next release — re-sweep this prompt.**
+> The carrier lists below are curated by hand. When new sub-packages, plugin installers, marketplace plugins, or per-version manifest catalog files are added to the repo, they will not auto-appear here. Verify the lists match the current repo (grep for the current version string across the worktree) before running this prompt, to avoid silently shipping inconsistent versions.
 
 ---
 
@@ -19,24 +19,37 @@ Run the following commands to collect the information you'll need for the questi
 
 1. `git branch --show-current` — current branch name
 2. `git status --short` — any uncommitted changes
-3. Read current versions from these files (all must be bumped in lockstep):
+3. Read current versions from these files (all must be bumped in lockstep). Read `cli/package.json` for the suggested next version — it is the canonical reference.
 
-   **Legacy publish chain** (current source of truth — driven by `installer/`):
-   - `installer/package.json` (authoritative — drives the suggested next version)
-   - `cli/package.json`
-   - `plugin/package.json`
-   - `plugin/.claude-plugin/plugin.json`
+   **Source-side wrappers** (`"version"` field, bump in-place):
+   - `cli/package.json` (canonical reference for the suggested next version)
    - `ui/package.json`
-   - `skills/rad-orchestration/scripts/package.json`
+   - `harness-adapters/engine/package.json`
+   - `harness-installers/standard/package.json`
+   - `harness-installers/shared/build-helpers/package.json`
+   - `harness-files/skills/rad-orchestration/scripts/package.json`
+   - `harness-installers/claude-plugin/package.json`
+   - `harness-installers/copilot-cli-plugin/package.json`
+   - `harness-installers/copilot-vscode-plugin/package.json`
 
-   **Greenfield publish chain** (active during install-refactor; becomes the sole chain at cutover):
-   - `greenfield/harness-files/skills/rad-orchestration/scripts/package.json`
-   - `greenfield/harness-installers/claude-plugin/.claude-plugin/plugin.json`
-   - `greenfield/harness-installers/claude-plugin/package.json`
-   - `greenfield/harness-installers/shared/build-helpers/package.json`
-   - `greenfield/harness-adapters/engine/package.json`
+   **Plugin authoritative version sources** (`"version"` field, bump in-place — copied into `output/package.json` by each plugin's `synthesize-package-json.js`, and the per-version manifest filename is derived from it by `validate.js` Gate 3):
+   - `harness-installers/claude-plugin/.claude-plugin/plugin.json`
+   - `harness-installers/copilot-cli-plugin/plugin.json`
+   - `harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json`
 
-   **Also note**: the greenfield manifest catalog file at `greenfield/harness-installers/claude-plugin/manifests/v{current}.json` must be renamed to `v{next}.json` on each bump, and its internal `"version"` field must match the new filename.
+   **Per-version committed manifest catalogs** (`git mv` rename to the new version, then bump the internal `"version"` field to match the new filename):
+   - `harness-installers/claude-plugin/manifests/v{current}.json`
+   - `harness-installers/copilot-cli-plugin/manifests/v{current}.json`
+   - `harness-installers/copilot-vscode-plugin/manifests/v{current}.json`
+   - `harness-installers/standard/manifests/claude/v{current}.json`
+   - `harness-installers/standard/manifests/copilot-cli/v{current}.json`
+   - `harness-installers/standard/manifests/copilot-vscode/v{current}.json`
+
+   **Hardcoded version literals** (bump in-place):
+   - `harness-installers/claude-plugin/build-scripts/parity-check.js` (the `ALLOWED_NEW_ONLY` set entry `manifests/v{current}.json`)
+   - `harness-installers/claude-plugin/tests/manifest-shape.test.mjs` (the `v{current}.json` path literal)
+   - `harness-installers/copilot-cli-plugin/tests/build-orchestrator.test.mjs` (six `{current}` literals + one `v{current}.json` path)
+   - `harness-installers/copilot-vscode-plugin/tests/build-orchestrator.test.mjs` (six `{current}` literals + one `v{current}.json` path)
 
 4. Read `CHANGELOG.md` at the repo root if it exists (will be created on first release)
 
@@ -77,33 +90,44 @@ The version bump, the per-harness manifest catalog generation, and the plugin tr
 
 Run the steps below in order. **Do not commit until step 6.**
 
-1. **Bump versions in all eleven authoritative carriers.** Set `"version"` to the confirmed version number in:
+1. **Bump versions in every authoritative carrier identified in Step 1.3.** Set `"version"` to the confirmed version number in:
 
-   **Legacy publish chain:**
-   - `installer/package.json`
+   **Source-side wrappers:**
    - `cli/package.json`
-   - `plugin/package.json`
-   - `plugin/.claude-plugin/plugin.json`
    - `ui/package.json`
-   - `skills/rad-orchestration/scripts/package.json`
+   - `harness-adapters/engine/package.json`
+   - `harness-installers/standard/package.json`
+   - `harness-installers/shared/build-helpers/package.json`
+   - `harness-files/skills/rad-orchestration/scripts/package.json`
+   - `harness-installers/claude-plugin/package.json`
+   - `harness-installers/copilot-cli-plugin/package.json`
+   - `harness-installers/copilot-vscode-plugin/package.json`
 
-   **Greenfield publish chain:**
-   - `greenfield/harness-files/skills/rad-orchestration/scripts/package.json`
-   - `greenfield/harness-installers/claude-plugin/.claude-plugin/plugin.json`
-   - `greenfield/harness-installers/claude-plugin/package.json`
-   - `greenfield/harness-installers/shared/build-helpers/package.json`
-   - `greenfield/harness-adapters/engine/package.json`
+   **Plugin authoritative version sources:**
+   - `harness-installers/claude-plugin/.claude-plugin/plugin.json`
+   - `harness-installers/copilot-cli-plugin/plugin.json`
+   - `harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json`
 
-   Note: `package_version` inside `greenfield/runtime-config/orchestration.yml` is **auto-stamped at build time** from `installer/package.json`. Do not edit it manually.
+   **Hardcoded version literals in build/test code:**
+   - `harness-installers/claude-plugin/build-scripts/parity-check.js`
+   - `harness-installers/claude-plugin/tests/manifest-shape.test.mjs`
+   - `harness-installers/copilot-cli-plugin/tests/build-orchestrator.test.mjs`
+   - `harness-installers/copilot-vscode-plugin/tests/build-orchestrator.test.mjs`
 
-2. **Rename the greenfield manifest catalog file** and bump its internal version:
+   Note: `package_version` inside `runtime-config/orchestration.yml` is **auto-stamped at build time**. Do not edit it manually.
+
+2. **Rename every per-version committed manifest catalog file** and bump each one's internal `"version"` field to match its new filename:
 
    ```
-   git mv greenfield/harness-installers/claude-plugin/manifests/v{current}.json \
-          greenfield/harness-installers/claude-plugin/manifests/v{version}.json
+   git mv harness-installers/claude-plugin/manifests/v{current}.json         harness-installers/claude-plugin/manifests/v{version}.json
+   git mv harness-installers/copilot-cli-plugin/manifests/v{current}.json    harness-installers/copilot-cli-plugin/manifests/v{version}.json
+   git mv harness-installers/copilot-vscode-plugin/manifests/v{current}.json harness-installers/copilot-vscode-plugin/manifests/v{version}.json
+   git mv harness-installers/standard/manifests/claude/v{current}.json         harness-installers/standard/manifests/claude/v{version}.json
+   git mv harness-installers/standard/manifests/copilot-cli/v{current}.json    harness-installers/standard/manifests/copilot-cli/v{version}.json
+   git mv harness-installers/standard/manifests/copilot-vscode/v{current}.json harness-installers/standard/manifests/copilot-vscode/v{version}.json
    ```
 
-   Then edit the new file so its `"version"` field matches the new filename. (The legacy harnesses' manifest catalog files in `manifests/<harness>/v*.json` are still produced by the next step — `sync-source.js --promote`. The greenfield catalog file is committed source, not a build emission, so it needs the manual rename.)
+   Then edit each renamed file so its `"version"` field matches its new filename. All six manifests are committed source (the `validate.js` Gate 3 in every plugin and the install logic in the standard installer look them up by filename derived from the bumped `version`).
 
 3. **Generate the per-harness manifest catalog for the new version.** From the repo root:
 
@@ -134,23 +158,35 @@ Run the steps below in order. **Do not commit until step 6.**
 
    If any step above fails, **do not commit yet**. Fix locally; re-run from step 3.
 
-6. **Stage and commit — version bumps and new manifest catalog entries land together.**
+6. **Stage and commit — version bumps and renamed manifest catalogs land together.**
 
    ```
    git add \
-     installer/package.json cli/package.json plugin/package.json plugin/.claude-plugin/plugin.json \
-     ui/package.json skills/rad-orchestration/scripts/package.json \
-     greenfield/harness-files/skills/rad-orchestration/scripts/package.json \
-     greenfield/harness-installers/claude-plugin/.claude-plugin/plugin.json \
-     greenfield/harness-installers/claude-plugin/package.json \
-     greenfield/harness-installers/shared/build-helpers/package.json \
-     greenfield/harness-adapters/engine/package.json \
-     greenfield/harness-installers/claude-plugin/manifests/v{version}.json \
-     manifests/claude/v{version}.json manifests/copilot-cli/v{version}.json manifests/copilot-vscode/v{version}.json
+     cli/package.json ui/package.json \
+     harness-adapters/engine/package.json \
+     harness-installers/standard/package.json \
+     harness-installers/shared/build-helpers/package.json \
+     harness-files/skills/rad-orchestration/scripts/package.json \
+     harness-installers/claude-plugin/package.json \
+     harness-installers/copilot-cli-plugin/package.json \
+     harness-installers/copilot-vscode-plugin/package.json \
+     harness-installers/claude-plugin/.claude-plugin/plugin.json \
+     harness-installers/copilot-cli-plugin/plugin.json \
+     harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json \
+     harness-installers/claude-plugin/manifests/v{version}.json \
+     harness-installers/copilot-cli-plugin/manifests/v{version}.json \
+     harness-installers/copilot-vscode-plugin/manifests/v{version}.json \
+     harness-installers/standard/manifests/claude/v{version}.json \
+     harness-installers/standard/manifests/copilot-cli/v{version}.json \
+     harness-installers/standard/manifests/copilot-vscode/v{version}.json \
+     harness-installers/claude-plugin/build-scripts/parity-check.js \
+     harness-installers/claude-plugin/tests/manifest-shape.test.mjs \
+     harness-installers/copilot-cli-plugin/tests/build-orchestrator.test.mjs \
+     harness-installers/copilot-vscode-plugin/tests/build-orchestrator.test.mjs
    git commit -m "chore: bump version to {version}"
    ```
 
-   Also stage any regenerated `*/package-lock.json` files affected by the bump (`cli/`, `installer/`, `ui/`, `skills/rad-orchestration/scripts/`, `greenfield/harness-adapters/engine/`).
+   Also stage any regenerated `*/package-lock.json` files affected by the bump (any sub-package whose `package.json` `version` changed and which has a tracked lockfile).
 
 ### 3a.5 — Reproducibility assertion (always, regardless of merge choice)
 
@@ -272,7 +308,7 @@ git push origin {branch}
 
 ## Step 6 — Bump in-tree version to next development cycle
 
-The release that just shipped is now immutable in the registry. The repo's in-tree version must move forward so subsequent development doesn't accidentally re-build artifacts stamped with the version that's already published — and so the committed greenfield manifest catalog file at `greenfield/harness-installers/claude-plugin/manifests/v{released}.json` doesn't shadow what's already in the marketplace.
+The release that just shipped is now immutable in the registry. The repo's in-tree version must move forward so subsequent development doesn't accidentally re-build artifacts stamped with the version that's already published — and so the committed per-version manifest catalog files don't shadow what's already in the marketplace.
 
 Ask via `vscode_askQuestions`:
 
@@ -284,28 +320,41 @@ Options: `Yes, bump to {next_suggested}` / `Yes, bump to a different version (sp
 
 If the user chooses to bump:
 
-1. Edit every file in the same 11-item carrier list from Step 1.3, setting `"version"` to the chosen next-development version (default `{next_suggested}` is one pre-release counter ahead — e.g. `alpha.9` → `alpha.10`).
-2. Rename the greenfield manifest catalog file at `greenfield/harness-installers/claude-plugin/manifests/v{version}.json` → `v{next_version}.json`, and update its internal `"version"` field. Also update the hardcoded filename in `greenfield/harness-installers/claude-plugin/build-scripts/parity-check.js` (the `ALLOWED_NEW_ONLY` entry) and `greenfield/harness-installers/claude-plugin/tests/manifest-shape.test.mjs` (the `v{version}.json` path literal) to match.
-3. **Do NOT regenerate the legacy `manifests/<harness>/v*.json` files.** Those are produced by `installer/scripts/sync-source.js --promote` at release time; during dev cycles they stay at whatever the last release stamped.
-4. Regenerate all five tracked `*/package-lock.json` files: from each of `cli/`, `installer/`, `ui/`, `skills/rad-orchestration/scripts/`, `greenfield/harness-adapters/engine/`, run `npm install --package-lock-only`.
-5. Rebuild the greenfield plugin output to verify gate 4 of the validator (`output/manifests/v{next_version}.json` must exist): `node greenfield/harness-installers/claude-plugin/build-scripts/build.js`.
+1. Edit every file in the carrier lists from Step 1.3, setting `"version"` (or, for hardcoded literals, the bare version string) to the chosen next-development version. The default `{next_suggested}` is one pre-release counter ahead — e.g. `alpha.9` → `alpha.10`.
+2. Rename every per-version committed manifest catalog file (all six listed in Step 1.3 under "Per-version committed manifest catalogs") from `v{released}.json` → `v{next_version}.json`, and update each one's internal `"version"` field to match.
+3. Update the hardcoded version literals in `harness-installers/claude-plugin/build-scripts/parity-check.js` (the `ALLOWED_NEW_ONLY` entry), `harness-installers/claude-plugin/tests/manifest-shape.test.mjs` (the `v{released}.json` path literal), and both `harness-installers/copilot-{cli,vscode}-plugin/tests/build-orchestrator.test.mjs` (each has six `{released}` literals + one `v{released}.json` path).
+4. Regenerate every tracked `*/package-lock.json` whose `package.json` `version` changed: run `npm install --package-lock-only` from each affected sub-package directory.
+5. Rebuild each plugin's output to verify the validator's per-version manifest gate (`output/manifests/v{next_version}.json` must exist):
+   ```
+   node harness-installers/claude-plugin/build-scripts/build.js
+   node harness-installers/copilot-cli-plugin/build-scripts/build.js
+   node harness-installers/copilot-vscode-plugin/build-scripts/build.js
+   ```
 6. Commit and push:
 
    ```
    git add \
-     installer/package.json cli/package.json plugin/package.json plugin/.claude-plugin/plugin.json \
-     ui/package.json skills/rad-orchestration/scripts/package.json \
-     greenfield/harness-files/skills/rad-orchestration/scripts/package.json \
-     greenfield/harness-installers/claude-plugin/.claude-plugin/plugin.json \
-     greenfield/harness-installers/claude-plugin/package.json \
-     greenfield/harness-installers/shared/build-helpers/package.json \
-     greenfield/harness-adapters/engine/package.json \
-     greenfield/harness-installers/claude-plugin/manifests/ \
-     greenfield/harness-installers/claude-plugin/build-scripts/parity-check.js \
-     greenfield/harness-installers/claude-plugin/tests/manifest-shape.test.mjs \
-     cli/package-lock.json installer/package-lock.json ui/package-lock.json \
-     skills/rad-orchestration/scripts/package-lock.json \
-     greenfield/harness-adapters/engine/package-lock.json
+     cli/package.json ui/package.json \
+     harness-adapters/engine/package.json \
+     harness-installers/standard/package.json \
+     harness-installers/shared/build-helpers/package.json \
+     harness-files/skills/rad-orchestration/scripts/package.json \
+     harness-installers/claude-plugin/package.json \
+     harness-installers/copilot-cli-plugin/package.json \
+     harness-installers/copilot-vscode-plugin/package.json \
+     harness-installers/claude-plugin/.claude-plugin/plugin.json \
+     harness-installers/copilot-cli-plugin/plugin.json \
+     harness-installers/copilot-vscode-plugin/.claude-plugin/plugin.json \
+     harness-installers/claude-plugin/manifests/ \
+     harness-installers/copilot-cli-plugin/manifests/ \
+     harness-installers/copilot-vscode-plugin/manifests/ \
+     harness-installers/standard/manifests/ \
+     harness-installers/claude-plugin/build-scripts/parity-check.js \
+     harness-installers/claude-plugin/tests/manifest-shape.test.mjs \
+     harness-installers/copilot-cli-plugin/tests/build-orchestrator.test.mjs \
+     harness-installers/copilot-vscode-plugin/tests/build-orchestrator.test.mjs
+   # Stage any regenerated *.package-lock.json files too:
+   git add -u '**/package-lock.json'
    git commit -m "chore: bump in-tree version to {next_version} (post-release)"
    git push origin {branch}
    ```

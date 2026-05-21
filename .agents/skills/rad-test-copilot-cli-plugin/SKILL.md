@@ -107,7 +107,7 @@ Confirm `$pluginDest\plugin.json` exists after the copy.
     {
       "name": "rad-orc",
       "source": "./plugins/rad-orc",
-      "description": "RAD multi-agent orchestration system for Copilot CLI (greenfield build).",
+      "description": "Rad Orc multi-agent orchestration system for Copilot CLI (dogfood build).",
       "strict": true
     }
   ]

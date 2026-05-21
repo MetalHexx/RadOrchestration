@@ -20,7 +20,7 @@ describe('CLI cleanup — sweep targets retired', () => {
     const reports = scanUserLevelHarnesses();
     expect(Array.isArray(reports)).toBe(true);
     for (const r of reports) {
-      expect(['claude','claude-plugin','copilot-cli','copilot-cli-plugin','copilot-vscode']).toContain(r.installKey);
+      expect(['claude','claude-plugin','copilot-cli','copilot-cli-plugin','copilot-vscode','copilot-vscode-plugin']).toContain(r.installKey);
     }
   });
 });
