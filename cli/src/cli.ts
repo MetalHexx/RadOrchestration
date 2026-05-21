@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { runCommand } from './framework/command.js';
 import { doctorCommand } from './commands/doctor/index.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
+import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
 export function buildProgram(version: string): Command {
@@ -54,6 +55,28 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(uiStatusCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const git = program.command('git').description('Source control operations');
+  git
+    .command('commit')
+    .description(gitCommitCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(gitCommitCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  git
+    .command('pr')
+    .description(gitPrCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(gitPrCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   // Gate subcommands lazy-load their modules so the pipeline-lib import chain
