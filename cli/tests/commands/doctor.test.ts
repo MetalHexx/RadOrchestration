@@ -93,6 +93,24 @@ describe('radorch doctor', () => {
       expect(['pass', 'warn', 'fail']).toContain(c.status);
     }
   });
+
+  it('includes Tooling category after Environment, Install, Plugin', async () => {
+    const root = path.join(tmp, '.radorch');
+    await seedRadorchDir(root);
+    const result = await runDoctor({ env: process.env });
+    const categoriesInOrder = result.checks.map((c) => c.category);
+    const firstToolingIdx = categoriesInOrder.indexOf('Tooling');
+    const lastPluginIdx = categoriesInOrder.lastIndexOf('Plugin');
+    expect(firstToolingIdx).toBeGreaterThan(-1);
+    expect(firstToolingIdx).toBeGreaterThan(lastPluginIdx);
+  });
+  it('renderDoctorForTest emits a Tooling heading once when Tooling checks are present', async () => {
+    const root = path.join(tmp, '.radorch');
+    await seedRadorchDir(root);
+    const result = await runDoctor({ env: process.env });
+    const rendered = renderDoctorForTest(result);
+    expect(rendered.match(/\nTooling\n/g)?.length).toBe(1);
+  });
 });
 
 describe('doctorCommand mapResult', () => {
