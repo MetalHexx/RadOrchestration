@@ -6,9 +6,7 @@ user-invocable: false
 
 # Source Control
 
-Scripts are in the `scripts/` folder alongside this SKILL.md. Use their absolute path when invoking them.
-
-> **ESM/CJS note.** The bundled scripts use CommonJS (`require`). If the workspace's root `package.json` declares `"type": "module"`, invoking the scripts directly with `node` will fail. **Proceed with direct `git` Bash invocations:** Stage files with `git add <file1> <file2> ...` (never `git add -A`), commit with `git commit -m "<message>"`, push with `git push origin <branch>`. The pre-commit hook runs automatically. Then emit the `## Commit Result` block from the resulting commit hash and push outcome.
+Both operations are subcommands of the bundled `radorch` CLI. Each call emits a single JSON envelope on stdout of the shape `{ "ok": <bool>, "data": { ... }, "error": { ... } }`. Read result fields from inside `data` and emit the corresponding markdown block.
 
 ---
 
@@ -25,29 +23,31 @@ Scripts are in the `scripts/` folder alongside this SKILL.md. Use their absolute
 | doc, docs, documentation | `docs` |
 | *(no match)* | `chore` |
 
-Format: `{prefix}({taskId}): {title}`  
+Format: `{prefix}({taskId}): {title}`
 Optional body: blank line then 2–4 prose lines from the task description.
 
-**2. If `node` invocation fails with ESM/CJS error, use direct `git` invocations (see note above). Otherwise, run:**
+**2. Run:**
 ```
-node <skill-dir>/scripts/git-commit.js --worktree-path "<worktree>" --message "<message>"
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" git commit --worktree-path "<worktree>" --message "<message>"
 ```
 
-**3. Parse the resulting commit hash and push outcome, then emit:**
+**3. Parse the envelope on stdout. Read fields from `data` and emit:**
 ````
 ## Commit Result
 ```json
-{ "committed": <bool>, "pushed": <bool>, "commitHash": "<hash-or-null>", "error": "<msg-or-null>", "errorType": "<type-or-null>" }
+{ "committed": <data.committed>, "pushed": <data.pushed>, "commitHash": "<data.commitHash-or-null>", "error": "<data.error-or-null>", "errorType": "<data.errorType-or-null>" }
 ```
 ````
+
+A partial-success commit (commit landed but push failed) is still envelope-success (`ok: true`); the failure surfaces via `data.pushed=false` and `data.errorType="push_failed"`. Treat it as a commit success in your block.
 
 ---
 
 ## PR Mode
 
-**1. If `node` invocation fails with ESM/CJS error, consult the ESM/CJS note; do not proceed with direct `git` for PR operations. Otherwise, run:**
+**1. Run:**
 ```
-node <skill-dir>/scripts/gh-pr.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" git pr \
   --worktree-path "<worktree>" \
   --branch "<branch>" \
   --base-branch "<base-branch>" \
@@ -56,10 +56,10 @@ node <skill-dir>/scripts/gh-pr.js \
 ```
 `--body-file` is the path to a markdown file that becomes the PR description on GitHub. Pass it when a body file path is provided in the prompt; omit it otherwise (PR will have no description).
 
-**2. Parse the JSON output from stdout and emit:**
+**2. Parse the envelope on stdout. Read fields from `data` and emit:**
 ````
 ## PR Result
 ```json
-{ "pr_created": <bool>, "pr_url": "<url-or-null>", "pr_number": <number-or-null>, "pr_existed": <bool>, "error": "<key-or-null>", "message": "<summary>" }
+{ "pr_created": <data.pr_created>, "pr_url": "<data.pr_url-or-null>", "pr_number": <data.pr_number-or-null>, "pr_existed": <data.pr_existed>, "error": "<data.error-or-null>", "message": "<data.message>" }
 ```
 ````
