@@ -3,9 +3,9 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 
 // FR-31: REQUIRED_ARTIFACTS. plugin.json at payload root (no .claude-plugin/),
-// agent filename suffix on gate 2 is .agent.md (VS Code rule), and the
-// launcher.cjs dispatcher is part of the contract (FR-9). The claude-plugin's
-// namespaced-token gate is intentionally DROPPED (AD-10).
+// agent filename suffix on gate 2 is .agent.md (VS Code rule). Hook dispatch
+// happens via an inline `node -e` shim in hooks.json (no launcher.cjs file).
+// The claude-plugin's namespaced-token gate is intentionally DROPPED (AD-10).
 const REQUIRED_ARTIFACTS = [
   'plugin.json',
   'package.json',
@@ -15,7 +15,6 @@ const REQUIRED_ARTIFACTS = [
   'hooks/hooks.json',
   'hooks/bootstrap.mjs',
   'hooks/drift-check.mjs',
-  'hooks/launcher.cjs',
 ];
 const SIZE_LIMIT = Math.round(50 * 1024 * 1024 * 1.1);
 

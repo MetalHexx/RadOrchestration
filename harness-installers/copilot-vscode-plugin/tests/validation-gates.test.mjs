@@ -17,7 +17,6 @@ function makeValidOutput(version) {
   fs.writeFileSync(join(root, 'hooks/hooks.json'), '{}');
   fs.writeFileSync(join(root, 'hooks/bootstrap.mjs'), '// boot\n');
   fs.writeFileSync(join(root, 'hooks/drift-check.mjs'), '// drift\n');
-  fs.writeFileSync(join(root, 'hooks/launcher.cjs'), '// launcher\n');
   fs.mkdirSync(join(root, 'agents'), { recursive: true });
   fs.writeFileSync(join(root, 'agents/orchestrator.agent.md'), '# orchestrator\n');
   fs.writeFileSync(join(root, 'agents/coder.agent.md'), '# coder\n');
@@ -36,16 +35,6 @@ test('gate 1: missing required artifact aborts (FR-31)', () => {
   assert.throws(() => validatePluginTree({
     outputDir: root, canonicalAgentsDir: canonicalDir, sizer: () => ({ unpackedSize: 1024 }),
   }), /missing.*hooks\/bootstrap\.mjs/);
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.rmSync(canonicalDir, { recursive: true, force: true });
-});
-
-test('gate 1: REQUIRED_ARTIFACTS includes launcher.cjs (FR-9, FR-31)', () => {
-  const { root, canonicalDir } = makeValidOutput('1.0.0');
-  fs.rmSync(join(root, 'hooks/launcher.cjs'));
-  assert.throws(() => validatePluginTree({
-    outputDir: root, canonicalAgentsDir: canonicalDir, sizer: () => ({ unpackedSize: 1024 }),
-  }), /missing.*hooks\/launcher\.cjs/);
   fs.rmSync(root, { recursive: true, force: true });
   fs.rmSync(canonicalDir, { recursive: true, force: true });
 });

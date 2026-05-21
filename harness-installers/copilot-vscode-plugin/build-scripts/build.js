@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // build.js — Single entry point for the Copilot in VS Code marketplace plugin build.
 // Fixed step order, fail-fast on any step. Sibling of harness-installers/copilot-cli-plugin/build-scripts/build.js
-// with VS-Code-specific deltas: COPILOT_VSCODE_PLUGIN_ROOT token target, launcher.cjs ships verbatim,
-// PascalCase hook event names live in hooks.json (FR-7).
+// with VS-Code-specific deltas: COPILOT_VSCODE_PLUGIN_ROOT token target, inline `node -e` shim in hooks.json
+// (no launcher artifact), PascalCase hook event names live in hooks.json (FR-7).
 
 import fs from 'node:fs';
 import path from 'node:path';

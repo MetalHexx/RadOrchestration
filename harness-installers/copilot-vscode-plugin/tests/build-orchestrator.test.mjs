@@ -64,7 +64,6 @@ function makeFixtureRoot() {
   fs.writeFileSync(join(installerDir, 'lib/install/run-install.js'),
     'export async function runInstall() { return { action: "noop" }; }\n');
   fs.writeFileSync(join(installerDir, 'hooks/drift-check.mjs'), '// drift-check verbatim\n');
-  fs.writeFileSync(join(installerDir, 'hooks/launcher.cjs'), '// launcher verbatim\n');
   fs.writeFileSync(join(installerDir, 'hooks/hooks.json'),
     JSON.stringify({ hooks: { UserPromptSubmit: [], SessionStart: [] } }, null, 2));
   fs.writeFileSync(join(installerDir, 'manifests/v1.0.0-alpha.9.json'),
@@ -94,7 +93,6 @@ test('runBuild produces a full output/ tree with plugin.json at the root, .agent
     assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')));
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'bundled bootstrap');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'verbatim drift-check');
-    assert.ok(fs.existsSync(join(out, 'hooks/launcher.cjs')), 'verbatim launcher (FR-9)');
     assert.ok(fs.existsSync(join(out, 'manifests/v1.0.0-alpha.9.json')));
     // No .claude-plugin/ subfolder per FR-37.
     assert.ok(!fs.existsSync(join(out, '.claude-plugin')), '.claude-plugin/ absent — plugin.json at root');

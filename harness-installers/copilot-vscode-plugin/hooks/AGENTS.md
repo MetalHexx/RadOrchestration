@@ -20,25 +20,25 @@ Persistent — never self-uninstalls. Reads `plugin.json` at the plugin root for
 
 Derives the plugin root from its own `import.meta.url` and publishes `COPILOT_VSCODE_PLUGIN_ROOT` in the same way as `bootstrap.mjs`.
 
-**`launcher.cjs`**
-
-A CJS dispatch layer that resolves the hooks directory and delegates to `bootstrap.mjs` or `drift-check.mjs`. VS Code spawns hook commands directly via `node` (no shell), so `%VAR%` / `$VAR` expansions never apply to the command string. The docs are silent on whether VS Code injects `COPILOT_PLUGIN_ROOT` for Copilot-format plugins (`docs/research/copilot-vscode-plugin-system.md` §5), so the launcher uses it when present and falls back to `__dirname`. The launcher is the single path-resolution point; downstream scripts derive the plugin root independently via `import.meta.url` and publish `COPILOT_VSCODE_PLUGIN_ROOT`.
-
 **`hooks.json`**
 
-Registers both hooks with VS Code's hook system. Event names are **PascalCase** (`UserPromptSubmit`, `SessionStart`) — VS Code's native form. This is the explicit casing contrast with the CLI plugin's camelCase `userPromptSubmitted` / `sessionStart`. Each entry's command string uses the launcher: `node hooks/launcher.cjs <script>`.
+Registers both hooks with VS Code's hook system. Event names are **PascalCase** (`UserPromptSubmit`, `SessionStart`) — VS Code's native form. This is the explicit casing contrast with the CLI plugin's camelCase `userPromptSubmitted` / `sessionStart`.
+
+Each entry's command string is an **inline `node -e` shim**: it probes a chain of plugin-root environment variables (`COPILOT_PLUGIN_ROOT` → `COPILOT_VSCODE_PLUGIN_ROOT` → `CLAUDE_PLUGIN_ROOT` → `PLUGIN_ROOT`), normalizes Cygwin-style `/c/...` paths on Windows, and dynamic-`import()`s the absolute file URL of the target `.mjs`. If none of the candidate env vars are set, the shim prints a stderr diagnostic listing every `process.env` key matching `PLUGIN|COPILOT|CLAUDE` and exits with code 2 — the user gets actionable empirical data instead of an opaque `MODULE_NOT_FOUND`. This matches the Claude plugin's shim pattern but probes multiple env-var candidates because VS Code's docs are silent on which (if any) it injects for Copilot-format plugins (`docs/research/copilot-vscode-plugin-system.md` §5 #1). The shim is the single path-resolution point; downstream `bootstrap.mjs` / `drift-check.mjs` derive the plugin root independently via `import.meta.url` and publish `COPILOT_VSCODE_PLUGIN_ROOT`.
+
+Inline shims are used rather than a `launcher.cjs` dispatcher because the dispatcher itself would have to be self-locatable — and a relative `node hooks/launcher.cjs ...` resolves against `process.cwd()` (the workspace folder, not the plugin root), so the launcher can't be loaded before its own path-resolution logic runs. The inline shim sidesteps this chicken-and-egg by carrying its own env-var lookup directly on the command line.
 
 ## Build treatment
 
 - `bootstrap.mjs` is bundled by `emitHookBundle`: esbuild inlines `lib/install/*` dependencies, producing a single self-contained file. It is never shipped as separate source modules.
-- `drift-check.mjs`, `launcher.cjs`, `hooks.json`, and this `AGENTS.md` are copied verbatim by `emitHookBundle`.
+- `drift-check.mjs`, `hooks.json`, and this `AGENTS.md` are copied verbatim by `emitHookBundle`.
 
 ## Coding conventions
 
 - `bootstrap.mjs` uses a top-level `async main()` with `process.exit(await main())` so the hook exits with the correct code.
 - The marker-file write uses write-to-tmp then `fs.renameSync` (same pattern as `lib/install/`).
 - `drift-check.mjs` is synchronous and has no external dependencies — it must stay that way so it ships verbatim without bundling.
-- `launcher.cjs` uses CommonJS (`require`, `__dirname`) — it must stay CJS because VS Code may invoke it before ESM module resolution is available for the hook dispatch layer.
+- The inline shim in `hooks.json` carries no backslash literals — per the JSON-embedded `node -e` quoting rules, those would have to be double-escaped and have burned us before. Keep the shim using forward slashes and `path.platform`-aware string concatenation only.
 - Scripts resolve their plugin root via `import.meta.url`; they never rely on a CWD-relative path.
 
 ## Rules for making updates
