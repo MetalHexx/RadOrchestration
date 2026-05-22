@@ -42,7 +42,7 @@ function classify(stderr: string): WorktreeCreateErrorType {
 }
 
 export function worktreeCreate(opts: WorktreeCreateOptions): WorktreeCreateResult {
-  const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, o) as unknown as string);
+  const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, stdio: ['ignore', 'pipe', 'pipe'] }) as unknown as string);
   try {
     exec('git', ['worktree', 'add', '-b', opts.branch, opts.worktreePath, opts.baseBranch],
       { cwd: opts.repoRoot, encoding: 'utf8' });

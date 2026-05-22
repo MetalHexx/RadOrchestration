@@ -65,7 +65,7 @@ function isSourceControlInitialized(state: unknown): boolean {
 }
 
 export function projectContext(opts: ProjectContextOptions = {}): ProjectContextResult {
-  const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, encoding: 'utf8' }) as unknown as string);
+  const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) as unknown as string);
   const repoRootRaw = String(exec('git', ['rev-parse', '--show-toplevel'])).trim();
   const repoRoot = path.resolve(repoRootRaw);
   const repoName = path.basename(repoRoot);

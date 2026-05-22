@@ -72,7 +72,7 @@ function summarize(name: string, state: Record<string, unknown>, active: Set<str
 }
 
 export function projectFind(opts: ProjectFindOptions): ProjectFindResult {
-  const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, encoding: 'utf8' }) as unknown as string);
+  const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) as unknown as string);
   if (!fs.existsSync(opts.projectsBasePath)) return { basePathExists: false, projects: [] };
   const active = activeWorktrees(opts.repoRoot, exec);
 

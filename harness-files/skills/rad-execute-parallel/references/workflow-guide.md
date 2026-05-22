@@ -69,7 +69,7 @@ After resolving, if the worktree check was not already done, run `radorch projec
 
 ---
 
-### Q: `branch_from` — always include
+### Q: `branch_from` — only when `worktreeExists === false`
 
 ```json
 {
