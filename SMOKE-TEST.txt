@@ -1,8 +1,0 @@
-SCRIPT-FOLD-2 disposable smoke-test file.
-
-Created to exercise `radorch git commit` end-to-end against the
-freshly-installed bundle (commit 7997adca) and confirm the
-kebab-case args framework fix actually lands in the wrapped CLI
-path. This file should be reverted immediately after the test.
-
-Timestamp: 2026-05-22T05:00Z (approx)
