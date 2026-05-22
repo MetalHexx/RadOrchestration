@@ -155,17 +155,17 @@
     {
       "bundlePath": "skills/rad-execute-parallel/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/SKILL.md",
-      "sha256": "9ee29afee94f9bb0c969c937a137becb00d134a604705717a9f32fba5ca0b602"
+      "sha256": "d65906528404dfb7b17cf40af343a42b7313bba379d0a3d3987c14b54cf40ab5"
     },
     {
       "bundlePath": "skills/rad-execute-parallel/references/workflow-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/references/workflow-guide.md",
-      "sha256": "07f92b9408708a7566387f5bbf87076e73080bd810c9eeea187492d2a8f7f60e"
+      "sha256": "cddfcfb9a0cc398278f4ebe7e7a7a86663b4d2053e0b328863018385c89bd661"
     },
     {
       "bundlePath": "skills/rad-execute/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/SKILL.md",
-      "sha256": "b634f8161bd0adb8347352c7565f714df758db5fd7d7502cfb0ad9ad881abe6e"
+      "sha256": "4c3888764e395a5859d622cff5db2bec6ea36bc1110f778654bcf31d15a66860"
     },
     {
       "bundlePath": "skills/rad-execute/references/source-control-init.md",
@@ -210,7 +210,7 @@
     {
       "bundlePath": "skills/rad-orchestration/references/pipeline-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/pipeline-guide.md",
-      "sha256": "b168fd8a053b93f07dcd4d7f11593129845a25db452d2599806c641026e1466f"
+      "sha256": "5df3d6882fdf0029493f6399dcb1dcf73fb6e7b8ccf1f0a174d8ff75f06911cd"
     },
     {
       "bundlePath": "skills/rad-orchestration/schemas/legacy/state-v4.schema.json",
@@ -240,7 +240,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "cb0f91f6871da86ce4055f1a396e46b27a54a7ce586b8f373e4ba80d13e824d9"
+      "sha256": "a57ca5e5b824b6f422ab09a0bc6b19331299fb9f280498ce07c1f7f915ce8c48"
     },
     {
       "bundlePath": "skills/rad-orchestration/scripts/setup-hooks.js",
