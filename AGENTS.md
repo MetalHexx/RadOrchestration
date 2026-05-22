@@ -35,7 +35,7 @@ These rules govern every contributor and every agent working in the orchestratio
 
 ## Reserved Namespace: rad-*
 
-Skills shipped by the orchestration system carry the `rad-` prefix on both folder name and frontmatter `name`. The prefix is a **documentation-only reserved namespace** — the system does not hard-enforce uniqueness against downstream authors, but the planner-spawn manifest filter (`list-repo-skills.mjs`) deliberately excludes any `rad-*` skill from the manifest. Authoring a `rad-something` skill in your own repo will therefore make it invisible to the planner.
+Skills shipped by the orchestration system carry the `rad-` prefix on both folder name and frontmatter `name`. The prefix is a **documentation-only reserved namespace** — the system does not hard-enforce uniqueness against downstream authors, but the planner-spawn manifest filter (the `radorch skill list` subcommand and its shared `buildSkillManifest` module) deliberately excludes any `rad-*` skill from the manifest. Authoring a `rad-something` skill in your own repo will therefore make it invisible to the planner.
 
 See `.agents/skills/rad-create-skill/SKILL.md` for the matching authoring convention.
 
