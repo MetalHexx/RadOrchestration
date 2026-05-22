@@ -19,7 +19,7 @@ workflow based on the orchestrator action:
 
 ## Skills
 - **`rad-create-plans`**: Your primary workflow — load this first for Requirements and Master Plans
-- **`rad-log-error`**: Used in Requirements mode to log token-lint offenders as soft warnings
+- **`rad-log-error`**: Used to log pipeline failures and other recoverable errors during planning
 
 ## Spawn Prompt Conventions
 
