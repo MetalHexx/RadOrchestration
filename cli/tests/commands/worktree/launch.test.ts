@@ -6,6 +6,7 @@ import {
   worktreeLaunch,
   worktreeLaunchCommand,
   repairMsysPrompt,
+  quoteSinglePwsh,
   VALID_PERMISSION_MODES,
 } from '../../../src/commands/worktree/launch.js';
 import { runCommand } from '../../../src/framework/command.js';
@@ -132,6 +133,55 @@ describe('worktreeLaunch dispatch matrix', () => {
   it('on linux uses gnome-terminal', () => {
     const { spawn } = runCase('claude', 'linux');
     expect(spawn.mock.calls[0]![0]).toBe('gnome-terminal');
+  });
+
+  it('on win32 escapes single-quotes in worktreePath using PowerShell doubling, not POSIX', () => {
+    const spawn = vi.fn(() => ({ unref: () => undefined }) as never);
+    const result = worktreeLaunch({
+      agent: 'terminal',
+      worktreePath: "/wt/o'reilly",
+      platform: 'win32',
+      spawn,
+    });
+    expect(result.ok).toBe(true);
+    const payload = deliveredPayload(spawn, 'win32');
+    // PowerShell literal-string rule: ' inside '...' is escaped as ''
+    expect(payload).toContain("Set-Location '/wt/o''reilly'");
+    // POSIX form must NOT appear inside the PowerShell payload.
+    expect(payload).not.toContain("'\\''");
+  });
+
+  it('on win32 escapes single-quotes in prompt arg using PowerShell doubling, not POSIX', () => {
+    const spawn = vi.fn(() => ({ unref: () => undefined }) as never);
+    const result = worktreeLaunch({
+      agent: 'claude',
+      worktreePath: '/wt/x',
+      prompt: "/x's command",
+      permissionMode: 'auto',
+      platform: 'win32',
+      spawn,
+    });
+    expect(result.ok).toBe(true);
+    const payload = deliveredPayload(spawn, 'win32');
+    // The prompt is the 4th positional arg in claude invocation; it must be
+    // PowerShell-quoted with '' for the embedded single quote.
+    expect(payload).toContain("'/x''s command'");
+    expect(payload).not.toContain("'\\''");
+  });
+});
+
+describe('quoteSinglePwsh', () => {
+  it('wraps an empty string in single quotes', () => {
+    expect(quoteSinglePwsh('')).toBe("''");
+  });
+  it('wraps a plain string without modification', () => {
+    expect(quoteSinglePwsh('hello world')).toBe("'hello world'");
+  });
+  it('doubles a single quote per PowerShell literal-string rules', () => {
+    expect(quoteSinglePwsh("'")).toBe("''''");
+  });
+  it('doubles every single quote in a mixed string', () => {
+    expect(quoteSinglePwsh("o'reilly's book")).toBe("'o''reilly''s book'");
   });
 });
 

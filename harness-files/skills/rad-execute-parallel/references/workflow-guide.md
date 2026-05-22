@@ -42,7 +42,7 @@ Build one option per project from `radorch project find` output. Mark the first 
 
 **Resolve:** Named option → `projectName` = that label. Path ending `.md` → treat as `masterPlanPath`, derive `projectName` from parent folder. Otherwise → treat as `projectName`.
 
-After resolving, if the worktree check was not already done, run `radorch project find --project-name {projectName}` to get existing worktree info.
+After resolving, if the worktree check was not already done, run `radorch project find --projects-base-path "{data.projectsBasePath}" --repo-root "{data.repoRoot}" --project-name {projectName}` to get existing worktree info.
 
 ---
 

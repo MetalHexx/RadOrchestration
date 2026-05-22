@@ -37,6 +37,22 @@ describe('projectFind core', () => {
     const exec = vi.fn(() => '');
     expect(projectFind({ projectsBasePath: base, repoRoot: '/r', projectName: 'NOPE', exec }).projects).toEqual([]);
   });
+
+  it('reports basePathExists:false when projectsBasePath does not exist', () => {
+    const missing = path.join(os.tmpdir(), 'nope-' + Math.random().toString(36).slice(2));
+    const exec = vi.fn(() => '');
+    const r = projectFind({ projectsBasePath: missing, repoRoot: '/r', exec });
+    expect(r.basePathExists).toBe(false);
+    expect(r.projects).toEqual([]);
+  });
+
+  it('reports basePathExists:true when projectsBasePath exists but no execution-tier projects', () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-'));
+    const exec = vi.fn(() => '');
+    const r = projectFind({ projectsBasePath: base, repoRoot: '/r', exec });
+    expect(r.basePathExists).toBe(true);
+    expect(r.projects).toEqual([]);
+  });
 });
 
 describe('projectFind CLI path (runCommand argv → handler args)', () => {

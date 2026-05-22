@@ -68,14 +68,17 @@ function walkFixture(root) {
 }
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'callform-'));
-mkdirSync(path.join(tmp, 'skills', 'demo', 'references'), { recursive: true });
-writeFileSync(path.join(tmp, 'skills', 'demo', 'SKILL.md'), '# demo\n', 'utf8');
-writeFileSync(
-  path.join(tmp, 'skills', 'demo', 'references', 'workflow.md'),
-  'Run this:\nnode ${SKILLS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs project context\n',
-  'utf8',
-);
-const caught = walkFixture(tmp);
-assert.ok(caught.length === 1, `FR-12: expected 1 offender in references fixture, got ${caught.length}`);
-rmSync(tmp, { recursive: true, force: true });
+try {
+  mkdirSync(path.join(tmp, 'skills', 'demo', 'references'), { recursive: true });
+  writeFileSync(path.join(tmp, 'skills', 'demo', 'SKILL.md'), '# demo\n', 'utf8');
+  writeFileSync(
+    path.join(tmp, 'skills', 'demo', 'references', 'workflow.md'),
+    'Run this:\nnode ${SKILLS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs project context\n',
+    'utf8',
+  );
+  const caught = walkFixture(tmp);
+  assert.ok(caught.length === 1, `FR-12: expected 1 offender in references fixture, got ${caught.length}`);
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
+}
 console.log('reference-walker fixture assertion passed');

@@ -84,6 +84,17 @@ export interface WorktreeLaunchResult {
 
 function quoteSingle(s: string): string { return `'${s.replace(/'/g, "'\\''")}'`; }
 
+/**
+ * PowerShell single-quoted literal escape.
+ *
+ * Inside a PowerShell `'...'` literal, the only character that needs escaping
+ * is the single quote itself — and PowerShell's rule is to double it (`''`),
+ * not the POSIX close-escape-reopen form (`'\''`). Using POSIX inside an
+ * encoded PowerShell payload silently corrupts paths or prompts that contain
+ * `'`. This helper is the win32 counterpart to {@link quoteSingle}.
+ */
+export function quoteSinglePwsh(s: string): string { return `'${s.replace(/'/g, "''")}'`; }
+
 /** Build the inner command arg list for claude. Returns an array of literal args. */
 function buildClaudeArgs(prompt: string, permissionMode: PermissionMode, addDir: string): string[] {
   return ['claude', '--permission-mode', permissionMode, prompt, '--add-dir', addDir];
@@ -111,15 +122,22 @@ export function worktreeLaunch(opts: WorktreeLaunchOptions): WorktreeLaunchResul
   // terminal: no inner args; just cd to worktree
 
   try {
-    const cdPart = `Set-Location ${quoteSingle(opts.worktreePath)}`;
     const shellQuotedAgent = agentArgs.length > 0
       ? `${agentArgs[0]} ${agentArgs.slice(1).map(quoteSingle).join(' ')}`
       : '';
 
     if (platform === 'win32') {
-      const psCmd = shellQuotedAgent
-        ? `${cdPart}; ${shellQuotedAgent}`
-        : cdPart;
+      // PowerShell single-quoted literals use '' (doubled) to escape an
+      // embedded single quote, NOT the POSIX '\'' form. Build the win32
+      // payload with quoteSinglePwsh so paths/prompts containing ' survive
+      // the Base64-encoded UTF-16LE PowerShell payload intact.
+      const cdPartPwsh = `Set-Location ${quoteSinglePwsh(opts.worktreePath)}`;
+      const shellQuotedAgentPwsh = agentArgs.length > 0
+        ? `${agentArgs[0]} ${agentArgs.slice(1).map(quoteSinglePwsh).join(' ')}`
+        : '';
+      const psCmd = shellQuotedAgentPwsh
+        ? `${cdPartPwsh}; ${shellQuotedAgentPwsh}`
+        : cdPartPwsh;
       const encoded = Buffer.from(psCmd, 'utf16le').toString('base64');
       const child = spawn(
         'wt',

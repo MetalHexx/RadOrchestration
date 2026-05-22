@@ -14,7 +14,11 @@ export interface ProjectSummary {
   worktreeExists: boolean;
 }
 
-export interface ProjectFindResult { projects: ProjectSummary[] }
+export interface ProjectFindResult {
+  // basePathExists: helps callers diagnose a missing/misconfigured projectsBasePath without forcing a throw — preserves legacy diagnostic without breaking the forgiving array contract.
+  basePathExists: boolean;
+  projects: ProjectSummary[];
+}
 
 type Exec = (file: string, args: string[], opts?: { cwd?: string; encoding: 'utf8' }) => string;
 
@@ -69,14 +73,14 @@ function summarize(name: string, state: Record<string, unknown>, active: Set<str
 
 export function projectFind(opts: ProjectFindOptions): ProjectFindResult {
   const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, encoding: 'utf8' }) as unknown as string);
-  if (!fs.existsSync(opts.projectsBasePath)) return { projects: [] };
+  if (!fs.existsSync(opts.projectsBasePath)) return { basePathExists: false, projects: [] };
   const active = activeWorktrees(opts.repoRoot, exec);
 
   if (opts.projectName) {
     const dir = path.join(opts.projectsBasePath, opts.projectName);
     const state = readState(dir);
-    if (!state) return { projects: [] };
-    return { projects: [summarize(opts.projectName, state, active)] };
+    if (!state) return { basePathExists: true, projects: [] };
+    return { basePathExists: true, projects: [summarize(opts.projectName, state, active)] };
   }
 
   const entries = fs.readdirSync(opts.projectsBasePath, { withFileTypes: true })
@@ -91,7 +95,7 @@ export function projectFind(opts: ProjectFindOptions): ProjectFindResult {
     if (tier !== 'execution') continue;
     out.push(summarize(d.name, state, active));
   }
-  return { projects: out };
+  return { basePathExists: true, projects: out };
 }
 
 interface Args { 'projects-base-path'?: string; 'repo-root'?: string; 'project-name'?: string }
