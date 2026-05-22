@@ -127,7 +127,7 @@ export const projectContextCommand = defineCommand({
   name: 'project-context',
   description: 'Return the shared context block for the workspace and optional project',
   args: {
-    'project-name': { description: 'Optional project name; when supplied the result includes the project-state block' },
+    'project-name': { description: 'When set, result includes the project-state block' },
   },
   flags: {},
   handler: async ({ args }: { args: Args; ctx: CommandContext }) => projectContext({ projectName: args['project-name'] }),
