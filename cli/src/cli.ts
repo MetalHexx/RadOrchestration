@@ -5,6 +5,7 @@ import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/in
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { projectContextCommand, projectFindCommand } from './commands/project/index.js';
 import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
+import { planExplodeCommand } from './commands/plan/index.js';
 import { skillListCommand } from './commands/skill/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
@@ -124,6 +125,18 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(worktreeLaunchCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const plan = program.command('plan').description('Master Plan operations');
+  plan
+    .command('explode')
+    .description(planExplodeCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(planExplodeCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const skill = program.command('skill').description('Repository skill catalog operations');
