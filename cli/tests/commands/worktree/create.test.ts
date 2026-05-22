@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { worktreeCreate, worktreeCreateCommand } from '../../../src/commands/worktree/create.js';
+import { runCommand } from '../../../src/framework/command.js';
 
 function makeExecErr(stderr: string): Error & { stderr: string } {
   const e = new Error(stderr) as Error & { stderr: string };
@@ -48,6 +49,77 @@ describe('worktreeCreate core', () => {
     const r = worktreeCreate({ repoRoot: '/r', branch: 'feat/x', worktreePath: '/r-wt/x', baseBranch: 'main', exec });
     expect(r.created).toBe(true);
     expect(r.pushed).toBe(false);
+  });
+});
+
+describe('worktreeCreate CLI path (runCommand argv → handler args)', () => {
+  // Locks the framework contract: --repo-root, --worktree-path, and
+  // --base-branch must arrive at the handler under their hyphenated keys.
+  // Before the framework fix the args branch read parsed[name] for the kebab
+  // name (got undefined since Commander stored camelCase) and threw
+  // "Missing required argument --repo-root" no matter what the user passed.
+  it('passes --repo-root, --branch, --worktree-path, --base-branch through runCommand', async () => {
+    type CreateArgs = { 'repo-root'?: string; branch?: string; 'worktree-path'?: string; 'base-branch'?: string };
+    let received: CreateArgs = {};
+    const probeDef = {
+      ...worktreeCreateCommand,
+      handler: async ({ args }: { args: CreateArgs; ctx: unknown }) => {
+        received = args;
+        return { probed: true } as never;
+      },
+      mapResult: undefined,
+    };
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(probeDef, {
+      argv: [
+        '--repo-root', '/r',
+        '--branch', 'feat/x',
+        '--worktree-path', '/r-wt/x',
+        '--base-branch', 'origin/main',
+      ],
+      env: { RADORCH_NO_LOG: '1' },
+      isTTY: false,
+      stderr: process.stderr,
+    });
+    expect(received['repo-root']).toBe('/r');
+    expect(received.branch).toBe('feat/x');
+    expect(received['worktree-path']).toBe('/r-wt/x');
+    expect(received['base-branch']).toBe('origin/main');
+    const arg = (log.mock.calls[0]?.[0] ?? '') as string;
+    const env = JSON.parse(arg);
+    expect(env.ok).toBe(true);
+    expect(exit).toHaveBeenCalledWith(0);
+    log.mockRestore(); exit.mockRestore();
+  });
+
+  it('returns a well-formed user_error envelope when --repo-root is omitted in non-interactive mode', async () => {
+    // Probe handler so we don't invoke the real git-touching worktreeCreate.
+    const probeDef = {
+      ...worktreeCreateCommand,
+      handler: async () => ({ probed: true } as never),
+      mapResult: undefined,
+    };
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(probeDef, {
+      argv: [
+        '--non-interactive',
+        '--branch', 'feat/x',
+        '--worktree-path', '/r-wt/x',
+        '--base-branch', 'main',
+      ],
+      env: { RADORCH_NO_LOG: '1' },
+      isTTY: true,
+      stderr: process.stderr,
+    });
+    const arg = (log.mock.calls[0]?.[0] ?? '') as string;
+    const env = JSON.parse(arg);
+    expect(env.ok).toBe(false);
+    expect(env.error.type).toBe('user_error');
+    expect(env.error.message).toMatch(/repo-root/);
+    expect(exit).toHaveBeenCalledWith(1);
+    log.mockRestore(); exit.mockRestore();
   });
 });
 

@@ -41,7 +41,7 @@ When a subcommand's flag matrix depends on a discriminant flag value (e.g., `wor
 
 ## Adding a new subcommand — worked walkthrough using `radorch git commit`
 
-1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`. Reuse before you invent.
+1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`. Reuse before you invent.
 
 2. **Author the core function.** Create `cli/src/commands/<noun>/<name>.ts`. Export a pure function with an injectable `exec` parameter:
     ```ts

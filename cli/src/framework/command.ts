@@ -103,7 +103,10 @@ export async function runCommand<Args, Flags, Result>(
     const allowedToPrompt = ux.isTTY && !ux.nonInteractive && !ux.json;
     const prompter = createPrompter({ isTTY: ux.isTTY, nonInteractive: ux.nonInteractive || ux.json });
     for (const [name, spec] of Object.entries(def.args) as [string, ArgSpec][]) {
-      let value = parsed[name] as string | undefined;
+      // Commander converts --kebab-case to camelCase in opts(); map back so handlers
+      // can look up args by their declared hyphenated name (e.g. 'worktree-path').
+      const camel = name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+      let value = (parsed[camel] ?? parsed[name]) as string | undefined;
       if (value === undefined && spec.required) {
         if (allowedToPrompt) {
           value = await prompter.input({ message: `${name}: ${spec.description}`, default: spec.default });

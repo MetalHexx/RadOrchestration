@@ -38,11 +38,11 @@ Build **one** `askQuestions` call. Include only the questions whose condition is
 }
 ```
 
-Build one option per project from `find-projects.js` output. Mark the first as `recommended`. Always include a Custom option at the end. If no projects were found, show only Custom.
+Build one option per project from `radorch project find` output. Mark the first as `recommended`. Always include a Custom option at the end. If no projects were found, show only Custom.
 
 **Resolve:** Named option → `projectName` = that label. Path ending `.md` → treat as `masterPlanPath`, derive `projectName` from parent folder. Otherwise → treat as `projectName`.
 
-After resolving, if the worktree check was not already done, run `find-projects.js --project-name {projectName}` to get existing worktree info.
+After resolving, if the worktree check was not already done, run `radorch project find --project-name {projectName}` to get existing worktree info.
 
 ---
 
@@ -154,7 +154,7 @@ After all answers are returned, derive these values:
 | Value | Source |
 |---|---|
 | `projectName` | From conversation context or `project_name` answer |
-| `masterPlanPath` | From context or `find-projects.js` output |
+| `masterPlanPath` | From context or `radorch project find` output |
 | `projectDir` | `{projectsBasePath}/{projectName}` |
 | `branchName` | `{projectName}` |
 | `worktreePath` | `{repoParent}/{repoName}-worktrees/{projectName}` |
@@ -167,7 +167,7 @@ After all answers are returned, derive these values:
 
 **If the user chose "Use the existing worktree":**
 - Set `worktreePath` = `existingWorktreePath`, `branchName` = `existingBranch`
-- **Skip** the `create-worktree.js` step — jump directly to `source_control_init`
+- **Skip** the `radorch worktree create` step — jump directly to `source_control_init`
 
 ---
 
@@ -237,7 +237,7 @@ Inform the user: *"Worktree is ready at `{worktreePath}` on branch `{branchName}
 
 ## Error Handling
 
-### `create-worktree.js` errors
+### `radorch worktree create` errors
 
 | `errorType` | Likely cause | Suggested fix |
 |---|---|---|

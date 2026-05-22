@@ -160,7 +160,7 @@
     {
       "bundlePath": "skills/rad-execute-parallel/references/workflow-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/references/workflow-guide.md",
-      "sha256": "231fddcf37ec6c265ccc8d5858b47b5fc9cb5c37439c3b0866869afe27283d0a"
+      "sha256": "c4c8669e7e3047d5c5f7b67e79858e5acb7f2e44c7b1fdde2bcab6b26cbe1ff7"
     },
     {
       "bundlePath": "skills/rad-execute/SKILL.md",
@@ -240,7 +240,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "6f3e298e36845fe006bc728cac8c679d7881ad0e3a4e23e371719f546f815f06"
+      "sha256": "cb0f91f6871da86ce4055f1a396e46b27a54a7ce586b8f373e4ba80d13e824d9"
     },
     {
       "bundlePath": "skills/rad-orchestration/scripts/setup-hooks.js",

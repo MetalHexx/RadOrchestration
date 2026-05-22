@@ -117,4 +117,43 @@ describe('runToolingChecks — conditional agent checks', () => {
     const out = await runToolingChecks({ exec, harnessReports: reports(['copilot-vscode']) });
     expect(out.find((c) => c.name === 'code')?.status).toBe('pass');
   });
+
+  it('runs claude check when claude is registered; passes when CLI present', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+      'claude --version': { status: 0, stdout: 'claude 0.8.0\n' },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports(['claude']) });
+    const claude = out.find((c) => c.name === 'claude');
+    expect(claude?.status).toBe('pass');
+    expect(claude?.detail).toMatch(/claude 0\.8\.0/);
+  });
+
+  it('runs copilot check when copilot-cli is registered; fails when CLI missing', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+      'copilot --version': { status: 1, stdout: '', stderr: '', error: Object.assign(new Error('not found'), { code: 'ENOENT' }) as NodeJS.ErrnoException },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports(['copilot-cli']) });
+    const copilot = out.find((c) => c.name === 'copilot');
+    expect(copilot?.status).toBe('fail');
+    expect(copilot?.detail).toMatch(/copilot.*PATH/i);
+  });
+
+  it('runs code check when copilot-vscode is registered; fails when CLI missing', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+      'code --version': { status: 1, stdout: '', stderr: '', error: Object.assign(new Error('not found'), { code: 'ENOENT' }) as NodeJS.ErrnoException },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports(['copilot-vscode']) });
+    const code = out.find((c) => c.name === 'code');
+    expect(code?.status).toBe('fail');
+    expect(code?.detail).toMatch(/code.*PATH/i);
+  });
 });

@@ -4,9 +4,11 @@ import path from 'node:path';
 import {
   validateLaunchFlags,
   worktreeLaunch,
+  worktreeLaunchCommand,
   repairMsysPrompt,
   VALID_PERMISSION_MODES,
 } from '../../../src/commands/worktree/launch.js';
+import { runCommand } from '../../../src/framework/command.js';
 
 const addDir = path.join(os.homedir(), '.radorch', 'projects');
 
@@ -130,5 +132,71 @@ describe('worktreeLaunch dispatch matrix', () => {
   it('on linux uses gnome-terminal', () => {
     const { spawn } = runCase('claude', 'linux');
     expect(spawn.mock.calls[0]![0]).toBe('gnome-terminal');
+  });
+});
+
+describe('worktreeLaunch CLI path (runCommand argv → handler args)', () => {
+  // Locks the framework contract: --worktree-path (required) and
+  // --permission-mode (optional) must arrive at the handler under their
+  // declared hyphenated keys. Before the framework fix --worktree-path
+  // reproduced as "Missing required argument --worktree-path" regardless of
+  // what the user supplied.
+  it('passes --worktree-path, --agent, --prompt, --permission-mode through runCommand', async () => {
+    type LaunchArgs = { agent?: string; 'worktree-path'?: string; prompt?: string; 'permission-mode'?: string };
+    let received: LaunchArgs = {};
+    const probeDef = {
+      ...worktreeLaunchCommand,
+      handler: async ({ args }: { args: LaunchArgs; ctx: unknown }) => {
+        received = args;
+        return { probed: true } as never;
+      },
+      mapResult: undefined,
+    };
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(probeDef, {
+      argv: [
+        '--agent', 'claude',
+        '--worktree-path', '/wt/x',
+        '--prompt', '/rad-execute X',
+        '--permission-mode', 'auto',
+      ],
+      env: { RADORCH_NO_LOG: '1' },
+      isTTY: false,
+      stderr: process.stderr,
+    });
+    expect(received.agent).toBe('claude');
+    expect(received['worktree-path']).toBe('/wt/x');
+    expect(received.prompt).toBe('/rad-execute X');
+    expect(received['permission-mode']).toBe('auto');
+    const arg = (log.mock.calls[0]?.[0] ?? '') as string;
+    const env = JSON.parse(arg);
+    expect(env.ok).toBe(true);
+    expect(exit).toHaveBeenCalledWith(0);
+    log.mockRestore(); exit.mockRestore();
+  });
+
+  it('returns a well-formed user_error envelope when --worktree-path is omitted in non-interactive mode', async () => {
+    // Probe handler keeps the test from invoking real spawn.
+    const probeDef = {
+      ...worktreeLaunchCommand,
+      handler: async () => ({ probed: true } as never),
+      mapResult: undefined,
+    };
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(probeDef, {
+      argv: ['--non-interactive', '--agent', 'terminal'],
+      env: { RADORCH_NO_LOG: '1' },
+      isTTY: true,
+      stderr: process.stderr,
+    });
+    const arg = (log.mock.calls[0]?.[0] ?? '') as string;
+    const env = JSON.parse(arg);
+    expect(env.ok).toBe(false);
+    expect(env.error.type).toBe('user_error');
+    expect(env.error.message).toMatch(/worktree-path/);
+    expect(exit).toHaveBeenCalledWith(1);
+    log.mockRestore(); exit.mockRestore();
   });
 });
