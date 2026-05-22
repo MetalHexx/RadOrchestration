@@ -3,11 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { validatePackageTree } from '../../build-scripts/validate.js';
+import { validatePackageTree, REQUIRED_PER_HARNESS } from '../../build-scripts/validate.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
 const COPILOT_AGENT_SUFFIX_HARNESSES = new Set(['copilot-vscode', 'copilot-cli']);
 const VERSION = '1.0.0-alpha.9';
+
+test('REQUIRED_PER_HARNESS no longer includes the retired explode-master-plan bundle', () => {
+  assert.ok(!REQUIRED_PER_HARNESS.includes('skills/rad-orchestration/scripts/explode-master-plan.js'),
+    'validator allow-list must not require the retired script');
+});
 
 /** Build a minimal synthetic output tree satisfying all four gates. */
 function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'coder']) {
@@ -22,7 +27,6 @@ function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'code
     }
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '// radorch\n');
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js'), '// pipeline\n');
-    fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/explode-master-plan.js'), '// explode\n');
     // Canonical agents (gate 2). Per-harness filename suffix matches the adapter:
     // claude emits `<name>.md`, copilot variants emit `<name>.agent.md`.
     fs.mkdirSync(path.join(hOut, 'agents'), { recursive: true });

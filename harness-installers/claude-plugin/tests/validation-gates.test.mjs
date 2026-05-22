@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
-import { validatePluginTree } from '../build-scripts/validate.js';
+import { validatePluginTree, REQUIRED_ARTIFACTS } from '../build-scripts/validate.js';
 
 function makeMinimalOutput(version, opts = {}) {
   const root = fs.mkdtempSync(join(os.tmpdir(), 'val-'));
@@ -25,7 +25,6 @@ function makeMinimalOutput(version, opts = {}) {
   fs.mkdirSync(join(out, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
   fs.writeFileSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js'), '// pipeline\n');
-  fs.writeFileSync(join(out, 'skills/rad-orchestration/scripts/explode-master-plan.js'), '// explode\n');
   fs.writeFileSync(join(out, 'package.json'), JSON.stringify({ name: 'x', version, files: ['.claude-plugin/', 'agents/', 'skills/', 'manifests/'] }));
   fs.mkdirSync(join(out, 'manifests'), { recursive: true });
   fs.writeFileSync(join(out, 'manifests', `v${version}.json`), JSON.stringify({ version, files: [] }));
@@ -35,6 +34,11 @@ function makeMinimalOutput(version, opts = {}) {
   fs.writeFileSync(join(out, 'hooks/drift-check.mjs'), '// d\n');
   return { root, out, inst, canonicalAgentsDir: canonical };
 }
+
+test('REQUIRED_ARTIFACTS no longer includes the retired explode-master-plan bundle', () => {
+  assert.ok(!REQUIRED_ARTIFACTS.includes('skills/rad-orchestration/scripts/explode-master-plan.js'),
+    'validator allow-list must not require the retired script');
+});
 
 test('gate 1: missing required artifact aborts', () => {
   const { out, inst, canonicalAgentsDir } = makeMinimalOutput('1.0.0', { namespaced: true });

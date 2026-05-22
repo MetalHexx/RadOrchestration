@@ -10,12 +10,11 @@ import { execSync } from 'node:child_process';
 // happens via an inline `node -e` shim in hooks.json that reads
 // process.env.CLAUDE_PLUGIN_ROOT. The claude-plugin's namespaced-token gate is
 // intentionally DROPPED (AD-10).
-const REQUIRED_ARTIFACTS = [
+export const REQUIRED_ARTIFACTS = [
   '.claude-plugin/plugin.json',
   'package.json',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
-  'skills/rad-orchestration/scripts/explode-master-plan.js',
   'hooks/hooks.json',
   'hooks/bootstrap.mjs',
   'hooks/drift-check.mjs',

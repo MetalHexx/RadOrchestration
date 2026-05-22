@@ -2,12 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const REQUIRED_ARTIFACTS = [
+export const REQUIRED_ARTIFACTS = [
   '.claude-plugin/plugin.json',
   'package.json',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
-  'skills/rad-orchestration/scripts/explode-master-plan.js',
   'hooks/hooks.json',
   'hooks/bootstrap.mjs',
   'hooks/drift-check.mjs',
