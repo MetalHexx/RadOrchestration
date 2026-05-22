@@ -1,5 +1,6 @@
 import fsP from 'node:fs/promises';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { pathExists } from '../../lib/fs-helpers.js';
 import { installPaths, userDataPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
@@ -11,7 +12,7 @@ import { getCliVersion } from '../../lib/package-version.js';
 const pkg = { version: getCliVersion() };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
-export type CheckCategory = 'Environment' | 'Install' | 'Plugin';
+export type CheckCategory = 'Environment' | 'Install' | 'Plugin' | 'Tooling';
 
 export interface CheckResult {
   category: CheckCategory;
@@ -391,6 +392,53 @@ export async function runPluginChecks(opts: {
       status: 'pass',
       detail: lines.join('\n'),
     });
+  }
+  return out;
+}
+
+type ToolingExec = (file: string, args: string[]) => { status: number; stdout: string; stderr: string; error?: NodeJS.ErrnoException };
+
+function defaultToolingExec(file: string, args: string[]) {
+  const r = spawnSync(file, args, { encoding: 'utf8', timeout: 1000, shell: false });
+  return {
+    status: r.status ?? 1,
+    stdout: r.stdout ?? '',
+    stderr: r.stderr ?? '',
+    error: r.error as NodeJS.ErrnoException | undefined,
+  };
+}
+
+export async function runToolingChecks(opts: { exec?: ToolingExec } = {}): Promise<CheckResult[]> {
+  const exec = opts.exec ?? defaultToolingExec;
+  const out: CheckResult[] = [];
+
+  // git probe
+  const gitResult = exec('git', ['--version']);
+  const gitMissing = gitResult.error?.code === 'ENOENT' || gitResult.status !== 0;
+  if (gitMissing) {
+    out.push({ category: 'Tooling', name: 'git', status: 'fail', detail: 'git not on PATH — install git and re-run doctor' });
+  } else {
+    const m = gitResult.stdout.match(/git version (\S+)/);
+    out.push({ category: 'Tooling', name: 'git', status: 'pass', detail: m ? `git ${m[1]}` : 'git present' });
+  }
+
+  // gh binary probe
+  const ghBinary = exec('gh', ['--version']);
+  const ghMissing = ghBinary.error?.code === 'ENOENT' || ghBinary.status !== 0;
+  if (ghMissing) {
+    out.push({ category: 'Tooling', name: 'gh', status: 'fail', detail: 'gh not on PATH — install GitHub CLI and run `gh auth login`' });
+  } else {
+    const ghAuth = exec('gh', ['auth', 'status']);
+    if (ghAuth.status === 0) {
+      out.push({ category: 'Tooling', name: 'gh', status: 'pass', detail: 'gh authenticated' });
+    } else {
+      out.push({
+        category: 'Tooling',
+        name: 'gh',
+        status: 'fail',
+        detail: ghAuth.stderr.trim() || 'gh present but not logged in — run `gh auth login`',
+      });
+    }
   }
   return out;
 }

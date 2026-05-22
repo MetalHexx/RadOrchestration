@@ -1,0 +1,95 @@
+# `cli/` — Contributing Guide
+
+## Purpose
+
+This folder is the `radorch` CLI — a single Node/TypeScript binary that consolidates every user-facing helper script the canonical skills used to ship separately. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
+
+The CLI bundle is built once per harness by `emitCliBundle` in `harness-installers/shared/build-helpers/` and shipped to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`. Skills invoke it via the `${PLUGIN_ROOT}` token, which expands at install time to the harness root.
+
+## How it works
+
+Layered structure:
+
+- `cli/src/bin/radorch.ts` — process entry point. Reads argv, builds the commander program via `buildProgram`, and invokes it.
+- `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `where`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
+- `cli/src/framework/` — framework primitives: `defineCommand`/`runCommand`, the envelope `emit`/`validateEnvelope` surface, the logger, prompter, theme, and exit-code map.
+- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work.
+- `cli/src/lib/` — small, cross-command utilities (paths, install.json shape, fs helpers, yaml).
+- `cli/tests/` — vitest suite. Mirrors the `src/` tree (`tests/commands/<noun>/<name>.test.ts`).
+
+Every subcommand follows the same flow inside `runCommand`: commander parses argv → required-arg wizard fills missing args from stdin (when interactive) → handler runs → handler's return value is wrapped in the standard envelope → envelope is emitted via the single `console.log` site → process exits with the framework-default mapping (or an explicit `exit_code` override on success).
+
+## Coding standards
+
+- **Envelope on stdout is non-negotiable.** Every code path emits exactly one envelope via `framework/output.ts#emit`. No subcommand uses `console.log` directly; no path emits multiple JSON objects; no path emits a flat JSON object outside the envelope. The legacy field shape lives inside `data`.
+- **Default exit-code map.** `ok: true → 0`, `ok: false` with `user_error → 1`, `ok: false` with `system_error → 2`. Only `doctor` overrides via `mapResult` + `exit_code` to express "envelope is `ok: true` but findings exist; exit 1". Do not invent new exit codes for partial-success states — surface partial success through `data` fields.
+- **Three-level help text.** Every noun group declares a one-line `description` on the `program.command(<noun>)` call. Every subcommand declares a present-tense action-verb `description` on its `defineCommand` (under 90 columns, no trailing period unless the description is two sentences). Every `--flag` declares its `description` field in the `ArgSpec` / `FlagSpec` shape — describe what the flag accepts and any defaults, not just restate the flag name. Verify by running the help at all three depths: `radorch --help`, `radorch <noun> --help`, `radorch <noun> <subcommand> --help`.
+- **Test-injectable shell-out.** Subcommands that shell out (e.g., `radorch git commit` runs `git`; `radorch git pr` runs `gh`) export a pure core function (`gitCommit({ exec })`, `ghPr({ exec })`) that accepts an injectable `exec` parameter defaulting to `execFileSync`. The `defineCommand` handler is a thin shell around the core function. Unit tests pass a stub `exec` and never depend on the host having the binary installed.
+- **No new runtime dependencies without a strong reason.** The CLI is bundled into `radorch.mjs` by `esbuild`; every new entry in `cli/package.json#dependencies` grows the bundle. Prefer `node:*` builtins (`child_process`, `fs`, `path`, etc.) over npm packages.
+- **No test-only methods in production code.** Test utilities live under `cli/tests/`. Dependency injection (the `exec` parameter pattern above) is how the test/production gap stays honest; do not add `if (process.env.NODE_ENV === 'test')` branches to skip work.
+
+## Seams to other modules
+
+- **`harness-files/skills/<name>/SKILL.md`** — canonical skill files invoke subcommands via `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" <noun> <subcommand> ...`. The `${PLUGIN_ROOT}` token expands at install time to the harness root (`~/.claude/` or `~/.copilot/`). Always double-quote `${PLUGIN_ROOT}` at the call site to handle paths with spaces. A regression guard at `harness-files/tests/test-skill-call-form.test.mjs` enforces the canonical call form on every shipped `SKILL.md`.
+- **`harness-installers/shared/build-helpers/emit-cli-bundle.js`** — bundles `cli/src/` into `radorch.mjs` via esbuild. Runs once per harness during the standard installer build (and again during each plugin build).
+- **`harness-installers/standard/manifests/<harness>/v1.0.0-alpha.N.json`** — the standard installer's checked-in manifest. After any addition or deletion under `cli/src/`, the manifest must be regenerated via `npm run build` in `harness-installers/standard/` so the bundled `radorch.mjs` sha256 is current. Manifests are regenerated in place at the current alpha version; no version bump per iteration.
+- **`harness-files/skills/rad-orchestration/scripts/pipeline.js`** — the only sanctioned cross-package consumer is `commands/gate/`, which lazy-imports `pipeline.js`'s `processEvent` to drive plan/final approval. New subcommands should not reach into the pipeline runtime unless they're approving or progressing pipeline state.
+
+## Adding a new subcommand — worked walkthrough using `radorch git commit`
+
+1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`. Reuse before you invent.
+
+2. **Author the core function.** Create `cli/src/commands/<noun>/<name>.ts`. Export a pure function with an injectable `exec` parameter:
+    ```ts
+    export function gitCommit(opts: { worktreePath: string; message: string; exec?: Exec }): GitCommitResult { ... }
+    ```
+   The core function returns the legacy field shape; the framework wraps it in `data` automatically. No `console.log` inside the core function.
+
+3. **Author the `defineCommand` shell.** In the same file, export a thin commander wrapper:
+    ```ts
+    export const gitCommitCommand = defineCommand({
+      name: 'git-commit',
+      description: 'Commit changes in the worktree and push to origin',
+      args: {
+        'worktree-path': { description: 'Absolute path to the worktree to commit from', required: true },
+        message: { description: 'Commit message body (used as the -m argument to git commit)', required: true },
+      },
+      flags: {},
+      handler: async ({ args }) => gitCommit({ worktreePath: args['worktree-path']!, message: args.message! }),
+    });
+    ```
+   Description style: present-tense action verb, under 90 columns, no trailing period. Each arg/flag description names what the flag accepts and any defaults.
+
+4. **Re-export from the noun index.** Add `cli/src/commands/<noun>/index.ts`:
+    ```ts
+    export { gitCommitCommand, gitCommit } from './commit.js';
+    ```
+
+5. **Wire into the commander program.** In `cli/src/cli.ts`, import the command and register it under the noun group (mirror the existing `ui` block exactly):
+    ```ts
+    const git = program.command('git').description('Source control operations');
+    git.command('commit').description(gitCommitCommand.description).allowUnknownOption().allowExcessArguments(true).action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(gitCommitCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+    ```
+
+6. **Add a tooling check (only if introducing a new external runtime dependency).** If the subcommand shells out to a binary the doctor's `Tooling` category does not already probe, extend `cli/src/commands/doctor/checks.ts#runToolingChecks` with a probe (presence + any version/auth precheck). Use the existing injectable `exec` pattern so the unit test is deterministic. Existing probes: `git`, `gh`.
+
+7. **Test the core function.** Create `cli/tests/commands/<noun>/<name>.test.ts`. Use vitest's `vi.fn()` to stub `exec`. Cover every documented outcome of the legacy script (or the analogous behaviour for a new subcommand). Do not spawn real child processes in unit tests.
+
+8. **Test the help shape.** Extend `cli/tests/bin/help.test.ts` with assertions that the new subcommand surfaces at all three help depths. The test compiles via `npx tsc` and runs `node dist/cli/src/bin/radorch.js --help` (and the deeper levels).
+
+9. **Rewrite the calling skill.** If a SKILL.md was the previous caller, rewrite its invocation to:
+    ```
+    node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" <noun> <subcommand> ...
+    ```
+   Read result fields from inside the envelope's `data` block (e.g., `data.committed`, `data.pr_url`). The regression guard at `harness-files/tests/test-skill-call-form.test.mjs` catches malformed rewrites (wrong token, wrong path, missing/malformed subcommand chain, unquoted `${PLUGIN_ROOT}`).
+
+10. **Regenerate manifests.** After any file added or deleted under `cli/src/` or `harness-files/skills/`, run `cd harness-installers/standard && npm run build` to refresh the three checked-in `v1.0.0-alpha.N.json` manifests in place. Commit the manifest diff alongside the code change in the same PR (no coexistence window — the manifest snapshot must reflect the source tree at every commit on `main`).
+
+## Further reading
+
+- `harness-files/AGENTS.md` — the canonical-skills source-of-truth folder; documents the `${PLUGIN_ROOT}` and `${SKILLS_ROOT}` token contracts.
+- `harness-installers/AGENTS.md` — installer-variant organization; covers how `emitCliBundle` ships the CLI bundle into each harness.
+- `harness-installers/standard/AGENTS.md` — the standard installer's build pipeline, where the manifest regeneration step lives.

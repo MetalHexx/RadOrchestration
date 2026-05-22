@@ -77,7 +77,11 @@ describe('radorch doctor', () => {
     const root = path.join(tmp, '.radorch');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
-    expect(result.all_passed).toBe(true); // warns allowed; only fails block
+    // Scope to the three categories named in the test title; Tooling depends on
+    // host git/gh state (CI runners are not `gh auth login`-ed) and has its
+    // own hermetic coverage in doctor.tooling.test.ts.
+    const scoped = result.checks.filter((c) => c.category !== 'Tooling');
+    expect(scoped.every((c) => c.status !== 'fail')).toBe(true); // warns allowed; only fails block
     const categories = [...new Set(result.checks.map((c) => c.category))];
     expect(categories).not.toContain('Registry');
     expect(categories).toContain('Environment');
@@ -92,6 +96,24 @@ describe('radorch doctor', () => {
     for (const c of result.checks) {
       expect(['pass', 'warn', 'fail']).toContain(c.status);
     }
+  });
+
+  it('includes Tooling category after Environment, Install, Plugin', async () => {
+    const root = path.join(tmp, '.radorch');
+    await seedRadorchDir(root);
+    const result = await runDoctor({ env: process.env });
+    const categoriesInOrder = result.checks.map((c) => c.category);
+    const firstToolingIdx = categoriesInOrder.indexOf('Tooling');
+    const lastPluginIdx = categoriesInOrder.lastIndexOf('Plugin');
+    expect(firstToolingIdx).toBeGreaterThan(-1);
+    expect(firstToolingIdx).toBeGreaterThan(lastPluginIdx);
+  });
+  it('renderDoctorForTest emits a Tooling heading once when Tooling checks are present', async () => {
+    const root = path.join(tmp, '.radorch');
+    await seedRadorchDir(root);
+    const result = await runDoctor({ env: process.env });
+    const rendered = renderDoctorForTest(result);
+    expect(rendered.match(/\nTooling\n/g)?.length).toBe(1);
   });
 });
 
