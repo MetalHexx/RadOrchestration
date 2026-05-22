@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
@@ -16,7 +17,10 @@ function walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(abs);
-    else if (entry.isFile() && entry.name === 'SKILL.md') checkSkill(abs);
+    else if (entry.isFile()) {
+      if (entry.name === 'SKILL.md') checkSkill(abs);
+      else if (abs.includes(path.sep + 'references' + path.sep) && entry.name.endsWith('.md')) checkSkill(abs);
+    }
   }
 }
 function checkSkill(file) {
@@ -41,3 +45,37 @@ if (offenders.length > 0) {
   assert.fail(`Malformed radorch call sites:\n${msg}`);
 }
 console.log('skill call-form assertions passed');
+
+// FR-12 fixture: a references/*.md with a malformed invocation must be caught.
+function walkFixture(root) {
+  const offendersLocal = [];
+  function rec(dir) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) rec(abs);
+      else if (entry.isFile() && (entry.name === 'SKILL.md' || (abs.includes(path.sep + 'references' + path.sep) && entry.name.endsWith('.md')))) {
+        const text = readFileSync(abs, 'utf8');
+        text.split('\n').forEach((line, i) => {
+          if (!CANDIDATE.test(line)) return;
+          if (CANONICAL.test(line)) return;
+          offendersLocal.push({ file: abs, line: i + 1, content: line.trim() });
+        });
+      }
+    }
+  }
+  rec(root);
+  return offendersLocal;
+}
+
+const tmp = mkdtempSync(path.join(tmpdir(), 'callform-'));
+mkdirSync(path.join(tmp, 'skills', 'demo', 'references'), { recursive: true });
+writeFileSync(path.join(tmp, 'skills', 'demo', 'SKILL.md'), '# demo\n', 'utf8');
+writeFileSync(
+  path.join(tmp, 'skills', 'demo', 'references', 'workflow.md'),
+  'Run this:\nnode ${SKILLS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs project context\n',
+  'utf8',
+);
+const caught = walkFixture(tmp);
+assert.ok(caught.length === 1, `FR-12: expected 1 offender in references fixture, got ${caught.length}`);
+rmSync(tmp, { recursive: true, force: true });
+console.log('reference-walker fixture assertion passed');
