@@ -9,11 +9,20 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "outDir": "./dist",
-    "rootDir": ".",
+    // rootDir broadened to the repo root so context-enrichment.ts can import
+    // the shared skill-manifest module living under cli/src/lib/. This package
+    // is `noEmit` for typecheck (esbuild owns the actual bundle), so a wider
+    // rootDir has no impact on emit layout.
+    "rootDir": "../../../../..",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "composite": false
   },
-  "include": ["lib/**/*.ts", "tests/**/*.ts", "*.ts"]
+  "include": [
+    "lib/**/*.ts",
+    "tests/**/*.ts",
+    "*.ts",
+    "../../../../../cli/src/lib/skill-manifest.ts"
+  ]
 }

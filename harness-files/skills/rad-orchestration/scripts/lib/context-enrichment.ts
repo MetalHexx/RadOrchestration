@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { buildSkillManifest } from '../../../../../cli/src/lib/skill-manifest.js';
 import type {
   PipelineState,
