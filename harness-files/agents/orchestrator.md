@@ -31,23 +31,19 @@ On `code_review_completed` with a raw `verdict: changes_requested` (task scope) 
 
 ## Planner Spawn Manifest
 
-Before spawning the **planner** agent for either `spawn_requirements` or `spawn_master_plan`, run the manifest script and inline its output into the planner's spawn prompt:
+Before spawning the **planner** agent for either `spawn_requirements` or `spawn_master_plan`, read the pre-formatted catalog block from the planner-spawn event result's `repository_skills_block` field. The pipeline computes the block once per spawn and surfaces it on the event result.
 
-```bash
-node {orchRoot}/skills/rad-orchestration/scripts/list-repo-skills.mjs
-```
-
-Capture stdout (a JSON array). If the array is `[]`, omit the manifest section from the spawn prompt entirely. Otherwise, append the following block to the end of the spawn prompt verbatim:
+If `repository_skills_block` is the empty string, omit the manifest section from the spawn prompt entirely. Otherwise, append the field's value to the end of the spawn prompt verbatim — it already carries the contractual heading and orientation-sentence wrap:
 
 ```markdown
 ## Repository Skills Available
 
-<inline JSON array exactly as printed>
+<inline JSON array exactly as the pipeline formatted it>
 
 Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any `SKILL.md` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.
 ```
 
-The heading string is contractual — `## Repository Skills Available`, no alternative phrasings. Manifest invocation occurs on every planner spawn; do not cache the output between spawns. Wired only for the planner — coder, reviewer, source-control, and brainstormer spawns are unchanged.
+The heading string is contractual — `## Repository Skills Available`, no alternative phrasings. Wired only for the planner — coder, reviewer, source-control, and brainstormer spawns are unchanged.
 
 ## Planner Spawn — Plan Size Limits
 
