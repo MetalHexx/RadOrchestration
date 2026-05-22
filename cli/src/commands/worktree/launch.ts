@@ -111,43 +111,44 @@ export function worktreeLaunch(opts: WorktreeLaunchOptions): WorktreeLaunchResul
   // terminal: no inner args; just cd to worktree
 
   try {
+    const cdPart = `Set-Location ${quoteSingle(opts.worktreePath)}`;
+    const shellQuotedAgent = agentArgs.length > 0
+      ? `${agentArgs[0]} ${agentArgs.slice(1).map(quoteSingle).join(' ')}`
+      : '';
+
     if (platform === 'win32') {
-      // Encode only the Set-Location setup; agent args are passed as literal elements
-      // so callers and tests can introspect them without base64 decoding.
-      const psSetup = `Set-Location ${quoteSingle(opts.worktreePath)}`;
-      const encoded = Buffer.from(psSetup, 'utf16le').toString('base64');
-      const wtArgs: string[] = [
-        '--startingDirectory', opts.worktreePath,
-        'powershell', '-NoExit', '-EncodedCommand', encoded,
-        ...agentArgs,
-      ];
-      const child = spawn('wt', wtArgs, { detached: true, stdio: 'ignore' });
+      const psCmd = shellQuotedAgent
+        ? `${cdPart}; ${shellQuotedAgent}`
+        : cdPart;
+      const encoded = Buffer.from(psCmd, 'utf16le').toString('base64');
+      const child = spawn(
+        'wt',
+        ['--startingDirectory', opts.worktreePath, 'powershell', '-NoExit', '-EncodedCommand', encoded],
+        { detached: true, stdio: 'ignore' },
+      );
       child.unref();
     } else if (platform === 'darwin') {
-      // Build the shell command for the AppleScript; agent args are also appended
-      // as separate elements so they appear in the raw args array.
-      const cdPart = `cd ${quoteSingle(opts.worktreePath)}`;
-      const shellParts = agentArgs.length > 0
-        ? `${cdPart} && ${agentArgs[0]} ${agentArgs.slice(1).map(quoteSingle).join(' ')}`
-        : cdPart;
-      const escaped = shellParts.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-      const osaArgs: string[] = [
-        '-e', `tell application "Terminal" to do script "${escaped}"`,
-        ...agentArgs,
-      ];
-      const child = spawn('osascript', osaArgs, { detached: true, stdio: 'ignore' });
+      const bashCd = `cd ${quoteSingle(opts.worktreePath)}`;
+      const shell = shellQuotedAgent
+        ? `${bashCd} && ${shellQuotedAgent}`
+        : bashCd;
+      const escaped = shell.replace(/"/g, '\\"');
+      const child = spawn(
+        'osascript',
+        ['-e', `tell application "Terminal" to do script "${escaped}"`],
+        { detached: true, stdio: 'ignore' },
+      );
       child.unref();
     } else {
-      // linux: gnome-terminal with bash -c; agent args also passed as literal elements.
-      const cdPart = `cd ${quoteSingle(opts.worktreePath)}`;
-      const shellCmd = agentArgs.length > 0
-        ? `${cdPart} && ${agentArgs[0]} ${agentArgs.slice(1).map(quoteSingle).join(' ')}; exec bash`
-        : `${cdPart}; exec bash`;
-      const gnomeArgs: string[] = [
-        '--', 'bash', '-c', shellCmd,
-        ...agentArgs,
-      ];
-      const child = spawn('gnome-terminal', gnomeArgs, { detached: true, stdio: 'ignore' });
+      const bashCd = `cd ${quoteSingle(opts.worktreePath)}`;
+      const shell = shellQuotedAgent
+        ? `${bashCd} && ${shellQuotedAgent}; exec bash`
+        : `${bashCd}; exec bash`;
+      const child = spawn(
+        'gnome-terminal',
+        ['--', 'bash', '-c', shell],
+        { detached: true, stdio: 'ignore' },
+      );
       child.unref();
     }
   } catch (e) {

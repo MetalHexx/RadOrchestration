@@ -65,31 +65,53 @@ describe('worktreeLaunch dispatch matrix', () => {
     return { spawn, result };
   }
 
+  function deliveredPayload(spawnFn: ReturnType<typeof vi.fn>, platform: NodeJS.Platform): string {
+    const call = spawnFn.mock.calls[0]!;
+    const args = call[1] as string[];
+    if (platform === 'win32') {
+      const idx = args.indexOf('-EncodedCommand');
+      if (idx === -1) return '';
+      const encoded = args[idx + 1] ?? '';
+      return Buffer.from(encoded, 'base64').toString('utf16le');
+    }
+    if (platform === 'darwin') {
+      const idx = args.indexOf('-e');
+      return args[idx + 1] ?? '';
+    }
+    // linux: gnome-terminal -- bash -c "<shell>"
+    const dashDash = args.indexOf('--');
+    const cIdx = args.indexOf('-c', dashDash);
+    return args[cIdx + 1] ?? '';
+  }
+
   it.each(['win32', 'darwin', 'linux'] as const)('launches claude on %s with internally-resolved --add-dir', (platform) => {
     const { spawn } = runCase('claude', platform);
-    const allArgs = spawn.mock.calls.flatMap((c) => (c[1] as string[]) ?? []).join(' ');
-    expect(allArgs).toContain(addDir);
-    expect(allArgs).toContain('--permission-mode');
-    expect(allArgs).toContain('auto');
+    const payload = deliveredPayload(spawn, platform);
+    expect(payload).toContain('claude');
+    expect(payload).toContain(addDir);
+    expect(payload).toContain('--permission-mode');
+    expect(payload).toContain('auto');
   });
 
   it.each(['win32', 'darwin', 'linux'] as const)('launches copilot on %s with internally-resolved --add-dir', (platform) => {
     const { spawn } = runCase('copilot', platform);
-    const allArgs = spawn.mock.calls.flatMap((c) => (c[1] as string[]) ?? []).join(' ');
-    expect(allArgs).toContain(addDir);
+    const payload = deliveredPayload(spawn, platform);
+    expect(payload).toContain('copilot');
+    expect(payload).toContain(addDir);
   });
 
   it.each(['win32', 'darwin', 'linux'] as const)('launches vscode on %s without --prompt or --add-dir', (platform) => {
     const { spawn } = runCase('vscode', platform);
-    const flatArgs = spawn.mock.calls.flatMap((c) => (c[1] as string[]) ?? []).join(' ');
-    expect(flatArgs).not.toContain('--prompt');
-    expect(flatArgs).not.toContain(addDir);
+    const payload = deliveredPayload(spawn, platform);
+    expect(payload).toContain('code');
+    expect(payload).not.toContain('--prompt');
+    expect(payload).not.toContain(addDir);
   });
 
   it.each(['win32', 'darwin', 'linux'] as const)('launches terminal on %s with cd to worktree', (platform) => {
     const { spawn } = runCase('terminal', platform);
-    const allArgs = spawn.mock.calls.flatMap((c) => (c[1] as string[]) ?? []).join(' ');
-    expect(allArgs).toMatch(/wt|x/);
+    const payload = deliveredPayload(spawn, platform);
+    expect(payload.toLowerCase()).toContain('wt/x'.toLowerCase());
   });
 
   it('on win32 claude uses wt + EncodedCommand', () => {
