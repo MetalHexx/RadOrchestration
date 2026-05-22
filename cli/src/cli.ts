@@ -5,6 +5,7 @@ import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/in
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { projectContextCommand, projectFindCommand } from './commands/project/index.js';
 import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
+import { skillListCommand } from './commands/skill/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
 export function buildProgram(version: string): Command {
@@ -123,6 +124,18 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(worktreeLaunchCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const skill = program.command('skill').description('Repository skill catalog operations');
+  skill
+    .command('list')
+    .description(skillListCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(skillListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   // Gate subcommands lazy-load their modules so the pipeline-lib import chain
