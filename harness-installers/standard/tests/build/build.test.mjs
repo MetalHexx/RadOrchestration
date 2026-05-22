@@ -79,7 +79,6 @@ function makeFixture() {
   const pipeSrc = path.join(root, 'harness-files/skills/rad-orchestration/scripts');
   fs.mkdirSync(pipeSrc, { recursive: true });
   fs.writeFileSync(path.join(pipeSrc, 'pipeline.ts'), 'export const main = () => 1;\n');
-  fs.writeFileSync(path.join(pipeSrc, 'explode-master-plan.ts'), 'export const main = () => 2;\n');
   // A stray .ts source the prune-pass must strip from the output.
   fs.writeFileSync(path.join(pipeSrc, 'stray.ts'), '// stray\n');
 
@@ -147,8 +146,6 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
         `${h}: bundled CLI`);
       assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js')),
         `${h}: pipeline bundle`);
-      assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/explode-master-plan.js')),
-        `${h}: explode-master-plan bundle`);
       // v5 entries retire — neither is shipped (FR-22).
       assert.ok(!fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/migrate-to-v5.js')),
         `${h}: no migrate-to-v5.js`);

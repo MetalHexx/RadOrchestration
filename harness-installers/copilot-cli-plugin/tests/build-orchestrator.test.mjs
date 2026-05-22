@@ -35,8 +35,6 @@ function makeFixtureRoot() {
   fs.mkdirSync(join(root, 'harness-files/skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/pipeline.ts'),
     'export const main = () => 1;\n');
-  fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/explode-master-plan.ts'),
-    'export const main = () => 2;\n');
 
   // The installer package itself — source-side plugin.json, hooks/, lib/install/, manifests/.
   const installerDir = join(root, 'harness-installers/copilot-cli-plugin');
@@ -88,7 +86,6 @@ test('runBuild produces a full output/ tree with adapter content, runtime-config
     assert.ok(fs.existsSync(join(out, 'templates/medium.yml')));
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle (FR-31)');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'pipeline bundle (FR-38)');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/explode-master-plan.js')));
     assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')));
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'bundled bootstrap');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'verbatim drift-check');

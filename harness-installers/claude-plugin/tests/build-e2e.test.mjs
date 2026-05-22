@@ -24,7 +24,6 @@ test('end-to-end build produces a valid plugin payload', { skip: process.env.SKI
     'skills/rad-orchestration/SKILL.md',
     'skills/rad-orchestration/scripts/radorch.mjs',
     'skills/rad-orchestration/scripts/pipeline.js',
-    'skills/rad-orchestration/scripts/explode-master-plan.js',
     'hooks/hooks.json',
     'hooks/bootstrap.mjs',
     'hooks/drift-check.mjs',

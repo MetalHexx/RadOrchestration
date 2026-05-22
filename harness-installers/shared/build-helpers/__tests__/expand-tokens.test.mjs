@@ -50,7 +50,7 @@ test('expandTokens substitutes destination tokens and applies agent-namespacing 
 
 test('expandTokens preserves the POSIX file mode of rewritten text files (no exec-bit drop)', async () => {
   // Regression: in the plugin build, emit-cli-bundle and emit-pipeline-bundle
-  // chmod radorch.mjs / pipeline.js / explode-master-plan.js to 0o755 so they
+  // chmod radorch.mjs / pipeline.js to 0o755 so they
   // run directly on POSIX. expand-tokens later rewrites those files via
   // writeFileSync; without explicit mode preservation the exec bit is silently
   // dropped to the default 0o644.

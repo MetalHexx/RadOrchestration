@@ -93,7 +93,6 @@ function makeFixture(root) {
   const pipeSrc = path.join(root, 'harness-files/skills/rad-orchestration/scripts');
   fs.mkdirSync(pipeSrc, { recursive: true });
   fs.writeFileSync(path.join(pipeSrc, 'pipeline.ts'), 'export const main = () => 1;\n');
-  fs.writeFileSync(path.join(pipeSrc, 'explode-master-plan.ts'), 'export const main = () => 2;\n');
 
   // harness-files/agents/ — canonical agents listing for the validate step.
   const canonicalAgentsDir = path.join(root, 'harness-files/agents');

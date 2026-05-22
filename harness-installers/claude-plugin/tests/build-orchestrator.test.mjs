@@ -31,7 +31,6 @@ function makeUpstream() {
   // pipeline source TS
   fs.mkdirSync(join(root, 'harness-files/skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/pipeline.ts'), 'export const main = () => 1;\n');
-  fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/explode-master-plan.ts'), 'export const main = () => 2;\n');
   // ui/ synthetic
   fs.mkdirSync(join(root, 'ui/.next/standalone'), { recursive: true });
   fs.mkdirSync(join(root, 'ui/.next/static'), { recursive: true });
@@ -65,7 +64,6 @@ test('runBuild emits the full plugin payload to output/ in correct shape', async
     assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'orchestration.yml staged at top level');
     assert.ok(fs.existsSync(join(out, 'templates/medium.yml')), 'templates staged');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'pipeline bundle');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/explode-master-plan.js')), 'explode-master-plan bundle');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'hook bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'drift-check verbatim');
