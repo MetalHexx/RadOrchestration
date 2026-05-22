@@ -39,4 +39,43 @@ describe('skillList CLI path (runCommand argv → handler args)', () => {
     log.mockRestore();
     exitSpy.mockRestore();
   });
+
+  it('warn channel routes through ctx.logger.warn, not process.stderr.write', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-warn-'));
+    // Create a SKILL.md with malformed frontmatter (missing closing ---)
+    writeSkill(path.join(root, 's/malformed'), '---\nname: test\ndescription: test\n');
+
+    const loggerWarnSpy = vi.fn(async () => undefined);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    try {
+      const mockCtx = {
+        env: process.env,
+        stderr: process.stderr,
+        logger: {
+          error: vi.fn(async () => undefined),
+          warn: loggerWarnSpy,
+          info: vi.fn(async () => undefined),
+          debug: vi.fn(async () => undefined),
+          flush: vi.fn(async () => undefined),
+        },
+        prompter: {},
+        theme: {},
+        ux: { isTTY: false, nonInteractive: true, noColor: false, json: false },
+      };
+
+      const handler = skillListCommand.handler as unknown as (opts: { args: { 'repo-root': string }; ctx: typeof mockCtx }) => Promise<unknown>;
+      await handler({ args: { 'repo-root': root }, ctx: mockCtx });
+
+      expect(loggerWarnSpy).toHaveBeenCalled();
+      const call = loggerWarnSpy.mock.calls[0];
+      expect(call[0]).toBe('skill_list_skip');
+      expect(typeof call[1]?.message).toBe('string');
+      expect(call[1]?.message).toMatch(/malformed|frontmatter not terminated/);
+
+      expect(stderrSpy).not.toHaveBeenCalled();
+    } finally {
+      stderrSpy.mockRestore();
+    }
+  });
 });

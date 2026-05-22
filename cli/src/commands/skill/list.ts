@@ -1,5 +1,4 @@
 import { defineCommand } from '../../framework/command.js';
-import { UserError } from '../../framework/errors.js';
 import { buildSkillManifest, type SkillEntry } from '../../lib/skill-manifest.js';
 import type { CommandContext } from '../../framework/context.js';
 
@@ -9,7 +8,7 @@ export function skillList(opts: { repoRoot: string }): SkillListResult {
   return { skills: buildSkillManifest({ repoRoot: opts.repoRoot }) };
 }
 
-interface Args { 'repo-root'?: string }
+interface Args { 'repo-root': string }
 
 export const skillListCommand = defineCommand({
   name: 'skill-list',
@@ -21,9 +20,9 @@ export const skillListCommand = defineCommand({
     },
   },
   flags: {},
-  handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
-    const root = args['repo-root'];
-    if (!root) throw new UserError('--repo-root is required');
-    return skillList({ repoRoot: root });
+  handler: async ({ args, ctx }: { args: Args; ctx: CommandContext }) => {
+    const warn = (msg: string) => ctx.logger.warn('skill_list_skip', { message: msg });
+    return { skills: buildSkillManifest({ repoRoot: args['repo-root'], warn }) };
   },
 });
+
