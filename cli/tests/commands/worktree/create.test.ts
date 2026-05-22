@@ -134,4 +134,59 @@ describe('worktreeCreateCommand.mapResult — three-way exit code', () => {
   it('exits 2 on !create', () => {
     expect(mr({ created: false, pushed: false, errorType: 'already_exists_path' } as never).exit_code).toBe(2);
   });
+
+  // Regression guard for SCRIPT-FOLD-2 smoke-test bug: the failure envelope used to
+  // carry both `data` and `error`, which the framework validator rejects as
+  // "failure envelope must not carry data". Callers got a generic system_error
+  // instead of the classifier's `errorType`. The fix drops `data` and lifts
+  // `errorType` (plus enough structured context to identify the worktree) onto
+  // the `error` object so programmatic callers can still discriminate.
+  describe('failure envelope shape (data XOR error)', () => {
+    const baseFailure = {
+      created: false,
+      worktreePath: '/r-wt/x',
+      branch: 'feat/x',
+      baseBranch: 'origin/main',
+      pushed: false,
+      remoteUrl: '',
+      compareUrl: '',
+      error: 'fatal: \'/r-wt/x\' already exists',
+    } as const;
+
+    it('omits data on failure (passes framework data-XOR-error invariant)', () => {
+      const env = mr({ ...baseFailure, errorType: 'already_exists_path' } as never) as Record<string, unknown>;
+      expect(env.ok).toBe(false);
+      expect('data' in env).toBe(false);
+    });
+
+    it('surfaces errorType=already_exists_path on the error object', () => {
+      const env = mr({ ...baseFailure, errorType: 'already_exists_path' } as never);
+      const err = env.error as Record<string, unknown> | undefined;
+      expect(err).toBeDefined();
+      expect(err!['type']).toBe('user_error');
+      expect(err!['errorType']).toBe('already_exists_path');
+      expect(err!['worktreePath']).toBe('/r-wt/x');
+      expect(err!['branch']).toBe('feat/x');
+    });
+
+    it('surfaces errorType=already_exists_branch on the error object', () => {
+      const env = mr({
+        ...baseFailure,
+        error: 'fatal: a branch named \'feat/x\' already exists',
+        errorType: 'already_exists_branch',
+      } as never);
+      const err = env.error as Record<string, unknown> | undefined;
+      expect(err!['errorType']).toBe('already_exists_branch');
+    });
+
+    it('surfaces errorType=invalid_reference on the error object', () => {
+      const env = mr({
+        ...baseFailure,
+        error: 'fatal: invalid reference: bogus-ref',
+        errorType: 'invalid_reference',
+      } as never);
+      const err = env.error as Record<string, unknown> | undefined;
+      expect(err!['errorType']).toBe('invalid_reference');
+    });
+  });
 });

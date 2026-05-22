@@ -96,7 +96,20 @@ export const worktreeCreateCommand = defineCommand({
   },
   mapResult: (r: WorktreeCreateResult) => {
     if (!r.created) {
-      return { ok: false, data: r, error: { type: 'user_error', message: r.error ?? 'worktree creation failed' }, exit_code: 2 };
+      // Framework invariant: failure envelopes must not carry `data` (data XOR error).
+      // We lift the classifier's `errorType` plus enough structured context onto the
+      // `error` object so programmatic callers can still discriminate the failure
+      // mode (already_exists_path, already_exists_branch, invalid_reference, unknown)
+      // and identify which worktree/branch the failure refers to.
+      const error = {
+        type: 'user_error' as const,
+        message: r.error ?? 'worktree creation failed',
+        errorType: r.errorType,
+        worktreePath: r.worktreePath,
+        branch: r.branch,
+        baseBranch: r.baseBranch,
+      };
+      return { ok: false, error, exit_code: 2 } as { ok: false; error: { type: 'user_error'; message: string }; exit_code: number };
     }
     return { ok: true, data: r, exit_code: r.pushed ? 0 : 1 };
   },
