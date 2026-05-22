@@ -128,6 +128,15 @@ The `${SKILLS_ROOT}` token references the skills folder in canonical content (ag
 
 **Usage:** Use `${SKILLS_ROOT}` in skill or agent body text whenever you reference another skill's files. Never hardcode `.claude/` or `.copilot/`.
 
+### Present-Tense Authoring
+
+Skill files, reference docs, and module-level `AGENTS.md` files are read by stateless agents who have no recollection of prior iterations. When updating any markdown under `harness-files/` (or sibling guides like `cli/AGENTS.md`), describe the current state directly — do not anchor to deleted scripts, retired field shapes, or past versions:
+
+- **Avoid:** `(replaces the legacy <old-script>)`, `now done via …`, `no longer reads …`, `previously called …`, `the old <thing>`, `after this refactor`, footnotes naming deleted files.
+- **Prefer:** the present-tense description of what the current thing does and where it lives.
+
+A renamed or refactored construct should be documented as if it were always its current form. Iteration history belongs in commit messages and PR descriptions, not in canonical skill content.
+
 ## Harness Vocabulary
 
 Harness-specific vocabulary (tool names, model aliases, frontmatter fields) lives in **per-harness YAML files only**. The body text stays harness-neutral.

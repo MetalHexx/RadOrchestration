@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This folder is the `radorch` CLI — a single Node/TypeScript binary that consolidates every user-facing helper script the canonical skills used to ship separately. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
+This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
 
 The CLI bundle is built once per harness by `emitCliBundle` in `harness-installers/shared/build-helpers/` and shipped to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`. Skills invoke it via the `${PLUGIN_ROOT}` token, which expands at install time to the harness root.
 
@@ -13,7 +13,7 @@ Layered structure:
 - `cli/src/bin/radorch.ts` — process entry point. Reads argv, builds the commander program via `buildProgram`, and invokes it.
 - `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `where`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
 - `cli/src/framework/` — framework primitives: `defineCommand`/`runCommand`, the envelope `emit`/`validateEnvelope` surface, the logger, prompter, theme, and exit-code map.
-- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work.
+- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, plus the top-level `doctor` and `where`.
 - `cli/src/lib/` — small, cross-command utilities (paths, install.json shape, fs helpers, yaml).
 - `cli/tests/` — vitest suite. Mirrors the `src/` tree (`tests/commands/<noun>/<name>.test.ts`).
 
@@ -21,12 +21,16 @@ Every subcommand follows the same flow inside `runCommand`: commander parses arg
 
 ## Coding standards
 
-- **Envelope on stdout is non-negotiable.** Every code path emits exactly one envelope via `framework/output.ts#emit`. No subcommand uses `console.log` directly; no path emits multiple JSON objects; no path emits a flat JSON object outside the envelope. The legacy field shape lives inside `data`.
+- **Envelope on stdout is non-negotiable.** Every code path emits exactly one envelope via `framework/output.ts#emit`. No subcommand uses `console.log` directly; no path emits multiple JSON objects; no path emits a flat JSON object outside the envelope. The response payload lives inside `data`.
 - **Default exit-code map.** `ok: true → 0`, `ok: false` with `user_error → 1`, `ok: false` with `system_error → 2`. Only `doctor` overrides via `mapResult` + `exit_code` to express "envelope is `ok: true` but findings exist; exit 1". Do not invent new exit codes for partial-success states — surface partial success through `data` fields.
 - **Three-level help text.** Every noun group declares a one-line `description` on the `program.command(<noun>)` call. Every subcommand declares a present-tense action-verb `description` on its `defineCommand` (under 90 columns, no trailing period unless the description is two sentences). Every `--flag` declares its `description` field in the `ArgSpec` / `FlagSpec` shape — describe what the flag accepts and any defaults, not just restate the flag name. Verify by running the help at all three depths: `radorch --help`, `radorch <noun> --help`, `radorch <noun> <subcommand> --help`.
 - **Test-injectable shell-out.** Subcommands that shell out (e.g., `radorch git commit` runs `git`; `radorch git pr` runs `gh`) export a pure core function (`gitCommit({ exec })`, `ghPr({ exec })`) that accepts an injectable `exec` parameter defaulting to `execFileSync`. The `defineCommand` handler is a thin shell around the core function. Unit tests pass a stub `exec` and never depend on the host having the binary installed.
 - **No new runtime dependencies without a strong reason.** The CLI is bundled into `radorch.mjs` by `esbuild`; every new entry in `cli/package.json#dependencies` grows the bundle. Prefer `node:*` builtins (`child_process`, `fs`, `path`, etc.) over npm packages.
 - **No test-only methods in production code.** Test utilities live under `cli/tests/`. Dependency injection (the `exec` parameter pattern above) is how the test/production gap stays honest; do not add `if (process.env.NODE_ENV === 'test')` branches to skip work.
+
+### Per-agent flag validation (worktree launch pattern)
+
+When a subcommand's flag matrix depends on a discriminant flag value (e.g., `worktree launch --agent` selects which of `--prompt` and `--permission-mode` apply), validate compatibility synchronously in the handler before any side-effecting work. Export the validator as a pure function so it is independently unit-testable, returning either `{ ok: true, ...normalized fields }` or `{ ok: false, error }`. The handler invokes the validator first; on rejection it surfaces the standard envelope with `error.type` of `user_error` and a message naming the offending flag and the discriminant value that caused the conflict. Worked example: `validateLaunchFlags({ agent, prompt, permissionMode })` in `cli/src/commands/worktree/launch.ts`.
 
 ## Seams to other modules
 
@@ -37,13 +41,13 @@ Every subcommand follows the same flow inside `runCommand`: commander parses arg
 
 ## Adding a new subcommand — worked walkthrough using `radorch git commit`
 
-1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`. Reuse before you invent.
+1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`. Reuse before you invent.
 
 2. **Author the core function.** Create `cli/src/commands/<noun>/<name>.ts`. Export a pure function with an injectable `exec` parameter:
     ```ts
     export function gitCommit(opts: { worktreePath: string; message: string; exec?: Exec }): GitCommitResult { ... }
     ```
-   The core function returns the legacy field shape; the framework wraps it in `data` automatically. No `console.log` inside the core function.
+   The core function returns the response shape; the framework wraps it in `data` automatically. No `console.log` inside the core function.
 
 3. **Author the `defineCommand` shell.** In the same file, export a thin commander wrapper:
     ```ts
@@ -76,7 +80,7 @@ Every subcommand follows the same flow inside `runCommand`: commander parses arg
 
 6. **Add a tooling check (only if introducing a new external runtime dependency).** If the subcommand shells out to a binary the doctor's `Tooling` category does not already probe, extend `cli/src/commands/doctor/checks.ts#runToolingChecks` with a probe (presence + any version/auth precheck). Use the existing injectable `exec` pattern so the unit test is deterministic. Existing probes: `git`, `gh`.
 
-7. **Test the core function.** Create `cli/tests/commands/<noun>/<name>.test.ts`. Use vitest's `vi.fn()` to stub `exec`. Cover every documented outcome of the legacy script (or the analogous behaviour for a new subcommand). Do not spawn real child processes in unit tests.
+7. **Test the core function.** Create `cli/tests/commands/<noun>/<name>.test.ts`. Use vitest's `vi.fn()` to stub `exec`. Cover every documented outcome the subcommand can produce. Do not spawn real child processes in unit tests.
 
 8. **Test the help shape.** Extend `cli/tests/bin/help.test.ts` with assertions that the new subcommand surfaces at all three help depths. The test compiles via `npx tsc` and runs `node dist/cli/src/bin/radorch.js --help` (and the deeper levels).
 

@@ -9,7 +9,7 @@ Reference document for the Orchestrator agent. Covers the pipeline event loop, a
 `{orchRoot}` is the **absolute filesystem path** to the orchestration install root — the directory that contains `skills/`. It is the base for constructing pipeline-script paths (e.g., `{orchRoot}/skills/rad-orchestration/scripts/pipeline.js`).
 
 1. Every pipeline JSON result includes an `orchRoot` field (already absolute). Use `result.orchRoot` for all path construction after the first pipeline call.
-2. The very first call's `{orchRoot}` is supplied by `gather-context.js` output (`orchRoot` field).
+2. The very first call's `{orchRoot}` is supplied by `radorch project context` output, read from `data.orchRoot` in the envelope.
 3. Projects live unconditionally at `~/.radorch/projects/{PROJECT-NAME}/` (resolved at runtime per-user via `os.homedir()`). Project paths are not derived from `{orchRoot}`.
 
 ## Runtime Entry

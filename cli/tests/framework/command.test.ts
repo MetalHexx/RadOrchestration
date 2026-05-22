@@ -163,6 +163,40 @@ describe('defineCommand', () => {
     log.mockRestore(); exit.mockRestore();
   });
 
+  it('delivers kebab-case args to the handler by their declared hyphenated name', async () => {
+    // Bug guard: Commander stores --kebab-case in opts() as camelCase
+    // (e.g. parsed.worktreePath), but our CommandDef.args declares the
+    // literal hyphenated name. runCommand must bridge the two so the
+    // handler can look up args[declaredName] without surprises. Before the
+    // fix, the args branch read parsed[name] for the kebab name and got
+    // undefined, then threw "Missing required argument --worktree-path".
+    let received: string | undefined;
+    const cmd = defineCommand({
+      name: 'kebab-arg',
+      description: 'verifies kebab-case args reach the handler',
+      args: { 'worktree-path': { description: 'a hyphenated arg', required: true } },
+      flags: {},
+      handler: async ({ args }: { args: { 'worktree-path'?: string }; ctx: unknown }) => {
+        received = args['worktree-path'];
+        return { ok: 'ok' as const };
+      },
+    });
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
+    await runCommand(cmd, {
+      argv: ['--worktree-path', '/some/path'],
+      env: { RADORCH_NO_LOG: '1' },
+      isTTY: false,
+      stderr: process.stderr,
+    });
+    const arg = (log.mock.calls[0]?.[0] ?? '') as string;
+    const env = JSON.parse(arg);
+    expect(env.ok).toBe(true);
+    expect(received).toBe('/some/path');
+    expect(exit).toHaveBeenCalledWith(0);
+    log.mockRestore(); exit.mockRestore();
+  });
+
   it('exits 0 silently for --help (no envelope emitted on stdout)', async () => {
     // Commander's exitOverride throws CommanderError with code commander.helpDisplayed.
     // We exit 0 without emitting an envelope (Commander already wrote help to stdout).
