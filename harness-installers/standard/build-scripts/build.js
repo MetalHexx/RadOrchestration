@@ -130,7 +130,7 @@ export async function runBuild(opts) {
     }
   });
 
-  // Per-harness pipeline bundle (pipeline.js + explode-master-plan.js). v5
+  // Per-harness pipeline bundle (pipeline.js). v5
   // entries (migrate-to-v5, fix-ghost-v5) retire per the plugin iteration.
   await step('emit-pipeline-bundle', async () => {
     for (const h of HARNESSES) {
