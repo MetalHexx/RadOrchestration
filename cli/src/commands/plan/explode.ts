@@ -62,6 +62,8 @@ export const planExplodeCommand = defineCommand({
     if (r.type === 'parse_error') {
       return { ok: true, data: { error: r.error }, exit_code: 2 };
     }
-    return { ok: false, error: { type: 'system_error' as const, message: r.message }, exit_code: 2 };
+    // exit_code is only honored when envelope.ok === true (see framework/command.ts:145);
+    // system_error envelopes already resolve to ExitCode.SystemError (2), so no override needed.
+    return { ok: false, error: { type: 'system_error' as const, message: r.message } };
   },
 });

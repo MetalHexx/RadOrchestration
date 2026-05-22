@@ -428,7 +428,7 @@ function extractRequirementTags(body: string): string[] {
  * Slugify a phase/task title into the filename suffix. Mirrors the existing
  * hand-authored convention (SCREAMING-KEBAB-CASE).
  */
-export function titleToFilenameSlug(title: string): string {
+function titleToFilenameSlug(title: string): string {
   const cleaned = title
     .trim()
     .toUpperCase()
@@ -437,12 +437,12 @@ export function titleToFilenameSlug(title: string): string {
   return cleaned || 'UNTITLED';
 }
 
-export function phaseFilename(projectName: string, phase: ParsedPhase): string {
+function phaseFilename(projectName: string, phase: ParsedPhase): string {
   const idx = String(phase.index).padStart(2, '0');
   return `${projectName}-PHASE-${idx}-${titleToFilenameSlug(phase.title)}.md`;
 }
 
-export function taskFilename(projectName: string, task: ParsedTask): string {
+function taskFilename(projectName: string, task: ParsedTask): string {
   const pidx = String(task.phaseIndex).padStart(2, '0');
   const tidx = String(task.taskIndex).padStart(2, '0');
   return `${projectName}-TASK-P${pidx}-T${tidx}-${titleToFilenameSlug(task.title)}.md`;
@@ -553,7 +553,7 @@ function moveContentsTo(srcDir: string, destDir: string): void {
   }
 }
 
-export function makeBackupDir(projectDir: string, nowIso?: string): string {
+function makeBackupDir(projectDir: string, nowIso?: string): string {
   const iso = nowIso ?? new Date().toISOString();
   const stamp = iso.replace(/[:.]/g, '-');
   return path.join(projectDir, 'backups', stamp);
