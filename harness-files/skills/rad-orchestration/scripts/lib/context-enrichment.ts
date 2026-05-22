@@ -1,5 +1,5 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { buildSkillManifest } from '../../../../../cli/src/lib/skill-manifest.js';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -10,53 +10,30 @@ import type {
 } from './types.js';
 
 /**
- * Invoke `list-repo-skills.mjs` synchronously and render the spawn-prompt
- * suffix the orchestrator inlines into planner spawns. On any failure
- * (missing script, non-zero exit, malformed JSON), emit a single warn line
- * and return '' — manifest failure must NEVER break the planner spawn.
+ * Call buildSkillManifest directly to discover and render the spawn-prompt
+ * suffix the orchestrator inlines into planner spawns. On any failure,
+ * emit a single warn line and return '' — manifest failure must NEVER break
+ * the planner spawn.
  *
  * Returns:
  *   - empty string '' when the manifest is `[]` OR when the invocation failed
  *   - the heading + JSON + orientation sentence block when at least one
  *     eligible skill is present
- *
- * `scriptsDir` is the absolute path to `skills/rad-orchestration/scripts/`,
- * threaded down from `pipeline.ts` via the engine's `PathContext` so the
- * lookup is independent of this file's bundled/source location.
  */
-function buildRepositorySkillsBlock(scriptsDir: string): string {
-  const scriptPath = path.resolve(scriptsDir, 'list-repo-skills.mjs');
-  let raw: string;
+function buildRepositorySkillsBlock(): string {
+  let arr;
   try {
-    const result = spawnSync(process.execPath, [scriptPath], { encoding: 'utf8' });
-    if (result.status !== 0) {
-      console.warn(
-        `context-enrichment: list-repo-skills.mjs exited with status ${result.status}; emitting empty repository_skills_block`
-      );
-      return '';
-    }
-    raw = result.stdout ?? '';
+    arr = buildSkillManifest({ repoRoot: process.cwd() });
   } catch (err) {
     console.warn(
-      `context-enrichment: list-repo-skills.mjs invocation failed (${(err as Error).message}); emitting empty repository_skills_block`
+      `context-enrichment: buildSkillManifest failed (${(err as Error).message}); emitting empty repository_skills_block`
     );
     return '';
   }
-
-  let arr: unknown;
-  try {
-    arr = JSON.parse(raw);
-  } catch (err) {
-    console.warn(
-      `context-enrichment: list-repo-skills.mjs produced unparseable JSON (${(err as Error).message}); emitting empty repository_skills_block`
-    );
-    return '';
-  }
-
   if (!Array.isArray(arr) || arr.length === 0) return '';
-
+  const json = JSON.stringify(arr, null, 2);
   return (
-    `\n\n## Repository Skills Available\n\n${raw.trim()}\n\n` +
+    `\n\n## Repository Skills Available\n\n${json}\n\n` +
     `Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.\n`
   );
 }
@@ -149,7 +126,7 @@ const EMPTY_CONTEXT_ACTIONS = new Set([
 export function enrichActionContext(input: EnrichmentInput): Record<string, unknown> {
   const { action, walkerContext, state } = input;
 
-  // Planning spawn enrichment — invoke list-repo-skills.mjs once per planner
+  // Planning spawn enrichment — invoke buildSkillManifest once per planner
   // spawn and surface the rendered block under `repository_skills_block` so
   // the orchestrator can inline it verbatim into the spawn prompt. Manifest
   // failure never breaks the spawn — buildRepositorySkillsBlock returns ''
@@ -157,7 +134,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   // phase/task limits so the orchestrator can inline a `## Plan Size Limits`
   // block into the planner prompt without reading state.json or the YAML.
   if (action in PLANNING_SPAWN_STEPS) {
-    const repository_skills_block = buildRepositorySkillsBlock(input.scriptsDir);
+    const repository_skills_block = buildRepositorySkillsBlock();
     const base = {
       ...walkerContext,
       step: PLANNING_SPAWN_STEPS[action],
