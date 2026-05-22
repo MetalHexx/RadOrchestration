@@ -74,4 +74,33 @@ describe('radorch program wiring', () => {
     expect(launchHelp).toMatch(/--prompt required for: claude, copilot/);
     expect(launchHelp).toMatch(/--permission-mode only valid with: claude/);
   }, 30_000);
+
+  it('exposes plan explode at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bplan\b/);
+    const { stdout: planHelp } = await node(['plan', '--help']);
+    expect(planHelp).toMatch(/explode\s+Explode the Master Plan into phase and task files/);
+    const { stdout: explodeHelp } = await node(['plan', 'explode', '--help']);
+    expect(explodeHelp).toMatch(/--project-dir/);
+    expect(explodeHelp).toMatch(/--master-plan/);
+    expect(explodeHelp).toMatch(/--project-name/);
+  }, 30_000);
+
+  it('exposes skill list at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bskill\b/);
+    const { stdout: skillHelp } = await node(['skill', '--help']);
+    expect(skillHelp).toMatch(/list[\s\S]+List repository SKILL\.md/);
+    const { stdout: listHelp } = await node(['skill', 'list', '--help']);
+    expect(listHelp).toMatch(/--repo-root/);
+    expect(listHelp).toMatch(/Absolute path to the repository root[\s\S]+scanned/);
+  }, 30_000);
 });

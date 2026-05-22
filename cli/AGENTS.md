@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
+This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, `radorch plan ...`, `radorch skill ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
 
 The CLI bundle is built once per harness by `emitCliBundle` in `harness-installers/shared/build-helpers/` and shipped to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`. Skills invoke it via the `${PLUGIN_ROOT}` token, which expands at install time to the harness root.
 
@@ -13,7 +13,7 @@ Layered structure:
 - `cli/src/bin/radorch.ts` — process entry point. Reads argv, builds the commander program via `buildProgram`, and invokes it.
 - `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `where`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
 - `cli/src/framework/` — framework primitives: `defineCommand`/`runCommand`, the envelope `emit`/`validateEnvelope` surface, the logger, prompter, theme, and exit-code map.
-- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, plus the top-level `doctor` and `where`.
+- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`, plus the top-level `doctor` and `where`.
 - `cli/src/lib/` — small, cross-command utilities (paths, install.json shape, fs helpers, yaml).
 - `cli/tests/` — vitest suite. Mirrors the `src/` tree (`tests/commands/<noun>/<name>.test.ts`).
 
@@ -41,7 +41,7 @@ When a subcommand's flag matrix depends on a discriminant flag value (e.g., `wor
 
 ## Adding a new subcommand — worked walkthrough using `radorch git commit`
 
-1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`. Reuse before you invent.
+1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`. Reuse before you invent.
 
 2. **Author the core function.** Create `cli/src/commands/<noun>/<name>.ts`. Export a pure function with an injectable `exec` parameter:
     ```ts
