@@ -13,7 +13,7 @@ Layered structure:
 - `cli/src/bin/radorch.ts` — process entry point. Reads argv, builds the commander program via `buildProgram`, and invokes it.
 - `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `where`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
 - `cli/src/framework/` — framework primitives: `defineCommand`/`runCommand`, the envelope `emit`/`validateEnvelope` surface, the logger, prompter, theme, and exit-code map.
-- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work.
+- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, plus the top-level `doctor` and `where`.
 - `cli/src/lib/` — small, cross-command utilities (paths, install.json shape, fs helpers, yaml).
 - `cli/tests/` — vitest suite. Mirrors the `src/` tree (`tests/commands/<noun>/<name>.test.ts`).
 
@@ -27,6 +27,10 @@ Every subcommand follows the same flow inside `runCommand`: commander parses arg
 - **Test-injectable shell-out.** Subcommands that shell out (e.g., `radorch git commit` runs `git`; `radorch git pr` runs `gh`) export a pure core function (`gitCommit({ exec })`, `ghPr({ exec })`) that accepts an injectable `exec` parameter defaulting to `execFileSync`. The `defineCommand` handler is a thin shell around the core function. Unit tests pass a stub `exec` and never depend on the host having the binary installed.
 - **No new runtime dependencies without a strong reason.** The CLI is bundled into `radorch.mjs` by `esbuild`; every new entry in `cli/package.json#dependencies` grows the bundle. Prefer `node:*` builtins (`child_process`, `fs`, `path`, etc.) over npm packages.
 - **No test-only methods in production code.** Test utilities live under `cli/tests/`. Dependency injection (the `exec` parameter pattern above) is how the test/production gap stays honest; do not add `if (process.env.NODE_ENV === 'test')` branches to skip work.
+
+### Per-agent flag validation (worktree launch pattern)
+
+When a subcommand's flag matrix depends on a discriminant flag value (e.g., `worktree launch --agent` selects which of `--prompt` and `--permission-mode` apply), validate compatibility synchronously in the handler before any side-effecting work. Export the validator as a pure function so it is independently unit-testable, returning either `{ ok: true, ...normalized fields }` or `{ ok: false, error }`. The handler invokes the validator first; on rejection it surfaces the standard envelope with `error.type` of `user_error` and a message naming the offending flag and the discriminant value that caused the conflict. Worked example: `validateLaunchFlags({ agent, prompt, permissionMode })` in `cli/src/commands/worktree/launch.ts`.
 
 ## Seams to other modules
 

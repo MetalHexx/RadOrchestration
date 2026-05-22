@@ -14,7 +14,7 @@ The Master Plan is complete. As a human reviewer, I have approved the plan and a
 
 Before the first pipeline tick, ensure `pipeline.source_control` is populated in `state.json`. The commit and PR gates read from this state — without it, the walker halts when it reaches either conditional.
 
-1. Run `node {skillRoot}/scripts/gather-context.js --project-name {PROJECT_NAME}` and parse its JSON output. `{skillRoot}` is the directory containing this SKILL.md; `{PROJECT_NAME}` comes from the /rad-execute argument or conversation context.
+1. Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {PROJECT_NAME}` and parse fields from the envelope's `data` block (the legacy flat-JSON shape lives inside `data`). `{PROJECT_NAME}` comes from the /rad-execute argument or conversation context.
 2. **If `sourceControlInitialized === true`, skip to step 4** — resume is ceremony-free.
 3. Otherwise, follow [`references/source-control-init.md`](references/source-control-init.md) to resolve each init field (prompting only when needed) and fire the `source_control_init` pipeline event.
 4. Proceed with execution.

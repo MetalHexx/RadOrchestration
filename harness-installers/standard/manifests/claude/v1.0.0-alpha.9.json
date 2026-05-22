@@ -145,7 +145,7 @@
     {
       "bundlePath": "skills/rad-create-plans/references/requirements/workflow.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-create-plans/references/requirements/workflow.md",
-      "sha256": "f34af2eadeaf18a62161bd20430f7e053b1c6f219e116bb254344bbb399efcbf"
+      "sha256": "a221596e3a9221f4be7d7a073b67a4076f1420242b9deb9eeb13e30acce74613"
     },
     {
       "bundlePath": "skills/rad-execute-coding-task/SKILL.md",
@@ -155,62 +155,22 @@
     {
       "bundlePath": "skills/rad-execute-parallel/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/SKILL.md",
-      "sha256": "b817e380599ed9febe8f1e440c7c57a6e2641b33d6af097f40d445895306820a"
+      "sha256": "87f424ca8fdd70396d6629ba762c92f43900515da0b22ab7316a1592042da6eb"
     },
     {
       "bundlePath": "skills/rad-execute-parallel/references/workflow-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/references/workflow-guide.md",
-      "sha256": "c25ba18d8c1ae9cc3caa14f6cc28a3b02d0b746a8cbe39adeed68e5e800cc2f7"
-    },
-    {
-      "bundlePath": "skills/rad-execute-parallel/scripts/create-worktree.js",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/scripts/create-worktree.js",
-      "sha256": "1eee940d7f285292e5139cfe0694632b049f8f95a3607e2bcaa0ef271b496aed"
-    },
-    {
-      "bundlePath": "skills/rad-execute-parallel/scripts/find-projects.js",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/scripts/find-projects.js",
-      "sha256": "f28601741f4f9ed6a3ebf125ae5728a2986c12a6bd7d4b5c4f10afa77f132af2"
-    },
-    {
-      "bundlePath": "skills/rad-execute-parallel/scripts/gather-context.js",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/scripts/gather-context.js",
-      "sha256": "87bae8b128d5e713b5d61f8d406722616a2857a87a714465372aeba809412c46"
-    },
-    {
-      "bundlePath": "skills/rad-execute-parallel/scripts/inject-theme.js",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/scripts/inject-theme.js",
-      "sha256": "c0292f490d8d765d127fdd632bfb2ef436526d66afda135137937a088061593b"
-    },
-    {
-      "bundlePath": "skills/rad-execute-parallel/scripts/launch-claude.js",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/scripts/launch-claude.js",
-      "sha256": "513dcf2f35ce202a35e5f65d15786aca1d63422b03ec84ff5b52663cf2192e0a"
-    },
-    {
-      "bundlePath": "skills/rad-execute-parallel/scripts/package.json",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/scripts/package.json",
-      "sha256": "fa6944a20ca5e6fbaf98fd202eb8c7004d5b4ab786e36b9ed02ee31dbe196c9f"
+      "sha256": "231fddcf37ec6c265ccc8d5858b47b5fc9cb5c37439c3b0866869afe27283d0a"
     },
     {
       "bundlePath": "skills/rad-execute/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/SKILL.md",
-      "sha256": "5acb78788f3f93afdf6662c3da3842bd9d4d04a7c4e6f13a003b9f3acfebdbce"
+      "sha256": "48afd5ea735e560a67d9b2e04e015fcafaad5f08b66d5c238a5e40250445d30a"
     },
     {
       "bundlePath": "skills/rad-execute/references/source-control-init.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/references/source-control-init.md",
-      "sha256": "248bc96db9bc158086e973234121892068f55cdef30956368141eed7837beac0"
-    },
-    {
-      "bundlePath": "skills/rad-execute/scripts/gather-context.js",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/scripts/gather-context.js",
-      "sha256": "a4db680d4163e1fe0bd94311528ec23041108f31cb6914fe05bb4eb468180950"
-    },
-    {
-      "bundlePath": "skills/rad-execute/scripts/package.json",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/scripts/package.json",
-      "sha256": "dbf8353f77358bc12169b7bb7301e1978d5b503e002ee927229a8993672818fc"
+      "sha256": "92d7c7a78076b3b750cf6276663925544108b904e165cbbf4700e17577b72a31"
     },
     {
       "bundlePath": "skills/rad-log-error/SKILL.md",
@@ -230,7 +190,7 @@
     {
       "bundlePath": "skills/rad-orchestration/references/action-event-reference.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/action-event-reference.md",
-      "sha256": "5bc6d4deeb9ed8ef4bd244c5085ddd3e9216c4c1e4dab0c73555b0fb18d382f6"
+      "sha256": "902cf69395c82b61e0e5cc7eb5aad9ff35a689bd2b5f75cc4064067c1e86235d"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/context.md",
@@ -240,17 +200,17 @@
     {
       "bundlePath": "skills/rad-orchestration/references/corrective-playbook.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/corrective-playbook.md",
-      "sha256": "0f31e4c148d086db8358bb9bbec4462ee2e744e9bc9aa8ad8eec3d19d36dd041"
+      "sha256": "7f70f3b50e8f0c31f2812bbaefc87da73bd2b5891a1491f968efc67f879440ec"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/document-conventions.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/document-conventions.md",
-      "sha256": "b4c378832f85fe2ddc61658297da608ea1cf7034d7edcfb819233c899782491e"
+      "sha256": "b23ec36c6787177e693359970d1dbdc639405017816d20982876a145474f581d"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/pipeline-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/pipeline-guide.md",
-      "sha256": "222ca35e5b504813bf20da05f4d0062dfbc421ab58899788c83dc4619e2111b3"
+      "sha256": "b168fd8a053b93f07dcd4d7f11593129845a25db452d2599806c641026e1466f"
     },
     {
       "bundlePath": "skills/rad-orchestration/schemas/legacy/state-v4.schema.json",
@@ -280,7 +240,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "8de91a1c36a3754430a3fabef8af4ed503d283d6f3439d7096f7453058d86563"
+      "sha256": "6f3e298e36845fe006bc728cac8c679d7881ad0e3a4e23e371719f546f815f06"
     },
     {
       "bundlePath": "skills/rad-orchestration/scripts/setup-hooks.js",
@@ -295,7 +255,7 @@
     {
       "bundlePath": "skills/rad-plan-audit/references/audit-rubric.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan-audit/references/audit-rubric.md",
-      "sha256": "6b88a65e8936a792f5a8aeeacf56d3ecc18233d1a0018864fce59cf9e37ed1db"
+      "sha256": "15fd7a653babb2274ae924e16c78f7f9cc05ea2c55f24cae4f695a3e92014cea"
     },
     {
       "bundlePath": "skills/rad-plan-audit/references/corrections-workflow.md",
@@ -310,12 +270,12 @@
     {
       "bundlePath": "skills/rad-plan-audit/references/self-review.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan-audit/references/self-review.md",
-      "sha256": "1c47c7efff246fa6f221b8dfe0c20e4be38f43128420f87e261690988cd55616"
+      "sha256": "a7524a204bc720cf5b9aac342acc02310ec25893289d65e6a56470780c212be6"
     },
     {
       "bundlePath": "skills/rad-plan/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan/SKILL.md",
-      "sha256": "49ebf5daa385d838d1c71dd695e39533395d3e2f2f8c346dbe32fd48d41f98ef"
+      "sha256": "268cd51734f41d4eb6406fc6200d74991114248fb2280bd8912b7cb8414c8b8c"
     },
     {
       "bundlePath": "skills/rad-run-tests/SKILL.md",
@@ -325,22 +285,22 @@
     {
       "bundlePath": "skills/rad-source-control/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-source-control/SKILL.md",
-      "sha256": "1f2cb471ca18eff1bbacd9bde5d8c62c5fc9bd6f387966ac0d47ebc12000c6a6"
+      "sha256": "89527f12cd9d4f0c82931dd80bb9ac638c813c8e8a8216cc2e77d2def32f276f"
     },
     {
       "bundlePath": "skills/rad-ui-start/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-ui-start/SKILL.md",
-      "sha256": "ceabbf64b54848ebb16b11cbb77a6d5a68cbc77f75353d1a9f7abcaf38bc935e"
+      "sha256": "e04d31fc2e7e7857a9ff5739184763924421557142670b7c193028a0c13daf35"
     },
     {
       "bundlePath": "skills/rad-ui-status/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-ui-status/SKILL.md",
-      "sha256": "d1ac61dcbb8672c5d427a1644eab9bcf69c832212232bdcc8b87342696a3a550"
+      "sha256": "1937472a990c34be8753ecc39a24bb71aaaa21956bcbbefe159a723ed2ebd7df"
     },
     {
       "bundlePath": "skills/rad-ui-stop/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-ui-stop/SKILL.md",
-      "sha256": "6a97f30f012b8d57bb0bb9f18ecdc1cfe1e62746f45a100c76e38da0e944a00e"
+      "sha256": "199892de6d31e02e6c8cf919a402bf296ac766aab0aa163d71a4ca1708f18ee7"
     }
   ]
 }

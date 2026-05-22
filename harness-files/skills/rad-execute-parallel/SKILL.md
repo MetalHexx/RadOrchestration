@@ -10,42 +10,36 @@ Set up a dedicated git worktree for a project and launch orchestration execution
 ## Initialize
 You are an orchestrator. You'll be using the `rad-orchestration` skill for this project.  Read the skill  and prepare to use it to run the execution pipeline.
 
-## Scripts
+## Subcommands
 
-| Script | Input | Output | Purpose |
+| Subcommand | Input | Output (envelope `data`) | Purpose |
 |--------|-------|--------|---------|
-| `scripts/gather-context.js` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, orchRoot, projectsBasePath, configAutoCommit, configAutoPr }` | Detect git environment and read orchestration config |
-| `scripts/find-projects.js` | `--projects-base-path <path> --repo-root <path>` | `{ projects: [{ name, masterPlanPath, currentTier, existingWorktreePath, existingBranch, worktreeExists }] }` | Scan for execution-ready projects and check existing worktrees |
-| `scripts/find-projects.js` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
-| `scripts/create-worktree.js` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
-| `scripts/inject-theme.js` | `--worktree-path <path>` | `{ theme, settingsPath, gitignorePath, error }` | Pick a random built-in VS Code theme, write `.vscode/settings.json`, add entry to `.gitignore` |
-| `scripts/launch-claude.js` | `--worktree-path <path> --projects-base-path <path> --prompt <string> [--permission-mode <mode>]` | `{ success, platform, permissionMode }` | Cross-platform terminal launcher: opens a new terminal window and starts Claude Code with a given prompt and permission mode (default `auto`) |
+| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, orchRoot, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, sourceControlInitialized }` | Detect git environment and read orchestration config |
+| `radorch project find` | `--projects-base-path <path> --repo-root <path>` | `{ projects: [{ name, masterPlanPath, currentTier, existingWorktreePath, existingBranch, worktreeExists }] }` | Scan for execution-ready projects and check existing worktrees |
+| `radorch project find` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
+| `radorch worktree create` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
+| `radorch worktree launch` | `--agent {claude\|copilot\|vscode\|terminal} --worktree-path <path>` plus per-agent flags | `{ ok, platform, agent, permissionMode? }` | Open a terminal at the worktree and launch the chosen agent |
 
-All scripts output JSON to stdout. Exit codes: `0` = success, `1` = partial (created but push failed), `2` = failure.
+Every subcommand emits `{ ok, data, error }` on stdout. Exit codes (`worktree create`): `0` = created + pushed, `1` = created but push failed, `2` = create failed.
 
 ## Workflow
 
 Follow these steps in order. Run steps 1–2 silently — do not narrate or display output.
 
-1. **Gather context** — Run `gather-context.js`. Parse the JSON result.
+1. **Gather context** — Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context`. Parse fields from the envelope's `data` block.
 
-2. **Identify project** — Check the conversation, open files, and the argument passed to this prompt for a project name (`SCREAMING-CASE`) or master plan path. If found, run `find-projects.js --project-name {name}` to get worktree info. If not found, run `find-projects.js` (scan mode) to get all execution-ready candidates.
+2. **Identify project** — Check the conversation, open files, and the argument passed to this prompt for a project name (`SCREAMING-CASE`) or master plan path. If found, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project find --project-name {name}` to get worktree info. If not found, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project find` (scan mode) to get all execution-ready candidates.
 
 3. **Ask questions** — Before building the `askQuestions` call, greet the user with a short opening message. Keep it warm and one or two sentences — e.g. *"I'll set up an isolated worktree for this project and get orchestration running inside it. Only projects that have been fully planned and approved will appear in the list below."* Then build one `askQuestions` call with only the applicable questions. Read [references/workflow-guide.md](./references/workflow-guide.md) for the exact question schemas and conditions.
 
 4. **Resolve values** — Derive `projectName`, `projectDir`, `branchName`, `worktreePath`, `baseBranch`, `resolvedAutoCommit`, `resolvedAutoPr` from the answers. See the Value Resolution table in the workflow guide.
 
-5. **Create worktree** — If not reusing an existing worktree, run `create-worktree.js`. On failure, show the error and a targeted fix from the error table in the workflow guide. Do not proceed if creation fails.
+5. **Create worktree** — If not reusing an existing worktree, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree create ...`. On failure, show the error and a targeted fix from the error table in the workflow guide. Do not proceed if creation fails.
 
-6. **Source control init** — Call `pipeline.js --event source_control_init` with the resolved values and URLs from `create-worktree.js` output. See the workflow guide for the exact command template.
+6. **Source control init** — Call `pipeline.js --event source_control_init` with the resolved values and URLs from `worktree create` output. See the workflow guide for the exact command template.
 
-7. **Launch** — Execute the post-action chosen in step 3. See the workflow guide for platform-specific launch commands.
+7. **Launch** — Execute the post-action chosen in step 3 via `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent {agent} ...`. See the workflow guide for the per-agent flag matrix.
 
 ## Contents
 
 - **`references/workflow-guide.md`** — Question schemas, value resolution, source_control_init template, launch commands, error handling
-- **`scripts/gather-context.js`** — Git environment detection + orchestration config reader (standalone, no external dependencies)
-- **`scripts/find-projects.js`** — Project scanner: finds execution-ready projects, checks worktree status (standalone)
-- **`scripts/create-worktree.js`** — Worktree creation: git worktree add, branch push, remote URL detection (standalone)
-- **`scripts/inject-theme.js`** — Random VS Code theme injection: writes `.vscode/settings.json`, protects it with `.gitignore` (standalone)
-- **`scripts/launch-claude.js`** — Cross-platform terminal launcher: opens a new terminal window and starts Claude Code with a chosen `--permission-mode` (default `auto`)

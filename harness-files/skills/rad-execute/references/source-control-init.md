@@ -2,19 +2,19 @@
 
 Detailed reference for the `rad-execute` orchestrator when `sourceControlInitialized` is `false` and `pipeline.source_control` must be populated before the first pipeline tick.
 
-**Prerequisite:** the caller has already run `node {skillRoot}/scripts/gather-context.js --project-name {PROJECT_NAME}` and parsed its JSON output (the `--project-name` flag tells the script to peek at `{projectDir}/state.json` and emit `sourceControlInitialized`). `{skillRoot}` is the directory containing `rad-execute/SKILL.md`.
+**Prerequisite:** the caller has already run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {PROJECT_NAME}` and read `data.sourceControlInitialized` from the envelope (the `--project-name` flag tells the subcommand to peek at `{projectDir}/state.json` and emit `sourceControlInitialized` inside the `data` block).
 
 ## Field resolution
 
 | Init field | Source |
 |---|---|
-| `projectDir` | `projectDir` from script output (used as `--project-dir` for the pipeline CLI) |
-| `worktree_path` | `repoRoot` from script output |
-| `branch` | `currentBranch` from script output |
-| `base_branch` | Prompt user with a free-form `base_branch` question; default = `defaultBranch` from script output. |
-| `auto_commit` | If `configAutoCommit === "ask"`, prompt with the `auto_commit` schema. Otherwise pass `configAutoCommit` through unchanged. |
-| `auto_pr` | If `configAutoPr === "ask"`, prompt with the `auto_pr` schema. Otherwise pass `configAutoPr` through unchanged. |
-| `remote_url` | `remoteUrl` from script output. May be `""` — if empty, omit the `--remote-url` flag. |
+| `projectDir` | `data.projectDir` (used as `--project-dir` for the pipeline CLI) |
+| `worktree_path` | `data.repoRoot` |
+| `branch` | `data.currentBranch` |
+| `base_branch` | Prompt user with a free-form `base_branch` question; default = `data.defaultBranch`. |
+| `auto_commit` | If `data.configAutoCommit === "ask"`, prompt with the `auto_commit` schema. Otherwise pass `data.configAutoCommit` through unchanged. |
+| `auto_pr` | If `data.configAutoPr === "ask"`, prompt with the `auto_pr` schema. Otherwise pass `data.configAutoPr` through unchanged. |
+| `remote_url` | `data.remoteUrl`. May be `""` — if empty, omit the `--remote-url` flag. |
 | `compare_url` | `{remote_url}/compare/{base_branch}...{branch}` when `remote_url` is non-empty. Otherwise omit `--compare-url`. |
 
 The `source_control_init` pipeline mutation normalizes `yes` → `always` and `no` → `never`, so the user's answers pass through unchanged.
@@ -59,6 +59,6 @@ After resolving all fields, fire the `source_control_init` pipeline event:
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branch}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
 ```
 
-`{orchRoot}` is the absolute install root from `gather-context.js` output. Omit the `--remote-url` and `--compare-url` flags when their resolved values are empty.
+`{orchRoot}` is the absolute install root from `data.orchRoot` in the `project context` envelope. Omit the `--remote-url` and `--compare-url` flags when their resolved values are empty.
 
 Verify the response contains `"success": true`. If it fails, show the error to the user and stop — do not proceed to execute the pipeline.

@@ -179,7 +179,7 @@ After worktree creation (or reuse), call the pipeline to record source control s
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branchName}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
 ```
 
-Use `remoteUrl` and `compareUrl` from `create-worktree.js` output. For reused worktrees where the script was not run, detect them manually:
+Use `data.remoteUrl` and `data.compareUrl` from `worktree create` output. For reused worktrees where the subcommand was not run, detect them manually:
 - Run `git remote get-url origin` from the worktree path
 - Convert SSH → HTTPS: `git@github.com:ORG/REPO.git` → `https://github.com/ORG/REPO`
 - Strip trailing `.git` from HTTPS URLs
@@ -195,14 +195,9 @@ Execute the `post_action` chosen by the user. Prefer `masterPlanPath` as the arg
 
 ### Open in new VS Code window
 
-Before opening VS Code, run `inject-theme.js` to write a random built-in theme to `.vscode/settings.json` and protect it with `.gitignore`. Theme injection is non-blocking — if it fails, log the error and continue.
-
 ```
-node {skillRoot}/scripts/inject-theme.js --worktree-path "{worktreePath}"
-code "{worktreePath}"
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent vscode --worktree-path "{worktreePath}"
 ```
-
-`{skillRoot}` is the absolute path to the `rad-execute-parallel` skill folder (the directory containing `SKILL.md`).
 
 Display:
 ```
@@ -216,40 +211,23 @@ Display:
 
 ### Open Copilot CLI
 
-**Windows:**
-```powershell
-$innerCmd = "copilot --agent orchestrator --add-dir '{projectDir}' --allow-tool=shell -i 'Start project execution for project {masterPlanPath or projectName}'"
-$encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($innerCmd))
-Start-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList "-Command", "wt --startingDirectory '{worktreePath}' powershell -NoExit -EncodedCommand $encoded"
 ```
-
-**macOS:**
-```
-osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\" && copilot --agent orchestrator --prompt \"Start project execution for project {masterPlanPath or projectName}\""'
-```
-
-**Linux:**
-```
-gnome-terminal -- bash -c "cd '{worktreePath}' && copilot --agent orchestrator --prompt 'Start project execution for project {masterPlanPath or projectName}'; exec bash"
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent copilot --worktree-path "{worktreePath}" --prompt "Start project execution for project {masterPlanPath or projectName}"
 ```
 
 ### Open Claude Code
 
 ```
-MSYS_NO_PATHCONV=1 node {skillRoot}/scripts/launch-claude.js --worktree-path "{worktreePath}" --projects-base-path "{projectsBasePath}" --prompt "/rad-execute {projectName}" --permission-mode "{permissionMode}"
+MSYS_NO_PATHCONV=1 node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent claude --worktree-path "{worktreePath}" --prompt "/rad-execute {projectName}" --permission-mode "{permissionMode}"
 ```
 
-`{skillRoot}` is the absolute path to the `rad-execute-parallel` skill folder (the directory containing `SKILL.md`). The script handles Windows, macOS, and Linux internally — no platform-specific branching needed here.
-
-The `MSYS_NO_PATHCONV=1` prefix disables Git Bash's POSIX-to-Windows path conversion so the leading `/` in the slash-command prompt survives the shell→`node.exe` argument boundary. The prefix is harmless on macOS / Linux where MSYS2 isn't present. The script also defensively repairs MSYS-mangled prompts as a safety net for callers that forget the prefix.
+The subcommand handles Windows, macOS, and Linux internally — no platform-specific branching needed here. The `MSYS_NO_PATHCONV=1` prefix disables Git Bash's POSIX-to-Windows path conversion so the leading `/` in the slash-command prompt survives the shell → `node.exe` argument boundary; the subcommand also defensively repairs MSYS-mangled prompts as a safety net.
 
 ### Open terminal at worktree
 
-**Windows:** `Start-Process powershell -ArgumentList @("-NoExit", "-Command", "cd '{worktreePath}'")`
-
-**macOS:** `osascript -e 'tell application "Terminal" to do script "cd \"{worktreePath}\""'`
-
-**Linux:** `gnome-terminal -- bash -c "cd '{worktreePath}'; exec bash"`
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent terminal --worktree-path "{worktreePath}"
+```
 
 ### Do nothing
 
