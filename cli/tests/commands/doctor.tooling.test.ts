@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runToolingChecks } from '../../src/commands/doctor/checks.js';
+import type { HarnessInstallReport } from '../../src/lib/cross-harness-scan.js';
 
 type SpawnResult = { status: number; stdout: string; stderr: string; error?: NodeJS.ErrnoException };
 
@@ -47,5 +48,73 @@ describe('runToolingChecks', () => {
       .mockImplementation(() => ({ status: 0, stdout: 'ok', stderr: '' }));
     const r = await runToolingChecks({ exec });
     for (const c of r) expect(c.category).toBe('Tooling');
+  });
+});
+
+function execStub(map: Record<string, { status: number; stdout?: string; stderr?: string; error?: NodeJS.ErrnoException }>) {
+  return vi.fn((file: string, args: string[]) => {
+    const key = `${file} ${args.join(' ')}`;
+    if (key in map) return { stdout: '', stderr: '', ...map[key] } as SpawnResult;
+    return { status: 0, stdout: '', stderr: '' };
+  });
+}
+
+function reports(installed: Array<HarnessInstallReport['installKey']>): HarnessInstallReport[] {
+  return [
+    { installKey: 'claude', installed: installed.includes('claude') },
+    { installKey: 'claude-plugin', installed: installed.includes('claude-plugin') },
+    { installKey: 'copilot-cli', installed: installed.includes('copilot-cli') },
+    { installKey: 'copilot-cli-plugin', installed: installed.includes('copilot-cli-plugin') },
+    { installKey: 'copilot-vscode', installed: installed.includes('copilot-vscode') },
+    { installKey: 'copilot-vscode-plugin', installed: installed.includes('copilot-vscode-plugin') },
+  ];
+}
+
+describe('runToolingChecks — conditional agent checks', () => {
+  it('omits all three agent checks when no relevant harness is registered', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports([]) });
+    expect(out.find((c) => c.name === 'claude')).toBeUndefined();
+    expect(out.find((c) => c.name === 'copilot')).toBeUndefined();
+    expect(out.find((c) => c.name === 'code')).toBeUndefined();
+  });
+
+  it('runs claude check when claude or claude-plugin is registered; fails when CLI missing', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+      'claude --version': { status: 1, stdout: '', stderr: '', error: Object.assign(new Error('not found'), { code: 'ENOENT' }) as NodeJS.ErrnoException },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports(['claude-plugin']) });
+    const claude = out.find((c) => c.name === 'claude');
+    expect(claude?.status).toBe('fail');
+    expect(claude?.detail).toMatch(/claude.*PATH/i);
+  });
+
+  it('runs copilot check when copilot-cli is registered; passes when present', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+      'copilot --version': { status: 0, stdout: 'copilot 1.0\n' },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports(['copilot-cli']) });
+    expect(out.find((c) => c.name === 'copilot')?.status).toBe('pass');
+  });
+
+  it('runs code check when copilot-vscode is registered; passes when present', async () => {
+    const exec = execStub({
+      'git --version': { status: 0, stdout: 'git version 2.40\n' },
+      'gh --version': { status: 0, stdout: 'gh 2.0\n' },
+      'gh auth status': { status: 0 },
+      'code --version': { status: 0, stdout: '1.95\n' },
+    });
+    const out = await runToolingChecks({ exec, harnessReports: reports(['copilot-vscode']) });
+    expect(out.find((c) => c.name === 'code')?.status).toBe('pass');
   });
 });

@@ -6,7 +6,7 @@ import { installPaths, userDataPaths } from '../../lib/paths.js';
 import { readInstallJson } from '../../lib/config.js';
 import { cmpSemver, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
-import { scanUserLevelHarnesses } from '../../lib/cross-harness-scan.js';
+import { scanUserLevelHarnesses, type HarnessInstallReport } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
 
 const pkg = { version: getCliVersion() };
@@ -398,6 +398,8 @@ export async function runPluginChecks(opts: {
 
 type ToolingExec = (file: string, args: string[]) => { status: number; stdout: string; stderr: string; error?: NodeJS.ErrnoException };
 
+interface AgentCheckSpec { name: 'claude' | 'copilot' | 'code'; bin: string; install: string }
+
 function defaultToolingExec(file: string, args: string[]) {
   const r = spawnSync(file, args, { encoding: 'utf8', timeout: 1000, shell: false });
   return {
@@ -408,8 +410,24 @@ function defaultToolingExec(file: string, args: string[]) {
   };
 }
 
-export async function runToolingChecks(opts: { exec?: ToolingExec } = {}): Promise<CheckResult[]> {
+function agentsToCheck(reports: HarnessInstallReport[]): AgentCheckSpec[] {
+  const installed = new Set(reports.filter((r) => r.installed).map((r) => r.installKey));
+  const out: AgentCheckSpec[] = [];
+  if (installed.has('claude') || installed.has('claude-plugin')) {
+    out.push({ name: 'claude', bin: 'claude', install: 'install Claude Code (https://docs.anthropic.com/claude/claude-code)' });
+  }
+  if (installed.has('copilot-cli')) {
+    out.push({ name: 'copilot', bin: 'copilot', install: 'install GitHub Copilot CLI (https://github.com/github/copilot-cli)' });
+  }
+  if (installed.has('copilot-vscode')) {
+    out.push({ name: 'code', bin: 'code', install: 'install VS Code\'s `code` shim via the command palette: `Shell Command: Install \'code\' command in PATH`' });
+  }
+  return out;
+}
+
+export async function runToolingChecks(opts: { exec?: ToolingExec; harnessReports?: HarnessInstallReport[] } = {}): Promise<CheckResult[]> {
   const exec = opts.exec ?? defaultToolingExec;
+  const reports = opts.harnessReports ?? scanUserLevelHarnesses();
   const out: CheckResult[] = [];
 
   // git probe
@@ -440,5 +458,18 @@ export async function runToolingChecks(opts: { exec?: ToolingExec } = {}): Promi
       });
     }
   }
+
+  // Conditional agent CLI probes
+  for (const spec of agentsToCheck(reports)) {
+    const r = exec(spec.bin, ['--version']);
+    const missing = r.error?.code === 'ENOENT' || r.status !== 0;
+    if (missing) {
+      out.push({ category: 'Tooling', name: spec.name, status: 'fail', detail: `${spec.bin} not on PATH — ${spec.install}` });
+    } else {
+      const v = r.stdout.trim().split('\n')[0] ?? '';
+      out.push({ category: 'Tooling', name: spec.name, status: 'pass', detail: v || `${spec.bin} present` });
+    }
+  }
+
   return out;
 }
