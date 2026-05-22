@@ -52,9 +52,9 @@ Hand-roll the minimum project scaffold — do **NOT** invoke the installer and d
 4. **Generate the skill manifest for the fixture repo.** Run the manifest script with `--project-dir` (or `cwd`) pointed at the fixture root so the planner spawn includes repo-local skills:
    ```bash
    cd prompt-tests/repo-skill-discovery-e2e/fixtures/skill-disco-fixture
-   node ../../../../.claude/skills/rad-orchestration/scripts/list-repo-skills.mjs
+   node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" skill list --repo-root "$(pwd)"
    ```
-   Expected output: a JSON array of exactly two entries — `foo-test-runner` and `rainbow-lint-conventions` — in alphabetical order, each with an absolute `path` ending in `SKILL.md`. Confirm `scaffold-only` and `rad-decoy` are absent and that no stderr warnings appear. If this check fails, stop — the fixture is malformed and the run will produce invalid signal.
+   Expected envelope: `{ "ok": true, "data": { "skills": [...] } }` where `data.skills` is a JSON array of exactly two entries — `foo-test-runner` and `rainbow-lint-conventions` — in alphabetical order, each with an absolute `path` ending in `SKILL.md`. Confirm `scaffold-only` and `rad-decoy` are absent from `data.skills` and that no stderr warnings appear. If this check fails, stop — the fixture is malformed and the run will produce invalid signal.
 
    Record the manifest output path (it is printed to stdout; capture it as `manifest.json` in the run folder if needed for later assertions, but do NOT commit it — `manifest.json` is not a baseline artifact).
 
