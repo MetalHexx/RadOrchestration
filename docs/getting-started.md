@@ -8,7 +8,7 @@ By the end of this guide you'll have the orchestration system installed locally 
 
 ## Install
 
-```bash
+```
 npx rad-orchestration
 ```
 
@@ -71,7 +71,7 @@ For larger ideas, consider a **project series**: a numbered `{STEM}-N` sequence 
 
 Remove the orchestration system from a workspace with:
 
-```bash
+```
 npx rad-orchestration uninstall
 ```
 

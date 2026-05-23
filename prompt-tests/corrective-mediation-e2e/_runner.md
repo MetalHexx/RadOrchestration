@@ -53,7 +53,7 @@ All paths below are relative to the repo root unless noted.
 
 ### Step 1 — Bootstrap (resume at in-progress node)
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
@@ -120,7 +120,7 @@ The handoff must be self-contained — no references to prior attempts, no delta
 
 ### Step 4 — Signal `code_review_completed`
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
@@ -141,7 +141,7 @@ tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md
 
 The coder should fix `src/colors.js` to return `['red', 'orange', 'yellow']`. After the coder completes, signal:
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event task_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
@@ -158,7 +158,7 @@ Signal `code_review_started` and spawn `@reviewer`. The reviewer operates on the
 
 After the reviewer writes its doc, signal:
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \

@@ -36,7 +36,7 @@ The test spawns a real `@coder` agent and a real `@reviewer` agent. The mediatio
 
 **Dependencies.** Run this once:
 
-```bash
+```
 # orchestration scripts — required
 cd .claude/skills/rad-orchestration/scripts && npm install && cd -
 
@@ -121,7 +121,7 @@ If the re-review mentions the prior review, the stateless-reviewer contract leak
 
 This check confirms the UI renders the new corrective-cycle fields AND doesn't regress on legacy projects.
 
-```bash
+```
 cd ui && npm run build && npm run dev
 ```
 

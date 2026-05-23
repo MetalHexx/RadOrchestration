@@ -108,7 +108,7 @@ export function processEvent(
   pathContext: PathContext,
   configPath?: string,
 ): PipelineResult {
-  const { orchRoot, templatesDir, scriptsDir } = pathContext;
+  const { orchRoot, templatesDir } = pathContext;
 
   try {
     const config = io.readConfig(configPath);
@@ -186,7 +186,6 @@ export function processEvent(
               state: scaffolded,
               config,
               cliContext: context,
-              scriptsDir,
             })
           : {};
 
@@ -223,7 +222,6 @@ export function processEvent(
               state,
               config,
               cliContext: context,
-              scriptsDir,
             })
           : {};
         return {
@@ -314,7 +312,6 @@ export function processEvent(
             state: mutatedState,
             config,
             cliContext: context,
-            scriptsDir,
           })
         : {};
 
@@ -427,7 +424,6 @@ export function processEvent(
         state: mutatedState,
         config,
         cliContext: context,
-        scriptsDir,
       });
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
@@ -460,7 +456,6 @@ export function processEvent(
             state: mutatedState,
             config,
             cliContext: context,
-            scriptsDir,
           }),
         };
       } else {

@@ -26,7 +26,7 @@ This skill bundles:
 
 - **`schemas/state-v4.schema.json`** — State file JSON Schema
 - **`scripts/pipeline.js`** — Pipeline runtime entry point. All CLI arguments pass through transparently. 
-- **`scripts/explode-master-plan.js`** — Pipeline branching and phase expansion engine
+- **`radorch plan explode`** — Pipeline branching and phase expansion subcommand (folded into the radorch CLI; invoked via `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" plan explode`)
 - **`scripts/lib/`** — Pipeline engine, resolver, mutations, state I/O, validator
 - **`references/`** — Role-specific reference documents
 

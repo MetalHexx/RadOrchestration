@@ -16,7 +16,7 @@ The steps, in execution order:
 4. `copy-adapter-output` — per-harness `cpSync` of `harness-adapters/output/<harness>/agents/` and `skills/` into `output/<harness>/`.
 5. `copy-runtime-config` — per-harness copy of `runtime-config/orchestration.yml` and `runtime-config/templates/` into each `output/<harness>/`.
 6. `emit-cli-bundle` — per-harness emit of the bundled `radorch.mjs` CLI into `output/<harness>/skills/rad-orchestration/scripts/`; chmod 0o755 on POSIX (NFR-6).
-7. `emit-pipeline-bundle` — per-harness emit of the pipeline runtime (`pipeline.js`, `explode-master-plan.js`) into the same scripts dir.
+7. `emit-pipeline-bundle` — per-harness emit of the pipeline runtime (`pipeline.js`) into the same scripts dir.
 8. `prune-scripts-sources` — per-harness prune leaving only `.js` / `.mjs` under each `output/<harness>/skills/rad-orchestration/scripts/`. `.gitignore` is excluded because `npm-packlist` hardcodes that filename as ignored; deploying it would break install with ENOENT (manifest references a file the tarball never ships).
 9. `emit-ui-bundle` — single emission to `output/ui/` at the top level (AD-9 — not per-harness).
 10. `expand-tokens` — per-harness token substitution over `output/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orc:` namespacing rewrite).

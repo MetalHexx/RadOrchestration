@@ -33,6 +33,7 @@ test-installer/
 
 # Ephemeral test log artifacts — never commit
 *-tests.log
+test-run.log
 
 # Prompt harness — run outputs ignored by default.
 # NOTE: git ignore cannot re-include files if an ancestor directory is excluded

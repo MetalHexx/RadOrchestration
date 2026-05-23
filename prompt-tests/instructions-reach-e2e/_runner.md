@@ -66,11 +66,11 @@ Hand-roll the minimum project scaffold. The pipeline engine creates `state.json`
    The brainstorming doc gets renamed in transit: `BRAINSTORMING.md` → `<PROJECT-NAME>-BRAINSTORMING.md`. The `@planner` agent in Requirements mode discovers it by convention.
 
 4. **Generate the skill manifest for the run folder.** The orchestrator's planner spawn requires the `## Repository Skills Available` heading even if empty. Run the manifest script with cwd at the run folder:
-   ```bash
-   cd prompt-tests/instructions-reach-e2e/output/instructions-canary/<PROJECT-NAME>
-   node ../../../../../.claude/skills/rad-orchestration/scripts/list-repo-skills.mjs
    ```
-   The fixture has no `.claude/skills/` or `packages/*/skills/` of its own, so the expected output is an empty JSON array `[]`. Capture the output (or just confirm it's empty) — you will inline `## Repository Skills Available` (with no entries) into the planner spawn per the standard contract.
+   cd prompt-tests/instructions-reach-e2e/output/instructions-canary/<PROJECT-NAME>
+   node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" skill list --repo-root "$(pwd)"
+   ```
+   The fixture has no `.claude/skills/` or `packages/*/skills/` of its own, so the expected envelope is `{ "ok": true, "data": { "skills": [] } }`. Capture the empty `data.skills` array (or just confirm it's empty) — you will inline `## Repository Skills Available` (with no entries) into the planner spawn per the standard contract.
 
 Do NOT create `state.json`, `orchestration.yml`, or `template.yml` yourself. The engine writes `state.json` on the first `start` event and snapshots `template.yml` from the global templates folder.
 

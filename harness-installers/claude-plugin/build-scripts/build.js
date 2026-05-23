@@ -104,8 +104,8 @@ export async function runBuild(opts) {
   // Prune TypeScript sources, test fixtures, and dev tooling from the scripts/
   // tree. copy-skills pulls the full harness-files tree from adapter output,
   // which includes raw .ts sources, tests/, package.json, tsconfig.json etc.
-  // Only runtime artifacts (.js, .mjs, .gitignore) and the list-repo-skills
-  // utility belong in the published plugin payload.
+  // Only runtime artifacts (.js, .mjs, .gitignore) belong in the published
+  // plugin payload.
   await step('prune-scripts-sources', () => {
     const scriptsDir = path.join(out, 'skills/rad-orchestration/scripts');
     const KEEP_EXTENSIONS = new Set(['.js', '.mjs']);

@@ -59,7 +59,7 @@ All paths below are relative to the repo root unless noted.
 
 ### Step 1 — Bootstrap (resume at in-progress phase_review)
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
@@ -136,7 +136,7 @@ The body describes the integration fix from scratch, pointing at `src/greet.js`,
 
 ### Step 4 — Signal `phase_review_completed`
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event phase_review_completed \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
@@ -163,7 +163,7 @@ tasks/COLORS-GREET-MISMATCH-TASK-P01-PHASE-C1.md
 
 The coder should update `src/greet.js` from `names.map(n => \`Hello, ${n.name}\`)` to `names.map(n => \`Hello, ${n}\`)`. `src/colors.js` stays as-is. After the coder completes, signal:
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event task_completed \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \
@@ -185,7 +185,7 @@ reports/COLORS-GREET-MISMATCH-CODE-REVIEW-P01-PHASE-C1.md
 
 After the reviewer writes its doc, signal:
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir prompt-tests/phase-review-mediation-e2e/output/colors-greet-mismatch/<RUN-FOLDER> \

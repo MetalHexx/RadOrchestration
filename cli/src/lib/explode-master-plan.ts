@@ -1,16 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import yaml from 'js-yaml';
-import { readState, writeState, readDocument } from './state-io.js';
-import { validateFrontmatter } from './frontmatter-validators.js';
-import type {
-  PipelineState,
-  IterationEntry,
-  ForEachPhaseNodeState,
-  ForEachTaskNodeState,
-} from './types.js';
+import { stringifyYaml, parseYaml } from './yaml.js';
 
-// ── Public types ──────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedTask {
   /** Compound id, e.g. "P01-T01". */
@@ -74,6 +66,110 @@ export interface ExplodeResult {
   emittedTaskFiles: string[];
   /** Timestamped backup dir path, or null if no pre-existing phases/ or tasks/ contents were moved. */
   backupDir: string | null;
+}
+
+// ── Helper functions (ported from state-io.ts) ────────────────────────────────
+
+function readDocument(
+  docPath: string,
+): { frontmatter: Record<string, unknown>; content: string } | null {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(docPath, 'utf-8');
+  } catch (err: unknown) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+
+  // Match standard YAML frontmatter: starts with ---, ends with \n---
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/);
+  if (!match) {
+    return { frontmatter: {}, content: raw };
+  }
+
+  const frontmatterText = match[1] ?? '';
+  const content = match[2] ?? '';
+  const parsed = parseYaml(frontmatterText);
+  const frontmatter =
+    parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  return {
+    frontmatter,
+    content,
+  };
+}
+
+function isEnoent(err: unknown): boolean {
+  return (
+    err !== null &&
+    typeof err === 'object' &&
+    (err as { code?: unknown }).code === 'ENOENT'
+  );
+}
+
+function readState(projectDir: string): PipelineState | null {
+  const statePath = path.join(projectDir, 'state.json');
+  try {
+    const raw = fs.readFileSync(statePath, 'utf-8');
+    return JSON.parse(raw) as PipelineState;
+  } catch (err: unknown) {
+    if (isEnoent(err)) return null;
+    throw err;
+  }
+}
+
+function writeState(projectDir: string, state: PipelineState): void {
+  fs.mkdirSync(projectDir, { recursive: true });
+  const statePath = path.join(projectDir, 'state.json');
+  const tmpPath = path.join(projectDir, 'state.json.tmp');
+  try {
+    fs.writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, statePath);
+  } catch (err) {
+    fs.rmSync(tmpPath, { force: true });
+    throw err;
+  }
+}
+
+function validateFrontmatterPhaseCreated(frontmatter: Record<string, unknown>): null | { error: string; field: string } {
+  const tasks = frontmatter.tasks;
+  if (!Array.isArray(tasks)) {
+    return { error: 'Invalid value: tasks must be an array', field: 'tasks' };
+  }
+  if ((tasks as unknown[]).length === 0) {
+    return { error: 'Invalid value: tasks must be a non-empty array', field: 'tasks' };
+  }
+  return null;
+}
+
+// ── Minimal types for state.json support ──────────────────────────────────────
+
+interface IterationEntry {
+  index: number;
+  status: string;
+  nodes: Record<string, unknown>;
+  corrective_tasks: unknown[];
+  doc_path?: string | null;
+  commit_hash: string | null;
+}
+
+interface ForEachTaskNodeState {
+  kind: 'for_each_task';
+  status: string;
+  iterations: IterationEntry[];
+}
+
+interface ForEachPhaseNodeState {
+  kind: 'for_each_phase';
+  status: string;
+  iterations: IterationEntry[];
+}
+
+interface PipelineState {
+  graph: {
+    nodes: Record<string, unknown>;
+  };
 }
 
 // ── Regexes (line-anchored; the parser iterates lines, not the whole text) ────
@@ -323,7 +419,7 @@ function extractRequirementTags(body: string): string[] {
     const items = (tagLineMatch[1] ?? '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     for (const item of items) tags.add(item);
   }
-  return [...tags];
+  return Array.from(tags);
 }
 
 // ── Filename helpers ──────────────────────────────────────────────────────────
@@ -332,7 +428,7 @@ function extractRequirementTags(body: string): string[] {
  * Slugify a phase/task title into the filename suffix. Mirrors the existing
  * hand-authored convention (SCREAMING-KEBAB-CASE).
  */
-export function titleToFilenameSlug(title: string): string {
+function titleToFilenameSlug(title: string): string {
   const cleaned = title
     .trim()
     .toUpperCase()
@@ -341,12 +437,12 @@ export function titleToFilenameSlug(title: string): string {
   return cleaned || 'UNTITLED';
 }
 
-export function phaseFilename(projectName: string, phase: ParsedPhase): string {
+function phaseFilename(projectName: string, phase: ParsedPhase): string {
   const idx = String(phase.index).padStart(2, '0');
   return `${projectName}-PHASE-${idx}-${titleToFilenameSlug(phase.title)}.md`;
 }
 
-export function taskFilename(projectName: string, task: ParsedTask): string {
+function taskFilename(projectName: string, task: ParsedTask): string {
   const pidx = String(task.phaseIndex).padStart(2, '0');
   const tidx = String(task.taskIndex).padStart(2, '0');
   return `${projectName}-TASK-P${pidx}-T${tidx}-${titleToFilenameSlug(task.title)}.md`;
@@ -390,7 +486,7 @@ function buildTaskFrontmatter(opts: {
 }
 
 function renderDoc(frontmatter: Record<string, unknown>, body: string): string {
-  const frontmatterYaml = yaml.dump(frontmatter, { lineWidth: 120, noRefs: true }).trimEnd();
+  const frontmatterYaml = stringifyYaml(frontmatter).trimEnd();
   return `---\n${frontmatterYaml}\n---\n\n${body.trimEnd()}\n`;
 }
 
@@ -431,7 +527,7 @@ function hasContents(dir: string): boolean {
   try {
     const entries = fs.readdirSync(dir);
     return entries.length > 0;
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -457,7 +553,7 @@ function moveContentsTo(srcDir: string, destDir: string): void {
   }
 }
 
-export function makeBackupDir(projectDir: string, nowIso?: string): string {
+function makeBackupDir(projectDir: string, nowIso?: string): string {
   const iso = nowIso ?? new Date().toISOString();
   const stamp = iso.replace(/[:.]/g, '-');
   return path.join(projectDir, 'backups', stamp);
@@ -511,7 +607,7 @@ export function explodeMasterPlan(opts: ExplodeOptions): ExplodeResult {
     // we skip validation since the rule would reject empty-tasks-arrays (legit shape here), BUT
     // phases with tasks must pass.
     if (phase.tasks.length > 0) {
-      const err = validateFrontmatter('phase_plan_created', frontmatter, fpath);
+      const err = validateFrontmatterPhaseCreated(frontmatter);
       if (err !== null) {
         throw new Error(
           `Explosion emitter produced invalid phase frontmatter for ${fname}: ${err.error} (field: ${err.field})`,

@@ -22,7 +22,7 @@ Bundles `entryPoint` (default `${source}/src/bin/radorch.ts`) to a single ESM fi
 
 `opts: { source: string, target: string }`
 
-Bundles the two entries listed in `RUNTIME_ENTRIES` (`['pipeline', 'explode-master-plan']`) from `source` to `target/${entryName}.js`, each via a separate esbuild call. Adds a `#!/usr/bin/env node` banner and applies `0o755` chmod on each output file.
+Bundles the entry listed in `RUNTIME_ENTRIES` (`['pipeline']`) from `source` to `target/${entryName}.js` via esbuild. The array shape is preserved so future iterations can re-extend it without a structural revert. Adds a `#!/usr/bin/env node` banner and applies `0o755` chmod on each output file.
 
 **`emitUiBundle(opts)` — `emit-ui-bundle.js`**
 

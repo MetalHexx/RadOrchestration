@@ -9,7 +9,11 @@ Reference document for the Orchestrator agent. Covers the pipeline event loop, a
 `{orchRoot}` is the **absolute filesystem path** to the orchestration install root — the directory that contains `skills/`. It is the base for constructing pipeline-script paths (e.g., `{orchRoot}/skills/rad-orchestration/scripts/pipeline.js`).
 
 1. Every pipeline JSON result includes an `orchRoot` field (already absolute). Use `result.orchRoot` for all path construction after the first pipeline call.
-2. The very first call's `{orchRoot}` is supplied by `radorch project context` output, read from `data.orchRoot` in the envelope.
+2. Call the following script to get the `{orchRoot}` value and additional environment context:
+
+   ```
+   node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --json
+   ```
 3. Projects live unconditionally at `~/.radorch/projects/{PROJECT-NAME}/` (resolved at runtime per-user via `os.homedir()`). Project paths are not derived from `{orchRoot}`.
 
 ## Runtime Entry
@@ -55,7 +59,7 @@ The `start` event is always safe — the pipeline loads `state.json`, skips muta
 
 Always invoke `pipeline.js` from the workspace root:
 
-```bash
+```
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
     [--doc-path <path>]
     [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
@@ -69,7 +73,7 @@ node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --p
 
 The `--config` flag overrides the default config path:
 
-```bash
+```
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
 ```
 
@@ -172,7 +176,7 @@ If the pipeline exits with code 1, the result contains error details:
 
 On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single call:
 
-```bash
+```
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir <path>
 ```
 
@@ -196,7 +200,7 @@ When `result.action` is `invoke_source_control_pr`, spawn **source-control** in 
 
 1. The agent reads `pipeline.source_control` from state for `branch`, `base_branch`, and `worktree_path`
 2. The agent reads `final_review.doc_path` from state for the PR body file
-3. The agent executes `gh-pr.js` with the resolved flags
+3. The agent executes `radorch git pr` with the resolved flags
 4. The agent outputs a `## PR Result` JSON block containing `pr_url` (which may be `null` on failure) and `pr_number`
 5. Extract `pr_url` from the agent's `## PR Result` JSON block
 6. If `pr_url` is non-null, signal `pr_created --pr-url <url>` to the pipeline; if `pr_url` is `null` (creation failed or pre-condition failure), signal `pr_created` **without** the `--pr-url` flag so the pipeline records the attempt as `null` and proceeds to the human gate

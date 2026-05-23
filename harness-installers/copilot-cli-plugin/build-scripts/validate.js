@@ -5,12 +5,11 @@ import { execSync } from 'node:child_process';
 // FR-29: REQUIRED_ARTIFACTS. plugin.json at payload root (no .claude-plugin/),
 // and the agent filename suffix on gate 2 is .agent.md (Copilot rule). The
 // claude-plugin's namespaced-token gate is intentionally DROPPED (AD-10).
-const REQUIRED_ARTIFACTS = [
+export const REQUIRED_ARTIFACTS = [
   'plugin.json',
   'package.json',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
-  'skills/rad-orchestration/scripts/explode-master-plan.js',
   'hooks/hooks.json',
   'hooks/bootstrap.mjs',
   'hooks/drift-check.mjs',

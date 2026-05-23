@@ -145,20 +145,23 @@ The planner always receives an explicit sizing signal — no deferral option.
        `${SKILLS_ROOT}/rad-plan-audit/references/corrections-workflow.md`.
        The planner applies fixes inline and returns a short summary of
        actioned and declined findings.
-    2. Re-invoke the explosion script to regenerate `phases/` and
+    2. Re-invoke the explosion subcommand to regenerate `phases/` and
        `tasks/` from the corrected Master Plan:
 
-           npx tsx ${SKILLS_ROOT}/rad-orchestration/scripts/explode-master-plan.ts \
+           node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" plan explode \
              --project-dir <project-dir> \
              --master-plan <master-plan-path> \
              --project-name <project-name>
 
-       The script auto-backs-up the pre-correction `phases/` and
+       The subcommand auto-backs-up the pre-correction `phases/` and
        `tasks/` into `backups/{ISO-timestamp}/` and resets
        `state.graph.nodes.phase_loop` before re-seeding — nothing is
-       overwritten destructively. On exit code `2` (parse failure in
-       the corrected Master Plan), halt and surface the structured
-       `parse_error` JSON to the user — do not retry in-skill.
+       overwritten destructively. The envelope is `{ ok, data, error }`;
+       on success read `data.emittedPhases`, `data.emittedTasks`, and
+       `data.backupDir`. On exit code `2` with `data.error` populated
+       (parse failure in the corrected Master Plan), halt and surface
+       the structured `data.error` payload (`{ line, expected, found,
+       message }`) to the user — do not retry in-skill.
 - Show the user the concise audit report, the planner's corrections
   summary, and (when re-exploded) the backup directory path.
 - Single pass, no re-audit after corrections.

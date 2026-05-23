@@ -53,7 +53,7 @@ All paths are relative to the repo root unless noted.
 
 ### Step 1 — Bootstrap (resume)
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event start \
   --project-dir prompt-tests/code-review-rework-e2e/output/conformance-tiered/<RUN-FOLDER> \
@@ -83,7 +83,7 @@ Load `.claude/skills/rad-orchestration/references/corrective-playbook.md`. Apply
 
 ### Step 4 — Signal `code_review_completed` (first attempt)
 
-```bash
+```
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event code_review_completed \
   --project-dir <...> \

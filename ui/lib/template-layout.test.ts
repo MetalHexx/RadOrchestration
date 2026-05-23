@@ -8,7 +8,7 @@ import { parseTemplateToGraph } from './template-serializer';
 // ── Fixture loading ───────────────────────────────────────────────────────────
 
 const EXTRA_HIGH_YAML = readFileSync(
-  join(__dirname, '../../greenfield/runtime-config/templates/extra-high.yml'),
+  join(__dirname, '../../runtime-config/templates/extra-high.yml'),
   'utf-8'
 );
 

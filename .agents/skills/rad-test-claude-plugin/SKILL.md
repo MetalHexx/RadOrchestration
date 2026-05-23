@@ -41,7 +41,7 @@ Surface this reminder in your handoff message — do not assume the user remembe
 
 ### 1. Resolve repo root
 
-```bash
+```
 git rev-parse --show-toplevel
 ```
 

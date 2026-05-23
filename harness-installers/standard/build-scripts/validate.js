@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const REQUIRED_PER_HARNESS = [
+export const REQUIRED_PER_HARNESS = [
   'orchestration.yml',
   'templates/extra-high.yml',
   'templates/high.yml',
@@ -10,7 +10,6 @@ const REQUIRED_PER_HARNESS = [
   'templates/low.yml',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'skills/rad-orchestration/scripts/pipeline.js',
-  'skills/rad-orchestration/scripts/explode-master-plan.js',
 ];
 
 const SIZE_LIMIT = Math.round(50 * 1024 * 1024 * 1.1);

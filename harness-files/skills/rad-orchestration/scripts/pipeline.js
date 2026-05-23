@@ -9999,42 +9999,113 @@ function scaffoldNodeState(nodeDef) {
   }
 }
 
-// harness-files/skills/rad-orchestration/scripts/lib/context-enrichment.ts
-import { spawnSync } from "node:child_process";
+// cli/src/lib/skill-manifest.ts
+import { readdirSync as readdirSync2, readFileSync as readFileSync2 } from "node:fs";
 import path3 from "node:path";
-function buildRepositorySkillsBlock(scriptsDir) {
-  const scriptPath = path3.resolve(scriptsDir, "list-repo-skills.mjs");
-  let raw;
-  try {
-    const result = spawnSync(process.execPath, [scriptPath], { encoding: "utf8" });
-    if (result.status !== 0) {
-      console.warn(
-        `context-enrichment: list-repo-skills.mjs exited with status ${result.status}; emitting empty repository_skills_block`
-      );
-      return "";
+var EXCLUDED_DIRS = /* @__PURE__ */ new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "out",
+  "coverage",
+  "prompt-tests"
+]);
+function* walkSkillFiles(root) {
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries;
+    try {
+      entries = readdirSync2(dir, { withFileTypes: true });
+    } catch {
+      continue;
     }
-    raw = result.stdout ?? "";
-  } catch (err) {
-    console.warn(
-      `context-enrichment: list-repo-skills.mjs invocation failed (${err.message}); emitting empty repository_skills_block`
-    );
-    return "";
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        if (EXCLUDED_DIRS.has(e.name)) continue;
+        stack.push(path3.join(dir, e.name));
+      } else if (e.isFile() && e.name === "SKILL.md") {
+        yield path3.join(dir, e.name);
+      }
+    }
   }
+}
+function parseFrontmatter(text) {
+  if (!text.startsWith("---")) return { error: "no frontmatter block" };
+  const end = text.indexOf("\n---", 3);
+  if (end === -1) return { error: "frontmatter not terminated" };
+  const raw = text.slice(3, end);
+  const fm = {};
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+$/, "");
+    if (!line || line.startsWith("#")) continue;
+    const m = line.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)\s*:\s*(.*)$/);
+    if (!m) return { error: `malformed line: ${line}` };
+    const rawValue = m[2].trim();
+    const wasQuoted = rawValue.length >= 2 && (rawValue.startsWith('"') && rawValue.endsWith('"') || rawValue.startsWith("'") && rawValue.endsWith("'"));
+    let value;
+    if (wasQuoted) value = rawValue.slice(1, -1);
+    else if (rawValue === "true") value = true;
+    else if (rawValue === "false") value = false;
+    else value = rawValue;
+    fm[m[1]] = value;
+  }
+  return { frontmatter: fm };
+}
+function buildSkillManifest(opts) {
+  const warn = opts.warn ?? ((msg) => process.stderr.write(msg + "\n"));
+  const out = [];
+  for (const file of walkSkillFiles(opts.repoRoot)) {
+    let text;
+    try {
+      text = readFileSync2(file, "utf8");
+    } catch (err) {
+      warn(`warn: ${file}: ${err.message}`);
+      continue;
+    }
+    const parsed = parseFrontmatter(text);
+    if (parsed.error) {
+      warn(`warn: ${file}: ${parsed.error}`);
+      continue;
+    }
+    const fm = parsed.frontmatter;
+    const name = fm["name"];
+    const description = fm["description"];
+    if (typeof name !== "string" || !name) {
+      warn(`warn: ${file}: missing name`);
+      continue;
+    }
+    if (typeof description !== "string" || !description) {
+      warn(`warn: ${file}: missing description`);
+      continue;
+    }
+    if (name.startsWith("rad-")) continue;
+    if (fm["disable-model-invocation"] === true) continue;
+    out.push({ name, description, path: path3.resolve(file) });
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name));
+  return out;
+}
+
+// harness-files/skills/rad-orchestration/scripts/lib/context-enrichment.ts
+function buildRepositorySkillsBlock() {
   let arr;
   try {
-    arr = JSON.parse(raw);
+    arr = buildSkillManifest({ repoRoot: process.cwd() });
   } catch (err) {
     console.warn(
-      `context-enrichment: list-repo-skills.mjs produced unparseable JSON (${err.message}); emitting empty repository_skills_block`
+      `context-enrichment: buildSkillManifest failed (${err.message}); emitting empty repository_skills_block`
     );
     return "";
   }
   if (!Array.isArray(arr) || arr.length === 0) return "";
+  const json2 = JSON.stringify(arr, null, 2);
   return `
 
 ## Repository Skills Available
 
-${raw.trim()}
+${json2}
 
 Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan \u2014 skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.
 `;
@@ -10098,7 +10169,7 @@ var EMPTY_CONTEXT_ACTIONS = /* @__PURE__ */ new Set([
 function enrichActionContext(input) {
   const { action, walkerContext, state } = input;
   if (action in PLANNING_SPAWN_STEPS) {
-    const repository_skills_block = buildRepositorySkillsBlock(input.scriptsDir);
+    const repository_skills_block = buildRepositorySkillsBlock();
     const base = {
       ...walkerContext,
       step: PLANNING_SPAWN_STEPS[action],
@@ -12665,7 +12736,7 @@ function resolveGateApproved(context) {
   throw new Error(gateType ? `Unknown gate type '${gateType}': expected task or phase` : "gate_approved requires --gate-type task|phase");
 }
 function processEvent(event, projectDir, context, io, pathContext, configPath) {
-  const { orchRoot, templatesDir, scriptsDir } = pathContext;
+  const { orchRoot, templatesDir } = pathContext;
   try {
     const config = io.readConfig(configPath);
     const state = io.readState(projectDir);
@@ -12720,8 +12791,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
           walkerContext: nextAction2.context,
           state: scaffolded,
           config,
-          cliContext: context,
-          scriptsDir
+          cliContext: context
         }) : {};
         return {
           success: true,
@@ -12750,8 +12820,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
           walkerContext: walkerResult.context,
           state,
           config,
-          cliContext: context,
-          scriptsDir
+          cliContext: context
         }) : {};
         return {
           success: true,
@@ -12827,8 +12896,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
         walkerContext: walkerResult.context,
         state: mutatedState2,
         config,
-        cliContext: context,
-        scriptsDir
+        cliContext: context
       }) : {};
       return {
         success: true,
@@ -12930,8 +12998,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
         walkerContext: rawContext,
         state: mutatedState,
         config,
-        cliContext: context,
-        scriptsDir
+        cliContext: context
       });
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
@@ -12960,8 +13027,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
             walkerContext: walkerResult.context,
             state: mutatedState,
             config,
-            cliContext: context,
-            scriptsDir
+            cliContext: context
           })
         };
       } else {

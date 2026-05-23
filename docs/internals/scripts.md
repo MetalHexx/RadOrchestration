@@ -12,7 +12,7 @@
 
 ### pipeline.js
 
-```bash
+```
 # Default .claude root shown. Adjust if you configured a custom orch_root.
 node .claude/skills/rad-orchestration/scripts/pipeline.js \
   --event <event_name> \
@@ -68,7 +68,7 @@ node .claude/skills/rad-orchestration/scripts/pipeline.js \
 
 ### migrate-to-v5.js
 
-```bash
+```
 # Default .claude root shown. Adjust if you configured a custom orch_root.
 node .claude/skills/rad-orchestration/scripts/migrate-to-v5.js --project-dir <project-dir>
 ```

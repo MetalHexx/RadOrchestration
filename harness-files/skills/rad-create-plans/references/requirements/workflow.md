@@ -88,18 +88,9 @@ prompt says, no more.
     only when a bullet form genuinely adds clarity.}
 
     Anything else necessary to capture the requirement or decision.
-    400 estimated token limit per block (heading + body) for chunking.
    ```
 
-8. Run the token lint:
-
-       node ${SKILLS_ROOT}/rad-create-plans/references/requirements/scripts/token-lint.js <path-to-saved-doc>
-
-   The script prints a JSON array of offenders (blocks > 500 estimated tokens)
-   with heading, line number, and estimated token count. Exit code is always 0;
-   the lint is a soft warning, not a blocker.
-
-9. Save to `{PROJECT-DIR}/{NAME}-REQUIREMENTS.md`.
+8. Save to `{PROJECT-DIR}/{NAME}-REQUIREMENTS.md`.
 
 ## Output Contract
 
@@ -135,9 +126,6 @@ author: "planner-agent"
 6. `## Non-Functional Requirements` → `### NFR-1:` ...
 7. `## Architectural Decisions` → `### AD-1:` ...
 8. `## Design Decisions` → `### DD-1:` ...
-
-**Hard per-block target**: every `### {ID}:` block is ≤ 500 estimated tokens
-(heading + body). Token-lint enforces as a soft warning.
 
 ## Constraints
 
