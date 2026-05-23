@@ -26,7 +26,7 @@ The test invokes the `@planner` agent twice. Each call is a real Opus-tier LLM s
 
 **Dependencies.** Run this once in each subfolder you'll use:
 
-```bash
+```
 # orchestration scripts — required
 cd .claude/skills/rad-orchestration/scripts && npm install && cd -
 
@@ -95,7 +95,7 @@ Machine linting covers structural correctness; you're checking semantic quality.
 
 Skip this if you're time-boxed; it's a bonus check that the UI renders the run output.
 
-```bash
+```
 cd ui && npm run build && npm run dev
 ```
 

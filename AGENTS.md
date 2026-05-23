@@ -27,6 +27,19 @@ These rules govern every contributor and every agent working in the orchestratio
 - Broad anti-regression scans (one forbidden token swept across many `.md` files at once) are the exception; pinned-shape checks on individual docs are not.
 - If a markdown invariant genuinely needs guarding, ask the user before adding the test.
 
+## Codeblock Fences
+When writing markdown documents in this repo, default to plain fences (no language tag) for shell commands. Most repo examples (`node`, `git`, `npm`, `gh`) are shell-agnostic — adding a `bash` or `powershell` tag primes agents on Windows toward the wrong shell. Only tag the fence when the snippet actually uses shell-specific syntax (`$env:VAR`, heredocs, `Test-Path`).
+
+Do:
+```
+node example/build.js
+```
+
+Don't:
+```bash
+node example/build.js
+```
+
 ## Per-module ownership
 - Every module folder (`harness-files/`, `harness-adapters/`, `harness-dogfood/`, each `harness-installers/<variant>/`, `runtime-config/`, `cli/`, `ui/`) owns its own code, tests, and `AGENTS.md`.
 - Cross-module reach-ins are forbidden. A module does not `require`, import, or read another module's internal files directly.
@@ -59,7 +72,7 @@ The `rad-*` reserved-namespace rule above applies to `harness-files/skills/` —
 
 After editing any file under `harness-files/`, run the build for the harness you're testing against. The build deploys to user-level (`~/.claude/` or `~/.copilot/`) — no repo-root dogfood folder is produced:
 
-```bash
+```
 npm run build                  # Claude Code (default) → ~/.claude/
 npm run build:claude           # explicit
 npm run build:copilot-vscode   # → ~/.copilot/
@@ -78,24 +91,24 @@ All of these resolve to `node harness-dogfood/build.js` with the appropriate har
 This repo is a polyglot monorepo with several test runners. Pick the right one:
 
 - **Pipeline runtime** (`harness-files/skills/rad-orchestration/scripts/`) — Vitest:
-  ```bash
+  ```
   cd harness-files/skills/rad-orchestration/scripts
   npm test                              # full suite
   npx vitest run path/to/file.test.ts   # single file
   npm run typecheck                     # tsc --noEmit (also run by pre-commit hook)
   ```
 - **Adapters + dogfood build CLI** (`harness-adapters/`, `harness-dogfood/`) — Node's built-in test runner. Run from repo root:
-  ```bash
+  ```
   node --test harness-adapters/**/*.test.js
   node --test harness-dogfood/**/*.test.mjs
   ```
 - **Installer** (`harness-installers/standard/`) — Node test runner:
-  ```bash
+  ```
   cd harness-installers/standard && npm test
   ```
   The marketplace plugin builders (`harness-installers/claude-plugin/` and `harness-installers/copilot-cli-plugin/`) each carry their own test suite runnable the same way: `cd harness-installers/<variant> && npm test`.
 - **Dashboard UI** (`ui/`) — Node test runner via tsx, plus `next` for dev/build:
-  ```bash
+  ```
   cd ui && npm test
   cd ui && npm run dev               # dev server (port 3000 — kill any prior occupant first)
   cd ui && npm run build-and-start   # full production build + start
@@ -105,7 +118,7 @@ This repo is a polyglot monorepo with several test runners. Pick the right one:
 
 The pre-commit hook runs `tsc --noEmit` on the pipeline scripts folder before every commit. Point git at the in-tree hooks dir once after cloning:
 
-```bash
+```
 git config core.hooksPath .githooks
 ```
 

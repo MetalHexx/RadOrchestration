@@ -38,7 +38,7 @@ Record the answer as `{harness}`.
 
 ### 2. Resolve repo root
 
-```bash
+```
 git rev-parse --show-toplevel
 ```
 
@@ -46,7 +46,7 @@ Use the result as `{repoRoot}` for every subsequent command.
 
 ### 3. Pack the installer
 
-```bash
+```
 cd {repoRoot}/installer && npm pack
 ```
 
@@ -54,7 +54,7 @@ Note the generated tarball filename — something like `rad-orchestration-X.Y.Z.
 
 ### 4. Verify the tarball
 
-```bash
+```
 npx {repoRoot}/installer/{tarball} --version
 ```
 
@@ -62,7 +62,7 @@ npx {repoRoot}/installer/{tarball} --version
 
 Tests the wizard surface: the single harness-question prompt and the canonical `orchestration.yml` write.
 
-```bash
+```
 npx {repoRoot}/installer/{tarball} --yes --harness {harness}
 ```
 
@@ -83,7 +83,7 @@ Locate the bundled plugin root for the harness. The plugin payload ships at `{re
 
 Run plugin-bootstrap with `--force` to defeat the version-equal short-circuit:
 
-```bash
+```
 npx {repoRoot}/installer/{tarball} plugin-bootstrap --force --harness {harness} --plugin-root {repoRoot}/installer/src/{bundleDir}
 ```
 
@@ -93,7 +93,7 @@ npx {repoRoot}/installer/{tarball} plugin-bootstrap --force --harness {harness} 
 
 Run all three checks and report any failure:
 
-```bash
+```
 npx {repoRoot}/installer/{tarball} --version
 npx {repoRoot}/installer/{tarball} doctor
 ```
@@ -120,7 +120,7 @@ Report:
 
 ### 9. Delete the local tarball
 
-```bash
+```
 cd {repoRoot}/installer && Remove-Item -Force {tarball}
 ```
 

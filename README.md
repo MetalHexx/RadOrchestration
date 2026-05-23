@@ -84,7 +84,7 @@ orchestration TypeScript stays type-clean before each commit. The hook file
 is already committed at `.githooks/pre-commit` — point git at it once after
 cloning:
 
-```bash
+```
 git config core.hooksPath .githooks
 ```
 

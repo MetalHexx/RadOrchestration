@@ -37,7 +37,7 @@ The test spawns a real `@coder` agent and a real `@reviewer` agent. The mediatio
 
 **Dependencies.** Run this once:
 
-```bash
+```
 # orchestration scripts — required
 cd .claude/skills/rad-orchestration/scripts && npm install && cd -
 
@@ -130,7 +130,7 @@ The implementing agent's Claude-in-Chrome MCP run should already have caught ren
 2. Confirm `ui/.env.local` points `WORKSPACE_ROOT` at `prompt-tests/phase-review-mediation-e2e/fixtures/` (absolute path).
 
 3. Boot the UI:
-   ```bash
+   ```
    cd ui && npm run build && npm run dev
    ```
 

@@ -50,7 +50,7 @@ Hand-roll the minimum project scaffold — do **NOT** invoke the installer and d
    The `@planner` agent in Requirements mode discovers this file by convention.
 
 4. **Generate the skill manifest for the fixture repo.** Run the manifest script with `--project-dir` (or `cwd`) pointed at the fixture root so the planner spawn includes repo-local skills:
-   ```bash
+   ```
    cd prompt-tests/repo-skill-discovery-e2e/fixtures/skill-disco-fixture
    node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" skill list --repo-root "$(pwd)"
    ```

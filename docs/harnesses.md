@@ -18,13 +18,13 @@ More coming soon.
 
 Install the CLI globally:
 
-```bash
+```
 npm install -g @anthropic-ai/claude-code
 ```
 
 Then open a terminal in your repository root and run:
 
-```bash
+```
 claude
 ```
 

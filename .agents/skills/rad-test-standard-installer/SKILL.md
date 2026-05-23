@@ -52,7 +52,7 @@ Save the choice as `{harness}`.
 
 Resolve the repo root:
 
-```bash
+```
 git rev-parse --show-toplevel
 ```
 

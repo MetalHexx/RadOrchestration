@@ -59,7 +59,7 @@ The `start` event is always safe — the pipeline loads `state.json`, skips muta
 
 Always invoke `pipeline.js` from the workspace root:
 
-```bash
+```
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
     [--doc-path <path>]
     [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
@@ -73,7 +73,7 @@ node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --p
 
 The `--config` flag overrides the default config path:
 
-```bash
+```
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
 ```
 
@@ -176,7 +176,7 @@ If the pipeline exits with code 1, the result contains error details:
 
 On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single call:
 
-```bash
+```
 node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir <path>
 ```
 

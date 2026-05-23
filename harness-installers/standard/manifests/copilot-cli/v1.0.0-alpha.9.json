@@ -180,7 +180,7 @@
     {
       "bundlePath": "skills/rad-orchestration/references/action-event-reference.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/action-event-reference.md",
-      "sha256": "0f1a1fbfad24fe74bf55386ce71b50bd4adb7dc8be20d19bce86c34dd3d2e64f"
+      "sha256": "fa9039f7382c4ff0b2b01b584d22cc72c857eabaf3d96b9249687a48ec3f8e8d"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/context.md",
@@ -200,7 +200,7 @@
     {
       "bundlePath": "skills/rad-orchestration/references/pipeline-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/pipeline-guide.md",
-      "sha256": "e68a47d6edf803c3297cf3d6f4b9fabc6449c7d55fd5d7032fb6cf8bf00d5606"
+      "sha256": "338fdb139a818130b8c0d37981d90ffb03b9df87e3c62e1263779be771ffd0fd"
     },
     {
       "bundlePath": "skills/rad-orchestration/schemas/legacy/state-v4.schema.json",
@@ -215,12 +215,12 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/pipeline.js",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/pipeline.js",
-      "sha256": "9ca264e4dc01b9aa3921754642dd56ecf61d632febdd076935905d147faeb5bd"
+      "sha256": "6c71878f167e2f9f03f7e7f5beb4a091f2afd290ba7a8f87f4b7967622114653"
     },
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "869868a84fbb886a0c451a05ef17ed0cae5eb85e140c7200489f614f9532fb81"
+      "sha256": "ba972e88dc799c55ce44e1cd950a3da4796c1020ef53d1f5e4872764b2fd7ae5"
     },
     {
       "bundlePath": "skills/rad-orchestration/scripts/setup-hooks.js",

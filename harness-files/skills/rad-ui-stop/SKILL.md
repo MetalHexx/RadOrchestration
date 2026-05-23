@@ -8,7 +8,7 @@ user-invocable: true
 
 Invoke the bundled CLI to stop the running radorch dashboard UI:
 
-```bash
+```
 node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" ui stop
 ```
 

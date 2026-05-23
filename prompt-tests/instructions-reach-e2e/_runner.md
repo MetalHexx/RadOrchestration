@@ -66,7 +66,7 @@ Hand-roll the minimum project scaffold. The pipeline engine creates `state.json`
    The brainstorming doc gets renamed in transit: `BRAINSTORMING.md` → `<PROJECT-NAME>-BRAINSTORMING.md`. The `@planner` agent in Requirements mode discovers it by convention.
 
 4. **Generate the skill manifest for the run folder.** The orchestrator's planner spawn requires the `## Repository Skills Available` heading even if empty. Run the manifest script with cwd at the run folder:
-   ```bash
+   ```
    cd prompt-tests/instructions-reach-e2e/output/instructions-canary/<PROJECT-NAME>
    node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" skill list --repo-root "$(pwd)"
    ```

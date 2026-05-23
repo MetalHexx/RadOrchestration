@@ -36,7 +36,7 @@ All test files are under `.claude/skills/rad-orchestration/scripts/tests/`.
 
 Tests use Node's built-in `node:test` runner. No npm install required.
 
-```bash
+```
 # Run a single test file
 node --test .claude/skills/rad-orchestration/scripts/tests/mutations.test.js
 
