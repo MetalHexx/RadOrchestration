@@ -12736,7 +12736,7 @@ function resolveGateApproved(context) {
   throw new Error(gateType ? `Unknown gate type '${gateType}': expected task or phase` : "gate_approved requires --gate-type task|phase");
 }
 function processEvent(event, projectDir, context, io, pathContext, configPath) {
-  const { orchRoot, templatesDir, scriptsDir } = pathContext;
+  const { orchRoot, templatesDir } = pathContext;
   try {
     const config = io.readConfig(configPath);
     const state = io.readState(projectDir);
@@ -12791,8 +12791,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
           walkerContext: nextAction2.context,
           state: scaffolded,
           config,
-          cliContext: context,
-          scriptsDir
+          cliContext: context
         }) : {};
         return {
           success: true,
@@ -12821,8 +12820,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
           walkerContext: walkerResult.context,
           state,
           config,
-          cliContext: context,
-          scriptsDir
+          cliContext: context
         }) : {};
         return {
           success: true,
@@ -12898,8 +12896,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
         walkerContext: walkerResult.context,
         state: mutatedState2,
         config,
-        cliContext: context,
-        scriptsDir
+        cliContext: context
       }) : {};
       return {
         success: true,
@@ -13001,8 +12998,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
         walkerContext: rawContext,
         state: mutatedState,
         config,
-        cliContext: context,
-        scriptsDir
+        cliContext: context
       });
       nextAction = { action: stepNode.action, context: enrichedCtx };
       io.writeState(projectDir, mutatedState);
@@ -13031,8 +13027,7 @@ function processEvent(event, projectDir, context, io, pathContext, configPath) {
             walkerContext: walkerResult.context,
             state: mutatedState,
             config,
-            cliContext: context,
-            scriptsDir
+            cliContext: context
           })
         };
       } else {

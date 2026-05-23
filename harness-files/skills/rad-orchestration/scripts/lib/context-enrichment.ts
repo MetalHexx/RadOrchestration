@@ -43,7 +43,6 @@ export interface EnrichmentInput {
   state: PipelineState;
   config: OrchestrationConfig;
   cliContext: Partial<EventContext>;
-  scriptsDir: string;
 }
 
 export function formatPhaseId(phaseNumber: number): string {

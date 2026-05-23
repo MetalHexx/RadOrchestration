@@ -24,7 +24,6 @@ function makeInput(): EnrichmentInput {
     state: { graph: { nodes: {} }, pipeline: {} } as unknown as EnrichmentInput['state'],
     config: { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as EnrichmentInput['config'],
     cliContext: {},
-    scriptsDir: '/unused-after-fold',
   };
 }
 
