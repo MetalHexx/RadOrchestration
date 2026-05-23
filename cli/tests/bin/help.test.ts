@@ -103,4 +103,23 @@ describe('radorch program wiring', () => {
     expect(listHelp).toMatch(/--repo-root/);
     expect(listHelp).toMatch(/Absolute path to the repository root[\s\S]+scanned/);
   }, 30_000);
+
+  it('exposes pipeline signal at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bpipeline\b/);
+    const { stdout: pipelineHelp } = await node(['pipeline', '--help']);
+    expect(pipelineHelp).toMatch(/signal\s+Signal a pipeline event/);
+    const { stdout: signalHelp } = await node(['pipeline', 'signal', '--help']);
+    expect(signalHelp).toMatch(/--event/);
+    expect(signalHelp).toMatch(/--project-dir/);
+    expect(signalHelp).toMatch(/--doc-path/);
+    expect(signalHelp).toMatch(/--parse-error/);
+    expect(signalHelp).toMatch(/--verdict/);
+    expect(signalHelp).toMatch(/--gate-type/);
+    expect(signalHelp).toMatch(/--gate-mode/);
+  }, 30_000);
 });
