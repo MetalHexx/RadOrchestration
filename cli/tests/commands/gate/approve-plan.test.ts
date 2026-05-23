@@ -21,13 +21,12 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   // Reach into the pipeline lib directly to drive the project from start to
   // a state where plan_approved is the next legal event. Mirrors the
   // bring-up sequence in tests/fixtures/parity-states.ts.
-  const { processEvent } = await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/engine.js');
+  const { processEvent } = await import('../../../src/lib/pipeline-engine/engine.js');
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
-    await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js');
+    await import('../../../src/lib/pipeline-engine/state-io.js');
   const pathContext = {
-    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
+    scriptsDir: path.resolve(__dirname, '..', '..', '..', 'src', 'lib', 'pipeline-engine'),
     templatesDir: TEMPLATES_DIR,
-    orchRoot: path.basename(path.resolve(__dirname, '..', '..', '..', '..')),
   };
   const io = { readState, writeState, readConfig, readDocument, ensureDirectories };
 
@@ -60,8 +59,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
 
     const result = await runApprovePlan({ projectDir: dir });
 
-    expect(result.success).toBe(true);
-    expect(result.orchRoot).toBeTruthy();
+    expect(result.error).toBeUndefined();
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
     // Mutation contract: pipeline.current_tier becomes 'execution' and the
     // plan_approval_gate transitions to completed.
@@ -76,7 +74,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
     process.chdir(os.tmpdir());
     const result = await runApprovePlan({ projectDir: dir });
 
-    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
     // Mutation actually landed despite unrelated cwd
     expect(state.graph.nodes.plan_approval_gate.status).toBe('completed');
@@ -123,6 +121,6 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
     // FR-13 contract: the parsed payload reaches the pipeline result via `.data`,
     // mirroring every other radorch subcommand's framework envelope shape.
     expect(parsed.data).toBeDefined();
-    expect(parsed.data.success).toBeDefined();
+    expect(parsed.data.action).toBeDefined();
   });
 });

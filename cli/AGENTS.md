@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, `radorch plan ...`, `radorch skill ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
+This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, `radorch plan ...`, `radorch skill ...`, `radorch pipeline ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
 
 The CLI bundle is built once per harness by `emitCliBundle` in `harness-installers/shared/build-helpers/` and shipped to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`. Skills invoke it via the `${PLUGIN_ROOT}` token, which expands at install time to the harness root.
 
@@ -13,7 +13,7 @@ Layered structure:
 - `cli/src/bin/radorch.ts` — process entry point. Reads argv, builds the commander program via `buildProgram`, and invokes it.
 - `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `where`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
 - `cli/src/framework/` — framework primitives: `defineCommand`/`runCommand`, the envelope `emit`/`validateEnvelope` surface, the logger, prompter, theme, and exit-code map.
-- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`, plus the top-level `doctor` and `where`.
+- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`, `pipeline`, plus the top-level `doctor` and `where`.
 - `cli/src/lib/` — small, cross-command utilities (paths, install.json shape, fs helpers, yaml).
 - `cli/tests/` — vitest suite. Mirrors the `src/` tree (`tests/commands/<noun>/<name>.test.ts`).
 
@@ -37,11 +37,11 @@ When a subcommand's flag matrix depends on a discriminant flag value (e.g., `wor
 - **`harness-files/skills/<name>/SKILL.md`** — canonical skill files invoke subcommands via `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" <noun> <subcommand> ...`. The `${PLUGIN_ROOT}` token expands at install time to the harness root (`~/.claude/` or `~/.copilot/`). Always double-quote `${PLUGIN_ROOT}` at the call site to handle paths with spaces. A regression guard at `harness-files/tests/test-skill-call-form.test.mjs` enforces the canonical call form on every shipped `SKILL.md`.
 - **`harness-installers/shared/build-helpers/emit-cli-bundle.js`** — bundles `cli/src/` into `radorch.mjs` via esbuild. Runs once per harness during the standard installer build (and again during each plugin build).
 - **`harness-installers/standard/manifests/<harness>/v1.0.0-alpha.N.json`** — the standard installer's checked-in manifest. After any addition or deletion under `cli/src/`, the manifest must be regenerated via `npm run build` in `harness-installers/standard/` so the bundled `radorch.mjs` sha256 is current. Manifests are regenerated in place at the current alpha version; no version bump per iteration.
-- **`harness-files/skills/rad-orchestration/scripts/pipeline.js`** — the only sanctioned cross-package consumer is `commands/gate/`, which lazy-imports `pipeline.js`'s `processEvent` to drive plan/final approval. New subcommands should not reach into the pipeline runtime unless they're approving or progressing pipeline state.
+- **`cli/src/lib/pipeline-engine/`** — the pipeline engine, shared across multiple command surfaces. `commands/pipeline/signal.ts` is the primary consumer; `commands/gate/shared.ts` drives `processEvent` for both `gate approve-plan` and `gate approve-final`. New subcommands should not reach into the engine surface unless they are approving or progressing pipeline state.
 
 ## Adding a new subcommand — worked walkthrough using `radorch git commit`
 
-1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`. Reuse before you invent.
+1. **Pick the noun.** Group by user concept (the operation the user thinks they're doing), not by the implementation tool. `git` covers both `git`-driven and `gh`-driven source-control operations because the user concept is "source control"; `gh` is an implementation tool. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`, `pipeline`. Reuse before you invent.
 
 2. **Author the core function.** Create `cli/src/commands/<noun>/<name>.ts`. Export a pure function with an injectable `exec` parameter:
     ```ts

@@ -19,6 +19,14 @@ export interface FailureEnvelope {
   ok: false;
   error: { type: ErrorType; message: string };
   warnings?: string[];
+  /**
+   * Optional failure-context envelope extension used by pipeline-signal (FR-5)
+   * to carry the offending event and field so the orchestrator can diagnose
+   * malformed input without parsing the human message. Other failure-emitting
+   * callers never set `data` on failure, preserving the data-xor-error invariant
+   * for those paths.
+   */
+  data?: { event: string; field?: string };
 }
 
 export type Envelope<TData = unknown> = SuccessEnvelope<TData> | FailureEnvelope;
@@ -39,11 +47,23 @@ export function validateEnvelope(env: unknown): asserts env is Envelope {
     if (!('error' in e) || !e['error'] || typeof e['error'] !== 'object') {
       throw new Error('failure envelope must carry an `error` object');
     }
-    if ('data' in e) throw new Error('failure envelope must not carry `data` (data xor error)');
     const err = e['error'] as Record<string, unknown>;
     if (typeof err['message'] !== 'string') throw new Error('error.message must be a string');
     if (!ALLOWED_ERROR_TYPES.includes(err['type'] as ErrorType)) {
       throw new Error(`error.type must be one of ${ALLOWED_ERROR_TYPES.join(' | ')}`);
+    }
+    if ('data' in e) {
+      const d = e['data'];
+      if (!d || typeof d !== 'object') {
+        throw new Error('failure envelope `data` must be an object when present');
+      }
+      const dRec = d as Record<string, unknown>;
+      if (typeof dRec['event'] !== 'string') {
+        throw new Error('failure envelope `data.event` must be a string when `data` is present');
+      }
+      if ('field' in dRec && dRec['field'] !== undefined && typeof dRec['field'] !== 'string') {
+        throw new Error('failure envelope `data.field` must be a string when present');
+      }
     }
   }
 }
