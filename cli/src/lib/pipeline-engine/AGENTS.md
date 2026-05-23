@@ -22,7 +22,7 @@ Each module has a distinct responsibility:
 - **`scaffold.ts`** — converts a template node definition into an initial `NodeState` for cold-start projects.
 - **`state-io.ts`** — the filesystem I/O surface. Exports `readState`, `writeState`, `readConfig`, `readDocument`, and `ensureDirectories`. Consumers program against the `IOAdapter` interface so tests can inject stubs.
 - **`context-enrichment.ts`** — enriches a raw walker context with resolved phase/task indices, document paths, and other caller-facing fields before the engine returns the `PipelineResult`.
-- **`condition-evaluator.ts`** — evaluates the conditional expressions (`eq`, `neq`, `in`, `not_in`, `truthy`, `falsy`) used by `CONDITIONAL` and `PARALLEL` nodes during DAG traversal.
+- **`condition-evaluator.ts`** — evaluates the conditional expressions (`eq`, `neq`, `in`, `not_in`, `truthy`, `falsy`) used by `CONDITIONAL` nodes during DAG traversal.
 - **`frontmatter-validators.ts`** — validates YAML frontmatter fields on task-handoff and other pipeline documents that are read via `pre-reads.ts`.
 - **`constants.ts`** — frozen enum objects (`NODE_KINDS`, `NODE_STATUSES`, `GRAPH_STATUSES`, `EVENTS`, `NEXT_ACTIONS`, `REVIEW_VERDICTS`) and the `ALLOWED_NODE_TRANSITIONS` map. The authoritative source for every string literal used across the engine.
 - **`types.ts`** — all shared TypeScript types and interfaces for the engine, mutations, walker, and callers.

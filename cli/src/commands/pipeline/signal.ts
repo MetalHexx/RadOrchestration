@@ -67,7 +67,7 @@ export const pipelineSignalCommand = defineCommand({
     phase: { description: '1-based phase index', type: 'string' },
     task: { description: '1-based task index inside the current phase', type: 'string' },
     'gate-mode': { description: 'Gate mode: task | phase | autonomous', type: 'string' },
-    'gate-type': { description: 'Gate type for gate events: plan | task | phase | final', type: 'string' },
+    'gate-type': { description: 'Gate type for the gate_approved event: task | phase', type: 'string' },
     verdict: { description: 'Review verdict: approved | changes_requested | rejected', type: 'string' },
     branch: { description: 'Working branch name for source-control events', type: 'string' },
     'base-branch': { description: 'Base branch name for source-control init', type: 'string' },

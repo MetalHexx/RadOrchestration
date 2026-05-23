@@ -57,8 +57,12 @@ export function validateEnvelope(env: unknown): asserts env is Envelope {
       if (!d || typeof d !== 'object') {
         throw new Error('failure envelope `data` must be an object when present');
       }
-      if (typeof (d as Record<string, unknown>)['event'] !== 'string') {
+      const dRec = d as Record<string, unknown>;
+      if (typeof dRec['event'] !== 'string') {
         throw new Error('failure envelope `data.event` must be a string when `data` is present');
+      }
+      if ('field' in dRec && dRec['field'] !== undefined && typeof dRec['field'] !== 'string') {
+        throw new Error('failure envelope `data.field` must be a string when present');
       }
     }
   }

@@ -25,7 +25,7 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
     await import('../../../src/lib/pipeline-engine/state-io.js');
   const pathContext = {
-    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
+    scriptsDir: path.resolve(__dirname, '..', '..', '..', 'src', 'lib', 'pipeline-engine'),
     templatesDir: TEMPLATES_DIR,
   };
   const io = { readState, writeState, readConfig, readDocument, ensureDirectories };

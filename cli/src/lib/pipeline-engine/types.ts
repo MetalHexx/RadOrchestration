@@ -253,17 +253,17 @@ export interface PipelineState {
   graph: GraphState;
 }
 
-// Path Context (filesystem roots threaded into the engine from pipeline.ts)
+// Path Context (filesystem roots threaded into the engine from the CLI entry)
 //
-// Computed once at CLI entry from `pipeline.ts`'s own location (which sits at
-// `scripts/pipeline.ts` in source AND at `scripts/pipeline.js` in the esbuild
-// bundle — same level), so the relative-path math is correct in both runtimes.
-// Threading the resolved values down avoids `fileURLToPath(import.meta.url)`
-// + `..` walks inside `lib/`, where the source-vs-bundle depth mismatch would
-// silently land them at the wrong directory.
+// Computed once at CLI entry via `resolvePathContext()` in `path-context.ts`,
+// which derives `scriptsDir` from the location of `path-context.ts` itself
+// (`cli/src/lib/pipeline-engine/` in source, the equivalent location in the
+// esbuild bundle) and `templatesDir` from `RADORCH_TEMPLATES_DIR` env var with
+// fallback to `~/.radorch/templates/`. Threading the resolved values down
+// avoids `fileURLToPath(import.meta.url)` walks inside the engine modules.
 
 export interface PathContext {
-  scriptsDir: string;      // absolute path of `skills/rad-orchestration/scripts/`
+  scriptsDir: string;      // absolute path of the engine source folder (`cli/src/lib/pipeline-engine/`)
   templatesDir: string;    // absolute path of `~/.radorch/templates/`
 }
 
