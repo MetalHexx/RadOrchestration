@@ -527,7 +527,7 @@ function hasContents(dir: string): boolean {
   try {
     const entries = fs.readdirSync(dir);
     return entries.length > 0;
-  } catch (err) {
+  } catch {
     return false;
   }
 }

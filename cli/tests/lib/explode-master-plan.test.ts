@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { explodeMasterPlan, parseMasterPlan, ParseError } from '../../src/lib/explode-master-plan.js';
+import { explodeMasterPlan, ParseError } from '../../src/lib/explode-master-plan.js';
 
 function makeProject(): { projectDir: string; masterPlanPath: string } {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exp-'));
