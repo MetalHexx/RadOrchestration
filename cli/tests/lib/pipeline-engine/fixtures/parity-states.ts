@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { processEvent } from '../../../src/lib/pipeline/engine.js';
+import { processEvent } from '../../../src/lib/pipeline-engine/engine.js';
 import type {
   PathContext,
   PipelineState,
@@ -10,7 +10,7 @@ import type {
   StepNodeState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
-} from '../../../src/lib/pipeline/types.js';
+} from '../../../src/lib/pipeline-engine/types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
-import { resolvePathContext, resolveDiscoveredConfigPath } from '../../../src/lib/pipeline/path-context.js';
+import { resolvePathContext, resolveDiscoveredConfigPath } from '../../../src/lib/pipeline-engine/path-context.js';
 
 describe('path-context resolves from the bundle location', () => {
   it('templatesDir resolves to ~/.radorch/templates/', () => {

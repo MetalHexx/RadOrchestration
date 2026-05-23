@@ -2,7 +2,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { pipelineSignal } from '../../../src/commands/pipeline/signal.js';
-import type { IOAdapter, PathContext, PipelineResult } from '../../../src/lib/pipeline/types.js';
+import type { IOAdapter, PathContext, PipelineResult } from '../../../src/lib/pipeline-engine/types.js';
 
 function makeStubIO(result: PipelineResult): { io: IOAdapter; calls: unknown[] } {
   const calls: unknown[] = [];

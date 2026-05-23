@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { processEvent } from '../../../src/lib/pipeline/engine.js';
-import { validatePipelineState } from '../../../src/lib/pipeline/schema-validator.js';
-import schemaJson from '../../../src/lib/pipeline/schemas/orchestration-state-v5.schema.json' with { type: 'json' };
+import { processEvent } from '../../../src/lib/pipeline-engine/engine.js';
+import { validatePipelineState } from '../../../src/lib/pipeline-engine/schema-validator.js';
+import schemaJson from '../../../src/lib/pipeline-engine/schemas/orchestration-state-v5.schema.json' with { type: 'json' };
 
-describe('engine library lands at cli/src/lib/pipeline/', () => {
+describe('engine library lands at cli/src/lib/pipeline-engine/', () => {
   it('exposes processEvent from the new engine entry point', () => {
     expect(typeof processEvent).toBe('function');
   });

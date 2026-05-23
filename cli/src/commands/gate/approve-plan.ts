@@ -7,8 +7,8 @@ import {
   makeIO,
   autoResolveMasterPlanDocPath,
 } from './shared.js';
-import { readState } from '../../lib/pipeline/state-io.js';
-import type { PipelineResult } from '../../lib/pipeline/types.js';
+import { readState } from '../../lib/pipeline-engine/state-io.js';
+import type { PipelineResult } from '../../lib/pipeline-engine/types.js';
 
 export interface ApprovePlanOptions { projectDir: string }
 

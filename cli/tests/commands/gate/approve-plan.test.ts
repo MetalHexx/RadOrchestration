@@ -21,9 +21,9 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   // Reach into the pipeline lib directly to drive the project from start to
   // a state where plan_approved is the next legal event. Mirrors the
   // bring-up sequence in tests/fixtures/parity-states.ts.
-  const { processEvent } = await import('../../../src/lib/pipeline/engine.js');
+  const { processEvent } = await import('../../../src/lib/pipeline-engine/engine.js');
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
-    await import('../../../src/lib/pipeline/state-io.js');
+    await import('../../../src/lib/pipeline-engine/state-io.js');
   const pathContext = {
     scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
     templatesDir: TEMPLATES_DIR,

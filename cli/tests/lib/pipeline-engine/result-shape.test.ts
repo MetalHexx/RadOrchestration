@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { processEvent } from '../../../src/lib/pipeline/engine.js';
+import { processEvent } from '../../../src/lib/pipeline-engine/engine.js';
 import {
   readState, writeState, readConfig, readDocument, ensureDirectories,
-} from '../../../src/lib/pipeline/state-io.js';
+} from '../../../src/lib/pipeline-engine/state-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

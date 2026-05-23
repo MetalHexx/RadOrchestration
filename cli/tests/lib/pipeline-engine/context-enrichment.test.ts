@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { enrichActionContext, type EnrichmentInput } from '../../../src/lib/pipeline/context-enrichment.js';
+import { enrichActionContext, type EnrichmentInput } from '../../../src/lib/pipeline-engine/context-enrichment.js';
 
 function makeTmpRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pe-'));

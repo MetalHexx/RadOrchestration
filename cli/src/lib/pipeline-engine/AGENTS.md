@@ -1,4 +1,4 @@
-# `cli/src/lib/pipeline/` — Contributing Guide
+# `cli/src/lib/pipeline-engine/` — Contributing Guide
 
 ## Purpose
 
@@ -46,9 +46,9 @@ Any change to the state shape must be accompanied by a corresponding update to `
 
 `cli/src/commands/gate/shared.ts` is the entry point for the gate subcommands (`gate approve-plan` and `gate approve-final`). It re-exports `processEvent` and `resolvePathContext` so both gate commands drive the same engine without duplicating construction logic. The gate path is the only other sanctioned caller of `processEvent` inside the CLI.
 
-`cli/src/lib/pipeline/path-context.ts` is the shared root resolver both consumers depend on. It reads `RADORCH_TEMPLATES_DIR` from the environment or falls back to `~/.radorch/templates`, keeping both signal and gate consistent on template lookup without duplicating the resolution logic.
+`cli/src/lib/pipeline-engine/path-context.ts` is the shared root resolver both consumers depend on. It reads `RADORCH_TEMPLATES_DIR` from the environment or falls back to `~/.radorch/templates`, keeping both signal and gate consistent on template lookup without duplicating the resolution logic.
 
-`cli/src/lib/pipeline/schemas/orchestration-state-v5.schema.json` validates every write. External tools that read `state.json` can use this schema as the ground-truth contract for the document shape.
+`cli/src/lib/pipeline-engine/schemas/orchestration-state-v5.schema.json` validates every write. External tools that read `state.json` can use this schema as the ground-truth contract for the document shape.
 
 ## Cross-reference
 

@@ -16,9 +16,9 @@ const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-c
 async function makeProjectAtFinalGate(): Promise<string> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-approve-final-'));
   fs.copyFileSync(path.join(TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
-  const { processEvent } = await import('../../../src/lib/pipeline/engine.js');
+  const { processEvent } = await import('../../../src/lib/pipeline-engine/engine.js');
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
-    await import('../../../src/lib/pipeline/state-io.js');
+    await import('../../../src/lib/pipeline-engine/state-io.js');
   const pathContext = {
     scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
     templatesDir: TEMPLATES_DIR,

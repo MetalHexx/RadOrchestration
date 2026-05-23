@@ -1,9 +1,9 @@
-import { processEvent } from '../../lib/pipeline/engine.js';
+import { processEvent } from '../../lib/pipeline-engine/engine.js';
 import {
   readState, writeState, readConfig, readDocument, ensureDirectories,
-} from '../../lib/pipeline/state-io.js';
-import { resolvePathContext, resolveDiscoveredConfigPath } from '../../lib/pipeline/path-context.js';
-import type { EventContext, IOAdapter, PathContext, PipelineResult } from '../../lib/pipeline/types.js';
+} from '../../lib/pipeline-engine/state-io.js';
+import { resolvePathContext, resolveDiscoveredConfigPath } from '../../lib/pipeline-engine/path-context.js';
+import type { EventContext, IOAdapter, PathContext, PipelineResult } from '../../lib/pipeline-engine/types.js';
 import { defineCommand } from '../../framework/command.js';
 import type { CommandContext } from '../../framework/context.js';
 import { parseParseErrorFlag } from './parse-error.js';
