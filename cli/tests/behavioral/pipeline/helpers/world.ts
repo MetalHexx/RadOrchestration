@@ -5,9 +5,21 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import type { PathContext, PipelineState, OrchestrationConfig } from '../../../../src/lib/pipeline-engine/types.js';
 
+// Widen every string-literal union in PipelineState to plain `string` so test
+// scaffolds (whose object literals widen on the way in) are assignable, while
+// preserving structural shape so field-name typos still get caught. Ajv at
+// runtime enforces the actual literal values via the v5 schema.
+type LoosenLiterals<T> =
+  T extends string ? string :
+  T extends number | boolean | null | undefined ? T :
+  T extends Array<infer U> ? LoosenLiterals<U>[] :
+  T extends object ? { [K in keyof T]: LoosenLiterals<T[K]> } :
+  T;
+type BehavioralStateScaffold = LoosenLiterals<PipelineState>;
+
 export interface WorldSpec {
   template: { id: string; body: string };
-  state: Partial<PipelineState> | null;
+  state: Partial<BehavioralStateScaffold> | null;
   config: Partial<OrchestrationConfig> & Record<string, unknown>;
   sideFiles: Array<{ path: string; contents: string }>;
 }
