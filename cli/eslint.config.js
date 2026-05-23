@@ -12,12 +12,23 @@ export default tseslint.config(
     rules: {
       'no-console': ['error', { allow: ['error', 'warn'] }],
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrors: 'none',
+      }],
     },
   },
   {
     files: ['src/framework/output.ts'],
     rules: {
       'no-console': 'off',
+    },
+  },
+  {
+    files: ['src/lib/pipeline-engine/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 );
