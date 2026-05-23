@@ -54,6 +54,7 @@ Hard rules on **your own** test and code additions:
 - No test-only methods, branches, or accessors in production code.
 - No mocks introduced without understanding — in writing — what real collaborator they replace and why.
 - No assertions that verify only mock behavior (`expect(mock).toHaveBeenCalled()` with nothing about the production side effect).
+- No meta tests that assert on test structure (e.g. "this test file has a test for each method in the implementation file") — tests should assert on production behavior, not test structure.
 
 **Carve-out**: if a handoff step explicitly prescribes one of these shapes, follow the handoff but log the concern as an Execution Note so the authoring upstream (explosion script or orchestrator) gets feedback.
 
