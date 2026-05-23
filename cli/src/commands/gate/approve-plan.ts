@@ -7,8 +7,8 @@ import {
   makeIO,
   autoResolveMasterPlanDocPath,
 } from './shared.js';
-import { readState } from '../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js';
-import type { PipelineResult } from '../../../../harness-files/skills/rad-orchestration/scripts/lib/types.js';
+import { readState } from '../../lib/pipeline/state-io.js';
+import type { PipelineResult } from '../../lib/pipeline/types.js';
 
 export interface ApprovePlanOptions { projectDir: string }
 
@@ -41,7 +41,7 @@ export const approvePlanCommand = defineCommand({
     const result = await runApprovePlan({ projectDir: dir });
     return result;
   },
-  mapResult: (r: PipelineResult) => r.success
-    ? { ok: true as const, data: r, exit_code: 0 }
-    : { ok: false as const, error: { type: 'user_error' as const, message: r.error?.message ?? 'pipeline rejected' } },
+  mapResult: (r: PipelineResult) => r.error
+    ? { ok: false as const, error: { type: 'user_error' as const, message: r.error.message } }
+    : { ok: true as const, data: r, exit_code: 0 },
 });

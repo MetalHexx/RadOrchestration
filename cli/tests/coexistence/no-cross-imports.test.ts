@@ -22,11 +22,6 @@ describe('cli/ encapsulation', () => {
     const cliRoot = path.resolve(__dirname, '..', '..', 'src');
     const offenders: string[] = [];
     for await (const file of walk(cliRoot)) {
-      // AD-5: cli/src/commands/gate/* is the single sanctioned cross-package
-      // consumer of the pipeline lib. Every other path under cli/src/ stays
-      // banned from importing skills/ or installer/.
-      const rel = path.relative(cliRoot, file).replace(/\\/g, '/');
-      if (rel.startsWith('commands/gate/')) continue;
       const text = await fs.readFile(file, 'utf8');
       if (/from ['"][^'"]*skills\//.test(text) || /from ['"][^'"]*installer\//.test(text)) {
         offenders.push(file);
