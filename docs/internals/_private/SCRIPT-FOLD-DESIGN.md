@@ -72,3 +72,11 @@ Once every subcommand emits radorch's standard envelope, downstream consumers (n
 SCRIPT-FOLD-4 (pipeline runtime fold) ships in two PRs rather than one, departing from the "no coexistence window" rule in Cross-cutting considerations above. The pipeline engine is large enough that splitting implementation from cleanup reduces review surface per round without compromising correctness.
 
 **Status note (iter-4 land time).** The pipeline engine and entry layer land at `cli/src/lib/pipeline-engine/` and `cli/src/commands/pipeline/signal.ts`; the gate-approval commands depend only on the new engine; `cli/tsconfig.json` typechecks against `cli/src/` only. The legacy pipeline files under `harness-files/skills/rad-orchestration/scripts/` stay on disk untouched and continue to serve production prose paths during the coexistence window. SCRIPT-FOLD-5 carries the closing commitment as a load-bearing scope item.
+
+---
+
+## Side project between iterations 4 and 5 — CLI-BEHAVIORAL-TESTS
+
+Between SCRIPT-FOLD-4 (pipeline runtime lands in the CLI) and SCRIPT-FOLD-5 (legacy pipeline implementation retired), a side project — [CLI-BEHAVIORAL-TESTS](~/.radorch/projects/CLI-BEHAVIORAL-TESTS/CLI-BEHAVIORAL-TESTS-BRAINSTORMING.md) — establishes a behavioral-test tier for CLI commands, with the new `pipeline` command as the first adopter. Tests assert on the externally-observable contract (envelope + state.json + side-files) against synthetic per-test fixtures, so the suite stays durable across both pipeline-internal refactors and production-template tuning.
+
+This is intentionally not numbered as a SCRIPT-FOLD iteration: it does not fold any script, does not touch SKILL.md call sites, and does not affect the coexistence window. It runs in parallel with iter-5's legacy cleanup and gives that cleanup behavioral cover before the legacy paths are deleted. The CLI-wide convention it ships is reusable by every command added in later folds.
