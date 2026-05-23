@@ -1,5 +1,5 @@
 // cli/tests/behavioral/pipeline/events/start.behavioral.test.ts
-import { describe, expect, it, afterEach } from 'vitest';
+import { describe, it, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
