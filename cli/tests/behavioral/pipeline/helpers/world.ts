@@ -43,7 +43,16 @@ export function buildWorld(spec: WorldSpec): World {
   if (spec.state !== null) {
     fs.writeFileSync(path.join(projectDir, 'state.json'), JSON.stringify(spec.state, null, 2), 'utf8');
   }
-  const mergedConfig = { ...DEFAULT_CONFIG, ...spec.config };
+  // One-level deep merge over OrchestrationConfig's nested objects so callers
+  // can override a single nested key (e.g. { limits: { max_phases: 2 } }) without
+  // having to restate the other required siblings.
+  const mergedConfig = {
+    ...DEFAULT_CONFIG,
+    ...spec.config,
+    limits: { ...DEFAULT_CONFIG.limits, ...(spec.config.limits ?? {}) },
+    human_gates: { ...DEFAULT_CONFIG.human_gates, ...(spec.config.human_gates ?? {}) },
+    source_control: { ...DEFAULT_CONFIG.source_control, ...(spec.config.source_control ?? {}) },
+  };
   const configPath = path.join(projectDir, 'orchestration.yml');
   fs.writeFileSync(configPath, yaml.dump(mergedConfig), 'utf8');
   for (const f of spec.sideFiles) {

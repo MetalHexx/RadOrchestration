@@ -12,15 +12,38 @@ import { PLANNING_TEMPLATE_BODY } from '../events/fixtures/planning-template.js'
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
 
+// Planning-tier state — no phase_loop has been scaffolded yet, so firing
+// task_completed is a genuine invalid transition. The mutation throws because
+// resolveNodeState('task_executor', 'task', 1, 1) cannot find a phase_loop in
+// graph.nodes; the engine catches that and returns ok:false.
+const planningTierState = {
+  $schema: 'orchestration-state-v5',
+  project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
+  config: {
+    gate_mode: 'task',
+    limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+  },
+  pipeline: { gate_mode: 'task', source_control: null, current_tier: 'planning', halt_reason: null },
+  graph: {
+    template_id: 'syn-planning',
+    status: 'in_progress',
+    current_node_path: null,
+    nodes: {
+      gate_mode_selection: { kind: 'gate', status: 'completed', gate_active: false },
+      requirements:        { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+      master_plan:         { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+      explosion:           { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+      plan_approval_gate:  { kind: 'gate', status: 'not_started', gate_active: false },
+    },
+  },
+};
+
 describe('invalid-transition unhappy class (FR-5)', () => {
-  it('task_completed before start returns ok:false and leaves state.json unchanged', async () => {
-    const seeded = {
-      $schema: 'orchestration-state-v5',
-      graph: { template_id: 'syn-planning', status: 'not_started', current_node_path: null, nodes: {} },
-    };
+  it('task_completed during planning tier returns ok:false and leaves state.json unchanged', async () => {
     const w = buildWorld({
       template: { id: 'syn-planning', body: PLANNING_TEMPLATE_BODY },
-      state: seeded,
+      state: planningTierState,
       config: {},
       sideFiles: [],
     });
@@ -38,7 +61,7 @@ describe('invalid-transition unhappy class (FR-5)', () => {
     assertEnvelopeStateSideFiles(env, {
       projectDir: w.projectDir,
       envelope: { ok: false, error: { type: 'user_error' } },
-      state: seeded,
+      state: planningTierState,
       sideFiles: [],
     });
   });
