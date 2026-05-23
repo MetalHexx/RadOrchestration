@@ -16,7 +16,7 @@ describe('pipeline signal end-to-end via the built bundle', () => {
     const { stdout } = await execP('node', [
       'dist/cli/src/bin/radorch.js', 'pipeline', 'signal',
       '--event', 'start', '--project-dir', dir, '--template', 'medium',
-    ], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' } });
+    ], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: TEMPLATES_DIR } });
     const env = JSON.parse(stdout);
     expect(env.ok).toBe(true);
     expect(Object.keys(env.data).sort()).toEqual(['action', 'context']);

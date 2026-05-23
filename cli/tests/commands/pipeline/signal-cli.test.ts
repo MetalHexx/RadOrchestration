@@ -1,11 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pipelineSignalCommand } from '../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../src/framework/command.js';
 
-const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'templates');
+const REPO_TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'templates');
+let originalTemplatesEnv: string | undefined;
+beforeEach(() => {
+  originalTemplatesEnv = process.env['RADORCH_TEMPLATES_DIR'];
+  process.env['RADORCH_TEMPLATES_DIR'] = REPO_TEMPLATES_DIR;
+});
+afterEach(() => {
+  if (originalTemplatesEnv === undefined) delete process.env['RADORCH_TEMPLATES_DIR'];
+  else process.env['RADORCH_TEMPLATES_DIR'] = originalTemplatesEnv;
+});
 
 function captureStdout(): { chunks: string[]; restore: () => void } {
   const chunks: string[] = [];
@@ -18,7 +27,7 @@ function captureStdout(): { chunks: string[]; restore: () => void } {
 describe('radorch pipeline signal (FR-1, FR-2)', () => {
   it('emits the canonical envelope with data = { action, context } on success', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipe-cli-'));
-    fs.copyFileSync(path.join(TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
+    fs.copyFileSync(path.join(REPO_TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
     const cap = captureStdout();
     try {
       await runCommand(pipelineSignalCommand, {
@@ -33,7 +42,7 @@ describe('radorch pipeline signal (FR-1, FR-2)', () => {
 
   it('emits ok:false with data.event and error.type=user_error on an unknown event', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipe-cli-bad-'));
-    fs.copyFileSync(path.join(TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
+    fs.copyFileSync(path.join(REPO_TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
     const cap = captureStdout();
     try {
       await runCommand(pipelineSignalCommand, {

@@ -1,1 +1,1 @@
-export { pipelineSignalCommand, pipelineSignal, makeDefaultIO } from './signal.js';
+export { pipelineSignalCommand, pipelineSignal } from './signal.js';

@@ -5,7 +5,8 @@ import type { PathContext } from './types.js';
 
 export function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
-  const templatesDir = path.join(os.homedir(), '.radorch', 'templates');
+  const templatesDir = process.env['RADORCH_TEMPLATES_DIR']
+    ?? path.join(os.homedir(), '.radorch', 'templates');
   return { scriptsDir, templatesDir };
 }
 

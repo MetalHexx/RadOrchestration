@@ -21,13 +21,9 @@ function makeStubIO(result: PipelineResult): { io: IOAdapter; calls: unknown[] }
   return { io, calls };
 }
 
-// Use the real ~/.radorch/templates directory so the engine can load a template YAML.
-// The handoff prescribed { scriptsDir: '/tmp', templatesDir: '/tmp/templates' } but that
-// path has no template files on this machine; the engine's loadTemplate call requires a
-// readable YAML on disk. See Execution Notes for the full deviation record.
 const pathContext: PathContext = {
   scriptsDir: os.tmpdir(),
-  templatesDir: path.join(os.homedir(), '.radorch', 'templates'),
+  templatesDir: path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'templates'),
 };
 
 describe('pipelineSignal core function', () => {

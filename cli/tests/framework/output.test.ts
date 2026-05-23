@@ -52,4 +52,16 @@ describe('validateEnvelope', () => {
       validateEnvelope({ ok: true, data: {}, error: { type: 'user_error', message: 'x' } } as never),
     ).toThrow(/data.*error|error.*data/i);
   });
+
+  it('accepts ok:false with data.event when error is present', () => {
+    expect(() =>
+      validateEnvelope({ ok: false, data: { event: 'start' }, error: { type: 'user_error', message: 'x' } } as never),
+    ).not.toThrow();
+  });
+
+  it('rejects ok:false when data.event is not a string', () => {
+    expect(() =>
+      validateEnvelope({ ok: false, data: { event: 42 }, error: { type: 'user_error', message: 'x' } } as never),
+    ).toThrow(/event/);
+  });
 });
