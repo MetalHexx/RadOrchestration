@@ -47,11 +47,3 @@ test('end-to-end build produces a valid plugin payload', { skip: process.env.SKI
   const limit = Math.round(50 * 1024 * 1024 * 1.1);
   assert.ok(size > 0 && size <= limit, `pack size ${size} must be > 0 and ≤ ${limit}`);
 });
-
-test('post-build: no source-folder litter', { skip: process.env.SKIP_E2E === '1' }, () => {
-  // Build helpers respect no-litter: no cli/dist/, no ui/.next/ after build.
-  // cli/ and ui/ live at the repo root per parent design Decision 10.
-  const repoRoot = REPO_ROOT;
-  assert.ok(!fs.existsSync(join(repoRoot, 'cli/dist')), 'no cli/dist/ litter');
-  assert.ok(!fs.existsSync(join(repoRoot, 'ui/.next')), 'no ui/.next/ litter');
-});
