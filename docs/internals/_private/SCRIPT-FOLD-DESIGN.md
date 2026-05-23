@@ -64,3 +64,11 @@ Once every subcommand emits radorch's standard envelope, downstream consumers (n
 
 - [GLOBAL-WORKSPACES-01-CLI-SCAFFOLD](~/.radorch/projects/GLOBAL-WORKSPACES-01-CLI-SCAFFOLD/GLOBAL-WORKSPACES-01-CLI-SCAFFOLD-BRAINSTORMING.md) — established the `radorch` CLI architecture (layered, max-strict TS, commander, JSON envelope, hybrid noun-grouping). Reserved "fold the pipeline runtime into radorch" as future Wave 9; this series begins to redeem that reservation.
 - [INSTALL-REFACTOR-DESIGN](./INSTALL-REFACTOR-DESIGN.md) — established the harness-files / harness-adapters / harness-installers layout and the `${PLUGIN_ROOT}` token resolution path the SKILL.md call rewrites depend on.
+
+---
+
+## Iterations 4 and 5 — deliberate deviation from PR atomicity
+
+SCRIPT-FOLD-4 (pipeline runtime fold) ships in two PRs rather than one, departing from the "no coexistence window" rule in Cross-cutting considerations above. The pipeline engine is large enough that splitting implementation from cleanup reduces review surface per round without compromising correctness.
+
+**Status note (iter-4 land time).** The pipeline engine and entry layer land at `cli/src/lib/pipeline-engine/` and `cli/src/commands/pipeline/signal.ts`; the gate-approval commands depend only on the new engine; `cli/tsconfig.json` typechecks against `cli/src/` only. The legacy pipeline files under `harness-files/skills/rad-orchestration/scripts/` stay on disk untouched and continue to serve production prose paths during the coexistence window. SCRIPT-FOLD-5 carries the closing commitment as a load-bearing scope item.

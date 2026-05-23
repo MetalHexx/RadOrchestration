@@ -7,6 +7,7 @@ import { projectContextCommand, projectFindCommand } from './commands/project/in
 import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
 import { planExplodeCommand } from './commands/plan/index.js';
 import { skillListCommand } from './commands/skill/index.js';
+import { pipelineSignalCommand } from './commands/pipeline/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
 export function buildProgram(version: string): Command {
@@ -149,6 +150,18 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(skillListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const pipeline = program.command('pipeline').description('Pipeline event dispatch');
+  pipeline
+    .command('signal')
+    .description(pipelineSignalCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pipelineSignalCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   // Gate subcommands lazy-load their modules so the pipeline-lib import chain

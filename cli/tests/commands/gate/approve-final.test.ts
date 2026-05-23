@@ -16,13 +16,12 @@ const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-c
 async function makeProjectAtFinalGate(): Promise<string> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-approve-final-'));
   fs.copyFileSync(path.join(TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
-  const { processEvent } = await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/engine.js');
+  const { processEvent } = await import('../../../src/lib/pipeline-engine/engine.js');
   const { readState, writeState, readConfig, readDocument, ensureDirectories } =
-    await import('../../../../harness-files/skills/rad-orchestration/scripts/lib/state-io.js');
+    await import('../../../src/lib/pipeline-engine/state-io.js');
   const pathContext = {
-    scriptsDir: path.resolve(__dirname, '..', '..', '..', '..', 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
+    scriptsDir: path.resolve(__dirname, '..', '..', '..', 'src', 'lib', 'pipeline-engine'),
     templatesDir: TEMPLATES_DIR,
-    orchRoot: path.basename(path.resolve(__dirname, '..', '..', '..', '..')),
   };
   const io = { readState, writeState, readConfig, readDocument, ensureDirectories };
   processEvent('start', dir, { template: 'medium' }, io, pathContext);
@@ -49,8 +48,7 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
     const dir = await makeProjectAtFinalGate();
     const result = await runApproveFinal({ projectDir: dir });
 
-    expect(result.success).toBe(true);
-    expect(result.orchRoot).toBeTruthy();
+    expect(result.error).toBeUndefined();
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
     expect(state.graph.nodes.final_approval_gate.status).toBe('completed');
     expect(state.graph.nodes.final_approval_gate.gate_active).toBe(true);
@@ -62,7 +60,7 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
     process.chdir(os.tmpdir());
     try {
       const result = await runApproveFinal({ projectDir: dir });
-      expect(result.success).toBe(true);
+      expect(result.error).toBeUndefined();
       const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
       expect(state.graph.nodes.final_approval_gate.status).toBe('completed');
     } finally {
@@ -110,6 +108,6 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
     // FR-13 contract: the parsed payload reaches the pipeline result via `.data`,
     // mirroring every other radorch subcommand's framework envelope shape.
     expect(parsed.data).toBeDefined();
-    expect(parsed.data.success).toBeDefined();
+    expect(parsed.data.action).toBeDefined();
   });
 });
