@@ -63,3 +63,16 @@ The `pipeline` command is the first adopter of the tier. See
 the three unhappy-path classes (bad-input, invalid-transition,
 missing-world), and the helper trio (`world.ts`, `capture.ts`,
 `assert.ts`).
+
+## CI verification
+The behavioral suite is discovered via the existing `tests/**/*.test.ts`
+glob in `cli/vitest.config.ts` and runs on every PR via
+`.github/workflows/cli.yml` — no workflow edits are required to extend
+the tier with new behavioral suites.
+
+Verified on PR
+[#98](https://github.com/MetalHexx/RadOrchestration/pull/98), CLI workflow
+run
+[26338567992](https://github.com/MetalHexx/RadOrchestration/actions/runs/26338567992):
+all 23 `*.behavioral.test.ts` files appeared in the reported test list and
+the workflow exited green.
