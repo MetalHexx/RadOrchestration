@@ -108,7 +108,7 @@ export function processEvent(
   pathContext: PathContext,
   configPath?: string,
 ): PipelineResult {
-  const { orchRoot, templatesDir } = pathContext;
+  const { templatesDir } = pathContext;
 
   try {
     const config = io.readConfig(configPath);
@@ -165,11 +165,8 @@ export function processEvent(
         const postWalkErrors = validateState(null, scaffolded, config, template);
         if (postWalkErrors.length > 0) {
           return {
-            success: false,
             action: null,
             context: { error: postWalkErrors[0] },
-            mutations_applied: [],
-            orchRoot,
             error: {
               message: postWalkErrors[0],
               event,
@@ -190,11 +187,8 @@ export function processEvent(
           : {};
 
         return {
-          success: true,
           action: nextAction?.action ?? null,
           context: enrichedContext,
-          mutations_applied: ['scaffold_initial_state'],
-          orchRoot,
         };
       } else {
         const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
@@ -204,11 +198,8 @@ export function processEvent(
         const validationErrors = validateState(null, state, config, template);
         if (validationErrors.length > 0) {
           return {
-            success: false,
             action: null,
             context: { error: validationErrors[0] },
-            mutations_applied: [],
-            orchRoot,
             error: { message: validationErrors[0], event },
           };
         }
@@ -225,11 +216,8 @@ export function processEvent(
             })
           : {};
         return {
-          success: true,
           action: walkerResult?.action ?? null,
           context: enrichedContext,
-          mutations_applied: [],
-          orchRoot,
         };
       }
     }
@@ -237,11 +225,8 @@ export function processEvent(
     // ── Null-state guard (non-start events) ────────────────────────────
     if (state === null) {
       return {
-        success: false,
         action: null,
         context: { error: 'No state.json found; use --event start' },
-        mutations_applied: [],
-        orchRoot,
         error: {
           message: 'No state.json found; use --event start',
           event,
@@ -255,11 +240,8 @@ export function processEvent(
       // so this branch is currently unreachable. Retained as a safety net against future deregistration.
       if (!mutation) {
         return {
-          success: false,
           action: null,
           context: { error: `No mutation registered for event: ${event}` },
-          mutations_applied: [],
-          orchRoot,
           error: { message: `No mutation registered for event: ${event}`, event },
         };
       }
@@ -278,11 +260,8 @@ export function processEvent(
       const validationErrors = validateState(state, mutatedState, config, template);
       if (validationErrors.length > 0) {
         return {
-          success: false,
           action: null,
           context: { error: validationErrors[0] },
-          mutations_applied: [],
-          orchRoot,
           error: { message: validationErrors[0], event },
         };
       }
@@ -294,11 +273,8 @@ export function processEvent(
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {
         return {
-          success: false,
           action: null,
           context: { error: postWalkErrors[0] },
-          mutations_applied: [],
-          orchRoot,
           error: { message: postWalkErrors[0], event },
         };
       }
@@ -316,11 +292,8 @@ export function processEvent(
         : {};
 
       return {
-        success: true,
         action: walkerResult?.action ?? null,
         context: enrichedContext,
-        mutations_applied: mutationResult.mutations_applied,
-        orchRoot,
       };
     }
 
@@ -331,11 +304,8 @@ export function processEvent(
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return {
-          success: false,
           action: null,
           context: { error: message },
-          mutations_applied: [],
-          orchRoot,
           error: {
             message,
             event,
@@ -347,11 +317,8 @@ export function processEvent(
     const entry = eventIndex.get(event);
     if (!entry) {
       return {
-        success: false,
         action: null,
         context: { error: `Unknown event: ${event}` },
-        mutations_applied: [],
-        orchRoot,
         error: {
           message: `Unknown event: ${event}`,
           event,
@@ -361,11 +328,8 @@ export function processEvent(
     const preReadResult = preRead(event, context, io.readDocument, projectDir, state, entry);
     if (preReadResult.error) {
       return {
-        success: false,
         action: null,
         context: { error: preReadResult.error.message },
-        mutations_applied: [],
-        orchRoot,
         error: preReadResult.error,
       };
     }
@@ -373,11 +337,8 @@ export function processEvent(
     const mutation = getMutation(event);
     if (!mutation) {
       return {
-        success: false,
         action: null,
         context: { error: `No mutation registered for event: ${event}` },
-        mutations_applied: [],
-        orchRoot,
         error: {
           message: `No mutation registered for event: ${event}`,
           event,
@@ -399,11 +360,8 @@ export function processEvent(
     const validationErrors = validateState(state, mutatedState, config, template);
     if (validationErrors.length > 0) {
       return {
-        success: false,
         action: null,
         context: { error: validationErrors[0] },
-        mutations_applied: [],
-        orchRoot,
         error: {
           message: validationErrors[0],
           event,
@@ -433,11 +391,8 @@ export function processEvent(
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {
         return {
-          success: false,
           action: null,
           context: { error: postWalkErrors[0] },
-          mutations_applied: [],
-          orchRoot,
           error: {
             message: postWalkErrors[0],
             event,
@@ -464,20 +419,14 @@ export function processEvent(
     }
 
     return {
-      success: true,
       action: nextAction?.action ?? null,
       context: nextAction?.context ?? {},
-      mutations_applied: mutationResult.mutations_applied,
-      orchRoot,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return {
-      success: false,
       action: null,
       context: { error: message },
-      mutations_applied: [],
-      orchRoot,
       error: {
         message,
         event,

@@ -265,22 +265,14 @@ export interface PipelineState {
 export interface PathContext {
   scriptsDir: string;      // absolute path of `skills/rad-orchestration/scripts/`
   templatesDir: string;    // absolute path of `~/.radorch/templates/`
-  orchRoot: string;        // absolute path to the orchestration install root (parent of skills/)
 }
 
-// Pipeline Result (CLI output contract — SACRED, no changes)
+// Pipeline Result (engine output contract)
 
 export interface PipelineResult {
-  success: boolean;
   action: string | null;
   context: Record<string, unknown>;
-  mutations_applied: string[];
-  orchRoot: string;
-  error?: {
-    message: string;
-    event: string;
-    field?: string;
-  };
+  error?: { message: string; event: string; field?: string };
 }
 
 // Event Context (parsed from CLI arguments)
