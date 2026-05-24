@@ -205,3 +205,13 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('build no longer bootstraps the retiring pipeline scripts folder', async () => {
+  const buildScriptText = await fs.promises.readFile(
+    path.resolve('build-scripts/build.js'), 'utf8',
+  );
+  assert.ok(
+    !buildScriptText.includes('harness-files/skills/rad-orchestration/scripts'),
+    'build.js must not reference the retiring pipeline scripts folder in BOOTSTRAP_TARGETS',
+  );
+});
