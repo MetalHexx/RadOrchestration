@@ -23,8 +23,11 @@ test('no file in the repo references the legacy prompt path', () => {
       { cwd: repoRoot, encoding: 'utf8' },
     );
   } catch (e) {
-    // non-zero exit == no matches; that's the passing branch
-    return;
+    // git grep exits 1 when there are no matches — that's the passing branch.
+    // Any other status (git missing, not a repo, bad pathspec) is a real error
+    // and must surface as a test failure.
+    if (e.status === 1) return;
+    throw e;
   }
   assert.fail('legacy prompt still referenced in: ' + matches);
 });

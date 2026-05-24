@@ -13,13 +13,13 @@ Using the harness question tool (`AskUserQuestion` on Claude Code), present the 
 
 1. **Target version** — show the `currentVersion` gathered in step 1 and the `lastReleaseTag` (or "none yet" when `null`). Suggest the next version: if `currentVersion` is a pre-release (`-alpha.N` / `-beta.N`), suggest bumping the pre-release counter; if stable, suggest a patch bump. Ask the operator to confirm or supply a different target.
 
-2. **Merge to main** — if `currentBranch` is not `main`, ask whether the operator wants to squash-merge to `main` after the release commit lands (step 8). This is the first of two mid-flow approval gates; the second is CHANGELOG approval in step 5. No other pause points exist.
+2. **Merge to main** — if `currentBranch` is not `main`, ask whether the operator wants to squash-merge to `main` after the release commit lands (step 8). This is an up-front question collected before any mutation, not a mid-flow approval gate. Two mid-flow approval gates follow: CHANGELOG approval in step 5 and post-release dev-bump confirmation in step 13.
 
 Both answers are carried forward into subsequent gates.
 
 ## Step 3 — Lockstep version bump
 
-Invoke `node .claude/skills/rad-release/scripts/bump-version.mjs --to <new>` where `<new>` is the target version confirmed in step 2. This performs the lockstep bump across all carrier locations: wrapper `package.json` files, plugin authoritative version sources, per-version manifest catalog file renames (with internal `version` field updated), and a hardcoded-literal sweep. A final re-grep halts loudly if any stray copy of the prior version remains after the sweep.
+Invoke `node .claude/skills/rad-release/scripts/bump-version.mjs --from <currentVersion> --to <new>` where `<currentVersion>` is the value gathered in step 1 and `<new>` is the target version confirmed in step 2. Both flags are required — the engine fails fast if either is missing so the operator cannot accidentally bump from an assumed prior. This performs the lockstep bump across all carrier locations: wrapper `package.json` files, plugin authoritative version sources, per-version manifest catalog file renames (with internal `version` field updated), and a hardcoded-literal sweep. A final re-grep halts loudly if any stray copy of the prior version remains after the sweep.
 
 ## Step 4 — Build + validate
 
@@ -31,7 +31,7 @@ After build-and-validate succeeds, invoke `node .claude/skills/rad-release/scrip
 
 Run `node .claude/skills/rad-release/scripts/changelog-and-commit.mjs --draft --to <new>` to invoke `draftChangelog`. Pass the commit log since the last release tag (or the full history on first release) as the `commits` array. The draft produces a `## v{version} — {date}` heading with three subsections — `### What's New` (feat: commits), `### What's Fixed` (fix: commits), and `### Changes` (everything else).
 
-Present the full drafted body to the operator using the harness question tool (`AskUserQuestion` on Claude Code). Frame the question with the full drafted CHANGELOG text inline so the operator can read it without switching context. Offer a single labelled option **Approve and commit**. If the operator wants to edit, they paste a revised body into the "Other / custom" field and resubmit — the revised text is used as `approvedChangelog` in step 6. This is the second mid-flow approval gate.
+Present the full drafted body to the operator using the harness question tool (`AskUserQuestion` on Claude Code). Frame the question with the full drafted CHANGELOG text inline so the operator can read it without switching context. Offer a single labelled option **Approve and commit**. If the operator wants to edit, they paste a revised body into the "Other / custom" field and resubmit — the revised text is used as `approvedChangelog` in step 6. This is the first of two mid-flow approval gates (the second is dev-bump confirmation in step 13).
 
 First-release callouts (new `rad-orc` npm package, plugins first appearing on the satellite) are **not** auto-generated. The operator authors them by hand inside this gate when relevant.
 
