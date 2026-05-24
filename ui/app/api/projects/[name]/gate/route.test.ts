@@ -101,6 +101,20 @@ test('gate route returns 409 when CLI envelope rejects the event (DD-4)', async 
   });
 });
 
+test('gate route returns 500 when CLI envelope reports a system_error (DD-4)', async (t) => {
+  t.after(() => mock.restoreAll());
+  stubExecFile(JSON.stringify({ ok: false, data: { event: 'plan_approved' }, error: { type: 'system_error', message: 'engine crashed' }, exit_code: 1 }), 1);
+  await withHomedir(tmpDir, async () => {
+    const req = new Request('http://localhost/api/projects/PROJECT-X/gate', {
+      method: 'POST', body: JSON.stringify({ event: 'plan_approved' }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ name: 'PROJECT-X' }) });
+    assert.strictEqual(res.status, 500);
+    const body = await res.json();
+    assert.match(JSON.stringify(body), /engine crashed/);
+  });
+});
+
 test('gate route returns 500 when CLI stdout is unparseable (DD-4)', async (t) => {
   t.after(() => mock.restoreAll());
   stubExecFile('not json', 1);

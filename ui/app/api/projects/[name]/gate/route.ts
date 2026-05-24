@@ -120,7 +120,11 @@ export async function POST(
     }
 
     // Parse the framework envelope: { ok, data, error, exit_code }
-    let parsed: { ok?: boolean; data?: { action?: string; event?: string }; error?: { message?: string } };
+    let parsed: {
+      ok?: boolean;
+      data?: { action?: string | null; context?: Record<string, unknown>; event?: string };
+      error?: { type?: 'user_error' | 'system_error'; message?: string };
+    };
     try { parsed = JSON.parse(stdout!); }
     catch {
       return NextResponse.json(
@@ -137,6 +141,12 @@ export async function POST(
     }
 
     const detail = parsed.error?.message ?? stdout!;
+    if (parsed.error?.type === 'system_error') {
+      return NextResponse.json(
+        { error: 'Pipeline internal error.', detail } satisfies GateErrorResponse,
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       { error: 'Pipeline rejected the event.', detail } satisfies GateErrorResponse,
       { status: 409 },

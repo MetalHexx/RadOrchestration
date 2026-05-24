@@ -31,7 +31,7 @@ On `code_review_completed` with a raw `verdict: changes_requested` (task scope) 
 
 ## Planner Spawn Manifest
 
-Before spawning the **planner** agent for either `spawn_requirements` or `spawn_master_plan`, read the pre-formatted catalog block from the planner-spawn envelope's `data.repository_skills_block` field. The pipeline computes the block once per spawn and surfaces it on the envelope's `data` block.
+Before spawning the **planner** agent for either `spawn_requirements` or `spawn_master_plan`, read the pre-formatted catalog block from the planner-spawn envelope's `data.context.repository_skills_block` field. The pipeline computes the block once per spawn and surfaces it on the envelope's `data.context` block.
 
 If `repository_skills_block` is the empty string, omit the manifest section from the spawn prompt entirely. Otherwise, append the field's value to the end of the spawn prompt verbatim — it already carries the contractual heading and orientation-sentence wrap:
 
