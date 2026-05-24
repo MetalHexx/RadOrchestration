@@ -6,7 +6,7 @@ A self-contained npm package (`@rad-orchestration/copilot-vscode-plugin-source`)
 
 ## How it works
 
-`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes steps in fixed order, fail-fast. The build reads adapter output for the `copilot-vscode` harness, bundles the pipeline runtime and UI, esbuild-bundles `bootstrap.mjs` with `lib/install/*` inlined, runs `expand-tokens` (destination-token substitution only — no agent namespacing for VS Code either), copies `plugin.json` to `output/.claude-plugin/plugin.json` (Claude-format layout so VS Code injects `CLAUDE_PLUGIN_ROOT` for hook self-location), synthesizes `output/package.json`, and runs structural validation.
+`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes steps in fixed order, fail-fast. The build reads adapter output for the `copilot-vscode` harness, bundles the CLI via `emit-cli-bundle` and ships the resulting `radorch.mjs` to `output/skills/rad-orchestration/scripts/radorch.mjs` (no separate pipeline bundle is emitted), bundles the UI, esbuild-bundles `bootstrap.mjs` with `lib/install/*` inlined, runs `expand-tokens` (destination-token substitution only — no agent namespacing for VS Code either), copies `plugin.json` to `output/.claude-plugin/plugin.json` (Claude-format layout so VS Code injects `CLAUDE_PLUGIN_ROOT` for hook self-location), synthesizes `output/package.json`, and runs structural validation.
 
 `opts.rootDir` is the repo root. Three optional boolean flags — `opts.skipAdapterEngine`, `opts.skipUiRunner`, and `opts.skipBootstrap` — let tests bypass slow or environment-dependent steps when exercising the build orchestrator against a synthetic fixture tree.
 
@@ -25,8 +25,7 @@ A self-contained npm package (`@rad-orchestration/copilot-vscode-plugin-source`)
 - `harness-adapters/output/copilot-vscode/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the VS Code harness
 - `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
 - `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
-- `harness-files/skills/rad-orchestration/scripts/*.ts` — pipeline TypeScript source bundled by `emitPipelineBundle`
-- `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
+- `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 
 ## Deltas vs the copilot-cli-plugin
 

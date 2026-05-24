@@ -29,7 +29,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 - **`runtime-config/`** — `orchestration.yml` template and the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`). `orchestration.yml` is copied to `~/.radorch/orchestration.yml` only on fresh install (FR-14) — present files are preserved untouched so user edits survive upgrades. The four shipped tier templates always overwrite their counterparts under `~/.radorch/templates/` on every install (FR-15); any user-added templates in that folder are preserved.
 - **`cli/`** — CLI parsing and launch surface (separate from the installer wizard proper). The installer is invoked by the `rad-orchestration` binary, which delegates to the wizard.
 - **`ui/`** — Pre-compiled dashboard bundle (if included). Conditionally installed based on user choice in the wizard.
-- **`harness-files/skills/rad-orchestration/scripts/`** — The pipeline runtime itself (`pipeline.js`, `main.ts`, and `lib/`). Copied to user-level harness skill locations so orchestration projects can invoke `rad-orchestration` at runtime.
+- **`cli/` source** — The pipeline runtime and every other helper subcommand. `emit-cli-bundle` bundles `cli/src/` into `radorch.mjs` and ships it to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/`; skills invoke the pipeline as `radorch pipeline signal`.
 
 **Build-time helpers (no runtime imports)**:
 - **`shared/build-helpers/`** — Manifest-driven file installation utilities used during the build stage to deploy adapted files to `output/`. Note: `emit-hook-bundle` exists in shared helpers but is unused here (AD-8); it is reserved for marketplace plugin builders and does not apply to the standard installer.

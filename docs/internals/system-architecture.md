@@ -9,7 +9,7 @@ Contributor-facing reference for the orchestration system as it actually exists 
 ```mermaid
 flowchart TD
     DEV(["VS Code + Copilot"]) --> ORCH(["Orchestrator"])
-    DEV --> CLI(["pipeline.js CLI"])
+    DEV --> CLI(["radorch pipeline signal"])
 
     ORCH -->|"--event signal"| CLI
     CLI -->|"action + context"| ORCH
@@ -33,7 +33,7 @@ flowchart TD
     ORCH --> GATE
 
     subgraph ENGINE ["Pipeline Engine"]
-        ENG(["pipeline.js + lib/"])
+        ENG(["radorch pipeline signal + engine library"])
         TPL(["Templates (extra-high · high · medium · low)"])
         VAL(["Validator"])
     end
@@ -65,7 +65,7 @@ flowchart TD
 
 **Human gates** — three checkpoints (plan approval, optional task/phase gate, final approval) where the pipeline pauses for explicit operator approval.
 
-**Pipeline engine** — `pipeline.js` is the sole writer of `state.json`. It loads a process template, walks the DAG, applies a mutation for each event, runs the validator, and returns the next action plus an enriched context to the Orchestrator.
+**Pipeline engine** — The pipeline engine (`cli/src/lib/pipeline-engine/`) is the sole writer of `state.json`. It loads a process template, walks the DAG, applies a mutation for each event, runs the validator, and returns the next action plus an enriched context to the Orchestrator via the canonical envelope.
 
 **Templates** — declarative YAML defining the node graph for a process variant (the four review-intensity tiers: `extra-high`, `high`, `medium`, `low`).
 
@@ -73,9 +73,9 @@ flowchart TD
 
 **Project data** — `state.json` (per-project pipeline state), the planning and execution markdown documents, and `orchestration.yml` (system configuration).
 
-**Dashboard** — read-only Next.js UI at `:3000`. Reads project data via filesystem API routes and pushes live updates over SSE driven by a `chokidar` file watcher. Never mutates state — every write to `state.json` flows through `pipeline.js`, which gives the dashboard a single-writer guarantee without locking.
+**Dashboard** — read-only Next.js UI at `:3000`. Reads project data via filesystem API routes and pushes live updates over SSE driven by a `chokidar` file watcher. Never mutates state — every write to `state.json` flows through the pipeline engine, which gives the dashboard a single-writer guarantee without locking.
 
-The CLI (`pipeline.js`) and the Orchestrator agent share one entry point: every `--event` invocation reads state, applies a mutation, walks the DAG to the next action, runs validation on both sides of the mutation, writes state, and returns the action plus context. Out-of-band events (rejections, halts, configuration mutations) bypass the event index but use the same read-mutate-validate-write loop.
+The `radorch pipeline signal` subcommand and the orchestrator agent share one entry point through the pipeline engine: every `--event` invocation reads state, applies a mutation, walks the DAG to the next action, runs validation on both sides of the mutation, writes state, and returns the action plus context. Out-of-band events (rejections, halts, configuration mutations) bypass the event index but use the same read-mutate-validate-write loop.
 
 ---
 

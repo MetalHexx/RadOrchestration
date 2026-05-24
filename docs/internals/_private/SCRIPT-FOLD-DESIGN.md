@@ -1,13 +1,13 @@
 # Script-Fold — Design Document
 
 **Date:** 2026-05-23
-**Status:** Series in progress; iterations 1–3 landed, iteration 4 brainstormed and ready for planning, iteration 5 drafted pending re-brainstorming once iter 4 lands.
+**Status:** Series complete; iterations 1–5 landed.
 
 ---
 
 ## Premise
 
-Canonical skills today ship per-skill helper scripts in `harness-files/skills/<name>/scripts/`. Agents call them from SKILL.md via a constellation of path tokens (`${SKILLS_ROOT}`, `{orchRoot}`, `{skillRoot}`); install and discovery costs scale with the number of scripts.
+The pre-fold shape shipped per-skill helper scripts in `harness-files/skills/<name>/scripts/`, called from SKILL.md via a constellation of path tokens; install and discovery costs scaled with the number of scripts.
 
 The `SCRIPT-FOLD` series folds every user-facing helper script into the `radorch` CLI as a subcommand, rewriting each skill's call sites to the established `${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs <subcommand>` form already proven in the three rad-ui-* skills. One binary, one call form, one help surface.
 
@@ -25,7 +25,7 @@ This document is a thin index. Every design decision, scope boundary, and ration
 | 2 | `SCRIPT-FOLD-2` | rad-execute + rad-execute-parallel (`gather-context`, `find-projects`, `create-worktree`, `inject-theme`, `launch-claude`) | Landed | [SCRIPT-FOLD-2-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-2/SCRIPT-FOLD-2-BRAINSTORMING.md) |
 | 3 | `SCRIPT-FOLD-3` | rad-orchestration (`explode-master-plan`, `list-repo-skills`) + rad-create-plans (`token-lint` deleted) | Landed | [SCRIPT-FOLD-3-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-3/SCRIPT-FOLD-3-BRAINSTORMING.md) |
 | 4 | `SCRIPT-FOLD-4` | Greenfield copy of the pipeline runtime into the CLI under a new `pipeline signal` subcommand. Old pipeline untouched; cross-skill prose sweep and build-pipeline cleanup deferred to iter 5. | Brainstormed | [SCRIPT-FOLD-4-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-4/SCRIPT-FOLD-4-BRAINSTORMING.md) |
-| 5 | `SCRIPT-FOLD-5` | Retirement of the old pipeline + cross-skill prose sweep (~35 surfaces) + build-pipeline ceremony retirement + `.agents/skills/pipeline-changes/` restructuring + distribution-model investigation. Closes the coexistence window iter 4 opens. | Draft (requires re-brainstorming pass after iter 4 lands) | [SCRIPT-FOLD-5-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-5/SCRIPT-FOLD-5-BRAINSTORMING.md) |
+| 5 | `SCRIPT-FOLD-5` | Retirement of the old pipeline + cross-skill prose sweep (~35 surfaces) + build-pipeline ceremony retirement + `.agents/skills/pipeline-changes/` restructuring + distribution-model investigation. Closes the coexistence window iter 4 opens. | Landed | [SCRIPT-FOLD-5-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-5/SCRIPT-FOLD-5-BRAINSTORMING.md) |
 
 ---
 
