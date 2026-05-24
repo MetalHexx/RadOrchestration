@@ -75,4 +75,6 @@ The same module then tags both the main repo and the satellite repo with the mat
 
 ## Step 12 — Generate workspace-local release notes
 
+Invoke `node .claude/skills/rad-release/scripts/generate-release-notes.mjs` after the tag/push gate in step 11. This module writes `RELEASE-NOTES-v{version}.md` to the repo root with the DD-3 four-section shape: `## What's New` (from whatsNew section), `## What's Fixed` (from whatsFixed section), `## Changes` (from changes section), and `## Package` (shipped artifacts table). Empty sections are omitted except `## Package`, which is always present. The file is intentionally outside `.gitignore` so the operator sees it in their working tree (AD-11), but the skill never stages or commits it — the operator pastes its contents into the GitHub release UI for the matching tag and then deletes the local file locally. (FR-10, AD-11, DD-3)
+
 ## Step 13 — Post-release in-tree dev bump
