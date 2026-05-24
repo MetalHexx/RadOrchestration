@@ -25,7 +25,7 @@
     {
       "bundlePath": "agents/orchestrator.md",
       "destinationPath": "${HARNESS_ROOT}/agents/orchestrator.md",
-      "sha256": "dab7e597498932462178aa83067386af3b02a6e1beee40b422db192a1444ea72"
+      "sha256": "c6ec5c773e8afc6146241408ced4d3232da84bc9e8f23cc6a863a5740984b5f4"
     },
     {
       "bundlePath": "agents/planner.md",
@@ -180,7 +180,7 @@
     {
       "bundlePath": "skills/rad-orchestration/references/action-event-reference.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/action-event-reference.md",
-      "sha256": "a543f98bd2f51ef74670b9ab19400590d324d5fd1a316cfd38f597a3e695f2b3"
+      "sha256": "e88655c8dd92ba62572a81e9dcb4b6085f10b55cbd351c8c746b9de5db3bc638"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/context.md",
@@ -215,7 +215,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "04532b4712161f882e11a2b14b6c5f8801719b57aa5e8c83edb5b07256ede77f"
+      "sha256": "2e651111baff1389bf97c6ad0fb220da2a3f15d88099ed84f8cd76f6aec6fdd8"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
