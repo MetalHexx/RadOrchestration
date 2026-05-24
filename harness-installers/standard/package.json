@@ -1,11 +1,11 @@
 {
-  "name": "rad-orchestration",
+  "name": "rad-orc",
   "version": "1.0.0-alpha.9",
   "private": true,
   "type": "module",
   "description": "Greenfield standard installer for the Rad orchestration system.",
   "bin": {
-    "rad-orchestration": "index.js"
+    "rad-orc": "index.js"
   },
   "files": [
     "index.js",

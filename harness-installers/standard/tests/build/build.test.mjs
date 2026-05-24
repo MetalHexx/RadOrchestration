@@ -206,3 +206,12 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
   }
 });
 
+test('standard installer publish package.json names rad-orc (AD-9)', async () => {
+  const pkgPath = path.resolve(import.meta.dirname, '../../package.json');
+  const pkg = JSON.parse(await fs.promises.readFile(pkgPath, 'utf8'));
+  assert.strictEqual(pkg.name, 'rad-orc');
+  assert.ok(pkg.bin && Object.prototype.hasOwnProperty.call(pkg.bin, 'rad-orc'));
+  assert.ok(!Object.prototype.hasOwnProperty.call(pkg.bin || {}, 'rad-orchestration'),
+    'legacy bin name removed (FR-6)');
+});
+
