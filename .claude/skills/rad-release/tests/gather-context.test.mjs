@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { gatherContext } from '../scripts/gather-context.mjs';
 
-test('gatherContext returns version, branch, dirty flag, and last tag (FR-10)', async () => {
+test('gatherContext returns version, branch, dirty flag, and last tag', async () => {
   const ctx = await gatherContext({ repoRoot: process.cwd() });
   assert.match(ctx.currentVersion, /^\d+\.\d+\.\d+(-[\w.]+)?$/);
   assert.strictEqual(typeof ctx.currentBranch, 'string');

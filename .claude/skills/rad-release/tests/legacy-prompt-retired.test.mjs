@@ -6,14 +6,14 @@ import path from 'node:path';
 
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 
-test('legacy .agents/prompts/rad-release.prompt.md is removed (FR-9)', () => {
+test('legacy .agents/prompts/rad-release.prompt.md is removed', () => {
   assert.strictEqual(
     fs.existsSync(path.join(repoRoot, '.agents/prompts/rad-release.prompt.md')),
     false,
   );
 });
 
-test('no file in the repo references the legacy prompt path (DD-5)', () => {
+test('no file in the repo references the legacy prompt path', () => {
   // git grep returns non-zero (exit 1) when there are no matches — desired
   // Exclude docs/internals/ (historical design docs that predate this iteration)
   let matches = '';

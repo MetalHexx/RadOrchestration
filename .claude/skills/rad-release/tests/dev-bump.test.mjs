@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { suggestNextDev, runDevBump } from '../scripts/dev-bump.mjs';
 
-test('suggestNextDev increments the alpha counter (FR-12)', () => {
+test('suggestNextDev increments the alpha counter', () => {
   assert.strictEqual(suggestNextDev('1.0.0-alpha.10'), '1.0.0-alpha.11');
   assert.strictEqual(suggestNextDev('1.0.0-alpha.99'), '1.0.0-alpha.100');
 });
 
-test('runDevBump invokes bumpVersion, stages and commits with the post-release subject (FR-12, AD-3)', async () => {
+test('runDevBump invokes bumpVersion, stages and commits with the post-release subject', async () => {
   const log = [];
   await runDevBump({
     repoRoot: '/repo',

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// FR-10 step 5-6: CHANGELOG approval gate and AD-4 atomic release commit.
+// CHANGELOG approval gate and atomic release commit.
 //
 // draftChangelog — produces a ## v{version} — {date} block with three sections:
 //   ### What's New  (feat: commits)
@@ -7,7 +7,7 @@
 //   ### Changes     (all other commits)
 //
 // commitRelease — prepends the approved CHANGELOG entry and lands exactly one
-//   git commit with subject "chore: bump version to v{version}" (AD-4 atomicity).
+//   git commit with subject "chore: bump version to v{version}".
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -39,7 +39,7 @@ export async function draftChangelog({ version, commits, date = new Date().toISO
 }
 
 /**
- * Prepend the approved CHANGELOG entry then land exactly one git commit (AD-4).
+ * Prepend the approved CHANGELOG entry then land exactly one git commit.
  *
  * @param {{
  *   repoRoot: string,
@@ -68,7 +68,7 @@ export async function commitRelease({
       : existing.slice(0, insertionPoint) + approvedChangelog + '\n' + existing.slice(insertionPoint);
   await writeFile(changelogPath, updated, 'utf8');
 
-  // AD-4: stage everything (bumped carriers, renamed manifest catalogs already
+  // Stage everything (bumped carriers, renamed manifest catalogs already
   // git-mv'd by bump-version.mjs, regenerated per-harness manifest files, CHANGELOG)
   // and land exactly one commit.
   const add = spawn('git', ['add', '-A'], { cwd: repoRoot, encoding: 'utf8' });

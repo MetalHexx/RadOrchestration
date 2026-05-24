@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { publishNpm } from '../scripts/publish-npm.mjs';
 
-test('publishNpm runs npm publish --access public from the standard installer source dir (FR-6, NFR-4)', async () => {
+test('publishNpm runs npm publish --access public from the standard installer source dir', async () => {
   const calls = [];
   await publishNpm({
     repoRoot: '/repo',
@@ -21,11 +21,11 @@ test('publishNpm runs npm publish --access public from the standard installer so
   const normalizedCwd = calls[0].cwd.replace(/\\/g, '/');
   assert.ok(normalizedCwd.endsWith('harness-installers/standard')
     && !normalizedCwd.endsWith('harness-installers/standard/output'));
-  // No --provenance — NFR-4 accepts loss of OIDC attestation
+  // No --provenance — local-skill publish accepts loss of OIDC attestation
   assert.ok(!calls[0].args.includes('--provenance'));
 });
 
-test('publishNpm halts the skill on non-zero exit (FR-10)', async () => {
+test('publishNpm halts the skill on non-zero exit', async () => {
   const result = await publishNpm({
     repoRoot: '/repo',
     spawn: () => ({ status: 1, stdout: '', stderr: 'EPUBLISHCONFLICT' }),

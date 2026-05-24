@@ -25,28 +25,28 @@ export async function syncSatelliteAndTag({
   spawn = spawnSync, copyTree = defaultCopyTree, rewriteCatalogRef = defaultRewriteCatalogRef,
 }) {
   const tag = `v${version}`;
-  // 1. Replace each plugin payload directory in the satellite (AD-5)
+  // 1. Replace each plugin payload directory in the satellite
   for (const { src, dest } of PLUGINS) {
     copyTree(path.join(repoRoot, src), path.join(satelliteRoot, dest));
   }
-  // 2. Update both marketplace catalogs' refs to the new release tag (AD-2, AD-5)
+  // 2. Update both marketplace catalogs' refs to the new release tag
   rewriteCatalogRef(path.join(satelliteRoot, '.claude-plugin', 'marketplace.json'), tag);
   rewriteCatalogRef(path.join(satelliteRoot, '.github', 'plugin', 'marketplace.json'), tag);
-  // 3. Commit the satellite checkout (AD-5)
+  // 3. Commit the satellite checkout
   const addRes = spawn('git', ['add', '-A'], { cwd: satelliteRoot, encoding: 'utf8' });
   if (addRes.status !== 0) throw new Error('satellite git add failed: ' + (addRes.stderr || addRes.stdout || 'unknown error'));
 
   const commitRes = spawn('git', ['commit', '-m', `release: ${tag}`], { cwd: satelliteRoot, encoding: 'utf8' });
   if (commitRes.status !== 0) throw new Error('satellite git commit failed: ' + (commitRes.stderr || commitRes.stdout || 'unknown error'));
 
-  // 4. Tag both repos with the matching v{X} (FR-7, FR-8)
+  // 4. Tag both repos with the matching v{X}
   const mainTagRes = spawn('git', ['tag', tag], { cwd: repoRoot, encoding: 'utf8' });
   if (mainTagRes.status !== 0) throw new Error('main repo git tag failed: ' + (mainTagRes.stderr || mainTagRes.stdout || 'unknown error'));
 
   const satTagRes = spawn('git', ['tag', tag], { cwd: satelliteRoot, encoding: 'utf8' });
   if (satTagRes.status !== 0) throw new Error('satellite git tag failed: ' + (satTagRes.stderr || satTagRes.stdout || 'unknown error'));
 
-  // 5. Push both repos and both tags (NFR-6: no CI involved; operator's local creds drive)
+  // 5. Push both repos and both tags (no CI involved; operator's local creds drive)
   const mainPushHeadRes = spawn('git', ['push', 'origin', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' });
   if (mainPushHeadRes.status !== 0) throw new Error('main repo git push HEAD failed: ' + (mainPushHeadRes.stderr || mainPushHeadRes.stdout || 'unknown error'));
 

@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-// 50 MB ceiling + 10% headroom = 57,671,680 bytes (NFR-3)
+// 50 MB ceiling + 10% headroom = 57,671,680 bytes
 export const SIZE_BUDGET_BYTES = 57_671_680;
 
 const PLUGINS = [

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// AD-3 lockstep version-bump engine.
+// Lockstep version-bump engine.
 //
 // Bumps a single carrier inventory in one atomic pass:
 //   1. Wrapper `package.json` files — in-place JSON edit
@@ -17,7 +17,7 @@ import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // -----------------------------------------------------------------------------
-// AD-3 carrier inventory
+// Carrier inventory
 // -----------------------------------------------------------------------------
 
 // 1. Wrapper package.json files (8) — JSON, in-place `version` bump.
@@ -150,7 +150,7 @@ function buildInventorySet() {
 
 function manifestPathsAfterBump(to) {
   // After bump, only the v<to>.json files should remain — these are still part
-  // of the AD-3 inventory and will (correctly) match the post-bump `git grep`.
+  // of the carrier inventory and will (correctly) match the post-bump `git grep`.
   const out = new Set();
   for (const dir of MANIFEST_DIRS) {
     out.add(normalizeRelative(path.join(dir, `v${to}.json`)));

@@ -6,11 +6,11 @@ import { checkSizeBudget, SIZE_BUDGET_BYTES } from '../scripts/check-size-budget
 
 const repoRoot = path.join(os.tmpdir(), 'rad-release-fixture');
 
-test('SIZE_BUDGET_BYTES is exactly 57671680 (NFR-3)', () => {
+test('SIZE_BUDGET_BYTES is exactly 57671680', () => {
   assert.strictEqual(SIZE_BUDGET_BYTES, 57_671_680);
 });
 
-test('checkSizeBudget rejects when any plugin exceeds the budget (FR-14, NFR-3)', async () => {
+test('checkSizeBudget rejects when any plugin exceeds the budget', async () => {
   const result = await checkSizeBudget({
     repoRoot,
     spawn: (cmd, args, opts) => {
@@ -25,7 +25,7 @@ test('checkSizeBudget rejects when any plugin exceeds the budget (FR-14, NFR-3)'
   assert.match(result.error, /60000000/);
 });
 
-test('checkSizeBudget passes when all plugins are under the budget (NFR-3)', async () => {
+test('checkSizeBudget passes when all plugins are under the budget', async () => {
   const result = await checkSizeBudget({
     repoRoot,
     spawn: () => ({ status: 0, stdout: JSON.stringify([{ unpackedSize: 1_000_000 }]), stderr: '' }),
@@ -33,7 +33,7 @@ test('checkSizeBudget passes when all plugins are under the budget (NFR-3)', asy
   assert.strictEqual(result.ok, true);
 });
 
-test('checkSizeBudget builds a valid platform-native cwd path (NFR-3)', async () => {
+test('checkSizeBudget builds a valid platform-native cwd path', async () => {
   const repoRoot = path.join(os.tmpdir(), 'rad-release-fixture');
   const observedCwds = [];
   await checkSizeBudget({

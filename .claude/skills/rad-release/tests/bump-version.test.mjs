@@ -1,4 +1,4 @@
-// Test suite for the AD-3 lockstep version-bump engine.
+// Test suite for the lockstep version-bump engine.
 // Runs against a synthetic tmp-directory git-init'd fixture; never the real repo.
 
 import { test, after } from 'node:test';
@@ -124,7 +124,7 @@ after(() => {
   }
 });
 
-test('bumpVersion edits every wrapper package.json (AD-3)', async () => {
+test('bumpVersion edits every wrapper package.json', async () => {
   const tmp = makeFixture();
   fixtures.push(tmp);
 
@@ -141,7 +141,7 @@ test('bumpVersion edits every wrapper package.json (AD-3)', async () => {
   }
 });
 
-test('bumpVersion renames every per-version manifest catalog and updates internal version (AD-3, FR-5)', async () => {
+test('bumpVersion renames every per-version manifest catalog and updates internal version', async () => {
   const tmp = makeFixture();
   fixtures.push(tmp);
 
@@ -157,7 +157,7 @@ test('bumpVersion renames every per-version manifest catalog and updates interna
   }
 });
 
-test('bumpVersion fails loudly when stray copies of the prior version remain (AD-3)', async () => {
+test('bumpVersion fails loudly when stray copies of the prior version remain', async () => {
   const tmp = makeFixture();
   fixtures.push(tmp);
 

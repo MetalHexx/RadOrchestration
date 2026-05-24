@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assertReproducible } from '../scripts/assert-reproducible.mjs';
 
-test('assertReproducible re-runs builds then checks git status --porcelain (NFR-2)', async () => {
+test('assertReproducible re-runs builds then checks git status --porcelain', async () => {
   const log = [];
   const result = await assertReproducible({
     repoRoot: '/repo',
@@ -17,7 +17,7 @@ test('assertReproducible re-runs builds then checks git status --porcelain (NFR-
   assert.strictEqual(result.ok, true);
 });
 
-test('assertReproducible reports dirty paths and halts (FR-13)', async () => {
+test('assertReproducible reports dirty paths and halts', async () => {
   const result = await assertReproducible({
     repoRoot: '/repo',
     runBuildAndValidate: async () => ({ ok: true }),
