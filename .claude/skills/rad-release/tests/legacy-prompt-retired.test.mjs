@@ -19,7 +19,7 @@ test('no file in the repo references the legacy prompt path (DD-5)', () => {
   let matches = '';
   try {
     matches = execSync(
-      'git grep -l "rad-release.prompt.md" -- ":(exclude)docs/internals/"',
+      'git grep -l "rad-release.prompt.md" -- ":(exclude)docs/internals/" ":(exclude).claude/skills/rad-release/tests/legacy-prompt-retired.test.mjs"',
       { cwd: repoRoot, encoding: 'utf8' },
     );
   } catch (e) {
