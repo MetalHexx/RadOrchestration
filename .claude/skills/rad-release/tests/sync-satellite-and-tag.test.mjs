@@ -33,3 +33,17 @@ test('syncSatelliteAndTag copies each plugin output into the satellite, updates 
   const pushes = log.filter(e => e.cmd === 'git' && e.args && e.args[0] === 'push');
   assert.ok(pushes.length >= 2);
 });
+
+test('syncSatelliteAndTag halts on a non-zero spawn exit and names the failing operation (FR-10)', async () => {
+  await assert.rejects(
+    () => syncSatelliteAndTag({
+      repoRoot: '/repo',
+      satelliteRoot: '/sat',
+      version: '1.0.0-alpha.10',
+      spawn: () => ({ status: 1, stdout: '', stderr: 'simulated git failure' }),
+      copyTree: () => {},
+      rewriteCatalogRef: () => {},
+    }),
+    /git|simulated/i,
+  );
+});
