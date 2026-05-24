@@ -67,7 +67,11 @@ Invoke `node .claude/skills/rad-release/scripts/publish-npm.mjs` from the repo r
 
 ## Step 10 — Sync built plugin artifacts into satellite
 
+Invoke `syncSatelliteAndTag` from `node .claude/skills/rad-release/scripts/sync-satellite-and-tag.mjs` with the operator-confirmed `satelliteRoot`. At skill start-time, if the sibling path `../rad-orc-plugins` is not a git checkout, prompt the operator via the harness question tool for the absolute path to their local satellite clone (AD-5). The module replaces each of the three plugin payload directories (`claude-plugin`, `copilot-cli-plugin`, `copilot-vscode-plugin`) wholesale from the freshly built `output/` trees, rewrites both marketplace catalogs (`.claude-plugin/marketplace.json` and `.github/plugin/marketplace.json`) so every `plugins[*].source.ref` points at the new `v{version}` tag (AD-2), and commits the satellite with `release: v{version}`. Any non-zero spawn exit halts the flow with the failing operation surfaced (FR-10, AD-5).
+
 ## Step 11 — Tag and push
+
+The same module then tags both the main repo and the satellite repo with the matching `v{version}` (FR-7 provenance, FR-8 distribution) and pushes `HEAD` plus the new tag from each repo to its `origin` using the operator's local git credentials (NFR-6 — no CI involvement). End-user installs of the plugins remain anonymous after this gate (NFR-1), and roll-forward (a follow-up release) is the only recovery posture once tags have been pushed (NFR-5).
 
 ## Step 12 — Generate workspace-local release notes
 
