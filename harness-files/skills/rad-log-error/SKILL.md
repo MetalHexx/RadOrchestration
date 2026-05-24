@@ -1,6 +1,6 @@
 ---
 name: rad-log-error
-description: 'Log pipeline execution errors to a structured per-project error log. Use when the pipeline returns success: false, when an agent produces invalid output, or when manual intervention is needed. Appends numbered entries to an append-only error log file.'
+description: 'Log pipeline execution errors to a structured per-project error log. Use when the pipeline envelope returns ok: false, when an agent produces invalid output, or when manual intervention is needed. Appends numbered entries to an append-only error log file.'
 user-invocable: false
 ---
 
