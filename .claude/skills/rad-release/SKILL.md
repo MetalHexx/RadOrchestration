@@ -33,6 +33,8 @@ After build-and-validate succeeds, invoke `node .claude/skills/rad-release/scrip
 
 ## Step 7 — Reproducibility assertion
 
+After the version-bump commit lands in step 6, invoke `node .claude/skills/rad-release/scripts/assert-reproducible.mjs` to gate the release on reproducibility. This module re-runs the complete build pipeline (per-harness dogfood builds + per-plugin builds + validation) and then invokes `git status --porcelain` to verify the working tree remains clean. If the tree is dirty after the second build pass, the gate halts immediately and names the dirty file paths so the operator can investigate the non-determinism (FR-13, NFR-2). The operator must then restart the release flow against a clean tree.
+
 ## Step 8 — Squash-merge to main
 
 ## Step 9 — Publish standard installer to npm
