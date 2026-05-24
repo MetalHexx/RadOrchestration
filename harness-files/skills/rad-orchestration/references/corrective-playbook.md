@@ -343,7 +343,7 @@ One corrective handoff per mediation cycle. All actioned findings from a single 
 After authoring the addendum and (if applicable) the corrective handoff, signal the event to the pipeline:
 
 ```
-node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event code_review_completed \
   --project-dir <dir> \
   --doc-path <path-to-review-doc>
