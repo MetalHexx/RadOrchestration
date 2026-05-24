@@ -23,6 +23,8 @@ Invoke `node .claude/skills/rad-release/scripts/bump-version.mjs --to <new>` whe
 
 ## Step 4 — Build + validate
 
+Invoke `node .claude/skills/rad-release/scripts/build-and-validate.mjs` from the repo root. This first runs `node harness-dogfood/build.js --all` (AD-7), which rebuilds the agents/skills output for all harnesses. It then runs `node build-scripts/build.js` from each of the three plugin directories (`claude-plugin`, `copilot-cli-plugin`, `copilot-vscode-plugin`), where each plugin's build script internally invokes the AD-6 Gate 3 validator. A non-zero exit from any sub-step halts the flow immediately and prints the captured stderr to the operator. (FR-10 step 4)
+
 ## Step 5 — CHANGELOG draft + approval gate
 
 ## Step 6 — Single commit
