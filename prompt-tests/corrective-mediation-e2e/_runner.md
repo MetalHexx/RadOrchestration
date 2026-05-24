@@ -8,7 +8,7 @@
 
 You are the orchestrator in the middle of a corrective cycle. The fixture is pre-seeded at the moment the code reviewer has returned `verdict: changes_requested` and the pipeline is waiting for you to mediate. Your session doubles as the simulated orchestrator — perform the mediation in-session, author the corrective Task Handoff, signal the pipeline, then drive the corrective execution and re-review to `approved`.
 
-Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, do not skip the two-step `_started` → action-return protocol. The only difference: this harness **halts once the corrective's re-review returns `approved`** rather than driving phase_review or final_approval_gate.
+Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events via `radorch pipeline signal`, read `data.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, do not skip the two-step `_started` → action-return protocol. The only difference: this harness **halts once the corrective's re-review returns `approved`** rather than driving phase_review or final_approval_gate.
 
 Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — it is the authoritative mediation guide for this session.
 
@@ -45,7 +45,7 @@ All paths below are relative to the repo root unless noted.
 
    > The `state.json` is pre-seeded — do NOT invoke the installer or run `--event start` fresh. Skip step 3 of the plan-pipeline harness setup. The engine will detect the existing `state.json` when you signal `start`, and the walker will resume from the current graph position.
 
-3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` and `pr_gate` route to their `false` branches. Without `--config`, the engine falls back to the global `~/.radorch/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
+3. Set your `<run-folder>` variable — every `radorch pipeline signal` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` and `auto_pr: never` so the conditional `commit_gate` and `pr_gate` route to their `false` branches. Without `--config`, the engine falls back to the global `~/.radorch/orchestration.yml` which has `auto_commit: ask` and the corrective cycle will request a real commit — not what the harness wants.
 
 ---
 
@@ -54,13 +54,13 @@ All paths below are relative to the repo root unless noted.
 ### Step 1 — Bootstrap (resume at in-progress node)
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event start \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml
 ```
 
-Expected return: `{ "action": null, "context": {}, "mutations_applied": [], ... }`. This is the correct resume signal — the walker does NOT emit an action for a node already in `in_progress` status, so `start` is effectively a state-load + schema-validate no-op. You do NOT spawn a reviewer subagent; the review doc already exists on disk. Proceed to Step 2 (mediation).
+Expected return: `{ "ok": true, "data": { "action": null, "context": {} }, ... }`. This is the correct resume signal — the walker does NOT emit an action for a node already in `in_progress` status, so `start` is effectively a state-load + schema-validate no-op. You do NOT spawn a reviewer subagent; the review doc already exists on disk. Proceed to Step 2 (mediation).
 
 If the pipeline returns anything other than `action: null` (e.g., `spawn_code_reviewer`, an error, or a different action), halt and surface to the operator — the fixture state is off-script.
 
@@ -121,14 +121,14 @@ The handoff must be self-contained — no references to prior attempts, no delta
 ### Step 4 — Signal `code_review_completed`
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event code_review_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml \
   --doc-path reports/BROKEN-COLORS-CODE-REVIEW-P01-T01-GET-COLORS.md
 ```
 
-Expected return: `{ "action": "execute_task", ... }`. The pipeline births a corrective task entry and routes to `execute_task`.
+Expected return: `{ "ok": true, "data": { "action": "execute_task", ... } }`. The pipeline births a corrective task entry and routes to `execute_task`.
 
 If the pipeline errors on frontmatter validation, the review doc's frontmatter is malformed — read the error, fix the frontmatter fields, and retry. Do not paper over a validator error.
 
@@ -142,13 +142,13 @@ tasks/BROKEN-COLORS-TASK-P01-T01-GET-COLORS-C1.md
 The coder should fix `src/colors.js` to return `['red', 'orange', 'yellow']`. After the coder completes, signal:
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event task_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml
 ```
 
-Expected return with `--config` applied (auto_commit: never): `{ "action": "spawn_code_reviewer" }`. The conditional `commit_gate` in the corrective's newly-scaffolded nodes auto-routes to the `false` branch (empty body), so the walker skips the commit step and advances directly to `code_review`. There is no `commit_skipped` event — the conditional branch decision is a pure walker-internal state transition.
+Expected return with `--config` applied (auto_commit: never): `{ "ok": true, "data": { "action": "spawn_code_reviewer" } }`. The conditional `commit_gate` in the corrective's newly-scaffolded nodes auto-routes to the `false` branch (empty body), so the walker skips the commit step and advances directly to `code_review`. There is no `commit_skipped` event — the conditional branch decision is a pure walker-internal state transition.
 
 > **Config drift warning**: if the pipeline returns `invoke_source_control_commit` instead of `spawn_code_reviewer`, `--config` was not passed (or points at the wrong file) and the engine fell back to the global `orchestration.yml` with `auto_commit: ask`. Halt and surface to the operator — do not signal a `commit_*` event against the harness fixture.
 
@@ -159,14 +159,14 @@ Signal `code_review_started` and spawn `@reviewer`. The reviewer operates on the
 After the reviewer writes its doc, signal:
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event code_review_completed \
   --project-dir prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER> \
   --config prompt-tests/corrective-mediation-e2e/output/broken-colors/<RUN-FOLDER>/orchestration.yml \
   --doc-path <path-to-re-review-doc>
 ```
 
-Expected return: `{ "action": "gate_task" }` (task_gate in autonomous mode auto-approves) or `{ "action": "spawn_phase_reviewer" }` if the task gate auto-approves inline.
+Expected return: `{ "ok": true, "data": { "action": "gate_task" } }` (task_gate in autonomous mode auto-approves) or `{ "ok": true, "data": { "action": "spawn_phase_reviewer" } }` if the task gate auto-approves inline.
 
 ### Step 7 — Halt
 
@@ -189,7 +189,7 @@ Write `run-notes.md` (see Outputs below) and surface the two file paths to the o
 Write `run-notes.md` in the run folder summarizing the full run. Include:
 
 - Run folder path, date, fixture name
-- Every pipeline call made and its returned `result.action`
+- Every pipeline call made and its returned `data.action`
 - Every agent spawned (`@coder`, `@reviewer`) with the doc path each received
 - Every event signaled
 - Judgment calls made during orchestrator mediation (finding ID, disposition, reason)

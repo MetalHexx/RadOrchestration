@@ -8,7 +8,7 @@
 
 Drive the full orchestrator pipeline from "task 2 committed" through final-review-approved. Exercises all three review modes established by iter-12 (task / phase / final) plus orchestrator mediation at task scope. The phase review is expected to be `approved` as a backstop — the cross-task drift introduced deliberately at T2 is caught at task scope first and repaired before the walker reaches phase_review.
 
-Behave as a **simulated orchestrator**. Signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, and honour the two-step `_started` → action-return protocol. Mediation happens out-of-band: read the review, judge findings, write the `## Orchestrator Addendum` + additive frontmatter, author the corrective Task Handoff, then signal the event.
+Behave as a **simulated orchestrator**. Signal events via `radorch pipeline signal`, read `data.action` from stdout JSON, route exactly per the Action Routing Table, do not edit `state.json` directly, and honour the two-step `_started` → action-return protocol. Mediation happens out-of-band: read the review, judge findings, write the `## Orchestrator Addendum` + additive frontmatter, author the corrective Task Handoff, then signal the event.
 
 Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md`. Load `corrective-playbook.md` now — iter-12 added the **Tiered Conformance Model** and **Finding Disposition by Status** sections, both directly relevant to this mission.
 
@@ -45,7 +45,7 @@ All paths are relative to the repo root unless noted.
 
    > The `state.json` is pre-seeded — do NOT invoke the installer. The engine detects the existing `state.json` on `--event start`.
 
-3. Set your `<run-folder>` variable — every `pipeline.js` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` + `auto_pr: never` so commit_gate and pr_gate route to their `false` branches. Without `--config`, the engine falls back to the global `orchestration.yml` and the cycle drifts off-script.
+3. Set your `<run-folder>` variable — every `radorch pipeline signal` call uses `--project-dir <run-folder>` AND `--config <run-folder>/orchestration.yml`. The fixture ships a local `orchestration.yml` with `auto_commit: never` + `auto_pr: never` so commit_gate and pr_gate route to their `false` branches. Without `--config`, the engine falls back to the global `orchestration.yml` and the cycle drifts off-script.
 
 ---
 
@@ -54,13 +54,13 @@ All paths are relative to the repo root unless noted.
 ### Step 1 — Bootstrap (resume)
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event start \
   --project-dir prompt-tests/code-review-rework-e2e/output/conformance-tiered/<RUN-FOLDER> \
   --config prompt-tests/code-review-rework-e2e/output/conformance-tiered/<RUN-FOLDER>/orchestration.yml
 ```
 
-Expected return: `{ "action": "spawn_code_reviewer", ... }` with spawn context carrying `phase_number: 1`, `task_number: 2`, `task_id: "P01-T02"`, and `head_sha: null` (auto-commit is off — the reviewer falls back to `git diff HEAD` + untracked files).
+Expected return: `{ "ok": true, "data": { "action": "spawn_code_reviewer", ... } }` with spawn context carrying `phase_number: 1`, `task_number: 2`, `task_id: "P01-T02"`, and `head_sha: null` (auto-commit is off — the reviewer falls back to `git diff HEAD` + untracked files).
 
 ### Step 2 — T2 task review (expected: changes_requested with drift)
 
@@ -84,14 +84,14 @@ Load `.claude/skills/rad-orchestration/references/corrective-playbook.md`. Apply
 ### Step 4 — Signal `code_review_completed` (first attempt)
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event code_review_completed \
   --project-dir <...> \
   --config <...>/orchestration.yml \
   --doc-path reports/CONFORMANCE-TIERED-CODE-REVIEW-P01-T02-GREETING.md
 ```
 
-Expected return: `{ "action": "execute_task", ... }` — the pipeline births a corrective task entry and routes back to execute_task.
+Expected return: `{ "ok": true, "data": { "action": "execute_task", ... } }` — the pipeline births a corrective task entry and routes back to execute_task.
 
 ### Step 5 — Two-step execute_task (corrective)
 
@@ -163,7 +163,7 @@ Do NOT approve the final human gate. The harness exits once `final_review_comple
 Write `run-notes.md` in the run folder summarizing:
 
 - Run folder path, date, fixture name.
-- Every `pipeline.js` call made and its returned `result.action`.
+- Every `radorch pipeline signal` call made and its returned `data.action`.
 - Every agent spawned (`@coder`, `@reviewer`) with the doc path each received.
 - Every event signaled.
 - Orchestrator judgments (finding ID, disposition verb + status tier, reason).

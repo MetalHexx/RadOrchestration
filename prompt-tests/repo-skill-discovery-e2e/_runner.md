@@ -8,7 +8,7 @@
 
 You are driving the `default.yml` pipeline end-to-end against the `skill-disco-fixture` brainstorming — a rainbow color validator library with multi-package structure — so the project gets a regression signal on repo-skill discovery (FR-15 through FR-17, NFR-5).
 
-Behave as a **simulated orchestrator**. Signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not make planning decisions yourself, do not edit state.json, do not skip the two-step `_started` → action return protocol. The only differences from a production run: you spawn no agents beyond `@planner`, and you **halt when the pipeline returns `action: "request_plan_approval"`** rather than presenting the gate to a human.
+Behave as a **simulated orchestrator**. Signal events via `radorch pipeline signal`, read `data.action` from stdout JSON, route exactly per the Action Routing Table, do not make planning decisions yourself, do not edit state.json, do not skip the two-step `_started` → action return protocol. The only differences from a production run: you spawn no agents beyond `@planner`, and you **halt when the pipeline returns `action: "request_plan_approval"`** rather than presenting the gate to a human.
 
 Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md` — load them if you are not already carrying that context.
 
@@ -64,12 +64,12 @@ Do NOT create `state.json`, `orchestration.yml`, or `template.yml` yourself. The
 
 ## Drive the pipeline
 
-Invoke `pipeline.js` from the repo root (the entry auto-installs dependencies on first run). The run folder you created is `--project-dir` for every call.
+Invoke `radorch pipeline signal` from the repo root. The run folder you created is `--project-dir` for every call.
 
 Initial call — use `--event start` to scaffold state. The engine rejects any non-`start` event when `state.json` does not yet exist.
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event start \
   --project-dir prompt-tests/repo-skill-discovery-e2e/output/skill-disco-fixture/<PROJECT-NAME> \
   --template default
@@ -85,7 +85,7 @@ Loop per the Action Routing Table:
 - On `explode_master_plan` — shell out to the explosion script per action #2a in the routing table. On exit 0 signal `explosion_completed`; on exit 2 signal `explosion_failed --parse-error '<json>'` (same structured payload the script emits). On exit 1 **halt and surface to the operator** — do not invent a recovery.
 - The two-step `_started` → action-return protocol is mandatory. Do not short-circuit it even though you are simulating.
 
-**Halt signal**: `result.action === "request_plan_approval"`. Do not signal `plan_approved`. The run has produced everything the harness needs — requirements, master plan, and exploded phase/task files — before the gate.
+**Halt signal**: `data.action === "request_plan_approval"`. Do not signal `plan_approved`. The run has produced everything the harness needs — requirements, master plan, and exploded phase/task files — before the gate.
 
 ---
 
@@ -138,7 +138,7 @@ Short, high-signal. Include:
 
 - Run folder path + timestamp + project name
 - Fixture used
-- Pipeline final `result.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from state.json, do not edit it)
+- Pipeline final `data.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from state.json, do not edit it)
 - Counts: phases emitted (= `state.graph.nodes.phase_loop.iterations.length`), tasks emitted (sum of per-phase task_loop iterations), requirement count (from Requirements frontmatter)
 - FR-17 assertion results (all five, each marked PASS or FAIL)
 - A short human-review checklist for the operator to eyeball the planner output (1–2 sentences per phase/task — are titles coherent, are requirement IDs cited sensibly, does the plan match the brainstorming scope, does the Master Plan reference the rainbow-lint and foo:vitest conventions where appropriate)

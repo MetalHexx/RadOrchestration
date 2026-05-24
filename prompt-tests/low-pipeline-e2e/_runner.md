@@ -8,7 +8,7 @@
 
 You are driving the `low.yml` pipeline end-to-end against a fixed brainstorming fixture so the project gets a regression signal on planner prompts and the explosion script under low mode.
 
-Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table, do not make planning decisions yourself, do not edit state.json, do not skip the two-step `_started` → action return protocol. The only differences: you spawn no agents beyond `@planner`, and you **halt when the pipeline returns `action: "request_plan_approval"`** rather than presenting the gate to a human.
+Behave as a **simulated orchestrator**. The same rules the production orchestrator operates under apply here: signal events via `radorch pipeline signal`, read `data.action` from stdout JSON, route exactly per the Action Routing Table, do not make planning decisions yourself, do not edit state.json, do not skip the two-step `_started` → action return protocol. The only differences: you spawn no agents beyond `@planner`, and you **halt when the pipeline returns `action: "request_plan_approval"`** rather than presenting the gate to a human.
 
 Full routing reference lives at `.claude/skills/rad-orchestration/references/pipeline-guide.md` and `action-event-reference.md`.
 
@@ -40,10 +40,10 @@ Hand-roll the minimum project scaffold — do **NOT** invoke the installer and d
 
 ## Drive the pipeline
 
-Invoke `pipeline.js` from the repo root. Initial call uses `--event start` and `--template low`:
+Invoke `radorch pipeline signal` from the repo root. Initial call uses `--event start` and `--template low`:
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event start \
   --project-dir prompt-tests/low-pipeline-e2e/output/<fixture>/<PROJECT-NAME> \
   --template low
@@ -55,7 +55,7 @@ From the first `start`, proceed per the two-step protocol:
 - On `explode_master_plan` — shell out to the explosion script per the routing table; on exit 0 signal `explosion_completed`; on exit 2 signal `explosion_failed --parse-error '<json>'`; on exit 1 halt and surface.
 - The two-step `_started` → action-return protocol is mandatory. Do not short-circuit it even though you are simulating.
 
-**Halt signal**: `result.action === "request_plan_approval"`. Do not signal `plan_approved`.
+**Halt signal**: `data.action === "request_plan_approval"`. Do not signal `plan_approved`.
 
 Because low.yml drops `code_review`, `task_gate`, `phase_review`, and `phase_gate` on the execution side, none of those actions should appear before the halt. If any of those fires, the harness state is off-script — halt and surface to the operator.
 
@@ -78,7 +78,7 @@ Include both doc-lint outputs (with the JSON summary line), both self-test outpu
 ### `run-notes.md`
 - Run folder path + timestamp + project name
 - Fixture used
-- Pipeline final `result.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from state.json, do not edit it)
+- Pipeline final `data.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from state.json, do not edit it)
 - `state.graph.template_id` confirmed as `low`
 - Counts: phases emitted, tasks emitted, requirement count
 - Short human-review checklist mirroring `extra-high-pipeline-e2e/_runner.md`'s notes section.

@@ -64,7 +64,7 @@ See `installer/lib/env-generator.js` for the canonical template. The UI reads th
 
 2. Open `prompt-tests/corrective-mediation-e2e/_runner.md` in your editor and copy its **entire contents**.
 
-3. Paste the contents into the Claude Code session as your first message. Claude will read the instructions and act as the simulated orchestrator — copying the fixture to a fresh run folder, bootstrapping the pipeline, mediating the review in-session (writing the addendum, authoring the corrective Task Handoff), spawning `@coder` to fix the code, spawning `@reviewer` to re-review, and halting when the corrective re-review returns `approved`.
+3. Paste the contents into the Claude Code session as your first message. Claude will read the instructions and act as the simulated orchestrator — copying the fixture to a fresh run folder, bootstrapping the pipeline via the `radorch pipeline signal` subcommand, mediating the review in-session (writing the addendum, authoring the corrective Task Handoff), spawning `@coder` to fix the code, spawning `@reviewer` to re-review, and halting when the corrective re-review returns `approved`.
 
 4. **Fixture**: the default is `broken-colors` (already configured in `_runner.md`). No change needed unless you explicitly want a different fixture.
 
@@ -72,7 +72,7 @@ See `installer/lib/env-generator.js` for the canonical template. The UI reads th
 
 6. When the session halts, it will have written `run-notes.md` into the run folder. Ask the session for the exact path and open it.
 
-**If the session errors out** (pipeline returns `success: false`, validator rejects the addendum frontmatter, mutation throws, halt_reason appears unexpectedly), stop and surface to whoever is tracking the iteration. The test exists to catch exactly this class of break.
+**If the session errors out** (pipeline returns `ok: false`, validator rejects the addendum frontmatter, mutation throws, halt_reason appears unexpectedly), stop and surface to whoever is tracking the iteration. The test exists to catch exactly this class of break.
 
 ## Verify the automated run
 

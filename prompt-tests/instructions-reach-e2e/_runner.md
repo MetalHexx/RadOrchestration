@@ -10,10 +10,10 @@ You are measuring whether project-level instruction files (`CLAUDE.md`, `AGENTS.
 
 You drive two phases:
 
-- **Phase A** — Drive the `default.yml` planning chain via `pipeline.js`. Halt at `request_plan_approval`. Then grep the emitted Master Plan for the CLAUDE.md marker.
+- **Phase A** — Drive the `default.yml` planning chain via `radorch pipeline signal`. Halt at `request_plan_approval`. Then grep the emitted Master Plan for the CLAUDE.md marker.
 - **Phase B** — Spawn `@coder` directly against a pre-baked handoff (the executor-isolation pattern from `execute-coding-task-e2e`). Then grep the resulting source files for the AGENTS.md and copilot-instructions.md markers.
 
-Behave as a **simulated orchestrator** during Phase A. Signal events to `pipeline.js`, read `result.action` from stdout JSON, route exactly per the Action Routing Table at `.claude/skills/rad-orchestration/references/action-event-reference.md`, do not make planning decisions yourself, do not edit `state.json`, do not skip the two-step `_started` → action-return protocol. The only differences from a production run: you spawn no agents beyond `@planner` in Phase A, and you halt when the pipeline returns `action: "request_plan_approval"` rather than presenting the gate to a human.
+Behave as a **simulated orchestrator** during Phase A. Signal events via `radorch pipeline signal`, read `data.action` from stdout JSON, route exactly per the Action Routing Table at `.claude/skills/rad-orchestration/references/action-event-reference.md`, do not make planning decisions yourself, do not edit `state.json`, do not skip the two-step `_started` → action-return protocol. The only differences from a production run: you spawn no agents beyond `@planner` in Phase A, and you halt when the pipeline returns `action: "request_plan_approval"` rather than presenting the gate to a human.
 
 **Critical constraint — do not seed reach.** The Phase A planner spawn prompts must mirror the production orchestrator exactly: only the `## Repository Skills Available` manifest, no inlined CLAUDE.md / AGENTS.md / copilot-instructions.md content, no mention of the marker tokens. The Phase B coder spawn prompt must contain only the handoff path per the `rad-execute-coding-task` contract, no other doc paths, no marker references. We are measuring native reach, not seeded reach.
 
@@ -76,14 +76,14 @@ Do NOT create `state.json`, `orchestration.yml`, or `template.yml` yourself. The
 
 ---
 
-## Phase A — Drive the planner via `pipeline.js`
+## Phase A — Drive the planner via `radorch pipeline signal`
 
-Invoke `pipeline.js` from the repo root. The run folder you created is `--project-dir` for every call.
+Invoke `radorch pipeline signal` from the repo root. The run folder you created is `--project-dir` for every call.
 
 Initial call — use `--event start` to scaffold state. The engine rejects any non-`start` event when `state.json` does not yet exist.
 
 ```
-node .claude/skills/rad-orchestration/scripts/pipeline.js \
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
   --event start \
   --project-dir prompt-tests/instructions-reach-e2e/output/instructions-canary/<PROJECT-NAME> \
   --template default
@@ -99,13 +99,13 @@ Loop per the Action Routing Table:
 
 **Capture the planner's read log** for both spawns — specifically, whether the planner issues any `Read`, `Grep`, or `Glob` for `CLAUDE.md`, `AGENTS.md`, or `copilot-instructions.md` paths. You will need this for the cross-check in `run-notes.md`.
 
-**Halt signal**: `result.action === "request_plan_approval"`. Do not signal `plan_approved`. The run has produced everything Phase A needs — Requirements, Master Plan, and exploded phase/task files — before the gate.
+**Halt signal**: `data.action === "request_plan_approval"`. Do not signal `plan_approved`. The run has produced everything Phase A needs — Requirements, Master Plan, and exploded phase/task files — before the gate.
 
 ---
 
 ## Phase B — Spawn `@coder` directly against the pre-baked handoff
 
-This phase exercises the executor in isolation, mirroring the pattern from `prompt-tests/execute-coding-task-e2e/_runner.md`. You do **NOT** drive `pipeline.js`, do not signal events, do not advance `state.json`. The coder is given exactly one input: the handoff path.
+This phase exercises the executor in isolation, mirroring the pattern from `prompt-tests/execute-coding-task-e2e/_runner.md`. You do **NOT** drive `radorch pipeline signal`, do not signal events, do not advance `state.json`. The coder is given exactly one input: the handoff path.
 
 1. Confirm the pre-baked handoff is present at:
    ```
@@ -181,7 +181,7 @@ Short, high-signal. Include:
 
 - Run folder path + timestamp + project name.
 - Fixture used.
-- Pipeline final `result.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from `state.json`, do not edit it).
+- Pipeline final `data.action` + `state.graph.nodes.plan_approval_gate.gate_active` (read from `state.json`, do not edit it).
 - Counts: phases emitted, tasks emitted, requirements count (from Requirements frontmatter).
 - **Reach matrix** — the core artifact:
 

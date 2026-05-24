@@ -54,7 +54,7 @@ See `installer/lib/env-generator.js` for the canonical template. The UI reads th
 
 2. Open `prompt-tests/extra-high-pipeline-e2e/_runner.md` in your editor and copy its **entire contents**.
 
-3. Paste the contents into the Claude Code session as your first message. Claude will read the instructions and act as a simulated orchestrator — signaling events to `pipeline.js`, spawning `@planner` when the pipeline asks for it, and halting automatically when the pipeline reaches the `request_plan_approval` human gate.
+3. Paste the contents into the Claude Code session as your first message. Claude will read the instructions and act as a simulated orchestrator — signaling events via the `radorch pipeline signal` subcommand, spawning `@planner` when the pipeline asks for it, and halting automatically when the pipeline reaches the `request_plan_approval` human gate.
 
 4. **Fixture**: the default is `rainbow-hello` (already configured in `_runner.md`). No change needed unless you explicitly want a different fixture.
 
@@ -66,7 +66,7 @@ See `installer/lib/env-generator.js` for the canonical template. The UI reads th
 
    Ask the session for the exact path to the run folder and open it.
 
-**If the session errors out** (pipeline returns `success: false`, script crashes, planner output malformed), stop and surface to whoever is tracking the iteration. Don't "fix" it on the fly — the test exists to catch exactly that kind of break.
+**If the session errors out** (pipeline returns `ok: false`, script crashes, planner output malformed), stop and surface to whoever is tracking the iteration. Don't "fix" it on the fly — the test exists to catch exactly that kind of break.
 
 ## Verify the automated run
 

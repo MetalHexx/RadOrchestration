@@ -13,7 +13,7 @@ You are simulating the orchestrator at the point where a task is ready to execut
 
 Your job is to dispatch the coder against each handoff in turn and observe whether the executor obeys the `rad-execute-coding-task` skill contract. **Both runs must take the same path** — the executor is not allowed to branch behavior on `corrective_index`, `corrective_scope`, or the presence of a `-C1` suffix.
 
-You are NOT simulating a full pipeline. You do not drive `pipeline.js`, do not signal events, do not spawn reviewers. You manually invoke the executor twice, inspect the artifacts it produces, and check the pass criteria.
+You are NOT simulating a full pipeline. You do NOT drive `radorch pipeline signal` from inside the coder task — the harness is the only authorized invoker. Do not signal events, do not spawn reviewers. You manually invoke the executor twice, inspect the artifacts it produces, and check the pass criteria.
 
 ---
 
@@ -37,7 +37,7 @@ All paths are relative to the repo root unless noted.
    ```
    Copy the entire contents of `prompt-tests/execute-coding-task-e2e/fixtures/tdd-slip/` — including root-level files (`state.json`, `orchestration.yml`, `template.yml`, `package.json`, the three documentary `TDD-SLIP-*.md` decoys) and preserving subdirectory structure (`phases/`, `tasks/`, `reports/`, `src/`). The `package.json` sets `"type": "module"` so `node --test` treats the `.js` handoff targets as ESM — matching the `AD-1` (Pure ESM) constraint both handoffs inline.
 
-   > The fixture's `state.json` is pre-seeded — do NOT invoke the installer or run `pipeline.js --event start`. This harness exercises the **executor** in isolation.
+   > The fixture's `state.json` is pre-seeded — do NOT invoke the installer or run `radorch pipeline signal --event start`. This harness exercises the **executor** in isolation.
    >
    > The C1 corrective handoff file on disk (`tasks/TDD-SLIP-TASK-P01-T01-CAPITALIZE-C1.md`) is a pre-authored fixture artifact, intentionally NOT reflected in `state.json` (`corrective_tasks: []`). In a real pipeline run, a corrective entry only births after a code-review `changes_requested`. The runner feeds the C1 handoff to the executor directly in Run B to exercise the uniform-path contract without requiring the upstream mediation cycle.
 
@@ -123,4 +123,4 @@ If all eight are green, the run is a clean baseline. If any red, surface.
 
 Once `run-notes.md` and `lint-report.md` are written, surface the two file paths and the pass-criteria summary to the operator so they can commit the baseline artifacts.
 
-**Do not advance state.json. Do not spawn a reviewer. Do not drive `pipeline.js`.** This harness is scoped to the executor contract — downstream nodes are covered by `corrective-mediation-e2e/` and `code-review-rework-e2e/`.
+**Do not advance state.json. Do not spawn a reviewer. Do not drive `radorch pipeline signal` from inside the coder task — the harness is the only authorized invoker.** This harness is scoped to the executor contract — downstream nodes are covered by `corrective-mediation-e2e/` and `code-review-rework-e2e/`.
