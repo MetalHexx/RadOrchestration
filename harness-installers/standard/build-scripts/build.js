@@ -134,8 +134,14 @@ export async function runBuild(opts) {
   // them as ignored when building the tarball — they would never reach the
   // user anyway and listing them in the manifest would break install with
   // ENOENT on copyFile.
+  // `pipeline.js` is explicitly excluded: the dedicated emitPipelineBundle
+  // step was retired in P07 (SCRIPT-FOLD-5). The source file still exists in
+  // the canonical skills tree for dogfood use but is not a standard-installer
+  // distributable — the adapter engine copies it in and prune must drop it
+  // (NFR-6, AD-7).
   await step('prune-scripts-sources', () => {
     const KEEP_EXTENSIONS = new Set(['.js', '.mjs']);
+    const REMOVE_FILES = new Set(['pipeline.js']);
     function pruneDir(dir) {
       if (!fs.existsSync(dir)) return;
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -144,7 +150,7 @@ export async function runBuild(opts) {
           fs.rmSync(abs, { recursive: true, force: true });
         } else {
           const ext = path.extname(entry.name).toLowerCase();
-          if (!KEEP_EXTENSIONS.has(ext)) {
+          if (!KEEP_EXTENSIONS.has(ext) || REMOVE_FILES.has(entry.name)) {
             fs.rmSync(abs, { force: true });
           }
         }
