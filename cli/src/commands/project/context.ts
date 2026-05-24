@@ -2,12 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { defineCommand } from '../../framework/command.js';
 import type { CommandContext } from '../../framework/context.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export interface ProjectContextResult {
   repoRoot: string;
@@ -16,7 +12,6 @@ export interface ProjectContextResult {
   currentBranch: string;
   defaultBranch: string;
   platform: 'windows' | 'mac' | 'linux';
-  orchRoot: string;
   projectsBasePath: string;
   configAutoCommit: string;
   configAutoPr: string;
@@ -88,7 +83,6 @@ export function projectContext(opts: ProjectContextOptions = {}): ProjectContext
   const platformMap: Record<string, 'windows' | 'mac' | 'linux'> = { win32: 'windows', darwin: 'mac' };
   const platform = platformMap[process.platform] ?? 'linux';
 
-  const orchRoot = path.resolve(__dirname, '..', '..', '..');
   const projectsBasePath = path.join(os.homedir(), '.radorch', 'projects');
   const configPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
 
@@ -120,7 +114,7 @@ export function projectContext(opts: ProjectContextOptions = {}): ProjectContext
 
   return {
     repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform,
-    orchRoot, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl,
+    projectsBasePath, configAutoCommit, configAutoPr, remoteUrl,
     projectDir, sourceControlInitialized,
   };
 }
