@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { runBuild } from '../../build-scripts/build.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
@@ -213,5 +214,15 @@ test('standard installer publish package.json names rad-orc (AD-9)', async () =>
   assert.ok(pkg.bin && Object.prototype.hasOwnProperty.call(pkg.bin, 'rad-orc'));
   assert.ok(!Object.prototype.hasOwnProperty.call(pkg.bin || {}, 'rad-orchestration'),
     'legacy bin name removed (FR-6)');
+});
+
+test('npm pack --dry-run reports name rad-orc (FR-6)', () => {
+  const standardDir = path.resolve(import.meta.dirname, '../..');
+  const out = execSync('npm pack --dry-run --json', {
+    cwd: standardDir,
+    encoding: 'utf8',
+  });
+  const [meta] = JSON.parse(out);
+  assert.strictEqual(meta.name, 'rad-orc');
 });
 
