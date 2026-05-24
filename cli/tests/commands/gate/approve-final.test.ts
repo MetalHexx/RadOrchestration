@@ -44,7 +44,7 @@ async function makeProjectAtFinalGate(): Promise<string> {
 }
 
 describe('radorch gate approve final (FR-13, AD-5)', () => {
-  it('mutates final_approval_gate to completed and emits the pipeline.js-shaped envelope', async () => {
+  it('mutates final_approval_gate to completed and emits the canonical envelope', async () => {
     const dir = await makeProjectAtFinalGate();
     const result = await runApproveFinal({ projectDir: dir });
 

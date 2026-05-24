@@ -81,7 +81,7 @@ export function snapshotTemplate(
  * Returns empty array if the templates directory does not exist.
  *
  * @param templatesDir - Absolute path to the templates directory, typically
- *   path.join(os.homedir(), '.radorch', 'templates') as resolved by pipeline.ts.
+ *   path.join(os.homedir(), '.radorch', 'templates') as resolved by the `radorch` CLI binary.
  */
 export function listAvailableTemplates(
   templatesDir: string,

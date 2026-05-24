@@ -12,4 +12,4 @@ Phase 1 holds three tasks with correctives stacked (T1 with one task-scope corre
 
 Phase 2 holds a single clean task with no corrective activity; it exists so the UI can be spot-checked for regression against the simple, no-corrective rendering path.
 
-Not runner-driven. The fixture is never executed by `pipeline.js`; the UI reads its `state.json` directly.
+Not runner-driven. The fixture is never executed by the pipeline runtime; the UI reads its `state.json` directly.

@@ -114,7 +114,7 @@ function savePriorDogfoodManifest(harness, manifest) {
 async function main() {
   const opts = parseBuildArgs(process.argv.slice(2));
 
-  // Pipeline runtime is no longer bundled here. It lives in the CLI at
+  // Pipeline runtime lives in the CLI at
   // `cli/src/lib/pipeline-engine/` and is bundled into installer output by
   // `emit-cli-bundle` (a standard-installer build step), not by the dogfood
   // loop.
