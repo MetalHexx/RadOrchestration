@@ -63,6 +63,8 @@ Where `<releaseBranch>` is the branch name captured in step 1 and `<version>` is
 
 ## Step 9 — Publish standard installer to npm
 
+Invoke `node .claude/skills/rad-release/scripts/publish-npm.mjs` from the repo root. This module runs `npm publish --access public` from the local npm credentials held on the operator's machine (NFR-6). No `--provenance` flag is passed — the local-skill publish workflow accepts the loss of OIDC attestation and does not emit a signed provenance statement (NFR-4). The published package name is `rad-orc`, with the version taken from the lockstep bump produced in step 3 — for the first release, this is the alpha-N value carried forward from the current `cli/package.json`, not a fresh `0.0.1` (AD-10). A non-zero exit halts the release and surfaces the npm error to the operator (FR-10, FR-6, AD-9, NFR-4).
+
 ## Step 10 — Sync built plugin artifacts into satellite
 
 ## Step 11 — Tag and push
