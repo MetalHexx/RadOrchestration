@@ -176,7 +176,7 @@ After all answers are returned, derive these values:
 After worktree creation (or reuse), call the pipeline to record source control settings:
 
 ```
-node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branchName}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal --event source_control_init --project-dir "{projectDir}" --branch "{branchName}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
 ```
 
 Use `data.remoteUrl` and `data.compareUrl` from `worktree create` output. For reused worktrees where the subcommand was not run, detect them manually:
@@ -185,7 +185,7 @@ Use `data.remoteUrl` and `data.compareUrl` from `worktree create` output. For re
 - Strip trailing `.git` from HTTPS URLs
 - `compareUrl` = `{remoteUrl}/compare/{baseBranch}...{branchName}` (strip `origin/` prefix from baseBranch)
 
-Verify the response contains `"success": true`. If it fails, show the error and stop.
+Verify the envelope returns `ok: true`. On `ok: false`, show `error.message` and stop.
 
 ---
 

@@ -36,7 +36,7 @@ Follow these steps in order. Run steps 1–2 silently — do not narrate or disp
 
 5. **Create worktree** — If not reusing an existing worktree, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree create ...`. On failure, show the error and a targeted fix from the error table in the workflow guide. Do not proceed if creation fails.
 
-6. **Source control init** — Call `pipeline.js --event source_control_init` with the resolved values and URLs from `worktree create` output. See the workflow guide for the exact command template.
+6. **Source control init** — Call `radorch pipeline signal --event source_control_init` via the canonical script-block convention with the resolved values and URLs from `worktree create` output. See the workflow guide for the exact command template.
 
 7. **Launch** — Execute the post-action chosen in step 3 via `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent {agent} ...`. See the workflow guide for the per-agent flag matrix.
 

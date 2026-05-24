@@ -8,7 +8,7 @@ Detailed reference for the `rad-execute` orchestrator when `sourceControlInitial
 
 | Init field | Source |
 |---|---|
-| `projectDir` | `data.projectDir` (used as `--project-dir` for the pipeline CLI) |
+| `projectDir` | `data.projectDir` (used as `--project-dir` for the `radorch pipeline signal` subcommand) |
 | `worktree_path` | `data.repoRoot` |
 | `branch` | `data.currentBranch` |
 | `base_branch` | Prompt user with a free-form `base_branch` question; default = `data.defaultBranch`. |
@@ -56,9 +56,9 @@ Use `askQuestions` tool when auto_commit or auto_pr are set to `"ask"` to prompt
 After resolving all fields, fire the `source_control_init` pipeline event:
 
 ```
-node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event source_control_init --project-dir "{projectDir}" --branch "{branch}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal --event source_control_init --project-dir "{projectDir}" --branch "{branch}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
 ```
 
-`{orchRoot}` is the absolute install root from `data.orchRoot` in the `project context` envelope. Omit the `--remote-url` and `--compare-url` flags when their resolved values are empty.
+Omit the `--remote-url` and `--compare-url` flags when their resolved values are empty.
 
-Verify the response contains `"success": true`. If it fails, show the error to the user and stop — do not proceed to execute the pipeline.
+Verify the envelope returns `ok: true`. On `ok: false`, show `error.message` to the user and stop — do not proceed to execute the pipeline.
