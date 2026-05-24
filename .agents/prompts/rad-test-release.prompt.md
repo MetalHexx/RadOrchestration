@@ -18,7 +18,7 @@ This smoke test packs the **current state of the working tree** with whatever ve
 - The committed catalog at `manifests/<harness>/` is protected from in-development changes — `sync-source.js`'s auto-promote step drift-warns rather than overwriting when current HEAD doesn't byte-match the committed copy.
 - The runtime catalog at `installer/src/<harness>/manifests/` is local-only and ephemeral; it is regenerated on every sync-source run.
 
-If `package.json`'s version was already published, the report's "tested version X" line refers to **current HEAD packed under the X label** — not the bytes that npm shipped as X. Version bumps happen at actual release time (`rad-release.prompt.md`), not before smoke-testing.
+If `package.json`'s version was already published, the report's "tested version X" line refers to **current HEAD packed under the X label** — not the bytes that npm shipped as X. Version bumps happen at actual release time (via `/rad-release`), not before smoke-testing.
 
 ---
 
