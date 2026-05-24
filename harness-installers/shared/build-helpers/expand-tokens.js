@@ -81,8 +81,8 @@ export async function expandTokens(opts) {
       fs.writeFileSync(dst, namespaced);
       // Preserve POSIX file mode — writeFileSync creates files at the default
       // (umask-masked 0o666), which would silently strip the executable bit
-      // from bundles that earlier build steps chmod'd 0o755 (radorch.mjs,
-      // pipeline.js). copyFileSync below already preserves mode; for the text-rewrite
+      // from bundles that earlier build steps chmod'd 0o755 (radorch.mjs).
+      // copyFileSync below already preserves mode; for the text-rewrite
       // path we restore it explicitly.
       try { fs.chmodSync(dst, fs.statSync(src).mode); } catch { /* Windows: no POSIX mode */ }
     } else {
