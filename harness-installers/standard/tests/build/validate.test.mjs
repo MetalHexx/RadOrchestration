@@ -9,9 +9,11 @@ const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
 const COPILOT_AGENT_SUFFIX_HARNESSES = new Set(['copilot-vscode', 'copilot-cli']);
 const VERSION = '1.0.0-alpha.9';
 
-test('REQUIRED_PER_HARNESS no longer includes the retired explode-master-plan bundle', () => {
+test('REQUIRED_PER_HARNESS no longer includes the retired pipeline bundle', () => {
+  assert.ok(!REQUIRED_PER_HARNESS.includes('skills/rad-orchestration/scripts/pipeline.js'),
+    'validator allow-list must not require the retired pipeline bundle');
   assert.ok(!REQUIRED_PER_HARNESS.includes('skills/rad-orchestration/scripts/explode-master-plan.js'),
-    'validator allow-list must not require the retired script');
+    'validator allow-list must not require the retired explode-master-plan script');
 });
 
 /** Build a minimal synthetic output tree satisfying all four gates. */
@@ -26,7 +28,6 @@ function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'code
       fs.writeFileSync(path.join(hOut, `templates/${tier}.yml`), `name: ${tier}\n`);
     }
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '// radorch\n');
-    fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js'), '// pipeline\n');
     // Canonical agents (gate 2). Per-harness filename suffix matches the adapter:
     // claude emits `<name>.md`, copilot variants emit `<name>.agent.md`.
     fs.mkdirSync(path.join(hOut, 'agents'), { recursive: true });

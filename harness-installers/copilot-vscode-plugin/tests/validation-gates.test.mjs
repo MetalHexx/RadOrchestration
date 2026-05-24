@@ -12,7 +12,6 @@ function makeValidOutput(version) {
   fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-vscode-plugin', version }));
   fs.mkdirSync(join(root, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
-  fs.writeFileSync(join(root, 'skills/rad-orchestration/scripts/pipeline.js'), '// pipeline\n');
   fs.mkdirSync(join(root, 'hooks'), { recursive: true });
   fs.writeFileSync(join(root, 'hooks/hooks.json'), '{}');
   fs.writeFileSync(join(root, 'hooks/bootstrap.mjs'), '// boot\n');
@@ -29,9 +28,11 @@ function makeValidOutput(version) {
   return { root, canonicalDir };
 }
 
-test('REQUIRED_ARTIFACTS no longer includes the retired explode-master-plan bundle', () => {
+test('REQUIRED_ARTIFACTS no longer includes the retired pipeline bundle or explode-master-plan bundle', () => {
+  assert.ok(!REQUIRED_ARTIFACTS.includes('skills/rad-orchestration/scripts/pipeline.js'),
+    'validator allow-list must not require the retired pipeline bundle');
   assert.ok(!REQUIRED_ARTIFACTS.includes('skills/rad-orchestration/scripts/explode-master-plan.js'),
-    'validator allow-list must not require the retired script');
+    'validator allow-list must not require the retired explode-master-plan script');
 });
 
 test('gate 1: missing required artifact aborts (FR-31)', () => {

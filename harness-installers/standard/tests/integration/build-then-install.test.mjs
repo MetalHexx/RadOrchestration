@@ -60,7 +60,7 @@ function makeFixture(root) {
     );
     fs.writeFileSync(
       path.join(skillsDir, 'SKILL.md'),
-      '---\nname: rad-orchestration\ndescription: t\n---\nReference: ${SKILLS_ROOT}/rad-orchestration/scripts/pipeline.js\n',
+      '---\nname: rad-orchestration\ndescription: t\n---\nReference: ${SKILLS_ROOT}/rad-orchestration/scripts/radorch.mjs\n',
     );
   }
 
@@ -87,12 +87,6 @@ function makeFixture(root) {
   fs.mkdirSync(path.join(root, 'ui/.next/standalone'), { recursive: true });
   fs.mkdirSync(path.join(root, 'ui/.next/static'), { recursive: true });
   fs.writeFileSync(path.join(root, 'ui/.next/standalone/server.js'), '// ui\n');
-
-  // harness-files/skills/rad-orchestration/scripts/ — TS sources for the
-  // pipeline bundler.
-  const pipeSrc = path.join(root, 'harness-files/skills/rad-orchestration/scripts');
-  fs.mkdirSync(pipeSrc, { recursive: true });
-  fs.writeFileSync(path.join(pipeSrc, 'pipeline.ts'), 'export const main = () => 1;\n');
 
   // harness-files/agents/ — canonical agents listing for the validate step.
   const canonicalAgentsDir = path.join(root, 'harness-files/agents');
@@ -209,8 +203,8 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
       'FR-3: claude coder.md installed');
     assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/scripts/radorch.mjs')),
       'FR-3: claude CLI sentinel installed');
-    assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/scripts/pipeline.js')),
-      'FR-3: claude pipeline bundle installed');
+    assert.ok(!fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/scripts/pipeline.js')),
+      'no legacy pipeline shipped');
     assert.ok(fs.existsSync(path.join(home, '.claude/skills/rad-orchestration/SKILL.md')),
       'FR-3: claude SKILL.md installed');
 
