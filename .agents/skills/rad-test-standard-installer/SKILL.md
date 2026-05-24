@@ -67,7 +67,6 @@ $ErrorActionPreference = 'Stop'
 
 $bhDir = Join-Path "{repoRoot}" 'harness-installers\shared\build-helpers'
 $engineDir = Join-Path "{repoRoot}" 'harness-adapters\engine'
-$scriptsDir = Join-Path "{repoRoot}" 'harness-files\skills\rad-orchestration\scripts'
 $cliDir = Join-Path "{repoRoot}" 'cli'
 $uiDir = Join-Path "{repoRoot}" 'ui'
 
@@ -82,7 +81,6 @@ Ensure-NodeModules $bhDir
 
 # Keep the remaining package roots healthy for bootstrap/build steps.
 Ensure-NodeModules $engineDir
-Ensure-NodeModules $scriptsDir
 Ensure-NodeModules $cliDir
 Ensure-NodeModules $uiDir
 
@@ -92,9 +90,6 @@ if (-not (Test-Path (Join-Path $uiDir 'node_modules\.bin\next.cmd')) -and -not (
 }
 if (-not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild.cmd')) -and -not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild'))) {
   npm install --prefix $cliDir
-}
-if (-not (Test-Path (Join-Path $scriptsDir 'node_modules\.bin\tsx.cmd')) -and -not (Test-Path (Join-Path $scriptsDir 'node_modules\.bin\tsx'))) {
-  npm install --prefix $scriptsDir
 }
 ```
 
