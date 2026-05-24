@@ -9,7 +9,6 @@ import { planExplodeCommand } from './commands/plan/index.js';
 import { skillListCommand } from './commands/skill/index.js';
 import { pipelineSignalCommand } from './commands/pipeline/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
-import { runHello } from './commands/hello/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -196,14 +195,6 @@ export function buildProgram(version: string): Command {
     'after',
     "\nTip: use 'radorch where <name>' to resolve any radorch path (projects, registry, config, ...). 'radorch where' with no arg lists them all.",
   );
-
-  program
-    .command('hello')
-    .description('Print Hello, World! to stdout')
-    .action(async () => {
-      const code = await runHello({ stdout: process.stdout, stderr: process.stderr });
-      process.exit(code);
-    });
 
   return program;
 }
