@@ -33,7 +33,7 @@ Final:     Comprehensive Review → PR Creation (if auto_pr) → Human Approval 
 
 1. **Start with `@brainstormer` (optional) or `@orchestrator`** — brainstorm ideas first, or go directly to the Orchestrator if you have a clear idea.
 2. **The Coder reads ONLY its Task Handoff** — everything it needs is self-contained in that one document.
-3. **No agent directly writes `state.json`** — all state mutations performed by the `@orchestrator` agent via the (`pipeline.js`) script.
+3. **No agent directly writes `state.json`** — all state mutations performed by the `@orchestrator` agent via the `radorch pipeline signal` subcommand.
 4. **Human gates** are enforced after planning (Master Plan review) and after final review.
 5. **Documents are the interface** — agents communicate through structured markdown files, never through shared state or memory.
 6. **PR creation is non-blocking** — when `auto_pr === 'always'`, the pipeline creates a GitHub PR after the comprehensive review and before the human gate. If PR creation fails, the human gate fires without a PR URL. PR failure never blocks the pipeline.
