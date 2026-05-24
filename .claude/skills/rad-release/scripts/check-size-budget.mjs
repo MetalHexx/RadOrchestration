@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { posix } from 'node:path';
+import path from 'node:path';
 
 // 50 MB ceiling + 10% headroom = 57,671,680 bytes (NFR-3)
 export const SIZE_BUDGET_BYTES = 57_671_680;
@@ -13,7 +13,7 @@ const PLUGINS = [
 export async function checkSizeBudget({ repoRoot, spawn = spawnSync }) {
   const failures = [];
   for (const dir of PLUGINS) {
-    const cwd = posix.join(repoRoot, dir, 'output');
+    const cwd = path.join(repoRoot, dir, 'output');
     const res = spawn('npm', ['pack', '--dry-run', '--json'], { cwd, encoding: 'utf8' });
     if (res.status !== 0) {
       return { ok: false, error: `${dir}: npm pack failed: ${res.stderr}` };
