@@ -8,7 +8,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { emitCliBundle } from '../../shared/build-helpers/emit-cli-bundle.js';
-import { emitPipelineBundle } from '../../shared/build-helpers/emit-pipeline-bundle.js';
 import { emitHookBundle } from '../../shared/build-helpers/emit-hook-bundle.js';
 import { emitUiBundle } from '../../shared/build-helpers/emit-ui-bundle.js';
 import { expandTokens } from '../../shared/build-helpers/expand-tokens.js';
@@ -76,11 +75,6 @@ export async function runBuild(opts) {
   await step('emit-cli-bundle', () => emitCliBundle({
     source: path.join(root, 'cli'),
     target: path.join(out, 'skills/rad-orchestration/scripts/radorch.mjs'),
-  }));
-
-  await step('emit-pipeline-bundle', () => emitPipelineBundle({
-    source: path.join(greenfield, 'harness-files/skills/rad-orchestration/scripts'),
-    target: path.join(out, 'skills/rad-orchestration/scripts'),
   }));
 
   await step('prune-scripts-sources', () => {

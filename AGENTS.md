@@ -12,7 +12,7 @@ These rules govern every contributor and every agent working in the orchestratio
 - When invoking the orchestration pipeline to execute a project, never read or invoke the files from the canonical source.
 - Never read or invoke skills from the canonical source.
 - Never read or invoke agents from the canonical source.
-- The canonical source is uncompiled and will return the wrong orchRoot for any non-Claude harness.
+- The canonical source is uncompiled; running the pipeline from there bypasses the harness's resolved install root and produces incorrect path resolution for non-Claude harnesses.
 
 ## Only EDIT the Canonical Source!
 - When making code changes to improve the Rad Orchestration system, only edit the canonical source!
@@ -90,12 +90,12 @@ All of these resolve to `node harness-dogfood/build.js` with the appropriate har
 
 This repo is a polyglot monorepo with several test runners. Pick the right one:
 
-- **Pipeline runtime** (`harness-files/skills/rad-orchestration/scripts/`) — Vitest:
+- **CLI bundle and pipeline engine** (`cli/`) — Vitest:
   ```
-  cd harness-files/skills/rad-orchestration/scripts
-  npm test                              # full suite
-  npx vitest run path/to/file.test.ts   # single file
-  npm run typecheck                     # tsc --noEmit (also run by pre-commit hook)
+  cd cli && npm test                              # full suite
+  cd cli && npx vitest run path/to/file.test.ts   # single file
+  cd cli && npm run typecheck                     # tsc --noEmit
+  cd cli && npx eslint .                          # lint
   ```
 - **Adapters + dogfood build CLI** (`harness-adapters/`, `harness-dogfood/`) — Node's built-in test runner. Run from repo root:
   ```
@@ -114,16 +114,6 @@ This repo is a polyglot monorepo with several test runners. Pick the right one:
   cd ui && npm run build-and-start   # full production build + start
   ```
 
-## Pre-commit hook (one-time setup per clone)
-
-The pre-commit hook runs `tsc --noEmit` on the pipeline scripts folder before every commit. Point git at the in-tree hooks dir once after cloning:
-
-```
-git config core.hooksPath .githooks
-```
-
-The hook lives at `.githooks/pre-commit`.
-
 ## Prompt harnesses
 
 `prompt-tests/` is an operator-driven, on-demand regression harness for planner subagent outputs. It is **not** part of CI and costs real Opus tokens per run — re-run only when a planner prompt, skill workflow, or explosion-script change actually warrants a new baseline. See `prompt-tests/README.md` for the per-behavior runner protocol.
@@ -135,7 +125,7 @@ The repo ships a document-driven, multi-agent orchestration system plus everythi
 ## Three execution layers
 
 1. **Agents and skills** (markdown) — the orchestration product itself. Twelve specialized agents (under `harness-files/agents/`) and ~18 reusable skills (under `harness-files/skills/`) communicate exclusively through structured markdown documents. There is no shared memory or message passing between agents — every interaction is mediated by a document on disk. Each document type has exactly one writer (sole-writer policy). The Coder reads only its self-contained Task Handoff.
-2. **Pipeline runtime** (TypeScript) at `harness-files/skills/rad-orchestration/scripts/` — a deterministic state machine entered through `pipeline.js`. The Orchestrator agent never makes routing decisions itself: it signals an event, parses the JSON result, and dispatches on `result.action` against a fixed routing table. Routing, triage, and state validation are pure functions; LLM judgment is reserved for planning, coding, and review.
+2. **Pipeline runtime** (TypeScript) at `cli/src/lib/pipeline-engine/`, exposed to skills as the `radorch pipeline signal` subcommand — a deterministic state machine. The Orchestrator agent never makes routing decisions itself: it signals an event, parses the canonical envelope `{ ok, data, error }` from stdout, and dispatches on `data.action` against a fixed routing table. Routing, triage, and state validation are pure functions; LLM judgment is reserved for planning, coding, and review.
 3. **Dashboard** (Next.js) at `ui/` — a read-only visualizer that watches each project's `state.json` and renders pipeline progress, documents, and configuration in real time.
 
 ## Multi-harness adapters
@@ -150,12 +140,13 @@ The system targets multiple AI coding harnesses (Claude Code, GitHub Copilot in 
 
 ## Pipeline runtime detail
 
-The pipeline runtime is the load-bearing piece. Key pieces under `harness-files/skills/rad-orchestration/scripts/`:
-
-- `pipeline.js` — JIT entry point. Checks for `node_modules`; runs `npm ci` if missing; delegates into the engine with original argv. This is what every install (Claude or Copilot, dogfood or end-user) invokes.
-- `lib/` — engine, resolver, mutations, state I/O, validator, explosion logic. The action routing table lives in `harness-files/skills/rad-orchestration/references/action-event-reference.md` (16 actions) and is the contract the Orchestrator agent dispatches on.
-- `harness-files/skills/rad-orchestration/schemas/` — JSON Schema for `state.json`. State invariants are validated on every write.
-- `tests/` — Vitest, including unit tests, integration tests, contract tests, and end-to-end engine tests.
+The pipeline runtime is the load-bearing piece. It lives at `cli/src/lib/pipeline-engine/`
+and is invoked by skills via `radorch pipeline signal`. The engine emits the canonical
+envelope `{ ok, data, error }`; the orchestrator dispatches on `data.action`. The
+action routing table at `harness-files/skills/rad-orchestration/references/action-event-reference.md`
+(16 actions) is the contract; the schema at
+`cli/src/lib/pipeline-engine/schemas/orchestration-state-v5.schema.json` validates
+every write.
 
 ## Installer
 

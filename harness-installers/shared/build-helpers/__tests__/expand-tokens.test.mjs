@@ -49,16 +49,14 @@ test('expandTokens substitutes destination tokens and applies agent-namespacing 
 });
 
 test('expandTokens preserves the POSIX file mode of rewritten text files (no exec-bit drop)', async () => {
-  // Regression: in the plugin build, emit-cli-bundle and emit-pipeline-bundle
-  // chmod radorch.mjs / pipeline.js to 0o755 so they
-  // run directly on POSIX. expand-tokens later rewrites those files via
-  // writeFileSync; without explicit mode preservation the exec bit is silently
-  // dropped to the default 0o644.
+  // Regression: in the plugin build, emit-cli-bundle chmods radorch.mjs to 0o755 so
+  // it runs directly on POSIX. expand-tokens later rewrites that file via writeFileSync;
+  // without explicit mode preservation the exec bit is silently dropped to the default 0o644.
   if (process.platform === 'win32') return; // POSIX-only assertion
   const root = mkdtempSync(join(tmpdir(), 'expand-tokens-mode-'));
   try {
     mkdirSync(join(root, 'in/skills/rad-x/scripts'), { recursive: true });
-    const src = join(root, 'in/skills/rad-x/scripts/pipeline.js');
+    const src = join(root, 'in/skills/rad-x/scripts/radorch.mjs');
     writeFileSync(src, '#!/usr/bin/env node\n// uses ${SKILLS_ROOT} placeholder\n');
     chmodSync(src, 0o755);
     await expandTokens({
@@ -67,7 +65,7 @@ test('expandTokens preserves the POSIX file mode of rewritten text files (no exe
       tokenMap: { '${SKILLS_ROOT}': '${CLAUDE_PLUGIN_ROOT}/skills' },
       agentNames: [],
     });
-    const outMode = statSync(join(root, 'out/skills/rad-x/scripts/pipeline.js')).mode & 0o777;
+    const outMode = statSync(join(root, 'out/skills/rad-x/scripts/radorch.mjs')).mode & 0o777;
     assert.strictEqual(outMode, 0o755, 'rewritten file keeps the source 0o755 mode');
   } finally {
     rmSync(root, { recursive: true, force: true });

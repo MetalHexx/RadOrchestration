@@ -2,10 +2,8 @@ version: "1.0"
 
 # Fixture-local orchestration.yml for the tdd-slip harness.
 # Kept minimal: only the fields that matter for the executor-only harness.
-# The runner does NOT drive pipeline.js — the executor is spawned manually
-# against each handoff — so this file is mostly documentary. It is included
-# for parity with the other prompt-tests fixtures and so a future operator
-# could opt into a pipeline-driven run without reconfiguring.
+# The executor runs standalone against each handoff — this file is mostly
+# documentary and enables future pipeline integration via `radorch pipeline signal`.
 
 system:
   orch_root: ".claude"

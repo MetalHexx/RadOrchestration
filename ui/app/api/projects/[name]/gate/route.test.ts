@@ -67,14 +67,16 @@ function stubExecFile(stdout: string, exitCode = 0): { calls: Array<{ file: stri
 
 test('gate route shells out to RADORCH_CLI_PATH (FR-14, AD-8)', async (t) => {
   t.after(() => mock.restoreAll());
-  // C1-adjusted envelope: framework wraps pipeline result in .data
-  const { calls } = stubExecFile(JSON.stringify({ ok: true, data: { success: true, action: 'plan_approved', mutations_applied: [] }, exit_code: 0 }));
+  const { calls } = stubExecFile(JSON.stringify({ ok: true, data: { action: 'plan_approved' }, exit_code: 0 }));
   await withHomedir(tmpDir, async () => {
     const req = new Request('http://localhost/api/projects/PROJECT-X/gate', {
       method: 'POST', body: JSON.stringify({ event: 'plan_approved' }),
     });
     const res = await POST(req, { params: Promise.resolve({ name: 'PROJECT-X' }) });
     assert.strictEqual(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body, { success: true, action: 'plan_approved' });
+    assert.ok(!('mutations_applied' in body), 'response should not carry mutations_applied');
   });
   assert.strictEqual(calls.length, 1);
   const { file, args } = calls[0];
@@ -87,8 +89,7 @@ test('gate route shells out to RADORCH_CLI_PATH (FR-14, AD-8)', async (t) => {
 
 test('gate route returns 409 when CLI envelope rejects the event (DD-4)', async (t) => {
   t.after(() => mock.restoreAll());
-  // C1-adjusted envelope: framework wraps pipeline result in .data
-  stubExecFile(JSON.stringify({ ok: false, data: { success: false, action: null, error: { message: 'wrong gate' } }, exit_code: 1 }), 1);
+  stubExecFile(JSON.stringify({ ok: false, data: { event: 'plan_approved' }, error: { type: 'user_error', message: 'wrong gate' }, exit_code: 1 }), 1);
   await withHomedir(tmpDir, async () => {
     const req = new Request('http://localhost/api/projects/PROJECT-X/gate', {
       method: 'POST', body: JSON.stringify({ event: 'plan_approved' }),
@@ -97,6 +98,20 @@ test('gate route returns 409 when CLI envelope rejects the event (DD-4)', async 
     assert.strictEqual(res.status, 409);
     const body = await res.json();
     assert.match(JSON.stringify(body), /wrong gate/);
+  });
+});
+
+test('gate route returns 500 when CLI envelope reports a system_error (DD-4)', async (t) => {
+  t.after(() => mock.restoreAll());
+  stubExecFile(JSON.stringify({ ok: false, data: { event: 'plan_approved' }, error: { type: 'system_error', message: 'engine crashed' }, exit_code: 1 }), 1);
+  await withHomedir(tmpDir, async () => {
+    const req = new Request('http://localhost/api/projects/PROJECT-X/gate', {
+      method: 'POST', body: JSON.stringify({ event: 'plan_approved' }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ name: 'PROJECT-X' }) });
+    assert.strictEqual(res.status, 500);
+    const body = await res.json();
+    assert.match(JSON.stringify(body), /engine crashed/);
   });
 });
 

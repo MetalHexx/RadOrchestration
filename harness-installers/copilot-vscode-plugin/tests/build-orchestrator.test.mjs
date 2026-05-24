@@ -30,10 +30,6 @@ function makeFixtureRoot() {
   fs.writeFileSync(join(root, 'cli/package.json'), JSON.stringify({ name: 'cli', type: 'module' }));
   fs.mkdirSync(join(root, 'ui'), { recursive: true });
 
-  // Pipeline TS source — bypasses the adapter per AD-4.
-  fs.mkdirSync(join(root, 'harness-files/skills/rad-orchestration/scripts'), { recursive: true });
-  fs.writeFileSync(join(root, 'harness-files/skills/rad-orchestration/scripts/pipeline.ts'), 'export const main = () => 1;\n');
-
   // Canonical agents directory for validate gate 2.
   fs.mkdirSync(join(root, 'harness-files/agents'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-files/agents/orchestrator.md'), '# orchestrator');
@@ -89,7 +85,7 @@ test('runBuild produces a full output/ tree with plugin.json under .claude-plugi
     assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'runtime-config copied verbatim');
     assert.ok(fs.existsSync(join(out, 'templates/medium.yml')));
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle');
-    assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'pipeline bundle (FR-39)');
+    assert.ok(!fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'no legacy pipeline bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')));
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'bundled bootstrap');
     assert.ok(fs.existsSync(join(out, 'hooks/drift-check.mjs')), 'verbatim drift-check');

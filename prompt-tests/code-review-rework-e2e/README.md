@@ -28,4 +28,4 @@ code-review-rework-e2e/
         run-notes.md               # Inaugural baseline committed; subsequent runs ignored per .gitignore
 ```
 
-The runner copies the fixture into the run folder, drives the pipeline via `pipeline.js`, captures every state transition and review-doc path, and writes `run-notes.md` at exit.
+The runner copies the fixture into the run folder, drives the pipeline via the `radorch pipeline signal` subcommand, captures every state transition and review-doc path, and writes `run-notes.md` at exit.

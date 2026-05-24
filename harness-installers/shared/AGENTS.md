@@ -6,7 +6,7 @@ Container for installer helpers that are reusable across every installer variant
 
 ## Contents
 
-- `build-helpers/` — five mechanical helpers (`emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) that installer build scripts import directly via relative path.
+- `build-helpers/` — four mechanical helpers (`emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) that installer build scripts import directly via relative path.
 
 No install-time (runtime) logic lives here. These are build-time tools only.
 

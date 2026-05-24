@@ -6,7 +6,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 
 ## How it works
 
-`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes steps in fixed order, fail-fast. The build reads adapter output for the `copilot-cli` harness, bundles the pipeline runtime and UI, esbuild-bundles the bootstrap hook with `lib/install/*` inlined, runs `expand-tokens` (token substitution only — no agent namespacing for Copilot CLI), copies `plugin.json` to the output payload root (not under a `.claude-plugin/` subfolder), synthesizes `output/package.json`, and runs structural validation.
+`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes steps in fixed order, fail-fast. The build reads adapter output for the `copilot-cli` harness, bundles the CLI via `emit-cli-bundle` and ships the resulting `radorch.mjs` to `output/skills/rad-orchestration/scripts/radorch.mjs` (no separate pipeline bundle is emitted), bundles the UI, esbuild-bundles the bootstrap hook with `lib/install/*` inlined, runs `expand-tokens` (token substitution only — no agent namespacing for Copilot CLI), copies `plugin.json` to the output payload root (not under a `.claude-plugin/` subfolder), synthesizes `output/package.json`, and runs structural validation.
 
 `opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'.'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
 
@@ -25,8 +25,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 - `harness-adapters/output/copilot-cli/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the Copilot CLI harness
 - `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
 - `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
-- `harness-files/skills/rad-orchestration/scripts/*.ts` — pipeline TypeScript source bundled by `emitPipelineBundle`
-- `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
+- `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 
 ## Deltas vs the claude-plugin
 

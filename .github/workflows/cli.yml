@@ -29,16 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # cli/tsconfig.json includes ../harness-files/skills/rad-orchestration/scripts/lib/**/*.ts
-      # (the gate subcommands import engine/state-io/types from there). Under
-      # moduleResolution: NodeNext, tsc resolves bare imports from each file's
-      # own directory, so it needs harness-files/skills/rad-orchestration/scripts/node_modules/
-      # to exist before `tsc --noEmit` runs — cli/node_modules/ is not visible
-      # from that location. Do not reorder below the Typecheck step.
-      - name: Install pipeline scripts dependencies (required by tsc cross-package include)
-        working-directory: harness-files/skills/rad-orchestration/scripts
-        run: npm install
-
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit
 

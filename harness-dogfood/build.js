@@ -29,7 +29,6 @@ import {
   translateSkill,
 } from '../harness-adapters/engine/index.js';
 import { emitManifest } from '../harness-installers/standard/build-scripts/emit-manifest.js';
-import { emitPipelineBundle } from '../harness-installers/shared/build-helpers/emit-pipeline-bundle.js';
 import { installManifestFiles } from './install-files.js';
 import { removeManifestFiles } from './remove-files.js';
 
@@ -63,18 +62,10 @@ export function selectAdapters(adapters, { all, harness }) {
 
 function readVersion() {
   // Pipeline runtime version — single source of truth for the metadata
-  // stream's `version` field — is sourced from the rad-orchestration
-  // skill's package.json under harness-files/. Falls back to the standard
-  // installer's package.json if the canonical skill folder is absent.
-  const pkgPath = path.join(
-    repoRoot, 'harness-files', 'skills', 'rad-orchestration', 'scripts', 'package.json',
-  );
-  try {
-    return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
-  } catch {
-    const fallback = path.join(repoRoot, 'harness-installers', 'standard', 'package.json');
-    return JSON.parse(fs.readFileSync(fallback, 'utf8')).version;
-  }
+  // stream's `version` field — is sourced from the standard installer's
+  // package.json (the authoritative carrier for the dogfood loop).
+  const pkgPath = path.join(repoRoot, 'harness-installers', 'standard', 'package.json');
+  return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
 }
 
 /**
@@ -123,12 +114,10 @@ function savePriorDogfoodManifest(harness, manifest) {
 async function main() {
   const opts = parseBuildArgs(process.argv.slice(2));
 
-  // AD-2: the dogfood loop bundles via the shared helper directly, not
-  // through any installer's `sync-source.js`. Idempotent on warm clones.
-  await emitPipelineBundle({
-    source: path.join(repoRoot, 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
-    target: path.join(repoRoot, 'harness-files', 'skills', 'rad-orchestration', 'scripts'),
-  });
+  // Pipeline runtime lives in the CLI at
+  // `cli/src/lib/pipeline-engine/` and is bundled into installer output by
+  // `emit-cli-bundle` (a standard-installer build step), not by the dogfood
+  // loop.
 
   const adaptersRoot = path.join(repoRoot, 'harness-adapters', 'adapters');
   const adapters = await discoverAdapters(adaptersRoot);

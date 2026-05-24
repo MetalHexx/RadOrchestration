@@ -22,7 +22,7 @@ Pick the one matching the channel you want to validate. Single-harness per run k
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- **A pre-bootstrap step is required on a fresh clone** (see Step 2 below). `build.js` has top-level `import` statements that load from `harness-installers/shared/build-helpers/` — specifically `emit-cli-bundle.js`, `emit-pipeline-bundle.js`, `emit-hook-bundle.js`, `emit-ui-bundle.js`, and `expand-tokens.js`. Those modules require `esbuild`, which lives in `build-helpers/node_modules`. On a fresh clone that directory does not exist, so Node rejects the imports before any code in `build.js` runs — including the `bootstrap-deps` step that would otherwise install them. The fix is to run `npm install` in `build-helpers` once, pre-emptively, before invoking the build. The build's own `bootstrap-deps` step then handles the remaining three packages (`harness-adapters/engine`, `cli/`, `ui/`) during the normal build run.
+- **A pre-bootstrap step is required on a fresh clone** (see Step 2 below). `build.js` has top-level `import` statements that load from `harness-installers/shared/build-helpers/` — specifically `emit-cli-bundle.js`, `emit-hook-bundle.js`, `emit-ui-bundle.js`, and `expand-tokens.js`. Those modules require `esbuild`, which lives in `build-helpers/node_modules`. On a fresh clone that directory does not exist, so Node rejects the imports before any code in `build.js` runs — including the `bootstrap-deps` step that would otherwise install them. The fix is to run `npm install` in `build-helpers` once, pre-emptively, before invoking the build. The build's own `bootstrap-deps` step then handles the remaining three packages (`harness-adapters/engine`, `cli/`, `ui/`) during the normal build run.
 
 ## Workflow
 
@@ -67,7 +67,6 @@ $ErrorActionPreference = 'Stop'
 
 $bhDir = Join-Path "{repoRoot}" 'harness-installers\shared\build-helpers'
 $engineDir = Join-Path "{repoRoot}" 'harness-adapters\engine'
-$scriptsDir = Join-Path "{repoRoot}" 'harness-files\skills\rad-orchestration\scripts'
 $cliDir = Join-Path "{repoRoot}" 'cli'
 $uiDir = Join-Path "{repoRoot}" 'ui'
 
@@ -82,7 +81,6 @@ Ensure-NodeModules $bhDir
 
 # Keep the remaining package roots healthy for bootstrap/build steps.
 Ensure-NodeModules $engineDir
-Ensure-NodeModules $scriptsDir
 Ensure-NodeModules $cliDir
 Ensure-NodeModules $uiDir
 
@@ -92,9 +90,6 @@ if (-not (Test-Path (Join-Path $uiDir 'node_modules\.bin\next.cmd')) -and -not (
 }
 if (-not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild.cmd')) -and -not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild'))) {
   npm install --prefix $cliDir
-}
-if (-not (Test-Path (Join-Path $scriptsDir 'node_modules\.bin\tsx.cmd')) -and -not (Test-Path (Join-Path $scriptsDir 'node_modules\.bin\tsx'))) {
-  npm install --prefix $scriptsDir
 }
 ```
 

@@ -9,7 +9,6 @@ export const REQUIRED_PER_HARNESS = [
   'templates/medium.yml',
   'templates/low.yml',
   'skills/rad-orchestration/scripts/radorch.mjs',
-  'skills/rad-orchestration/scripts/pipeline.js',
 ];
 
 const SIZE_LIMIT = Math.round(50 * 1024 * 1024 * 1.1);

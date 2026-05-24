@@ -14,7 +14,7 @@ You are an orchestrator. You'll be using the `rad-orchestration` skill for this 
 
 | Subcommand | Input | Output (envelope `data`) | Purpose |
 |--------|-------|--------|---------|
-| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, orchRoot, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, sourceControlInitialized }` | Detect git environment and read orchestration config |
+| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, sourceControlInitialized }` | Detect git environment and read orchestration config |
 | `radorch project find` | `--projects-base-path <path> --repo-root <path>` | `{ basePathExists: boolean, projects: [{ name, masterPlanPath, currentTier, existingWorktreePath, existingBranch, worktreeExists }] }` (`basePathExists: false` indicates a missing/misconfigured `projectsBasePath`) | Scan for execution-ready projects and check existing worktrees |
 | `radorch project find` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
 | `radorch worktree create` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
@@ -36,7 +36,7 @@ Follow these steps in order. Run steps 1–2 silently — do not narrate or disp
 
 5. **Create worktree** — If not reusing an existing worktree, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree create ...`. On failure, show the error and a targeted fix from the error table in the workflow guide. Do not proceed if creation fails.
 
-6. **Source control init** — Call `pipeline.js --event source_control_init` with the resolved values and URLs from `worktree create` output. See the workflow guide for the exact command template.
+6. **Source control init** — Call `radorch pipeline signal --event source_control_init` via the canonical script-block convention with the resolved values and URLs from `worktree create` output. See the workflow guide for the exact command template.
 
 7. **Launch** — Execute the post-action chosen in step 3 via `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent {agent} ...`. See the workflow guide for the per-agent flag matrix.
 

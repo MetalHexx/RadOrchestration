@@ -30,7 +30,7 @@ Marker present ⇒ that file was visible to that subagent. Marker absent ⇒ it 
 
 1. Open a fresh Claude Code session at the repo root.
 2. Paste `_runner.md` into the session as the kickoff.
-3. The session bootstraps the run folder (copying the canary instruction files, brainstorming doc, package.json, and source seeds into it), drives the planner via `pipeline.js` to the plan-approval gate, spawns `@coder` against the pre-baked handoff, then writes the reach matrix into `run-notes.md` and the supporting greps into `lint-report.md`.
+3. The session bootstraps the run folder (copying the canary instruction files, brainstorming doc, package.json, and source seeds into it), drives the planner via the `radorch pipeline signal` subcommand to the plan-approval gate, spawns `@coder` against the pre-baked handoff, then writes the reach matrix into `run-notes.md` and the supporting greps into `lint-report.md`.
 
 The session must NOT approve the gate. The halt at `request_plan_approval` is intentional.
 

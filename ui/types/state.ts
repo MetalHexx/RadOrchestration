@@ -173,7 +173,6 @@ export interface GateApproveRequest {
 export interface GateApproveResponse {
   success: true;
   action: string;
-  mutations_applied: string[];
 }
 
 /** POST /api/projects/[name]/gate — error response (HTTP 400/404/409/500). */

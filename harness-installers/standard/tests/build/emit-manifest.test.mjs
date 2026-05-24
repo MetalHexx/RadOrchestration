@@ -15,7 +15,6 @@ test('emitManifest produces { version, channel, files[] } with sha256 and destin
     fs.mkdirSync(path.join(harnessOut, 'templates'), { recursive: true });
     fs.writeFileSync(path.join(harnessOut, 'agents/orchestrator.md'), 'orch');
     fs.writeFileSync(path.join(harnessOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
-    fs.writeFileSync(path.join(harnessOut, 'skills/rad-orchestration/scripts/pipeline.js'), '// p');
     fs.writeFileSync(path.join(harnessOut, 'templates/extra-high.yml'), 'x');
     fs.writeFileSync(path.join(harnessOut, 'orchestration.yml'), 'x');
     const manifestDir = path.join(tmp, 'manifests/claude');
@@ -28,7 +27,7 @@ test('emitManifest produces { version, channel, files[] } with sha256 and destin
     // Per-harness installable tree only — no orchestration.yml, no templates/, no ui/.
     assert.ok(paths.includes('agents/orchestrator.md'));
     assert.ok(paths.includes('skills/rad-orchestration/scripts/radorch.mjs'));
-    assert.ok(paths.includes('skills/rad-orchestration/scripts/pipeline.js'));
+    assert.ok(!paths.includes('skills/rad-orchestration/scripts/pipeline.js'), 'manifest does not list retired pipeline bundle');
     assert.ok(!paths.includes('orchestration.yml'), 'AD-3: user-data assets not in manifest');
     assert.ok(!paths.some((p) => p.startsWith('templates/')), 'AD-3: templates not in manifest');
     // destinationPath uses ${HARNESS_ROOT} (per-harness install root) for installable tree.

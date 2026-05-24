@@ -9,7 +9,6 @@ export const REQUIRED_ARTIFACTS = [
   'plugin.json',
   'package.json',
   'skills/rad-orchestration/scripts/radorch.mjs',
-  'skills/rad-orchestration/scripts/pipeline.js',
   'hooks/hooks.json',
   'hooks/bootstrap.mjs',
   'hooks/drift-check.mjs',

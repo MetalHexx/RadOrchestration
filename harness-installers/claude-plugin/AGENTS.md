@@ -6,22 +6,21 @@ A self-contained npm package (`@rad-orchestration/claude-plugin-source`) whose `
 
 ## How it works
 
-`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes 14 steps in fixed order, fail-fast:
+`build-scripts/build.js` exports `runBuild(opts)` and is the single entry point. It executes 13 steps in fixed order, fail-fast:
 
 1. **adapter-engine** — runs `harness-adapters/engine/build.js --harness=claude` (skippable in tests via `opts.skipAdapterEngine`)
 2. **clean-output** — wipes `output/`
 3. **copy-agents** / **copy-skills** — copies adapter output from `harness-adapters/output/claude/`
 4. **copy-runtime-config** — copies `runtime-config/orchestration.yml` and `runtime-config/templates/` verbatim
-5. **emit-cli-bundle** — bundles `cli/` via `emitCliBundle`
-6. **emit-pipeline-bundle** — bundles the pipeline runtime TS via `emitPipelineBundle`
-7. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`
-8. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`
-9. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` and copies verbatim files via `emitHookBundle`
-10. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens and applies agent namespacing (`rad-orc:<name>`) via `expandTokens`; runs through a staging dir to avoid mid-walk read-after-write
-11. **copy-plugin-manifest** — copies `.claude-plugin/plugin.json` verbatim
-12. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes to `output/package.json`
-13. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`
-14. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, namespaced dispatch tokens, version manifest, and size budget
+5. **emit-cli-bundle** — bundles `cli/src/` into `radorch.mjs` via `emitCliBundle` and ships it to `output/skills/rad-orchestration/scripts/radorch.mjs`
+6. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`
+7. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`
+8. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` and copies verbatim files via `emitHookBundle`
+9. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens and applies agent namespacing (`rad-orc:<name>`) via `expandTokens`; runs through a staging dir to avoid mid-walk read-after-write
+10. **copy-plugin-manifest** — copies `.claude-plugin/plugin.json` verbatim
+11. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes to `output/package.json`
+12. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`
+13. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, namespaced dispatch tokens, version manifest, and size budget
 
 `opts.rootDir` is the repo root. `opts.greenfieldRel` (default `'.'`) names the relative path to the greenfield folder; tests pass `'.'` to use a synthetic fixture tree.
 

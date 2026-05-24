@@ -7,15 +7,16 @@ const execP = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 describe('radorch project subcommands run through the compiled ESM binary', () => {
-  it('`project context` exits 0 and returns a JSON envelope with a string orchRoot', async () => {
+  it('`project context` exits 0 and returns an envelope without orchRoot', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const { stdout } = await execP('node', ['dist/cli/src/bin/radorch.js', 'project', 'context'], {
       cwd: repoRoot,
       env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
-    const envelope = JSON.parse(stdout) as { ok: boolean; data?: { orchRoot?: unknown } };
+    const envelope = JSON.parse(stdout) as { ok: boolean; data?: Record<string, unknown> };
     expect(envelope.ok).toBe(true);
-    expect(typeof envelope.data?.orchRoot).toBe('string');
-    expect((envelope.data!.orchRoot as string).length).toBeGreaterThan(0);
+    expect(envelope.data).toBeDefined();
+    expect('orchRoot' in (envelope.data ?? {})).toBe(false);
+    expect(typeof envelope.data?.['repoRoot']).toBe('string');
   }, 30_000);
 });

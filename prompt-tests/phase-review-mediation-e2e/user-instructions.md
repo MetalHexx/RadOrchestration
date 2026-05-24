@@ -65,7 +65,7 @@ The fixtures directory is `prompt-tests/phase-review-mediation-e2e/fixtures/` â€
 
 2. Open `prompt-tests/phase-review-mediation-e2e/_runner.md` in your editor and copy its **entire contents**.
 
-3. Paste the contents into the Claude Code session as your first message. Claude will act as the simulated orchestrator â€” copying the fixture to a fresh run folder, bootstrapping the pipeline, mediating the phase review in-session (writing the addendum, authoring the phase-sentinel corrective Task Handoff), spawning `@coder` to fix `src/greet.js`, spawning `@reviewer` for the task-level re-review, and halting when the re-review returns `approved` and the walker advances past Phase 1.
+3. Paste the contents into the Claude Code session as your first message. Claude will act as the simulated orchestrator â€” copying the fixture to a fresh run folder, bootstrapping the pipeline via the `radorch pipeline signal` subcommand, mediating the phase review in-session (writing the addendum, authoring the phase-sentinel corrective Task Handoff), spawning `@coder` to fix `src/greet.js`, spawning `@reviewer` for the task-level re-review, and halting when the re-review returns `approved` and the walker advances past Phase 1.
 
 4. **Fixture**: the default is `colors-greet-mismatch` (already configured in `_runner.md`). No change needed.
 
@@ -73,7 +73,7 @@ The fixtures directory is `prompt-tests/phase-review-mediation-e2e/fixtures/` â€
 
 6. When the session halts, it will have written `run-notes.md` into the run folder. Ask the session for the exact path and open it.
 
-**If the session errors out** (pipeline returns `success: false`, validator rejects the addendum frontmatter, mutation throws, halt_reason appears unexpectedly), stop and surface to whoever is tracking the iteration. The test exists to catch exactly this class of break.
+**If the session errors out** (pipeline returns `ok: false`, validator rejects the addendum frontmatter, mutation throws, halt_reason appears unexpectedly), stop and surface to whoever is tracking the iteration. The test exists to catch exactly this class of break.
 
 ## Verify the automated run
 

@@ -119,8 +119,12 @@ export async function POST(
       }
     }
 
-    // Parse the framework envelope: { ok, data: { success, action, mutations_applied, error }, exit_code }
-    let parsed: { ok?: boolean; data?: { success?: boolean; action?: string; mutations_applied?: string[]; error?: { message?: string } }; error?: { message?: string } };
+    // Parse the framework envelope: { ok, data, error, exit_code }
+    let parsed: {
+      ok?: boolean;
+      data?: { action?: string | null; context?: Record<string, unknown>; event?: string };
+      error?: { type?: 'user_error' | 'system_error'; message?: string };
+    };
     try { parsed = JSON.parse(stdout!); }
     catch {
       return NextResponse.json(
@@ -129,15 +133,20 @@ export async function POST(
       );
     }
 
-    const pipeline = parsed.data;
-    if (pipeline?.success === true) {
+    if (parsed.ok === true) {
       return NextResponse.json(
-        { success: true, action: pipeline.action ?? '', mutations_applied: pipeline.mutations_applied ?? [] } satisfies GateApproveResponse,
+        { success: true, action: parsed.data?.action ?? '' } satisfies GateApproveResponse,
         { status: 200 },
       );
     }
 
-    const detail = pipeline?.error?.message ?? parsed.error?.message ?? stdout!;
+    const detail = parsed.error?.message ?? stdout!;
+    if (parsed.error?.type === 'system_error') {
+      return NextResponse.json(
+        { error: 'Pipeline internal error.', detail } satisfies GateErrorResponse,
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       { error: 'Pipeline rejected the event.', detail } satisfies GateErrorResponse,
       { status: 409 },

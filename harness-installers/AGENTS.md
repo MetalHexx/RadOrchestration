@@ -9,14 +9,13 @@ Top-level container for every installer variant and the shared mechanical helper
 - `claude-plugin/` — self-contained npm package that builds and publishes the Claude marketplace plugin. `build-scripts/build.js` is the entry point; `npm run build` drives the full 14-step pipeline.
 - `copilot-cli-plugin/` — self-contained npm package that builds and publishes the Copilot CLI marketplace plugin. Architectural sibling of `claude-plugin/`; the deltas are documented in `copilot-cli-plugin/AGENTS.md` (no `.claude-plugin/` folder, `.agent.md` agent filename suffix, no agent-namespacing transform, marker-file idempotency, two coexistence partners). `npm run build` drives the build via the same shared helpers.
 - `copilot-vscode-plugin/` — self-contained npm package that builds and publishes the Copilot in VS Code marketplace plugin. Architectural sibling of `copilot-cli-plugin/` and `claude-plugin/`; the deltas are documented in `copilot-vscode-plugin/AGENTS.md` (Claude-format `.claude-plugin/plugin.json` manifest layout so VS Code injects `CLAUDE_PLUGIN_ROOT` into hooks, `.agent.md` agent filename suffix, no agent-namespacing transform, `hooks.json` self-uninstall idempotency (no marker file), three coexistence partners, PascalCase hook event names, OS-specific `agentPlugins/` install paths, and the load-bearing `(copilot)`-suffixed model identifier shape that VS Code's resolver requires). `npm run build` drives the build via the same shared helpers.
-- `shared/build-helpers/` — five installer-blind helpers (`emitCliBundle`, `emitPipelineBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) shared by every installer build script. No installer-specific logic lives here.
+- `shared/build-helpers/` — four installer-blind helpers (`emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens`) shared by every installer build script. No installer-specific logic lives here.
 
 ## Inputs this layer consumes (but does not own)
 
 - `harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine
 - `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim into each build output
 - `cli/` and `ui/` at the repo root — bundled into the plugin output by `emitCliBundle` and `emitUiBundle`
-- `harness-files/skills/rad-orchestration/scripts/` — pipeline TypeScript source bundled by `emitPipelineBundle`
 
 ## Coding conventions
 

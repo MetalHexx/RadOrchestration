@@ -1,6 +1,6 @@
 ---
 name: rad-log-error
-description: 'Log pipeline execution errors to a structured per-project error log. Use when the pipeline returns success: false, when an agent produces invalid output, or when manual intervention is needed. Appends numbered entries to an append-only error log file.'
+description: 'Log pipeline execution errors to a structured per-project error log. Use when the pipeline envelope returns ok: false, when an agent produces invalid output, or when manual intervention is needed. Appends numbered entries to an append-only error log file.'
 user-invocable: false
 ---
 
@@ -8,7 +8,7 @@ user-invocable: false
 
 ## When to Use This Skill
 
-The Orchestrator invokes this skill when `pipeline.js` returns `{ success: false, ... }`. This is near-mandatory — whenever the pipeline signals a failure, the error must be logged so there is a persistent, structured record of what went wrong, when, and what (if anything) was done to recover. This skill should also be used when an agent produces invalid output or when manual intervention is needed.
+The Orchestrator invokes this skill when the `radorch pipeline signal` envelope returns `ok: false`. This is near-mandatory — whenever the pipeline signals a failure, the error must be logged so there is a persistent, structured record of what went wrong, when, and what (if anything) was done to recover. This skill should also be used when an agent produces invalid output or when manual intervention is needed.
 
 ## Workflow
 
@@ -72,7 +72,7 @@ Each entry appended to the error log must use this exact structure:
 | Phase | integer \| `'N/A'` | Yes | Current phase index |
 | Task | integer \| `'N/A'` | Yes | Current task index |
 | Symptom | markdown text | Yes | Observable failure description (1-3 sentences) |
-| Pipeline Output | JSON code block | Yes | Raw `{ success: false, ... }` object |
+| Pipeline Output | JSON code block | Yes | Raw `{ ok: false, ... }` envelope from the `radorch pipeline signal` subcommand |
 | Root Cause | markdown text | Yes | Diagnosis or "Under investigation." |
 | Workaround Applied | markdown text | Yes | Recovery action or "None — awaiting fix." |
 

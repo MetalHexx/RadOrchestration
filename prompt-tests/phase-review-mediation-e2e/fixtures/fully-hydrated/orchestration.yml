@@ -3,7 +3,7 @@ version: "1.0"
 # Fixture-local orchestration.yml for the fully-hydrated UI showcase fixture.
 # Kept minimal: only the fields that matter for UI discovery. The fully-hydrated
 # fixture is NOT runner-driven — its state.json is pre-cooked end-to-end, so
-# no pipeline.js invocations read this config. It exists to (a) make the
+# no pipeline runtime invocations read this config. It exists to (a) make the
 # fixture folder structurally uniform with the runner-driven
 # colors-greet-mismatch fixture, (b) set auto_commit / auto_pr defaults that
 # match what the pre-cooked state.json was authored against.

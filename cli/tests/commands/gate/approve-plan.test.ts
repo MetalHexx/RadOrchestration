@@ -53,7 +53,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
   beforeEach(() => { cwdBefore = process.cwd(); });
   afterEach(() => { process.chdir(cwdBefore); });
 
-  it('mutates state to plan_approved and emits the pipeline.js-shaped envelope', async () => {
+  it('mutates state to plan_approved and emits the canonical envelope', async () => {
     const dir = makeProject();
     await scaffoldToPlanApprovalGate(dir);
 

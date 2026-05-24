@@ -77,22 +77,6 @@ A real-time Next.js dashboard visualizes project state, pipeline progress, docum
 6. **Continuous verification** — Every task is reviewed against the plan before it is committed.
 7. **Zero dependencies** — Node.js built-ins only for the pipeline itself; no `npm install` required to run it.
 
-## Development
-
-Contributors working on this repo should enable the pre-commit hook so the
-orchestration TypeScript stays type-clean before each commit. The hook file
-is already committed at `.githooks/pre-commit` — point git at it once after
-cloning:
-
-```
-git config core.hooksPath .githooks
-```
-
-(Equivalent: `node .claude/skills/rad-orchestration/scripts/setup-hooks.js`.)
-
-This is dev-only setup. End users installing via the `radorch` installer
-do **not** get the pre-commit hook configured.
-
 ## License
 
 See LICENSE for details.

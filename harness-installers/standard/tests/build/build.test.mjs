@@ -43,7 +43,7 @@ function makeFixture() {
     );
     fs.writeFileSync(
       path.join(skillsDir, 'SKILL.md'),
-      '---\nname: rad-orchestration\ndescription: t\n---\nReference: ${SKILLS_ROOT}/rad-orchestration/scripts/pipeline.js\n',
+      '---\nname: rad-orchestration\ndescription: t\n---\nReference: ${SKILLS_ROOT}/rad-orchestration/scripts/radorch.mjs\n',
     );
   }
 
@@ -73,14 +73,6 @@ function makeFixture() {
   fs.mkdirSync(path.join(root, 'ui/.next/standalone'), { recursive: true });
   fs.mkdirSync(path.join(root, 'ui/.next/static'), { recursive: true });
   fs.writeFileSync(path.join(root, 'ui/.next/standalone/server.js'), '// ui\n');
-
-  // harness-files/skills/rad-orchestration/scripts/ — TS sources for the
-  // pipeline bundler.
-  const pipeSrc = path.join(root, 'harness-files/skills/rad-orchestration/scripts');
-  fs.mkdirSync(pipeSrc, { recursive: true });
-  fs.writeFileSync(path.join(pipeSrc, 'pipeline.ts'), 'export const main = () => 1;\n');
-  // A stray .ts source the prune-pass must strip from the output.
-  fs.writeFileSync(path.join(pipeSrc, 'stray.ts'), '// stray\n');
 
   // harness-files/agents/ — canonical agents dir required by the validate step.
   // Must list only the agents that also appear in output/<harness>/agents/ so
@@ -144,8 +136,8 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
         `${h}: templates/medium.yml`);
       assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs')),
         `${h}: bundled CLI`);
-      assert.ok(fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js')),
-        `${h}: pipeline bundle`);
+      assert.ok(!fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/pipeline.js')),
+        `${h}: no legacy pipeline bundle`);
       // v5 entries retire — neither is shipped (FR-22).
       assert.ok(!fs.existsSync(path.join(hOut, 'skills/rad-orchestration/scripts/migrate-to-v5.js')),
         `${h}: no migrate-to-v5.js`);
@@ -213,3 +205,4 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+

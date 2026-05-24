@@ -2,88 +2,46 @@
 
 Reference document for the Orchestrator agent. Covers the pipeline event loop, action routing, CLI usage, and error handling.
 
-## Configuration
-
-### Orchestration Root {orchRoot}
-
-`{orchRoot}` is the **absolute filesystem path** to the orchestration install root — the directory that contains `skills/`. It is the base for constructing pipeline-script paths (e.g., `{orchRoot}/skills/rad-orchestration/scripts/pipeline.js`).
-
-1. Every pipeline JSON result includes an `orchRoot` field (already absolute). Use `result.orchRoot` for all path construction after the first pipeline call.
-2. Call the following script to get the `{orchRoot}` value and additional environment context:
-
-   ```
-   node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --json
-   ```
-3. Projects live unconditionally at `~/.radorch/projects/{PROJECT-NAME}/` (resolved at runtime per-user via `os.homedir()`). Project paths are not derived from `{orchRoot}`.
-
 ## Runtime Entry
 
-`skills/rad-orchestration/scripts/pipeline.js` is the runtime entry point — a self-contained esbuild bundle of `pipeline.ts` with all dependencies inlined. There is no JIT install step at runtime; first-run is instant.
+The `radorch pipeline signal` subcommand is the pipeline entry point. All pipeline calls use this canonical form, with `${PLUGIN_ROOT}` resolving to the orchestration install root at runtime:
 
-The bundle is produced by `npm run bundle` in `skills/rad-orchestration/scripts/` (or as a side effect of the repo-root `npm run build` for any harness target). Do not edit `pipeline.js` by hand — edit `pipeline.ts` and rebuild.
-
-All CLI arguments pass through transparently to the bundled CLI surface.
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal --event <event> --project-dir <dir> [--config <path>] [--template <name>]
+    [--doc-path <path>]
+    [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
+    [--auto-commit <always|never>] [--auto-pr <always|never>]
+    [--remote-url <url>] [--compare-url <url>]
+    [--gate-type <type>] [--reason <text>] [--gate-mode <mode>]
+    [--commit-hash <hash>] [--pushed <true|false>] [--pr-url <url>]
+```
 
 ## Pipeline Event Loop
 
 The Orchestrator operates as an event-driven controller:
 
 1. **Determine the event to signal** (see Event Signaling Reference below)
-2. **Call the pipeline script**:
-   ```
-   node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
-       [--doc-path <path>]
-       [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
-       [--auto-commit <always|never>] [--auto-pr <always|never>]
-       [--remote-url <url>] [--compare-url <url>]
-       [--gate-type <type>] [--reason <text>]
-       [--gate-mode <mode>]
-       [--commit-hash <hash>] [--pushed <true|false>]
-       [--pr-url <url>]
-   ```
-3. **Parse the JSON result** from stdout
-4. **Pattern-match `result.action`** against the Action Routing Table
-5. **Execute the action** (spawn agent, present gate, or display message)
-6. **After the action completes**, determine the next event to signal based on the action's completion
-7. **Go to step 2**
+2. **Call the pipeline** using the canonical `radorch pipeline signal` form shown in Runtime Entry above
+3. **Parse the JSON envelope from stdout** — `{ ok, data, error }` — and pattern-match `data.action` against the Action Routing Table
+4. **Execute the action** (spawn agent, present gate, or display message)
+5. **After the action completes**, determine the next event to signal based on the action's completion
+6. **Go to step 2**
 
 ### First Call
 
-- **New project**: `node pipeline.js --event start --project-dir <path>`
-- **Continuing a project**: `node pipeline.js --event start --project-dir <path>`
-- **Recovery after context compaction**: `node pipeline.js --event start --project-dir <path>`
-
-The `start` event is always safe — the pipeline loads `state.json`, skips mutation, and resolves the next action from the current state.
+Signal `--event start --project-dir <path>` for new projects, for continuing a project, and for recovery after context compaction. The `start` event is always safe — the pipeline loads `state.json`, skips mutation, and resolves the next action from the current state.
 
 ### CLI Invocation
 
-Always invoke `pipeline.js` from the workspace root:
-
-```
-node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> [--config <path>] [--template <name>]
-    [--doc-path <path>]
-    [--branch <name>] [--base-branch <name>] [--worktree-path <path>]
-    [--auto-commit <always|never>] [--auto-pr <always|never>]
-    [--remote-url <url>] [--compare-url <url>]
-    [--gate-type <type>] [--reason <text>]
-    [--gate-mode <mode>]
-    [--commit-hash <hash>] [--pushed <true|false>]
-    [--pr-url <url>]
-```
-
-The `--config` flag overrides the default config path:
-
-```
-node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event <event> --project-dir <dir> --config <path-to-orchestration.yml>
-```
+Always invoke the subcommand from the workspace root using the canonical form shown in Runtime Entry above. The `--config` flag overrides the default config path; pass it alongside any other flags as needed.
 
 ### Loop Termination
 
-The loop terminates when `result.action` is `display_halted` or `display_complete`. These are terminal actions with no follow-up event.
+The loop terminates when `data.action` is `display_halted` or `display_complete`. These are terminal actions with no follow-up event.
 
 ### Valid Pause and Stop Points
 
-Only these `result.action` values should pause execution for human input or stop the loop:
+Only these `data.action` values should pause execution for human input or stop the loop:
 
 | Action | Behavior |
 |--------|----------|
@@ -99,7 +57,7 @@ All other actions must be executed immediately without asking the human.
 
 ## Action Routing Table
 
-Every `result.action` value maps to exactly one Orchestrator operation. All branching derives from this table.
+Every `data.action` value maps to exactly one Orchestrator operation. All branching derives from this table.
 
 → See [action-event-reference.md](action-event-reference.md)
 
@@ -118,34 +76,27 @@ All state mutations are performed by the pipeline script internally — no agent
 3. Applies the appropriate mutation(s)
 4. Validates the resulting state
 5. Writes `state.json`
-6. Returns the JSON result with `result.action`
+6. Returns the JSON envelope with `data.action`
 
-The pipeline result always includes:
-- `success`: boolean
-- `action`: the next action for the Orchestrator to execute
-- `context`: action-specific payload
-- `orchRoot`: the orchestration root path (use for subsequent calls)
+The envelope's `data` block carries `action` (the next action for the Orchestrator to execute) and `context` (action-specific payload).
 
 ### Corrective Mediation on `code_review_completed`
 
-When the pipeline resolves action #4 (`spawn_code_reviewer`) and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters an in-session mediation flow **before** signaling `code_review_completed` to the pipeline. The full mediation procedure — per-finding judgment, addendum authoring, corrective Task Handoff creation, and budget enforcement — is defined in [`references/corrective-playbook.md`](references/corrective-playbook.md). When the reviewer returns `approved`, the orchestrator signals `code_review_completed` with no mediation fields and the event propagates normally. When the reviewer returns `rejected`, the orchestrator signals `code_review_completed` immediately (no mediation), and the mutation routes the rejected verdict into a clean pipeline halt. The orchestrator never flips an `approved` verdict to `changes_requested`.
+When the pipeline returns `data.action` of `spawn_code_reviewer` and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters an in-session mediation flow **before** signaling `code_review_completed` to the pipeline. The full mediation procedure — per-finding judgment, addendum authoring, corrective Task Handoff creation, and budget enforcement — is defined in [`references/corrective-playbook.md`](references/corrective-playbook.md). When the reviewer returns `approved`, the orchestrator signals `code_review_completed` with no mediation fields and the event propagates normally. When the reviewer returns `rejected`, the orchestrator signals `code_review_completed` immediately (no mediation), and the mutation routes the rejected verdict into a clean pipeline halt. The orchestrator never flips an `approved` verdict to `changes_requested`.
 
 ### Corrective Mediation on `phase_review_completed`
 
-When the pipeline resolves action #5 (`spawn_phase_reviewer`) and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters the same in-session mediation flow **before** signaling `phase_review_completed` to the pipeline. The structure mirrors the task-scope case: the orchestrator reads each finding against the Phase Plan, Requirements, task handoffs, and cumulative phase diff; writes a `## Orchestrator Addendum` section and additive frontmatter (`orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`) to the phase review doc; and — when at least one finding is actioned — authors a self-contained corrective Task Handoff under `tasks/` with a `-PHASE-` sentinel in the filename (`{NAME}-TASK-P{NN}-PHASE-C{N}.md`). The corrective appends to `phaseIter.corrective_tasks[]` (not `taskIter.corrective_tasks`). See [`references/corrective-playbook.md`](references/corrective-playbook.md) for the full procedure, including the single-pass phase_review clause and ancestor-derivation rule for corrective-of-corrective routing. When the reviewer returns `approved` or `rejected`, no mediation fires and the event propagates normally.
+When the pipeline returns `data.action` of `spawn_phase_reviewer` and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters the same in-session mediation flow **before** signaling `phase_review_completed` to the pipeline. The structure mirrors the task-scope case: the orchestrator reads each finding against the Phase Plan, Requirements, task handoffs, and cumulative phase diff; writes a `## Orchestrator Addendum` section and additive frontmatter (`orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`) to the phase review doc; and — when at least one finding is actioned — authors a self-contained corrective Task Handoff under `tasks/` with a `-PHASE-` sentinel in the filename (`{NAME}-TASK-P{NN}-PHASE-C{N}.md`). The corrective appends to `phaseIter.corrective_tasks[]` (not `taskIter.corrective_tasks`). See [`references/corrective-playbook.md`](references/corrective-playbook.md) for the full procedure, including the single-pass phase_review clause and ancestor-derivation rule for corrective-of-corrective routing. When the reviewer returns `approved` or `rejected`, no mediation fires and the event propagates normally.
 
 ## Error Handling
 
-If the pipeline exits with code 1, the result contains error details:
+If the pipeline exits with code 1, the envelope carries error details:
 
 ```json
 {
-  "success": false,
-  "error": "Validation failed: V6 — multiple in_progress tasks",
-  "event": "task_completed",
-  "state_snapshot": { "current_phase": 1, "current_task": 1 },
-  "mutations_applied": ["task_status → complete"],
-  "validation_passed": false
+  "ok": false,
+  "data": { "event": "task_completed", "field": "phase" },
+  "error": { "type": "user_error", "message": "Validation failed: V6 — multiple in_progress tasks" }
 }
 ```
 
@@ -158,29 +109,23 @@ If the pipeline exits with code 1, the result contains error details:
 
 **Default rule**: When an error does not clearly fit Category 1 or Category 2, or Category 3, treat it as **Category 4 (Halt)**. A false halt is recoverable by the human operator; a false recovery may corrupt pipeline state.
 
-**On every `success: false` result:**
+**On every `ok: false` envelope:**
 
 1. **Classify** the error using the table above
-2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `~/.radorch/projects/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the pipeline result:
-   - **Pipeline Event**: from `result.event`
-   - **Pipeline Action**: from `result.action` (or `N/A` if not present)
+2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `~/.radorch/projects/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the envelope:
+   - **Pipeline Event**: from `data.event`
+   - **Pipeline Action**: from `data.action` (or `N/A` if not present)
    - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)
-   - **Phase/Task**: from `result.state_snapshot`
-   - **Symptom**: describe the observable failure from `result.error`
-   - **Pipeline Output**: the full raw JSON result
+   - **Phase/Task**: from `data.field`
+   - **Symptom**: describe the observable failure from `error.message`
+   - **Pipeline Output**: the full raw JSON envelope
    - **Root Cause**: diagnose if obvious, otherwise "Under investigation."
    - **Workaround Applied**: describe recovery action, or "None — awaiting fix."
-3. **Execute the category action**: Follow the Action column for the classified category. For Category 3, display `result.error` to the human and halt immediately.
+3. **Execute the category action**: Follow the Action column for the classified category. For Category 3, display `error.message` to the human and halt immediately.
 
 ## Recovery
 
-On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single call:
-
-```
-node {orchRoot}/skills/rad-orchestration/scripts/pipeline.js --event start --project-dir <path>
-```
-
-The pipeline loads `state.json`, skips mutation, and resolves the next action from the current state. All state is persisted in `state.json` by the pipeline script, so no runtime memory is needed.
+On context compaction or agent restart, the Orchestrator has no runtime memory to recover. Recovery is a single `radorch pipeline signal` call with `--event start --project-dir <path>` using the canonical form shown in Runtime Entry above. The pipeline loads `state.json`, skips mutation, and resolves the next action from the current state. All state is persisted in `state.json` by the pipeline script, so no runtime memory is needed.
 
 ## Spawning Subagents
 
@@ -188,7 +133,7 @@ When spawning a subagent, always provide:
 
 1. **Clear task description**: What the agent should do
 2. **File paths**: Exact paths to input documents the agent needs to read
-3. **Project context**: Project name, current phase/task numbers from `result.context`
+3. **Project context**: Project name, current phase/task numbers from `data.context`
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
 Example spawn instructions:
@@ -196,7 +141,7 @@ Example spawn instructions:
 
 ### Source Control — PR Mode
 
-When `result.action` is `invoke_source_control_pr`, spawn **source-control** in PR mode:
+When `data.action` is `invoke_source_control_pr`, spawn **source-control** in PR mode:
 
 1. The agent reads `pipeline.source_control` from state for `branch`, `base_branch`, and `worktree_path`
 2. The agent reads `final_review.doc_path` from state for the PR body file

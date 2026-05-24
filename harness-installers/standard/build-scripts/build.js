@@ -62,7 +62,6 @@ export async function runBuild(opts) {
     const BOOTSTRAP_TARGETS = [
       path.join(greenfield, 'harness-installers/shared/build-helpers'),
       path.join(greenfield, 'harness-adapters/engine'),
-      path.join(greenfield, 'harness-files/skills/rad-orchestration/scripts'),
       path.join(root, 'cli'),
       path.join(root, 'ui'),
     ];
@@ -77,9 +76,8 @@ export async function runBuild(opts) {
   }
 
   // Shared helpers are dynamic-imported here, after bootstrap-deps, because
-  // emit-cli-bundle and emit-pipeline-bundle top-level-import esbuild.
+  // emit-cli-bundle top-level-imports esbuild.
   const { emitCliBundle } = await import('../../shared/build-helpers/emit-cli-bundle.js');
-  const { emitPipelineBundle } = await import('../../shared/build-helpers/emit-pipeline-bundle.js');
   const { emitUiBundle } = await import('../../shared/build-helpers/emit-ui-bundle.js');
   const { expandTokens } = await import('../../shared/build-helpers/expand-tokens.js');
 
@@ -130,19 +128,8 @@ export async function runBuild(opts) {
     }
   });
 
-  // Per-harness pipeline bundle (pipeline.js). v5
-  // entries (migrate-to-v5, fix-ghost-v5) retire per the plugin iteration.
-  await step('emit-pipeline-bundle', async () => {
-    for (const h of HARNESSES) {
-      await emitPipelineBundle({
-        source: path.join(greenfield, 'harness-files/skills/rad-orchestration/scripts'),
-        target: path.join(out, h, 'skills/rad-orchestration/scripts'),
-      });
-    }
-  });
-
-  // Prune TS sources, tests/, package.json, tsconfig.json from per-harness
-  // scripts trees. Only runtime artifacts (.js, .mjs) survive.
+  // Prune non-runtime artifacts from per-harness scripts trees. Only
+  // runtime artifacts (.js, .mjs) survive.
   // Files named `.gitignore` are not kept because npm-packlist hardcodes
   // them as ignored when building the tarball — they would never reach the
   // user anyway and listing them in the manifest would break install with
