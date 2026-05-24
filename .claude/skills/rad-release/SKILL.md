@@ -29,13 +29,37 @@ After build-and-validate succeeds, invoke `node .claude/skills/rad-release/scrip
 
 ## Step 5 — CHANGELOG draft + approval gate
 
+Run `node .claude/skills/rad-release/scripts/changelog-and-commit.mjs --draft --to <new>` to invoke `draftChangelog`. Pass the commit log since the last release tag (or the full history on first release) as the `commits` array. The draft produces a `## v{version} — {date}` heading with three subsections — `### What's New` (feat: commits), `### What's Fixed` (fix: commits), and `### Changes` (everything else).
+
+Present the full drafted body to the operator using the harness question tool (`AskUserQuestion` on Claude Code). Frame the question with the full drafted CHANGELOG text inline so the operator can read it without switching context. Offer a single labelled option **Approve and commit**. If the operator wants to edit, they paste a revised body into the "Other / custom" field and resubmit — the revised text is used as `approvedChangelog` in step 6. This is the second mid-flow approval gate (DD-2).
+
+First-release callouts (new `rad-orc` npm package, plugins first appearing on the satellite) are **not** auto-generated. The operator authors them by hand inside this gate when relevant (AD-13). (FR-10 step 5, DD-2, AD-13)
+
 ## Step 6 — Single commit
+
+Once the operator approves the CHANGELOG body, invoke `commitRelease` from `changelog-and-commit.mjs` with:
+
+```js
+await commitRelease({ repoRoot, version, approvedChangelog });
+```
+
+`commitRelease` prepends the approved entry above the previous most-recent `## v` block in `CHANGELOG.md`, then runs `git add -A` followed by exactly one `git commit -m "chore: bump version to v{version}"`. This single commit bundles every bumped carrier, every renamed manifest catalog (already `git mv`'d by step 3), the regenerated per-harness manifest files, and the approved CHANGELOG body (AD-4 atomicity). No second `git commit` invocation is permitted anywhere in the release flow between step 3 and step 8. (FR-10 step 6, AD-4, AD-12)
 
 ## Step 7 — Reproducibility assertion
 
 After the version-bump commit lands in step 6, invoke `node .claude/skills/rad-release/scripts/assert-reproducible.mjs` to gate the release on reproducibility. This module re-runs the complete build pipeline (per-harness dogfood builds + per-plugin builds + validation) and then invokes `git status --porcelain` to verify the working tree remains clean. If the tree is dirty after the second build pass, the gate halts immediately and names the dirty file paths so the operator can investigate the non-determinism (FR-13, NFR-2). The operator must then restart the release flow against a clean tree.
 
 ## Step 8 — Squash-merge to main
+
+Only executed when the operator answered **yes** to the merge-to-main question in step 2. Run the three commands below verbatim from the repo root (no separate module — inline shell invocation):
+
+```sh
+git checkout main
+git merge --squash <releaseBranch>
+git commit -m "chore: release v<version>"
+```
+
+Where `<releaseBranch>` is the branch name captured in step 1 and `<version>` is the target version confirmed in step 2. The squash collapses the entire release branch into one logical commit on `main`. If the operator answered no in step 2, skip this step entirely and proceed to step 9. (FR-10 step 8)
 
 ## Step 9 — Publish standard installer to npm
 
