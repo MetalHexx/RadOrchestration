@@ -18,4 +18,4 @@ Adding a new harness: register it in `harness-adapters/adapters/`; the dogfood b
 
 ## Seams to neighbors
 
-`harness-adapters/` for adapter discovery and per-adapter staging; `harness-installers/shared/build-helpers/emit-pipeline-bundle.js` for pre-bundling the pipeline runtime; `harness-files/` as the canonical source the adapters read.
+`harness-adapters/` for adapter discovery and per-adapter staging; `harness-files/` as the canonical source the adapters read. (The pipeline runtime is no longer bundled by this loop — it lives in the CLI at `cli/src/lib/pipeline-engine/` and is emitted by the standard installer's `emit-cli-bundle` step.)

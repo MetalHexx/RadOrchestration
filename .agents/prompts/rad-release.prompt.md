@@ -27,7 +27,6 @@ Run the following commands to collect the information you'll need for the questi
    - `harness-adapters/engine/package.json`
    - `harness-installers/standard/package.json`
    - `harness-installers/shared/build-helpers/package.json`
-   - `harness-files/skills/rad-orchestration/scripts/package.json`
    - `harness-installers/claude-plugin/package.json`
    - `harness-installers/copilot-cli-plugin/package.json`
    - `harness-installers/copilot-vscode-plugin/package.json`
@@ -98,7 +97,6 @@ Run the steps below in order. **Do not commit until step 6.**
    - `harness-adapters/engine/package.json`
    - `harness-installers/standard/package.json`
    - `harness-installers/shared/build-helpers/package.json`
-   - `harness-files/skills/rad-orchestration/scripts/package.json`
    - `harness-installers/claude-plugin/package.json`
    - `harness-installers/copilot-cli-plugin/package.json`
    - `harness-installers/copilot-vscode-plugin/package.json`
@@ -166,7 +164,6 @@ Run the steps below in order. **Do not commit until step 6.**
      harness-adapters/engine/package.json \
      harness-installers/standard/package.json \
      harness-installers/shared/build-helpers/package.json \
-     harness-files/skills/rad-orchestration/scripts/package.json \
      harness-installers/claude-plugin/package.json \
      harness-installers/copilot-cli-plugin/package.json \
      harness-installers/copilot-vscode-plugin/package.json \
@@ -338,7 +335,6 @@ If the user chooses to bump:
      harness-adapters/engine/package.json \
      harness-installers/standard/package.json \
      harness-installers/shared/build-helpers/package.json \
-     harness-files/skills/rad-orchestration/scripts/package.json \
      harness-installers/claude-plugin/package.json \
      harness-installers/copilot-cli-plugin/package.json \
      harness-installers/copilot-vscode-plugin/package.json \

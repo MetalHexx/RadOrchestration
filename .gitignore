@@ -23,7 +23,7 @@ package-lock.json
 # up renamed/deleted rad files on the next build). Never committed.
 /dist/
 
-# esbuild bundle output — produced by `npm run bundle` in cli/ and harness-files/skills/rad-orchestration/scripts/
+# esbuild bundle output — produced by `npm run bundle` in cli/
 dist-bundle/
 
 # Ephemeral installer test directory — created by rad-test-release prompt, never committed

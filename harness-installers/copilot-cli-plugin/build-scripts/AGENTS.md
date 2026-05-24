@@ -17,15 +17,14 @@ Exports `runBuild(opts)` and executes the following fixed step sequence, fail-fa
 5. **copy-skills** — copies adapter output from `harness-adapters/output/copilot-cli/skills/`.
 6. **copy-runtime-config** — copies `runtime-config/orchestration.yml` and `runtime-config/templates/` verbatim.
 7. **emit-cli-bundle** — bundles `cli/` via `emitCliBundle`.
-8. **emit-pipeline-bundle** — bundles the pipeline runtime TS via `emitPipelineBundle`.
-9. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`.
-10. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`.
-11. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` (with `lib/install/*` inlined) and copies verbatim files via `emitHookBundle`.
-12. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens in `agents/` and `skills/`. Agent namespacing (`rad-orc:<name>`) is a no-op for Copilot CLI — `agentNames` is not passed, so `expandTokens` performs token substitution only.
-13. **copy-plugin-manifest** — copies `plugin.json` from the package root to `output/plugin.json` (not under `output/.claude-plugin/` as in the claude-plugin).
-14. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes `output/package.json`. Hard-codes `name: '@rad-orchestration/copilot-cli-plugin'`.
-15. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`.
-16. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, version manifest, and size budget.
+8. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`.
+9. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`.
+10. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` (with `lib/install/*` inlined) and copies verbatim files via `emitHookBundle`.
+11. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens in `agents/` and `skills/`. Agent namespacing (`rad-orc:<name>`) is a no-op for Copilot CLI — `agentNames` is not passed, so `expandTokens` performs token substitution only.
+12. **copy-plugin-manifest** — copies `plugin.json` from the package root to `output/plugin.json` (not under `output/.claude-plugin/` as in the claude-plugin).
+13. **synthesize-package-json** — merges wrapper `package.json` with `plugin.json`; `plugin.json.version` always wins; writes `output/package.json`. Hard-codes `name: '@rad-orchestration/copilot-cli-plugin'`.
+14. **copy-manifest-catalog** — copies `manifests/v*.json` to `output/manifests/`.
+15. **validate** — calls `validatePluginTree` to confirm required artifacts, agent presence, version manifest, and size budget.
 
 **`validate.js` — `validatePluginTree(opts)`**
 
