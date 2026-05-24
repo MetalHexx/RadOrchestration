@@ -25,6 +25,8 @@ Invoke `node .claude/skills/rad-release/scripts/bump-version.mjs --to <new>` whe
 
 Invoke `node .claude/skills/rad-release/scripts/build-and-validate.mjs` from the repo root. This first runs `node harness-dogfood/build.js --all` (AD-7), which rebuilds the agents/skills output for all harnesses. It then runs `node build-scripts/build.js` from each of the three plugin directories (`claude-plugin`, `copilot-cli-plugin`, `copilot-vscode-plugin`), where each plugin's build script internally invokes the AD-6 Gate 3 validator. A non-zero exit from any sub-step halts the flow immediately and prints the captured stderr to the operator. (FR-10 step 4)
 
+After build-and-validate succeeds, invoke `node .claude/skills/rad-release/scripts/check-size-budget.mjs` to enforce the per-plugin NFR-3 tarball size budget (57,671,680 bytes = 50 MB + 10% headroom). Any plugin exceeding the budget halts the flow with a message naming the failing plugin and its measured size (FR-14, NFR-3).
+
 ## Step 5 — CHANGELOG draft + approval gate
 
 ## Step 6 — Single commit
