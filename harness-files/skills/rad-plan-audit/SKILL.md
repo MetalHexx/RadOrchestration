@@ -1,7 +1,7 @@
 ---
 name: 'rad-plan-audit'
 description: 'Audit the two-doc planning set (Requirements + Master Plan) for codebase accuracy, cross-document cohesion, and explosion-readiness. Two modes: self-review (planner-time) and full audit (reporter subagent; orchestrator dispatches a planner subagent to apply fixes).'
-user-invocable: true
+user-invocable: false
 ---
 
 # Plan Audit
