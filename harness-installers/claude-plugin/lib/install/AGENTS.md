@@ -18,7 +18,7 @@ Flow:
 5. Emits a coexistence warning if `ij.harnesses.claude` is present alongside `claude-plugin`.
 6. **Same-version fast path**: if prior version matches delivering version and sentinel exists and `!opts.force`, logs `noop` and returns.
 7. **Downgrade noop**: if `cmpSemver(deliveringVersion, installedVersionBefore) < 0` and `!opts.force`, logs `downgrade-noop` and returns.
-8. **Upgrade or fresh install**: removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles`, copies `${pluginRoot}/ui` to `paths.ui` if present, writes updated `ij` via `writeInstallJson`, and returns `action: 'upgrade-complete'` or `'fresh-install'` (fresh-install when the sentinel was absent regardless of prior version record).
+8. **Upgrade or fresh install**: removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), copies `${pluginRoot}/_install-source/ui` to `paths.ui` if present, then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorch/` state (orchestration.yml, templates, ui) remains at the plugin install root. Writes updated `ij` via `writeInstallJson` and returns `action: 'upgrade-complete'` or `'fresh-install'` (fresh-install when the sentinel was absent regardless of prior version record).
 9. Logs every outcome (including errors) via `appendInstallLog`.
 
 Returns `{ action, deliveringVersion, installedVersionBefore }`.

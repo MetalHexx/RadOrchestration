@@ -44,7 +44,7 @@ function makeUpstream() {
   fs.mkdirSync(join(root, 'harness-installers/claude-plugin/manifests'), { recursive: true });
   fs.writeFileSync(join(root, 'harness-installers/claude-plugin/manifests/v1.2.3.json'),
     JSON.stringify({ version: '1.2.3', files: [
-      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: '_install-source/orchestration.yml', ownership: 'user-config' },
     ]}));
   fs.writeFileSync(join(root, 'harness-installers/claude-plugin/package.json'),
     JSON.stringify({ name: '@rad-orchestration/claude-plugin-source', private: true, type: 'module' }));
@@ -58,8 +58,10 @@ test('runBuild emits the full plugin payload to output/ in correct shape', async
     const out = join(root, 'harness-installers/claude-plugin/output');
     assert.ok(fs.existsSync(join(out, 'agents/orchestrator.md')), 'agents copied');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/SKILL.md')), 'skills copied');
-    assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'orchestration.yml staged at top level');
-    assert.ok(fs.existsSync(join(out, 'templates/medium.yml')), 'templates staged');
+    assert.ok(fs.existsSync(join(out, '_install-source/orchestration.yml')), 'orchestration.yml staged under _install-source/');
+    assert.ok(fs.existsSync(join(out, '_install-source/templates/medium.yml')), 'templates staged under _install-source/');
+    assert.ok(!fs.existsSync(join(out, 'orchestration.yml')), 'no top-level orchestration.yml shadow');
+    assert.ok(!fs.existsSync(join(out, 'templates')), 'no top-level templates/ shadow');
     assert.ok(!fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'no legacy pipeline bundle');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/bootstrap.mjs')), 'hook bundle');
@@ -98,8 +100,8 @@ test('synthesized output/package.json version equals plugin.json version, not wr
     assert.strictEqual(synthesized.version, '1.2.3', 'version from plugin.json');
     assert.strictEqual(synthesized.name, '@rad-orchestration/claude-plugin');
     assert.deepStrictEqual(synthesized.files.sort(), [
-      '.claude-plugin/', 'agents/', 'hooks/', 'lib/', 'manifests/',
-      'orchestration.yml', 'skills/', 'templates/', 'ui/',
+      '.claude-plugin/', '_install-source/', 'agents/', 'hooks/', 'lib/',
+      'manifests/', 'skills/',
     ]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

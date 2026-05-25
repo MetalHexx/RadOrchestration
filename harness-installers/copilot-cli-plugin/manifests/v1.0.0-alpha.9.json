@@ -2,10 +2,10 @@
   "version": "1.0.0-alpha.9",
   "channel": "copilot-cli-plugin",
   "files": [
-    { "destinationPath": "${RAD_HOME}/orchestration.yml", "sourcePath": "orchestration.yml", "ownership": "user-config" },
-    { "destinationPath": "${RAD_HOME}/templates/extra-high.yml", "sourcePath": "templates/extra-high.yml", "ownership": "installer-owned" },
-    { "destinationPath": "${RAD_HOME}/templates/high.yml", "sourcePath": "templates/high.yml", "ownership": "installer-owned" },
-    { "destinationPath": "${RAD_HOME}/templates/medium.yml", "sourcePath": "templates/medium.yml", "ownership": "installer-owned" },
-    { "destinationPath": "${RAD_HOME}/templates/low.yml", "sourcePath": "templates/low.yml", "ownership": "installer-owned" }
+    { "destinationPath": "${RAD_HOME}/orchestration.yml", "sourcePath": "_install-source/orchestration.yml", "ownership": "user-config" },
+    { "destinationPath": "${RAD_HOME}/templates/extra-high.yml", "sourcePath": "_install-source/templates/extra-high.yml", "ownership": "installer-owned" },
+    { "destinationPath": "${RAD_HOME}/templates/high.yml", "sourcePath": "_install-source/templates/high.yml", "ownership": "installer-owned" },
+    { "destinationPath": "${RAD_HOME}/templates/medium.yml", "sourcePath": "_install-source/templates/medium.yml", "ownership": "installer-owned" },
+    { "destinationPath": "${RAD_HOME}/templates/low.yml", "sourcePath": "_install-source/templates/low.yml", "ownership": "installer-owned" }
   ]
 }

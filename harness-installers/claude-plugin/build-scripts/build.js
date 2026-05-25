@@ -84,8 +84,8 @@ export async function runBuild(opts) {
     fs.cpSync(path.join(adapterOut, 'skills'), path.join(out, 'skills'), { recursive: true }));
 
   await step('copy-runtime-config', () => {
-    fs.cpSync(path.join(greenfield, 'runtime-config/orchestration.yml'), path.join(out, 'orchestration.yml'));
-    fs.cpSync(path.join(greenfield, 'runtime-config/templates'), path.join(out, 'templates'), { recursive: true });
+    fs.cpSync(path.join(greenfield, 'runtime-config/orchestration.yml'), path.join(out, '_install-source/orchestration.yml'));
+    fs.cpSync(path.join(greenfield, 'runtime-config/templates'), path.join(out, '_install-source/templates'), { recursive: true });
   });
 
   // cli/ lives at the repo root for the duration of iteration 1 per parent
@@ -126,7 +126,7 @@ export async function runBuild(opts) {
   // design Decision 10 — read from `root`, not from `greenfield`.
   await step('emit-ui-bundle', () => emitUiBundle({
     source: path.join(root, 'ui'),
-    target: path.join(out, 'ui'),
+    target: path.join(out, '_install-source/ui'),
     runner: opts.skipUiRunner ? async () => { /* unit-test fast path */ } : undefined,
   }));
 

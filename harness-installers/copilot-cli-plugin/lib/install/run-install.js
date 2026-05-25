@@ -96,7 +96,7 @@ export async function runInstall(opts) {
     const manifest = loadManifest(opts.pluginRoot, deliveringVersion);
     installManifestFiles(manifest, opts.pluginRoot, { radHome: opts.radHome });
 
-    const pluginUiDir = path.join(opts.pluginRoot, 'ui');
+    const pluginUiDir = path.join(opts.pluginRoot, '_install-source/ui');
     if (fs.existsSync(pluginUiDir)) {
       fs.rmSync(paths.ui, { recursive: true, force: true });
       fs.cpSync(pluginUiDir, paths.ui, { recursive: true });
@@ -111,5 +111,18 @@ export async function runInstall(opts) {
   } catch (err) {
     appendInstallLog(paths.installLog, { action: 'error', deliveringVersion, installedVersionBefore });
     throw err;
+  } finally {
+    // Unconditional shadow-cleanup. Runs on every exit path (noop,
+    // downgrade-noop, fresh-install, upgrade-complete, error) so the plugin
+    // install root never carries a copy of ~/.radorch/ state. Sweeps both
+    // the current-format staging dir (_install-source/) and the legacy
+    // top-level shadows (templates/, orchestration.yml, ui/) left by
+    // pre-relocation payloads on existing installs.
+    try {
+      fs.rmSync(path.join(opts.pluginRoot, '_install-source'), { recursive: true, force: true });
+      fs.rmSync(path.join(opts.pluginRoot, 'templates'), { recursive: true, force: true });
+      fs.rmSync(path.join(opts.pluginRoot, 'orchestration.yml'), { force: true });
+      fs.rmSync(path.join(opts.pluginRoot, 'ui'), { recursive: true, force: true });
+    } catch { /* best-effort cleanup — do not mask the primary outcome */ }
   }
 }

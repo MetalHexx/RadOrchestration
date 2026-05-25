@@ -5,25 +5,30 @@ import os from 'node:os';
 import { join } from 'node:path';
 import { runInstall } from '../lib/install/run-install.js';
 
+function stageInstallSource(dir) {
+  fs.mkdirSync(join(dir, '_install-source/templates'), { recursive: true });
+  fs.writeFileSync(join(dir, '_install-source/orchestration.yml'), 'pipeline: {}\n');
+  fs.writeFileSync(join(dir, '_install-source/templates/medium.yml'), 'name: medium\n');
+  // UI subtree — populated for tree-copy; not listed per-file in the manifest.
+  // Lives under _install-source/ so the post-hydrate cleanup catches it too.
+  fs.mkdirSync(join(dir, '_install-source/ui/.next/static/chunks'), { recursive: true });
+  fs.mkdirSync(join(dir, '_install-source/ui/public'), { recursive: true });
+  fs.writeFileSync(join(dir, '_install-source/ui/server.js'), '// ui\n');
+  fs.writeFileSync(join(dir, '_install-source/ui/.next/static/chunks/main.js'), '// chunk\n');
+  fs.writeFileSync(join(dir, '_install-source/ui/public/logo.svg'), '<svg/>\n');
+}
+
 function makePluginRoot(version) {
   const dir = fs.mkdtempSync(join(os.tmpdir(), 'plugin-'));
   fs.mkdirSync(join(dir, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(dir, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
   fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'p', version }));
-  fs.writeFileSync(join(dir, 'orchestration.yml'), 'pipeline: {}\n');
-  fs.mkdirSync(join(dir, 'templates'), { recursive: true });
-  fs.writeFileSync(join(dir, 'templates/medium.yml'), 'name: medium\n');
-  // UI subtree — populated for tree-copy; not listed per-file in the manifest
-  fs.mkdirSync(join(dir, 'ui/.next/static/chunks'), { recursive: true });
-  fs.mkdirSync(join(dir, 'ui/public'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ui/server.js'), '// ui\n');
-  fs.writeFileSync(join(dir, 'ui/.next/static/chunks/main.js'), '// chunk\n');
-  fs.writeFileSync(join(dir, 'ui/public/logo.svg'), '<svg/>\n');
+  stageInstallSource(dir);
   fs.mkdirSync(join(dir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(dir, `manifests/v${version}.json`),
     JSON.stringify({ version, files: [
-      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
-      { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: 'templates/medium.yml', ownership: 'installer-owned' },
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: '_install-source/orchestration.yml', ownership: 'user-config' },
+      { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: '_install-source/templates/medium.yml', ownership: 'installer-owned' },
     ]}));
   return dir;
 }
@@ -37,6 +42,7 @@ test('fresh install hydrates ~/.radorch/, stamps install.json under claude-plugi
     assert.ok(fs.existsSync(join(radHome, 'orchestration.yml')), 'orchestration.yml hydrated');
     assert.ok(fs.existsSync(join(radHome, 'templates/medium.yml')), 'tier template hydrated');
     assert.ok(fs.existsSync(join(radHome, 'ui/server.js')), 'UI hydrated');
+    assert.ok(!fs.existsSync(join(pluginRoot, '_install-source')), 'staging dir removed after hydration');
     const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
     assert.strictEqual(ij.harnesses['claude-plugin'].version, '1.0.0');
     assert.ok(!('state_schema_version' in ij),
@@ -71,6 +77,7 @@ test('sentinel missing forces fresh-install even on version match', async () => 
   try {
     await runInstall({ pluginRoot, radHome });
     fs.rmSync(join(pluginRoot, 'skills/rad-orchestration/scripts/radorch.mjs'));
+    stageInstallSource(pluginRoot); // real reinstall re-extracts the tarball
     const result = await runInstall({ pluginRoot, radHome });
     assert.strictEqual(result.action, 'fresh-install', 'missing sentinel forces re-install');
   } finally {
@@ -121,6 +128,7 @@ test('--force bypasses the same-version noop short-circuit', async () => {
   const pluginRoot = makePluginRoot('1.0.0');
   try {
     await runInstall({ pluginRoot, radHome });
+    stageInstallSource(pluginRoot); // real reinstall re-extracts the tarball
     const result = await runInstall({ pluginRoot, radHome, force: true });
     assert.notStrictEqual(result.action, 'noop', '--force must not short-circuit on same-version re-run');
   } finally {
@@ -165,6 +173,47 @@ test('foreign harness entries in install.json are preserved — only own entry i
   }
 });
 
+
+test('legacy top-level templates/, orchestration.yml, ui/ shadow paths from prior payloads are removed on install', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-legacy-'));
+  const pluginRoot = makePluginRoot('1.0.0');
+  // Simulate a pre-relocation payload that shipped these at the plugin root.
+  fs.writeFileSync(join(pluginRoot, 'orchestration.yml'), 'legacy: shadow\n');
+  fs.mkdirSync(join(pluginRoot, 'templates'), { recursive: true });
+  fs.writeFileSync(join(pluginRoot, 'templates/legacy.yml'), 'legacy: tier\n');
+  fs.mkdirSync(join(pluginRoot, 'ui'), { recursive: true });
+  fs.writeFileSync(join(pluginRoot, 'ui/legacy.js'), '// legacy ui\n');
+  try {
+    await runInstall({ pluginRoot, radHome });
+    assert.ok(!fs.existsSync(join(pluginRoot, 'orchestration.yml')), 'legacy orchestration.yml shadow removed');
+    assert.ok(!fs.existsSync(join(pluginRoot, 'templates')), 'legacy templates/ shadow removed');
+    assert.ok(!fs.existsSync(join(pluginRoot, 'ui')), 'legacy ui/ shadow removed');
+    assert.ok(!fs.existsSync(join(pluginRoot, '_install-source')), 'current staging dir removed');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
+
+test('shadow cleanup also runs on the noop fast path so re-installs cleanse pre-existing shadows', async () => {
+  const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-noop-clean-'));
+  const pluginRoot = makePluginRoot('1.0.0');
+  try {
+    await runInstall({ pluginRoot, radHome });
+    // Simulate a fresh tarball re-extraction that re-brought the staging dir AND
+    // dropped a legacy top-level shadow on disk. Bootstrap fires, hits the noop
+    // short-circuit because the version matches, and must still clean both.
+    stageInstallSource(pluginRoot);
+    fs.writeFileSync(join(pluginRoot, 'orchestration.yml'), 'legacy: shadow\n');
+    const result = await runInstall({ pluginRoot, radHome });
+    assert.strictEqual(result.action, 'noop');
+    assert.ok(!fs.existsSync(join(pluginRoot, '_install-source')), 'staging dir removed on noop');
+    assert.ok(!fs.existsSync(join(pluginRoot, 'orchestration.yml')), 'legacy shadow removed on noop');
+  } finally {
+    fs.rmSync(radHome, { recursive: true, force: true });
+    fs.rmSync(pluginRoot, { recursive: true, force: true });
+  }
+});
 
 test('hydration scope — no config.yml / registry.yml / .harness / .gitignore / runtime/ writes', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-ad8-'));

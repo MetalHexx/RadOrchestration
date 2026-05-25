@@ -23,7 +23,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 ## Inputs this package reads but does not own
 
 - `harness-adapters/output/copilot-cli/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the Copilot CLI harness
-- `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
+- `runtime-config/` — `orchestration.yml` and `templates/` staged under the build's `_install-source/`; bootstrap hydrates to `~/.radorch/` then removes the staging dir
 - `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
 - `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 

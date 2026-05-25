@@ -11,7 +11,7 @@ A self-contained npm package (`@rad-orchestration/claude-plugin-source`) whose `
 1. **adapter-engine** — runs `harness-adapters/engine/build.js --harness=claude` (skippable in tests via `opts.skipAdapterEngine`)
 2. **clean-output** — wipes `output/`
 3. **copy-agents** / **copy-skills** — copies adapter output from `harness-adapters/output/claude/`
-4. **copy-runtime-config** — copies `runtime-config/orchestration.yml` and `runtime-config/templates/` verbatim
+4. **copy-runtime-config** — stages `runtime-config/orchestration.yml` and `runtime-config/templates/` under `_install-source/` (not the plugin root) so the bootstrap hook can hydrate them to `~/.radorch/` and then delete the staging dir, leaving no shadow copy
 5. **emit-cli-bundle** — bundles `cli/src/` into `radorch.mjs` via `emitCliBundle` and ships it to `output/skills/rad-orchestration/scripts/radorch.mjs`
 6. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`
 7. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle`

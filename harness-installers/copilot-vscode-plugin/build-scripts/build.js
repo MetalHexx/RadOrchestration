@@ -69,8 +69,8 @@ export async function runBuild(opts) {
     fs.cpSync(path.join(adapterOut, 'skills'), path.join(out, 'skills'), { recursive: true }));
 
   await step('copy-runtime-config', () => {
-    fs.cpSync(path.join(root, 'runtime-config/orchestration.yml'), path.join(out, 'orchestration.yml'));
-    fs.cpSync(path.join(root, 'runtime-config/templates'), path.join(out, 'templates'), { recursive: true });
+    fs.cpSync(path.join(root, 'runtime-config/orchestration.yml'), path.join(out, '_install-source/orchestration.yml'));
+    fs.cpSync(path.join(root, 'runtime-config/templates'), path.join(out, '_install-source/templates'), { recursive: true });
   });
 
   await step('emit-cli-bundle', () => emitCliBundle({
@@ -100,7 +100,7 @@ export async function runBuild(opts) {
 
   await step('emit-ui-bundle', () => emitUiBundle({
     source: path.join(root, 'ui'),
-    target: path.join(out, 'ui'),
+    target: path.join(out, '_install-source/ui'),
     // Unit-test fast path: populate the synthetic .next/ tree emit-ui-bundle
     // expects to copy from. Full real-Next.js path runs when skipUiRunner is absent.
     runner: opts.skipUiRunner ? async () => {

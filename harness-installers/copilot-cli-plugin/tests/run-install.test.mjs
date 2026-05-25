@@ -5,23 +5,26 @@ import os from 'node:os';
 import { join } from 'node:path';
 import { runInstall } from '../lib/install/run-install.js';
 
+function stageInstallSource(dir) {
+  fs.mkdirSync(join(dir, '_install-source/templates'), { recursive: true });
+  fs.mkdirSync(join(dir, '_install-source/ui'), { recursive: true });
+  fs.writeFileSync(join(dir, '_install-source/orchestration.yml'), 'pipeline: {}\n');
+  fs.writeFileSync(join(dir, '_install-source/templates/medium.yml'), 'name: medium\n');
+  fs.writeFileSync(join(dir, '_install-source/ui/server.js'), '// ui\n');
+}
+
 function makePluginRoot(version) {
   const dir = fs.mkdtempSync(join(os.tmpdir(), 'plugin-cli-'));
   fs.mkdirSync(join(dir, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(dir, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
   fs.writeFileSync(join(dir, 'plugin.json'), JSON.stringify({ name: 'rad-orc', version }));
   fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-cli-plugin', version }));
-  fs.writeFileSync(join(dir, 'orchestration.yml'), 'pipeline: {}\n');
-  fs.mkdirSync(join(dir, 'templates'), { recursive: true });
-  fs.writeFileSync(join(dir, 'templates/medium.yml'), 'name: medium\n');
-  fs.mkdirSync(join(dir, 'ui'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ui/server.js'), '// ui\n');
+  stageInstallSource(dir);
   fs.mkdirSync(join(dir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(dir, `manifests/v${version}.json`), JSON.stringify({
     version, channel: 'copilot-cli-plugin', files: [
-      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
-      { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: 'templates/medium.yml', ownership: 'installer-owned' },
-      { destinationPath: '${RAD_HOME}/ui/server.js', sourcePath: 'ui/server.js', ownership: 'installer-owned' },
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: '_install-source/orchestration.yml', ownership: 'user-config' },
+      { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: '_install-source/templates/medium.yml', ownership: 'installer-owned' },
     ],
   }));
   return dir;
@@ -31,14 +34,14 @@ function makePluginRootWithVersionedTemplate(version) {
   const dir = makePluginRoot(version);
   // Add an installer-owned template that is unique per version so the test can
   // observe remove-before-write semantics on upgrade.
-  fs.writeFileSync(join(dir, 'templates', `tier-${version}.yml`), `name: tier-${version}\n`);
+  fs.writeFileSync(join(dir, `_install-source/templates/tier-${version}.yml`), `name: tier-${version}\n`);
   // Rewrite the manifest to include the per-version template alongside the
   // standard files. Keep orchestration.yml as user-config so the assertion can
   // verify it survives the upgrade untouched.
   fs.writeFileSync(join(dir, `manifests/v${version}.json`), JSON.stringify({
     version, channel: 'copilot-cli-plugin', files: [
-      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
-      { destinationPath: `\${RAD_HOME}/templates/tier-${version}.yml`, sourcePath: `templates/tier-${version}.yml`, ownership: 'installer-owned' },
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: '_install-source/orchestration.yml', ownership: 'user-config' },
+      { destinationPath: `\${RAD_HOME}/templates/tier-${version}.yml`, sourcePath: `_install-source/templates/tier-${version}.yml`, ownership: 'installer-owned' },
     ],
   }));
   return dir;
@@ -86,6 +89,7 @@ test('sentinel-missing forces fresh-install even on version match (self-heal)', 
   try {
     await runInstall({ pluginRoot, radHome });
     fs.rmSync(join(pluginRoot, 'skills/rad-orchestration/scripts/radorch.mjs'));
+    stageInstallSource(pluginRoot); // real reinstall re-extracts the tarball
     const result = await runInstall({ pluginRoot, radHome });
     assert.strictEqual(result.action, 'fresh-install');
   } finally {

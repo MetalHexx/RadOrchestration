@@ -23,8 +23,8 @@ A self-contained npm package (`@rad-orchestration/copilot-vscode-plugin-source`)
 ## Inputs this package reads but does not own
 
 - `harness-adapters/output/copilot-vscode/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the VS Code harness
-- `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
-- `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
+- `runtime-config/` — `orchestration.yml` and `templates/` staged under the build's `_install-source/`; bootstrap hydrates to `~/.radorch/` then removes the staging dir
+- `cli/` and `ui/` at the repo root — `cli/` bundled via `emitCliBundle` to its canonical agent-visible location; `ui/` bundled via `emitUiBundle` to `_install-source/ui/` (bootstrap hydrates it to `~/.radorch/ui/` then removes the staging dir)
 - `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 
 ## Deltas vs the copilot-cli-plugin

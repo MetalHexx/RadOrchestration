@@ -26,7 +26,7 @@ test('orchestration.yml entry carries user-config ownership (FR-13)', () => {
   const files = fs.readdirSync(MANIFESTS_DIR).filter((f) => /^v.+\.json$/.test(f));
   for (const f of files) {
     const m = JSON.parse(fs.readFileSync(path.join(MANIFESTS_DIR, f), 'utf8'));
-    const orch = m.files.find((e) => e.sourcePath === 'orchestration.yml');
+    const orch = m.files.find((e) => e.destinationPath === '${RAD_HOME}/orchestration.yml');
     assert.ok(orch, `${f}: orchestration.yml entry exists`);
     assert.strictEqual(orch.ownership, 'user-config', `${f}: orchestration.yml is user-config`);
   }

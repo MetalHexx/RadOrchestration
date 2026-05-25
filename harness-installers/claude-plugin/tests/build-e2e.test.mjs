@@ -26,9 +26,9 @@ test('end-to-end build produces a valid plugin payload', { skip: process.env.SKI
     'hooks/hooks.json',
     'hooks/bootstrap.mjs',
     'hooks/drift-check.mjs',
-    'orchestration.yml',
-    'templates/medium.yml',
-    'ui/server.js',
+    '_install-source/orchestration.yml',
+    '_install-source/templates/medium.yml',
+    '_install-source/ui/server.js',
   ]) {
     assert.ok(fs.existsSync(join(out, rel)), `missing ${rel}`);
   }
