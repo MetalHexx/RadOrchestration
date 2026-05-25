@@ -17,7 +17,7 @@ test('generateReleaseNotes writes RELEASE-NOTES-v{X}.md to the repo root', async
   assert.match(written.body, /^## Changes/m);
   // Package table lists each shipped artifact
   assert.match(written.body, /^## Package/m);
-  assert.match(written.body, /rad-orc-plugins.*v1\.0\.0-alpha\.10/);
+  assert.match(written.body, /rad-orc-marketplace.*v1\.0\.0-alpha\.10/);
   assert.match(written.body, /npmjs\.com\/package\/rad-orc/);
 });
 

@@ -14,9 +14,9 @@ export async function generateReleaseNotes({
     '',
     `| Artifact | Source |`,
     `| --- | --- |`,
-    `| claude-plugin@${tag} | https://github.com/MetalHexx/rad-orc-plugins/tree/${tag}/claude-plugin |`,
-    `| copilot-cli-plugin@${tag} | https://github.com/MetalHexx/rad-orc-plugins/tree/${tag}/copilot-cli-plugin |`,
-    `| copilot-vscode-plugin@${tag} | https://github.com/MetalHexx/rad-orc-plugins/tree/${tag}/copilot-vscode-plugin |`,
+    `| claude-plugin@${tag} | https://github.com/MetalHexx/rad-orc-marketplace/tree/${tag}/claude-plugin |`,
+    `| copilot-cli-plugin@${tag} | https://github.com/MetalHexx/rad-orc-marketplace/tree/${tag}/copilot-cli-plugin |`,
+    `| copilot-vscode-plugin@${tag} | https://github.com/MetalHexx/rad-orc-marketplace/tree/${tag}/copilot-vscode-plugin |`,
     `| rad-orc@${version} | https://www.npmjs.com/package/rad-orc/v/${version} |`,
     '',
   ].join('\n'));
