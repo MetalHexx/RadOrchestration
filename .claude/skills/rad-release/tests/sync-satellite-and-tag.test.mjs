@@ -28,7 +28,7 @@ test('syncSatelliteAndTag copies each plugin output into the satellite, updates 
   assert.strictEqual(copies.length, 3);
   assert.ok(copies.some(c => c.copy.to === path.join('/sat', 'claude-plugin')));
   assert.ok(copies.some(c => c.copy.to === path.join('/sat', 'copilot-cli-plugin')));
-  assert.ok(copies.some(c => c.copy.to === path.join('/sat', 'copilot-vscode-plugin')));
+  assert.ok(copies.some(c => c.copy.to === path.join('/sat', 'rad-orc-vscode')));
   // Both catalogs rewritten to the new tag
   const rewrites = log.filter(e => e.rewrite);
   assert.ok(rewrites.some(r => r.rewrite.path === path.join('/sat', '.claude-plugin', 'marketplace.json') && r.rewrite.ref === 'v1.0.0-alpha.10'));
@@ -78,18 +78,15 @@ test('defaultRewriteCatalogRef rewrites ref on a well-formed git-subdir catalog'
   assert.strictEqual(after.plugins[0].source.url, 'https://github.com/a/b.git');
 });
 
-test('defaultRewriteCatalogRef rewrites ref on a well-formed source:github catalog (Copilot)', () => {
+test('defaultRewriteCatalogRef bumps version on a flat-shape catalog (Copilot)', () => {
   const p = writeTempCatalog({
-    plugins: [{
-      name: 'x',
-      source: { source: 'github', repo: 'a/b', ref: 'v0', path: 'x' },
-    }],
+    metadata: { pluginRoot: '.' },
+    plugins: [{ name: 'x', source: 'x', version: '0.0.0' }],
   });
-  defaultRewriteCatalogRef(p, 'v1');
+  defaultRewriteCatalogRef(p, 'v9.9.9');
   const after = JSON.parse(fs.readFileSync(p, 'utf8'));
-  assert.strictEqual(after.plugins[0].source.ref, 'v1');
-  assert.strictEqual(after.plugins[0].source.source, 'github');
-  assert.strictEqual(after.plugins[0].source.repo, 'a/b');
+  assert.strictEqual(after.plugins[0].version, '9.9.9');
+  assert.strictEqual(after.plugins[0].source, 'x');
 });
 
 test('syncSatelliteAndTag halts on a non-zero spawn exit and names the failing operation', async () => {
