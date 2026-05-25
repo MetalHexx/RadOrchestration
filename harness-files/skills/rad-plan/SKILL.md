@@ -38,8 +38,7 @@ mandatory anchors in every tier.
 - If `project_template` was passed as an argument:
   - If it matches one of the shipped tier names (`extra-high`, `high`,
     `medium`, `low`) or is the name of a user-authored custom template
-    present in the `rad-orchestration` skill `/templates` directory, use
-    it.
+    present in the `~/.radorch/templates/` directory, use it.
   - Otherwise respond with an error message indicating the template was
     not found.
 - If no `project_template` was passed, use the `askQuestions` /
@@ -50,10 +49,10 @@ mandatory anchors in every tier.
 
   | Option | Copy (two sentences max) |
   |---|---|
-  | `extra-high` **(Recommended)** | Per-task code review + phase review + final review. Maximum defense in depth — for production-critical, regulated, or untrusted-contributor work. |
-  | `high` | Per-task code review + final review (no phase review). Per-task feedback matters; phase-level audit is redundant given task-level coverage. |
-  | `medium` | Phase review + final review (no per-task review). Trusted team or well-understood scope; keeps phase-level cross-task audit. |
-  | `low` | Final review only. Quick exploration, prototyping, hot fixes — final review still gates merge. |
+  | `extra-high` | Per-task code review + phase review + final review. Maximum defense in depth — for production-critical, regulated, or untrusted-contributor work. |
+  | `high` | Per-task code review + final review (no phase review). |
+  | `medium` | Phase review + final review (no per-task review). Good balance of oversight and efficiency. |
+  | `low` | Final review only. Fast and efficient token usage. Good for small projects or quick iterations. |
 
   The question's framing prose: "Which review-intensity tier should this
   project run? Tier names map to defensive review depth; cost rises with
@@ -115,7 +114,7 @@ The planner always receives an explicit sizing signal — no deferral option.
 
 ## Step 3: Starting Message
 - Produce a nicely formatted and mildly enthusiastic message confirming the project name, template choice, and task size preference.
-- List planning steps by reading the template YAML: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.
+- Tell the user we'll first have a planning agent create formal requirements followed by an execution plan and plan audit.
 
 ## Step 4: Read Project Template
 - Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template <project_template>`).
