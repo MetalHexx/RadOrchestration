@@ -19,8 +19,11 @@ export async function runBuildAndValidate({ repoRoot, spawn = spawnSync }) {
   // invokes its validate.js Gate 3. Validator failure surfaces as
   // build non-zero exit, which halts the flow.
   for (const dir of PLUGIN_DIRS) {
-    const res = spawn('node', ['build-scripts/build.js'], {
-      cwd: path.join(repoRoot, dir), encoding: 'utf8',
+    // Plugin build scripts use `process.cwd()` as their `rootDir`, so they
+    // must be invoked from the repo root — running them from inside the
+    // plugin dir misresolves the adapter-engine path and fails at step 0.
+    const res = spawn('node', [path.posix.join(dir, 'build-scripts/build.js')], {
+      cwd: repoRoot, encoding: 'utf8',
     });
     if (res.status !== 0) {
       return { ok: false, error: `${dir} build/validate failed: ${res.stderr}` };

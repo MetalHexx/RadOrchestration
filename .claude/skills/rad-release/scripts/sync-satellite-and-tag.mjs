@@ -14,9 +14,26 @@ function defaultCopyTree(from, to) {
   fs.cpSync(from, to, { recursive: true });
 }
 
-function defaultRewriteCatalogRef(catalogPath, ref) {
+export function defaultRewriteCatalogRef(catalogPath, ref) {
   const cat = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
-  for (const p of cat.plugins) p.source.ref = ref;
+  for (const p of cat.plugins) {
+    // Two valid source shapes, one per catalog:
+    //   Claude catalog (.claude-plugin/): git-subdir + explicit HTTPS url — Claude Code
+    //     reads `source: "github"` as SSH (git@github.com), so we use git-subdir instead.
+    //   Copilot catalog (.github/plugin/): source: "github" + repo — Copilot CLI resolves
+    //     this via HTTPS anonymously (NFR-1); git-subdir is not a Copilot CLI source type.
+    const isGitSubdir = p.source?.source === 'git-subdir' && p.source.url;
+    const isGithub = p.source?.source === 'github' && p.source.repo;
+    if (!isGitSubdir && !isGithub) {
+      throw new Error(
+        `${catalogPath} plugin "${p.name}" must use either ` +
+        `source.source: "git-subdir" (with source.url, for Claude catalog) or ` +
+        `source.source: "github" (with source.repo, for Copilot catalog); ` +
+        `found source: ${JSON.stringify(p.source)}. Fix the catalog on the satellite before re-running release.`,
+      );
+    }
+    p.source.ref = ref;
+  }
   fs.writeFileSync(catalogPath, JSON.stringify(cat, null, 2) + '\n');
 }
 

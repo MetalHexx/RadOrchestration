@@ -13,11 +13,15 @@ test('runBuildAndValidate invokes harness-dogfood/build.js --all then each plugi
   });
   // First call: dogfood orchestrator with --all
   assert.deepStrictEqual(calls[0].args, ['harness-dogfood/build.js', '--all']);
-  // Subsequent calls: per-plugin builders (validator invoked inside each)
-  const pluginBuildCwds = calls.slice(1).map(c => c.cwd);
-  assert.ok(pluginBuildCwds.some(c => c.endsWith('claude-plugin')));
-  assert.ok(pluginBuildCwds.some(c => c.endsWith('copilot-cli-plugin')));
-  assert.ok(pluginBuildCwds.some(c => c.endsWith('copilot-vscode-plugin')));
+  // Subsequent calls: per-plugin builders invoked from the repo root with the
+  // plugin's build.js as the path arg (plugin builds read process.cwd() as
+  // their rootDir, so cwd must be the repo root, not the plugin dir).
+  const pluginCalls = calls.slice(1);
+  for (const c of pluginCalls) assert.strictEqual(c.cwd, process.cwd());
+  const pluginScripts = pluginCalls.map(c => c.args[0]);
+  assert.ok(pluginScripts.some(p => p.includes('claude-plugin/build-scripts/build.js')));
+  assert.ok(pluginScripts.some(p => p.includes('copilot-cli-plugin/build-scripts/build.js')));
+  assert.ok(pluginScripts.some(p => p.includes('copilot-vscode-plugin/build-scripts/build.js')));
   assert.strictEqual(result.ok, true);
 });
 

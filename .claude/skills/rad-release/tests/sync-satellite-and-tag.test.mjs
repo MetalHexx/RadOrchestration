@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { syncSatelliteAndTag } from '../scripts/sync-satellite-and-tag.mjs';
+import { syncSatelliteAndTag, defaultRewriteCatalogRef } from '../scripts/sync-satellite-and-tag.mjs';
+
+function writeTempCatalog(body) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-catalog-'));
+  const p = path.join(tmp, 'marketplace.json');
+  fs.writeFileSync(p, JSON.stringify(body));
+  return p;
+}
 
 test('syncSatelliteAndTag copies each plugin output into the satellite, updates both catalogs, commits, tags both repos, pushes', async () => {
   const log = [];
@@ -32,6 +41,55 @@ test('syncSatelliteAndTag copies each plugin output into the satellite, updates 
   // Pushes — both repos, both tags
   const pushes = log.filter(e => e.cmd === 'git' && e.args && e.args[0] === 'push');
   assert.ok(pushes.length >= 2);
+});
+
+test('defaultRewriteCatalogRef rejects source.source: "git-subdir" missing the url field', () => {
+  const p = writeTempCatalog({
+    plugins: [{ name: 'x', source: { source: 'git-subdir', ref: 'v0', path: 'x' } }],
+  });
+  assert.throws(() => defaultRewriteCatalogRef(p, 'v1'), /git-subdir/);
+});
+
+test('defaultRewriteCatalogRef rejects source.source: "github" missing the repo field', () => {
+  const p = writeTempCatalog({
+    plugins: [{ name: 'x', source: { source: 'github', ref: 'v0', path: 'x' } }],
+  });
+  assert.throws(() => defaultRewriteCatalogRef(p, 'v1'), /github/);
+});
+
+test('defaultRewriteCatalogRef rejects unknown source type', () => {
+  const p = writeTempCatalog({
+    plugins: [{ name: 'x', source: { source: 'unknown', ref: 'v0' } }],
+  });
+  assert.throws(() => defaultRewriteCatalogRef(p, 'v1'));
+});
+
+test('defaultRewriteCatalogRef rewrites ref on a well-formed git-subdir catalog', () => {
+  const p = writeTempCatalog({
+    plugins: [{
+      name: 'x',
+      source: { source: 'git-subdir', url: 'https://github.com/a/b.git', ref: 'v0', path: 'x' },
+    }],
+  });
+  defaultRewriteCatalogRef(p, 'v1');
+  const after = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.strictEqual(after.plugins[0].source.ref, 'v1');
+  assert.strictEqual(after.plugins[0].source.source, 'git-subdir');
+  assert.strictEqual(after.plugins[0].source.url, 'https://github.com/a/b.git');
+});
+
+test('defaultRewriteCatalogRef rewrites ref on a well-formed source:github catalog (Copilot)', () => {
+  const p = writeTempCatalog({
+    plugins: [{
+      name: 'x',
+      source: { source: 'github', repo: 'a/b', ref: 'v0', path: 'x' },
+    }],
+  });
+  defaultRewriteCatalogRef(p, 'v1');
+  const after = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.strictEqual(after.plugins[0].source.ref, 'v1');
+  assert.strictEqual(after.plugins[0].source.source, 'github');
+  assert.strictEqual(after.plugins[0].source.repo, 'a/b');
 });
 
 test('syncSatelliteAndTag halts on a non-zero spawn exit and names the failing operation', async () => {
