@@ -14,15 +14,22 @@ import type {
  * emit a single warn line and return '' — manifest failure must NEVER break
  * the planner spawn.
  *
+ * The repo root is taken from `state.pipeline.source_control.worktree_path`
+ * (set by source_control_init) and falls back to `process.cwd()` only when
+ * source control hasn't been initialized yet. AD-6 forbids consulting cwd
+ * for path resolution; the state-first lookup honors that contract while
+ * preserving the cwd fallback for the bootstrap window before init runs.
+ *
  * Returns:
  *   - empty string '' when the manifest is `[]` OR when the invocation failed
  *   - the heading + JSON + orientation sentence block when at least one
  *     eligible skill is present
  */
-function buildRepositorySkillsBlock(): string {
+function buildRepositorySkillsBlock(state: PipelineState): string {
+  const repoRoot = state.pipeline.source_control?.worktree_path ?? process.cwd();
   let arr;
   try {
-    arr = buildSkillManifest({ repoRoot: process.cwd() });
+    arr = buildSkillManifest({ repoRoot });
   } catch (err) {
     console.warn(
       `context-enrichment: buildSkillManifest failed (${(err as Error).message}); emitting empty repository_skills_block`
@@ -132,7 +139,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   // phase/task limits so the orchestrator can inline a `## Plan Size Limits`
   // block into the planner prompt without reading state.json or the YAML.
   if (action in PLANNING_SPAWN_STEPS) {
-    const repository_skills_block = buildRepositorySkillsBlock();
+    const repository_skills_block = buildRepositorySkillsBlock(state);
     const base = {
       ...walkerContext,
       step: PLANNING_SPAWN_STEPS[action],
