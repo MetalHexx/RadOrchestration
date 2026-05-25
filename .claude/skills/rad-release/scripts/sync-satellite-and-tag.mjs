@@ -5,7 +5,7 @@ import path from 'node:path';
 const PLUGINS = [
   { src: 'harness-installers/claude-plugin/output', dest: 'claude-plugin' },
   { src: 'harness-installers/copilot-cli-plugin/output', dest: 'copilot-cli-plugin' },
-  { src: 'harness-installers/copilot-vscode-plugin/output', dest: 'copilot-vscode-plugin' },
+  { src: 'harness-installers/copilot-vscode-plugin/output', dest: 'rad-orc-vs' },
 ];
 
 function defaultCopyTree(from, to) {

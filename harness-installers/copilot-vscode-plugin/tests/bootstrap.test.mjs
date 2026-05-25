@@ -13,7 +13,7 @@ function makePluginRoot(version) {
   fs.mkdirSync(join(dir, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(dir, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
   fs.mkdirSync(join(dir, '.claude-plugin'), { recursive: true });
-  fs.writeFileSync(join(dir, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'rad-orc-vscode', version }));
+  fs.writeFileSync(join(dir, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'rad-orc-vs', version }));
   fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-vscode-plugin', version }));
   fs.mkdirSync(join(dir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(dir, `manifests/v${version}.json`), JSON.stringify({ version, channel: 'copilot-vscode-plugin', files: [] }));
