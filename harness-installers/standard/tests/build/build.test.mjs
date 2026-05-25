@@ -152,12 +152,16 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
         `${h}: per-harness manifest copied forward`);
     }
 
-    // UI bundle emitted ONCE at top-level output/ui/ — never per-harness (FR-23, AD-9).
-    assert.ok(fs.existsSync(path.join(out, 'ui/server.js')),
-      'output/ui/server.js exists at top level');
+    // UI bundle emitted ONCE at top-level output/ui.tgz — never per-harness (FR-23, AD-9).
+    // Tarball shape (not a loose tree) so node_modules/ and .next/ survive
+    // `npm pack`'s hardcoded node_modules strip; the installer extracts on hydrate.
+    assert.ok(fs.existsSync(path.join(out, 'ui.tgz')),
+      'output/ui.tgz exists at top level');
     for (const h of HARNESSES) {
       assert.ok(!fs.existsSync(path.join(out, h, 'ui')),
         `output/${h}/ui/ must NOT exist (AD-9)`);
+      assert.ok(!fs.existsSync(path.join(out, h, 'ui.tgz')),
+        `output/${h}/ui.tgz must NOT exist (AD-9)`);
     }
 
     // Token substitution per harness (FR-24, AD-6, AD-16).

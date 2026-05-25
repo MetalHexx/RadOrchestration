@@ -6,6 +6,7 @@
   "description": "Mechanical, installer-blind helpers for installer build orchestrators.",
   "main": "expand-tokens.js",
   "dependencies": {
-    "esbuild": "^0.21.0"
+    "esbuild": "^0.21.0",
+    "tar": "^7.4.3"
   }
 }

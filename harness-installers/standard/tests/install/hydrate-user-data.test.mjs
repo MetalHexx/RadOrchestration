@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import * as tar from 'tar';
 
 import { hydrateUserData } from '../../lib/install/hydrate-user-data.js';
 
@@ -32,8 +33,8 @@ function withHome(home) {
   };
 }
 
-/** Build a minimal bundle with orchestration.yml, 4 tier templates, and a ui/ dir. */
-function buildBundle(bundleRoot) {
+/** Build a minimal bundle with orchestration.yml, 4 tier templates, and a ui.tgz. */
+async function buildBundle(bundleRoot) {
   fs.mkdirSync(bundleRoot, { recursive: true });
 
   // orchestration.yml in bundle root.
@@ -46,10 +47,17 @@ function buildBundle(bundleRoot) {
     fs.writeFileSync(path.join(templatesDir, name), `# ${name} bundle content\n`);
   }
 
-  // ui/ bundle with one file.
-  const uiDir = path.join(bundleRoot, 'ui');
-  fs.mkdirSync(uiDir, { recursive: true });
-  fs.writeFileSync(path.join(uiDir, 'main.js'), '// ui bundle\n');
+  // ui ships as a gzipped tarball at bundleRoot/ui.tgz so node_modules/ and
+  // .next/ survive the satellite `.gitignore` and `npm pack`'s hardcoded
+  // node_modules strip; hydrate-user-data.js extracts it on install.
+  const uiStage = path.join(bundleRoot, 'ui.stage');
+  fs.mkdirSync(uiStage, { recursive: true });
+  fs.writeFileSync(path.join(uiStage, 'main.js'), '// ui bundle\n');
+  await tar.c(
+    { gzip: true, file: path.join(bundleRoot, 'ui.tgz'), cwd: uiStage, portable: true },
+    ['.'],
+  );
+  fs.rmSync(uiStage, { recursive: true, force: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +69,7 @@ test('orchestration.yml is copied on fresh install and preserved when already pr
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
     const bundle = path.join(tmp, 'bundle');
-    buildBundle(bundle);
+    await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
     const radorch = path.join(home, '.radorch');
@@ -90,7 +98,7 @@ test('four shipped tier files overwrite on every install; user-added templates s
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
     const bundle = path.join(tmp, 'bundle');
-    buildBundle(bundle);
+    await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
     const radorch = path.join(home, '.radorch');
@@ -125,7 +133,7 @@ test('UI bundle copies via tmp-rename: prior ui/ oldfile.js gone, new main.js pr
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
     const bundle = path.join(tmp, 'bundle');
-    buildBundle(bundle);
+    await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
     const radorch = path.join(home, '.radorch');
@@ -163,7 +171,7 @@ test('projects/ and logs/ dirs are created if absent (FR-2)', async () => {
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
     const bundle = path.join(tmp, 'bundle');
-    buildBundle(bundle);
+    await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
     const radorch = path.join(home, '.radorch');
@@ -183,7 +191,7 @@ test('existing projects/ contents survive hydration (AD-13)', async () => {
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
     const bundle = path.join(tmp, 'bundle');
-    buildBundle(bundle);
+    await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
     const radorch = path.join(home, '.radorch');

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import * as tar from 'tar';
 import { userDataPaths } from './user-data-paths.js';
 import {
   loadRegistry, writeInstallJson, buildCopilotCliPluginEntry,
@@ -96,10 +97,14 @@ export async function runInstall(opts) {
     const manifest = loadManifest(opts.pluginRoot, deliveringVersion);
     installManifestFiles(manifest, opts.pluginRoot, { radHome: opts.radHome });
 
-    const pluginUiDir = path.join(opts.pluginRoot, '_install-source/ui');
-    if (fs.existsSync(pluginUiDir)) {
+    // UI ships as a gzipped tarball (ui.tgz) so node_modules/ and .next/
+    // survive the satellite `.gitignore` and `npm pack`'s hardcoded
+    // node_modules strip. Extract it wholesale into ~/.radorch/ui/.
+    const pluginUiTarball = path.join(opts.pluginRoot, '_install-source/ui.tgz');
+    if (fs.existsSync(pluginUiTarball)) {
       fs.rmSync(paths.ui, { recursive: true, force: true });
-      fs.cpSync(pluginUiDir, paths.ui, { recursive: true });
+      fs.mkdirSync(paths.ui, { recursive: true });
+      await tar.x({ file: pluginUiTarball, cwd: paths.ui });
     }
 
     ij.harnesses[INSTALL_KEY] = buildCopilotCliPluginEntry(deliveringVersion);

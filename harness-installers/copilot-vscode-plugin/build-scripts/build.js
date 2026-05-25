@@ -42,6 +42,10 @@ export async function runBuild(opts) {
       path.join(root, 'harness-adapters/engine'),
       path.join(root, 'cli'),
       path.join(root, 'ui'),
+      // The plugin's own dir — needed so esbuild can resolve `tar` when
+      // bundling hooks/bootstrap.mjs (run-install.js imports tar to extract
+      // the UI tarball at install time).
+      installerDir,
     ];
     await step('bootstrap-deps', () => {
       for (const pkgDir of BOOTSTRAP_TARGETS) {
@@ -100,7 +104,7 @@ export async function runBuild(opts) {
 
   await step('emit-ui-bundle', () => emitUiBundle({
     source: path.join(root, 'ui'),
-    target: path.join(out, '_install-source/ui'),
+    target: path.join(out, '_install-source/ui.tgz'),
     // Unit-test fast path: populate the synthetic .next/ tree emit-ui-bundle
     // expects to copy from. Full real-Next.js path runs when skipUiRunner is absent.
     runner: opts.skipUiRunner ? async () => {

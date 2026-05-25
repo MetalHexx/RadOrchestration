@@ -22,7 +22,7 @@ Bundles `entryPoint` (default `${source}/src/bin/radorch.ts`) to a single ESM fi
 
 `opts: { source: string, target: string, runner?: () => Promise<void> }`
 
-Invokes `runner` (default: `npm run build-standalone` inside `source`) to produce a Next.js standalone build, then copies `source/.next/standalone`, `source/.next/static`, and `source/public` to `target`. Removes `source/.next/` after copying. Tests inject a no-op `runner` via `opts.runner` to skip the actual build.
+Invokes `runner` (default: `npm run build-standalone` inside `source`) to produce a Next.js standalone build, then packs `source/.next/standalone`, `source/.next/static`, and `source/public` into a single gzipped tarball written to `target` (a `.tgz` file path, not a directory). Removes `source/.next/` and the temporary staging dir after packing. Tests inject a no-op `runner` via `opts.runner` to skip the actual build. The tarball shape is load-bearing: both the satellite repo's `.gitignore` (strips `node_modules/` and `.next/`) and `npm pack` (hardcoded `node_modules/` strip) would erase the UI runtime from a loose tree, so we ship one opaque blob that installers extract at hydrate time. `portable: true` strips OS-specific metadata so the tarball hashes deterministically across Win/macOS/Linux builds.
 
 **`emitHookBundle(opts)` — `emit-hook-bundle.js`**
 

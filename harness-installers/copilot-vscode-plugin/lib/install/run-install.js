@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import * as tar from 'tar';
 import { userDataPaths } from './user-data-paths.js';
 import {
   loadRegistry, writeInstallJson, buildCopilotVscodePluginEntry,
@@ -133,11 +134,14 @@ export async function runInstall(opts) {
     const manifest = loadManifest(opts.pluginRoot, deliveringVersion);
     installManifestFiles(manifest, opts.pluginRoot, { radHome: opts.radHome });
 
-    // UI hydration: full directory wipe-and-copy from the staging dir.
-    const pluginUiDir = path.join(opts.pluginRoot, '_install-source/ui');
-    if (fs.existsSync(pluginUiDir)) {
+    // UI hydration: extract the gzipped tarball wholesale. The tarball
+    // shape (vs a loose tree) lets node_modules/ and .next/ survive the
+    // satellite `.gitignore` and `npm pack`'s hardcoded node_modules strip.
+    const pluginUiTarball = path.join(opts.pluginRoot, '_install-source/ui.tgz');
+    if (fs.existsSync(pluginUiTarball)) {
       fs.rmSync(paths.ui, { recursive: true, force: true });
-      fs.cpSync(pluginUiDir, paths.ui, { recursive: true });
+      fs.mkdirSync(paths.ui, { recursive: true });
+      await tar.x({ file: pluginUiTarball, cwd: paths.ui });
     }
 
     ij.harnesses[INSTALL_KEY] = buildCopilotVscodePluginEntry(deliveringVersion);
