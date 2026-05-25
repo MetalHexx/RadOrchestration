@@ -41,7 +41,7 @@ function makeFixtureRoot() {
   fs.mkdirSync(join(installerDir, 'manifests'), { recursive: true });
   fs.mkdirSync(join(installerDir, '.claude-plugin'), { recursive: true });
   fs.writeFileSync(join(installerDir, '.claude-plugin/plugin.json'), JSON.stringify({
-    name: 'rad-orc-vs',
+    name: 'rad-orc-vscode',
     version: '1.0.0-alpha.9',
     author: { name: 'metalhexx' },
     license: 'MIT',
@@ -105,7 +105,7 @@ test('expand-tokens substitutes destination tokens across agents+skills WITHOUT 
     const orch = fs.readFileSync(join(out, 'agents/orchestrator.agent.md'), 'utf8');
     assert.ok(orch.includes('${COPILOT_VSCODE_PLUGIN_ROOT}/skills/rad-x/SKILL.md'), '${SKILLS_ROOT} substituted to COPILOT_VSCODE_PLUGIN_ROOT (FR-29)');
     assert.ok(orch.includes('${COPILOT_VSCODE_PLUGIN_ROOT}/hooks/'), '${PLUGIN_ROOT} substituted (FR-29)');
-    assert.ok(!orch.includes('rad-orc-vs:'), 'NO agent-namespacing transform (FR-4, AD-10)');
+    assert.ok(!orch.includes('rad-orc-vscode:'), 'NO agent-namespacing transform (FR-4, AD-10)');
     // The (copilot) model identifier suffix survives token substitution unchanged (FR-3 — adapter-shipped).
     assert.ok(orch.includes('Claude Opus 4.7 (copilot)'), 'model identifier (copilot) suffix preserved verbatim (FR-3)');
     const skill = fs.readFileSync(join(out, 'skills/rad-x/SKILL.md'), 'utf8');

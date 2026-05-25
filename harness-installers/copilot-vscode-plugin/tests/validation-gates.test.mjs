@@ -8,7 +8,7 @@ import { validatePluginTree, REQUIRED_ARTIFACTS } from '../build-scripts/validat
 function makeValidOutput(version) {
   const root = fs.mkdtempSync(join(os.tmpdir(), 'val-vsc-'));
   fs.mkdirSync(join(root, '.claude-plugin'), { recursive: true });
-  fs.writeFileSync(join(root, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'rad-orc-vs', version }));
+  fs.writeFileSync(join(root, '.claude-plugin/plugin.json'), JSON.stringify({ name: 'rad-orc-vscode', version }));
   fs.writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-vscode-plugin', version }));
   fs.mkdirSync(join(root, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(root, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
