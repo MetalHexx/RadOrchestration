@@ -79,3 +79,16 @@ export function buildClaudePluginEntry(version) {
     last_writer_version: version,
   };
 }
+
+/**
+ * True when the entry carries every canonical field; false when missing or
+ * shape-drifted. Used by the NOOP path to decide whether install.json needs
+ * an upsert even though the file copy is skipped.
+ */
+export function isEntryCurrent(entry, version) {
+  if (!entry || typeof entry !== 'object') return false;
+  return entry.version === version
+    && entry.channel === 'claude-plugin'
+    && typeof entry.installed_at === 'string'
+    && entry.last_writer_version === version;
+}

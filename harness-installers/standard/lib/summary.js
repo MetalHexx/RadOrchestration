@@ -41,7 +41,7 @@ import { userDataPaths } from './install/user-data-paths.js';
  * }} opts
  * @returns {void}
  */
-export function renderPostInstallSummary({ harnessResults, configPath, driftHint, uiBuilt }) {
+export function renderPostInstallSummary({ harnessResults, configPath, driftHint, uiBuilt, uiStopped }) {
   const paths = userDataPaths();
 
   console.log('');
@@ -77,6 +77,9 @@ export function renderPostInstallSummary({ harnessResults, configPath, driftHint
   if (uiBuilt) {
     console.log('');
     console.log('  ' + THEME.success('✔') + ' ' + THEME.body('Dashboard UI built and ready'));
+    if (uiStopped) {
+      console.log('      ' + THEME.secondary('(The running dashboard UI was stopped to apply this update — restart it with `rad-orc ui-start`.)'));
+    }
   }
 
   console.log('');
