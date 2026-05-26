@@ -268,10 +268,20 @@ export interface PathContext {
 }
 
 // Pipeline Result (engine output contract)
+//
+// `context` carries the resolved action's composed `prompt` (catalog body +
+// optional pre/post slots) and `completion_event` (the action's resolved
+// completion event name, or null for terminal actions) on every successful
+// envelope where an action was resolved. Both fields are intentionally
+// optional so failure envelopes (which set `error`) naturally omit them
+// per FR-7.
 
 export interface PipelineResult {
   action: string | null;
-  context: Record<string, unknown>;
+  context: Record<string, unknown> & {
+    prompt?: string;
+    completion_event?: string | null;
+  };
   error?: { message: string; event: string; field?: string };
 }
 
