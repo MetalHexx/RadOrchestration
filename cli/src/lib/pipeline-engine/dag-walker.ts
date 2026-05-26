@@ -352,7 +352,31 @@ function walkNodes(
         return iterResult;
       }
 
-      // Step/gate in_progress → return null (waiting for completed event)
+      // Step in_progress → re-emit the step's action so `start` is a true
+      // resume entry point per pipeline-guide.md. Read-only; no state mutation.
+      // Mirrors the not-started step arm below and the `_started` event handler
+      // in engine.ts so cold-resume and `*_started` re-fire produce identical
+      // envelopes after context enrichment at the call site.
+      if (nodeDef.kind === 'step') {
+        const stepDef = nodeDef as StepNodeDef;
+        return {
+          action: stepDef.action,
+          context: stepDef.context ?? {},
+        };
+      }
+
+      // Gate in_progress → re-emit action_if_needed. Included for symmetry;
+      // no current state-machine path transitions a gate to in_progress
+      // (gates stay not_started until the *_approved event flips them to
+      // completed), so this branch is defensive dead code today.
+      if (nodeDef.kind === 'gate') {
+        const gateDef = nodeDef as GateNodeDef;
+        return {
+          action: gateDef.action_if_needed,
+          context: {},
+        };
+      }
+
       return null;
     }
 

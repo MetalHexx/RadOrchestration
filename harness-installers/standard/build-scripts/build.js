@@ -159,7 +159,7 @@ export async function runBuild(opts) {
   // (AD-9). Never duplicated under output/<harness>/.
   await step('emit-ui-bundle', () => emitUiBundle({
     source: path.join(root, 'ui'),
-    target: path.join(out, 'ui'),
+    target: path.join(out, 'ui.tgz'),
     runner: opts.skipUiRunner ? async () => { /* unit-test fast path */ } : undefined,
   }));
 

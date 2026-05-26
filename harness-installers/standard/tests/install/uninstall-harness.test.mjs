@@ -16,7 +16,7 @@ function buildBundle(bundleRoot, version) {
   fs.mkdirSync(bundleRoot, { recursive: true });
   fs.writeFileSync(
     path.join(bundleRoot, 'package.json'),
-    JSON.stringify({ name: 'rad-orchestration', version }, null, 2),
+    JSON.stringify({ name: 'rad-orc', version }, null, 2),
   );
 
   fs.mkdirSync(path.join(bundleRoot, 'agents'), { recursive: true });

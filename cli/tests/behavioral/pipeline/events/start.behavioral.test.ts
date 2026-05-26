@@ -1,14 +1,77 @@
 // cli/tests/behavioral/pipeline/events/start.behavioral.test.ts
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, afterEach, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { PLANNING_TEMPLATE_BODY } from './fixtures/planning-template.js';
+import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+
+// Seed mirroring the live PUBLISH-TEST-1 repro: task_executor is in_progress
+// after the orchestrator fired `execution_started` and lost session context
+// before the coder finished. `start` must re-emit `execute_task` so resume is
+// a true frontier query — per references/pipeline-guide.md lines 32 and 128.
+const taskExecutorInProgressState = {
+  $schema: 'orchestration-state-v5',
+  project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
+  config: {
+    gate_mode: 'task',
+    limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+  },
+  pipeline: { gate_mode: 'task', source_control: null, current_tier: 'execution', halt_reason: null },
+  graph: {
+    template_id: 'syn-exec',
+    status: 'in_progress',
+    current_node_path: 'phase_loop[0].task_loop[0].task_executor',
+    nodes: {
+      gate_mode_selection: { kind: 'gate', status: 'completed', gate_active: false },
+      phase_loop: {
+        kind: 'for_each_phase',
+        status: 'in_progress',
+        iterations: [
+          {
+            index: 0,
+            status: 'in_progress',
+            doc_path: null,
+            commit_hash: null,
+            corrective_tasks: [],
+            nodes: {
+              task_loop: {
+                kind: 'for_each_task',
+                status: 'in_progress',
+                iterations: [
+                  {
+                    index: 0,
+                    status: 'in_progress',
+                    doc_path: null,
+                    commit_hash: null,
+                    corrective_tasks: [],
+                    nodes: {
+                      task_gate:     { kind: 'gate', status: 'completed', gate_active: true },
+                      task_executor: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+                      code_review:   { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+                    },
+                  },
+                ],
+              },
+              phase_gate:   { kind: 'gate', status: 'not_started', gate_active: false },
+              phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+            },
+          },
+        ],
+      },
+      final_review:        { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+      final_approval_gate: { kind: 'gate', status: 'not_started', gate_active: false },
+    },
+  },
+};
 
 describe('start event (FR-3, DD-2)', () => {
   it('start event with a synthetic planning template writes state.json and returns action=spawn_requirements', async () => {
@@ -33,5 +96,59 @@ describe('start event (FR-3, DD-2)', () => {
       state: { graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'not_started' } } } },
       sideFiles: [],
     });
+  });
+
+  it('start event resumes an in-progress task_executor by re-emitting action=execute_task', async () => {
+    const w = buildWorld({
+      template: { id: 'syn-exec', body: EXECUTION_TEMPLATE_BODY },
+      state: structuredClone(taskExecutorInProgressState),
+      config: { default_template: 'syn-exec', human_gates: { after_planning: true, execution_mode: 'task', after_final_review: true } },
+      sideFiles: [],
+    });
+    cleanups.push(w.cleanup);
+    const env = await captureEnvelope(async () => {
+      await runCommand(pipelineSignalCommand, {
+        argv: ['--event', 'start', '--project-dir', w.projectDir, '--config', w.configPath],
+        env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: w.projectDir },
+        isTTY: false, stderr: process.stderr,
+      });
+    });
+    assertEnvelopeStateSideFiles(env, {
+      projectDir: w.projectDir,
+      envelope: { ok: true, data: { action: 'execute_task' } },
+      state: { graph: { template_id: 'syn-exec', status: 'in_progress' } },
+      sideFiles: [],
+    });
+    // start preserves the in_progress frontier — no node-status mutation.
+    // Targeted read because partialDeepEqual treats array members as strict
+    // toEqual, which would force restating every sibling field in the iteration.
+    const onDisk = JSON.parse(fs.readFileSync(path.join(w.projectDir, 'state.json'), 'utf8'));
+    const taskExecutor = onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0].nodes.task_executor;
+    expect(taskExecutor.status).toBe('in_progress');
+    expect(taskExecutor.retries).toBe(0);
+  });
+
+  it('start is idempotent on an in-progress frontier (two consecutive calls return the same envelope)', async () => {
+    const w = buildWorld({
+      template: { id: 'syn-exec', body: EXECUTION_TEMPLATE_BODY },
+      state: structuredClone(taskExecutorInProgressState),
+      config: { default_template: 'syn-exec', human_gates: { after_planning: true, execution_mode: 'task', after_final_review: true } },
+      sideFiles: [],
+    });
+    cleanups.push(w.cleanup);
+    const fire = async () => captureEnvelope(async () => {
+      await runCommand(pipelineSignalCommand, {
+        argv: ['--event', 'start', '--project-dir', w.projectDir, '--config', w.configPath],
+        env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: w.projectDir },
+        isTTY: false, stderr: process.stderr,
+      });
+    });
+    const first = await fire() as { data: { action: string; context: unknown } };
+    const second = await fire() as { data: { action: string; context: unknown } };
+    expect(second.data.action).toBe(first.data.action);
+    expect(second.data.context).toEqual(first.data.context);
+    // And the node state has not advanced past in_progress.
+    const onDisk = JSON.parse(fs.readFileSync(path.join(w.projectDir, 'state.json'), 'utf8'));
+    expect(onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0].nodes.task_executor.status).toBe('in_progress');
   });
 });

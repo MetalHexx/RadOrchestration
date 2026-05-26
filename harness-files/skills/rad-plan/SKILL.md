@@ -7,12 +7,23 @@ user-invocable: true
 ## Inputs:
 - `project_name`: $0 — The name of the new project to plan. (e.g., "DAG-PIPELINE-2")
 - `project_template`: $1 — The template to use for planning. (e.g., "extra-high" or a custom template name if one exists)
+- `project_context_prose`: $ARGUMENTS minus $0 and $1 — Optional free prose after the two positional args (e.g., `/rad-plan MYAPP extra-high — build a small CLI that does X`). Fallback project-goals input when no brainstorming doc exists.
 
 ## Initialize
 You are an orchestrator. You'll be using the `rad-orchestration` skill for this project. Read the skill and prepare to use it for running the planning pipeline.
 
 ## Workflow:
-I have project goals I'd like to develop into a full scale plan.  
+I have project goals I'd like to develop into a full scale plan.
+
+## Step 0: Resolve project_dir and project-goals input
+
+- Set `project_dir = ~/.radorch/projects/{project_name}/`. Create the directory if missing.
+- Resolve the planner's project-goals source by checking, in order:
+  1. `{project_dir}/{project_name}-BRAINSTORMING.md` exists → proceed silently. The planner will read it via the spawn prompt.
+  2. `project_context_prose` is non-empty → proceed silently. Step 4 will inline the prose into the first planner spawn.
+  3. Neither → halt and tell the user: "No brainstorming document at `{path}` and no project description provided. Either run `/rad-brainstorm {project_name}` first (Highly Recommended), or re-run as `/rad-plan {project_name} <template> — < project description>`.  Feel free to provide any additional context, goals or additional documents — the planner will treat it as authoritative input for the Requirements doc."
+
+**Do NOT ask the user "what do you want to build?" as a clarifying question.** Either the brainstorming doc or `project_context_prose` is the authoritative project-goals input. If neither is present, halt — do not improvise a goals interview and help the user how to plan with Rad Orc.
 
 ## Rule: workflow-required user choices
 
@@ -38,8 +49,7 @@ mandatory anchors in every tier.
 - If `project_template` was passed as an argument:
   - If it matches one of the shipped tier names (`extra-high`, `high`,
     `medium`, `low`) or is the name of a user-authored custom template
-    present in the `rad-orchestration` skill `/templates` directory, use
-    it.
+    present in the `~/.radorch/templates/` directory, use it.
   - Otherwise respond with an error message indicating the template was
     not found.
 - If no `project_template` was passed, use the `askQuestions` /
@@ -50,10 +60,10 @@ mandatory anchors in every tier.
 
   | Option | Copy (two sentences max) |
   |---|---|
-  | `extra-high` **(Recommended)** | Per-task code review + phase review + final review. Maximum defense in depth — for production-critical, regulated, or untrusted-contributor work. |
-  | `high` | Per-task code review + final review (no phase review). Per-task feedback matters; phase-level audit is redundant given task-level coverage. |
-  | `medium` | Phase review + final review (no per-task review). Trusted team or well-understood scope; keeps phase-level cross-task audit. |
-  | `low` | Final review only. Quick exploration, prototyping, hot fixes — final review still gates merge. |
+  | `extra-high` | Per-task code review + phase review + final review. Maximum defense in depth — for production-critical, regulated, or untrusted-contributor work. |
+  | `high` | Per-task code review + final review (no phase review). |
+  | `medium` | Phase review + final review (no per-task review). Good balance of oversight and efficiency. |
+  | `low` | Final review only. Fast and efficient token usage. Good for small projects or quick iterations. |
 
   The question's framing prose: "Which review-intensity tier should this
   project run? Tier names map to defensive review depth; cost rises with
@@ -115,19 +125,28 @@ The planner always receives an explicit sizing signal — no deferral option.
 
 ## Step 3: Starting Message
 - Produce a nicely formatted and mildly enthusiastic message confirming the project name, template choice, and task size preference.
-- List planning steps by reading the template YAML: include only `kind: step` nodes that appear before the first `request_plan_approval` gate. Everything after that gate is execution, not planning.
+- Tell the user we'll first have a planning agent create formal requirements followed by an execution plan and plan audit.
 
-## Step 4: Read Project Template
-- Start the planning pipeline and call needed CLI parameters to start the planning process, passing the chosen template as an argument (e.g., `--template <project_template>`).
-- The pipeline planner agent's spawn prompt always carries an explicit
-  sizing signal. Append one of the following as a plain prose instruction
-  in the planner agent's spawn prompt:
-  > "Task size preference: {task_size_preference}. Size all tasks
-  > according to that tier per the sizing rubric in the master-plan
-  > workflow."
+## Step 4: Start the Planning Pipeline
 
-  When `task_size_preference` is a `Custom: …` string, the value flows
-  through verbatim — the planner treats the prose as authoritative.
+Signal the first event using the canonical CLI form from `pipeline-guide.md` §Runtime Entry:
+
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal \
+  --event start \
+  --project-dir <project_dir> \
+  --template <project_template>
+```
+
+Parse the JSON envelope and route on `data.action` per `rad-orchestration/references/action-event-reference.md`. The first action will be `spawn_requirements`; follow Action #1's two-step protocol and spawn the **planner**.
+
+**Sizing amendment — every planner spawn (`spawn_requirements` and `spawn_master_plan`).** Append verbatim:
+> "Task size preference: {task_size_preference}. Size all tasks according to that tier per the sizing rubric in the master-plan workflow."
+
+When `task_size_preference` is a `Custom: …` string, the prose flows through verbatim — the planner treats it as authoritative.
+
+**Project-goals amendment — first planner spawn only, when Step 0 resolved via `project_context_prose`** (no brainstorming doc on disk). Append verbatim:
+> "No brainstorming document exists for this project. The user supplied this project description directly: <project_context_prose>. Treat this prose as the authoritative project-goals input for the Requirements ledger."
 
 ## Step 5: Audit the plan
 - Dispatch a fresh subagent with the `rad-plan-audit` skill (full-audit

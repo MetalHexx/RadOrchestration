@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { runBuild } from '../../build-scripts/build.js';
 
 const HARNESSES = ['claude', 'copilot-vscode', 'copilot-cli'];
@@ -151,12 +152,16 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
         `${h}: per-harness manifest copied forward`);
     }
 
-    // UI bundle emitted ONCE at top-level output/ui/ — never per-harness (FR-23, AD-9).
-    assert.ok(fs.existsSync(path.join(out, 'ui/server.js')),
-      'output/ui/server.js exists at top level');
+    // UI bundle emitted ONCE at top-level output/ui.tgz — never per-harness (FR-23, AD-9).
+    // Tarball shape (not a loose tree) so node_modules/ and .next/ survive
+    // `npm pack`'s hardcoded node_modules strip; the installer extracts on hydrate.
+    assert.ok(fs.existsSync(path.join(out, 'ui.tgz')),
+      'output/ui.tgz exists at top level');
     for (const h of HARNESSES) {
       assert.ok(!fs.existsSync(path.join(out, h, 'ui')),
         `output/${h}/ui/ must NOT exist (AD-9)`);
+      assert.ok(!fs.existsSync(path.join(out, h, 'ui.tgz')),
+        `output/${h}/ui.tgz must NOT exist (AD-9)`);
     }
 
     // Token substitution per harness (FR-24, AD-6, AD-16).
@@ -204,5 +209,24 @@ test('runBuild produces output/<harness>/ per harness and shared output/ui/', as
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('standard installer publish package.json names rad-orc (AD-9)', async () => {
+  const pkgPath = path.resolve(import.meta.dirname, '../../package.json');
+  const pkg = JSON.parse(await fs.promises.readFile(pkgPath, 'utf8'));
+  assert.strictEqual(pkg.name, 'rad-orc');
+  assert.ok(pkg.bin && Object.prototype.hasOwnProperty.call(pkg.bin, 'rad-orc'));
+  assert.ok(!Object.prototype.hasOwnProperty.call(pkg.bin || {}, 'rad-orchestration'),
+    'legacy bin name removed (FR-6)');
+});
+
+test('npm pack --dry-run reports name rad-orc (FR-6)', () => {
+  const standardDir = path.resolve(import.meta.dirname, '../..');
+  const out = execSync('npm pack --dry-run --json', {
+    cwd: standardDir,
+    encoding: 'utf8',
+  });
+  const [meta] = JSON.parse(out);
+  assert.strictEqual(meta.name, 'rad-orc');
 });
 

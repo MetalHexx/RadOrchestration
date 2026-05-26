@@ -77,8 +77,10 @@ test('runBuild produces a full output/ tree with adapter content, runtime-config
     assert.ok(fs.existsSync(join(out, 'package.json')), 'synthesized package.json');
     assert.ok(fs.existsSync(join(out, 'agents/orchestrator.agent.md')), 'agent .agent.md filename per Copilot (FR-29 gate 2)');
     assert.ok(fs.existsSync(join(out, 'skills/rad-x/SKILL.md')));
-    assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'runtime-config copied verbatim');
-    assert.ok(fs.existsSync(join(out, 'templates/medium.yml')));
+    assert.ok(fs.existsSync(join(out, '_install-source/orchestration.yml')), 'runtime-config staged under _install-source/');
+    assert.ok(fs.existsSync(join(out, '_install-source/templates/medium.yml')));
+    assert.ok(!fs.existsSync(join(out, 'orchestration.yml')), 'no top-level orchestration.yml shadow');
+    assert.ok(!fs.existsSync(join(out, 'templates')), 'no top-level templates/ shadow');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle (FR-31)');
     assert.ok(!fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'no legacy pipeline bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')));

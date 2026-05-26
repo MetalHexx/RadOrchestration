@@ -1,11 +1,10 @@
 {
-  "name": "rad-orchestration",
+  "name": "rad-orc",
   "version": "1.0.0-alpha.9",
-  "private": true,
   "type": "module",
   "description": "Greenfield standard installer for the Rad orchestration system.",
   "bin": {
-    "rad-orchestration": "index.js"
+    "rad-orc": "index.js"
   },
   "files": [
     "index.js",
@@ -25,7 +24,8 @@
     "chalk": "^5.6.0",
     "@inquirer/prompts": "^8.3.0",
     "ora": "^9.3.0",
-    "figlet": "^1.11.0"
+    "figlet": "^1.11.0",
+    "tar": "^7.4.3"
   },
   "engines": { "node": ">=18" }
 }

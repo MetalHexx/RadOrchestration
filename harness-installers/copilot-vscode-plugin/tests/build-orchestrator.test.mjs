@@ -82,8 +82,10 @@ test('runBuild produces a full output/ tree with plugin.json under .claude-plugi
     assert.ok(fs.existsSync(join(out, 'package.json')), 'synthesized package.json (FR-32)');
     assert.ok(fs.existsSync(join(out, 'agents/orchestrator.agent.md')), 'agent .agent.md filename per VS Code (FR-26)');
     assert.ok(fs.existsSync(join(out, 'skills/rad-x/SKILL.md')));
-    assert.ok(fs.existsSync(join(out, 'orchestration.yml')), 'runtime-config copied verbatim');
-    assert.ok(fs.existsSync(join(out, 'templates/medium.yml')));
+    assert.ok(fs.existsSync(join(out, '_install-source/orchestration.yml')), 'runtime-config staged under _install-source/');
+    assert.ok(fs.existsSync(join(out, '_install-source/templates/medium.yml')));
+    assert.ok(!fs.existsSync(join(out, 'orchestration.yml')), 'no top-level orchestration.yml shadow');
+    assert.ok(!fs.existsSync(join(out, 'templates')), 'no top-level templates/ shadow');
     assert.ok(fs.existsSync(join(out, 'skills/rad-orchestration/scripts/radorch.mjs')), 'CLI bundle');
     assert.ok(!fs.existsSync(join(out, 'skills/rad-orchestration/scripts/pipeline.js')), 'no legacy pipeline bundle');
     assert.ok(fs.existsSync(join(out, 'hooks/hooks.json')));
@@ -135,8 +137,11 @@ test('synthesized output/package.json declares the published name @rad-orchestra
     const pkg = JSON.parse(fs.readFileSync(join(root, 'harness-installers/copilot-vscode-plugin/output/package.json'), 'utf8'));
     assert.strictEqual(pkg.name, '@rad-orchestration/copilot-vscode-plugin', 'published name (FR-33)');
     assert.strictEqual(pkg.version, '1.0.0-alpha.9', 'version stamped from plugin.json');
-    for (const f of ['.claude-plugin/', 'agents/', 'skills/', 'hooks/', 'manifests/', 'orchestration.yml', 'templates/', 'ui/']) {
+    for (const f of ['.claude-plugin/', 'agents/', 'skills/', 'hooks/', 'manifests/', '_install-source/']) {
       assert.ok(pkg.files.includes(f), `files[] includes ${f}`);
+    }
+    for (const f of ['orchestration.yml', 'templates/', 'ui/']) {
+      assert.ok(!pkg.files.includes(f), `files[] must not include ${f} (now under _install-source/)`);
     }
     assert.ok(!pkg.files.includes('plugin.json'), 'no root plugin.json in files (Claude format ships it under .claude-plugin/)');
   } finally {

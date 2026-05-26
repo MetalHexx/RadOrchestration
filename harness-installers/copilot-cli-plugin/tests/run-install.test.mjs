@@ -3,42 +3,54 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
+import * as tar from 'tar';
 import { runInstall } from '../lib/install/run-install.js';
 
-function makePluginRoot(version) {
+async function stageInstallSource(dir) {
+  fs.mkdirSync(join(dir, '_install-source/templates'), { recursive: true });
+  fs.writeFileSync(join(dir, '_install-source/orchestration.yml'), 'pipeline: {}\n');
+  fs.writeFileSync(join(dir, '_install-source/templates/medium.yml'), 'name: medium\n');
+  // UI ships as a gzipped tarball at _install-source/ui.tgz so node_modules/
+  // and .next/ survive the satellite `.gitignore` and `npm pack` strips.
+  const uiStage = join(dir, '_install-source/ui.stage');
+  fs.mkdirSync(uiStage, { recursive: true });
+  fs.writeFileSync(join(uiStage, 'server.js'), '// ui\n');
+  await tar.c(
+    { gzip: true, file: join(dir, '_install-source/ui.tgz'), cwd: uiStage, portable: true },
+    ['.'],
+  );
+  fs.rmSync(uiStage, { recursive: true, force: true });
+}
+
+async function makePluginRoot(version) {
   const dir = fs.mkdtempSync(join(os.tmpdir(), 'plugin-cli-'));
   fs.mkdirSync(join(dir, 'skills/rad-orchestration/scripts'), { recursive: true });
   fs.writeFileSync(join(dir, 'skills/rad-orchestration/scripts/radorch.mjs'), '#!/usr/bin/env node\n');
   fs.writeFileSync(join(dir, 'plugin.json'), JSON.stringify({ name: 'rad-orc', version }));
   fs.writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@rad-orchestration/copilot-cli-plugin', version }));
-  fs.writeFileSync(join(dir, 'orchestration.yml'), 'pipeline: {}\n');
-  fs.mkdirSync(join(dir, 'templates'), { recursive: true });
-  fs.writeFileSync(join(dir, 'templates/medium.yml'), 'name: medium\n');
-  fs.mkdirSync(join(dir, 'ui'), { recursive: true });
-  fs.writeFileSync(join(dir, 'ui/server.js'), '// ui\n');
+  await stageInstallSource(dir);
   fs.mkdirSync(join(dir, 'manifests'), { recursive: true });
   fs.writeFileSync(join(dir, `manifests/v${version}.json`), JSON.stringify({
     version, channel: 'copilot-cli-plugin', files: [
-      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
-      { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: 'templates/medium.yml', ownership: 'installer-owned' },
-      { destinationPath: '${RAD_HOME}/ui/server.js', sourcePath: 'ui/server.js', ownership: 'installer-owned' },
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: '_install-source/orchestration.yml', ownership: 'user-config' },
+      { destinationPath: '${RAD_HOME}/templates/medium.yml', sourcePath: '_install-source/templates/medium.yml', ownership: 'installer-owned' },
     ],
   }));
   return dir;
 }
 
-function makePluginRootWithVersionedTemplate(version) {
-  const dir = makePluginRoot(version);
+async function makePluginRootWithVersionedTemplate(version) {
+  const dir = await makePluginRoot(version);
   // Add an installer-owned template that is unique per version so the test can
   // observe remove-before-write semantics on upgrade.
-  fs.writeFileSync(join(dir, 'templates', `tier-${version}.yml`), `name: tier-${version}\n`);
+  fs.writeFileSync(join(dir, `_install-source/templates/tier-${version}.yml`), `name: tier-${version}\n`);
   // Rewrite the manifest to include the per-version template alongside the
   // standard files. Keep orchestration.yml as user-config so the assertion can
   // verify it survives the upgrade untouched.
   fs.writeFileSync(join(dir, `manifests/v${version}.json`), JSON.stringify({
     version, channel: 'copilot-cli-plugin', files: [
-      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: 'orchestration.yml', ownership: 'user-config' },
-      { destinationPath: `\${RAD_HOME}/templates/tier-${version}.yml`, sourcePath: `templates/tier-${version}.yml`, ownership: 'installer-owned' },
+      { destinationPath: '${RAD_HOME}/orchestration.yml', sourcePath: '_install-source/orchestration.yml', ownership: 'user-config' },
+      { destinationPath: `\${RAD_HOME}/templates/tier-${version}.yml`, sourcePath: `_install-source/templates/tier-${version}.yml`, ownership: 'installer-owned' },
     ],
   }));
   return dir;
@@ -46,7 +58,7 @@ function makePluginRootWithVersionedTemplate(version) {
 
 test('fresh install hydrates ~/.radorch/, stamps install.json under copilot-cli-plugin, logs fresh-install', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-'));
-  const pluginRoot = makePluginRoot('1.0.0');
+  const pluginRoot = await makePluginRoot('1.0.0');
   try {
     const result = await runInstall({ pluginRoot, radHome });
     assert.strictEqual(result.action, 'fresh-install');
@@ -67,7 +79,7 @@ test('fresh install hydrates ~/.radorch/, stamps install.json under copilot-cli-
 
 test('noop fast path: same-version re-run does not rewrite orchestration.yml (FR-11 preservation)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-noop-'));
-  const pluginRoot = makePluginRoot('1.0.0');
+  const pluginRoot = await makePluginRoot('1.0.0');
   try {
     await runInstall({ pluginRoot, radHome });
     const mtimeBefore = fs.statSync(join(radHome, 'orchestration.yml')).mtimeMs;
@@ -82,10 +94,11 @@ test('noop fast path: same-version re-run does not rewrite orchestration.yml (FR
 
 test('sentinel-missing forces fresh-install even on version match (self-heal)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-sentinel-'));
-  const pluginRoot = makePluginRoot('1.0.0');
+  const pluginRoot = await makePluginRoot('1.0.0');
   try {
     await runInstall({ pluginRoot, radHome });
     fs.rmSync(join(pluginRoot, 'skills/rad-orchestration/scripts/radorch.mjs'));
+    await stageInstallSource(pluginRoot); // real reinstall re-extracts the tarball
     const result = await runInstall({ pluginRoot, radHome });
     assert.strictEqual(result.action, 'fresh-install');
   } finally {
@@ -96,8 +109,8 @@ test('sentinel-missing forces fresh-install even on version match (self-heal)', 
 
 test('downgrade emits downgrade-noop and accepts the downgrade (FR-21)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-down-'));
-  const pluginNew = makePluginRoot('1.1.0');
-  const pluginOld = makePluginRoot('1.0.0');
+  const pluginNew = await makePluginRoot('1.1.0');
+  const pluginOld = await makePluginRoot('1.0.0');
   try {
     await runInstall({ pluginRoot: pluginNew, radHome });
     const result = await runInstall({ pluginRoot: pluginOld, radHome });
@@ -113,7 +126,7 @@ test('downgrade emits downgrade-noop and accepts the downgrade (FR-21)', async (
 
 test('bidirectional coexistence warning names both partners when copilot-cli and copilot-vscode are present (FR-19)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-coex-'));
-  const pluginRoot = makePluginRoot('1.0.0');
+  const pluginRoot = await makePluginRoot('1.0.0');
   try {
     fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
       harnesses: {
@@ -134,7 +147,7 @@ test('bidirectional coexistence warning names both partners when copilot-cli and
 
 test('foreign harness entries in install.json are preserved — only own entry is updated', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-foreign-'));
-  const pluginRoot = makePluginRoot('1.0.0');
+  const pluginRoot = await makePluginRoot('1.0.0');
   try {
     fs.mkdirSync(radHome, { recursive: true });
     fs.writeFileSync(join(radHome, 'install.json'), JSON.stringify({
@@ -157,7 +170,7 @@ test('foreign harness entries in install.json are preserved — only own entry i
 
 test('hydration drop-list — installer never writes config.yml, registry.yml, .harness, .gitignore, runtime/ (FR-12)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-drop-'));
-  const pluginRoot = makePluginRoot('1.0.0');
+  const pluginRoot = await makePluginRoot('1.0.0');
   try {
     await runInstall({ pluginRoot, radHome });
     for (const banned of ['config.yml', 'registry.yml', '.harness', '.gitignore']) {
@@ -172,8 +185,8 @@ test('hydration drop-list — installer never writes config.yml, registry.yml, .
 
 test('upgrade-complete: version bump removes prior installer-owned files, installs new ones, preserves user-config (FR-14, AD-8, FR-11)', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-up-'));
-  const pluginOld = makePluginRootWithVersionedTemplate('1.0.0');
-  const pluginNew = makePluginRootWithVersionedTemplate('1.1.0');
+  const pluginOld = await makePluginRootWithVersionedTemplate('1.0.0');
+  const pluginNew = await makePluginRootWithVersionedTemplate('1.1.0');
   try {
     await runInstall({ pluginRoot: pluginOld, radHome });
     assert.ok(fs.existsSync(join(radHome, 'templates/tier-1.0.0.yml')), 'old tier present after fresh install');

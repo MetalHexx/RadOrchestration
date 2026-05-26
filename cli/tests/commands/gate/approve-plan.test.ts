@@ -32,9 +32,12 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
 
   processEvent('start', dir, { template: 'medium' }, io, pathContext);
 
-  // Mark requirements + master_plan + explode steps as completed with doc paths
+  // Mark requirements + master_plan + explode steps as completed with doc paths.
+  // requirement_count is required by the requirements_completed frontmatter
+  // validator; omitting it makes the event silently fail validation and the
+  // mutation never lands, leaving requirements stuck in_progress.
   const reqDoc = path.join(dir, 'requirements.md');
-  fs.writeFileSync(reqDoc, '---\nproject: gate-test\ntype: requirements\n---\n# requirements\n');
+  fs.writeFileSync(reqDoc, '---\nproject: gate-test\ntype: requirements\nrequirement_count: 1\n---\n# requirements\n');
   const mpDoc = path.join(dir, 'master-plan.md');
   fs.writeFileSync(mpDoc, '---\nproject: gate-test\ntype: master_plan\ntotal_phases: 1\ntotal_tasks: 1\n---\n# master plan\n');
   // requirements completion

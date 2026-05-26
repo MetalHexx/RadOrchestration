@@ -23,8 +23,8 @@ A self-contained npm package (`@rad-orchestration/copilot-vscode-plugin-source`)
 ## Inputs this package reads but does not own
 
 - `harness-adapters/output/copilot-vscode/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the VS Code harness
-- `runtime-config/` — `orchestration.yml` and `templates/` copied verbatim
-- `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
+- `runtime-config/` — `orchestration.yml` and `templates/` staged under the build's `_install-source/`; bootstrap hydrates to `~/.radorch/` then removes the staging dir
+- `cli/` and `ui/` at the repo root — `cli/` bundled via `emitCliBundle` to its canonical agent-visible location; `ui/` packed via `emitUiBundle` as a gzipped tarball at `_install-source/ui.tgz` (bootstrap extracts it to `~/.radorch/ui/` then removes the staging dir)
 - `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 
 ## Deltas vs the copilot-cli-plugin
@@ -71,6 +71,42 @@ Step 4 works for the Claude and Copilot CLI siblings because their runtimes popu
 To close the gap, this installer adds an install-time bake step. `hooks/bootstrap.mjs` calls `bakeAbsolutePaths(pluginRoot)` from `lib/install/bake-paths.js` after `runInstall()` succeeds and before the `hooks.json` self-uninstall. It walks `skills/**/*.md` and substitutes the token literal for the real absolute install path (forward-slashed so the result is quote-safe in both bash and PowerShell on Windows). The bake scope is `skills/` only — `hooks/bootstrap.mjs`, `hooks/drift-check.mjs`, and `hooks/AGENTS.md` reference the same token in their own env-var logic and prose and must not be substituted. The bake is idempotent: post-bake there are no token literals left, so subsequent runs no-op at the scan. Plugin upgrades naturally re-trigger the bake because the new tarball re-introduces the token via fresh `SKILL.md` files and the new `hooks.json` re-introduces `UserPromptSubmit`, restoring the cycle.
 
 The Claude and Copilot CLI sibling installers don't need this and remain unchanged — they continue to rely on their runtimes' env-var injection. Encapsulation rule holds: this fix is local to `harness-installers/copilot-vscode-plugin/` (a new `lib/install/bake-paths.js` module + a wiring call in `hooks/bootstrap.mjs`); no imports or references cross between sibling installers.
+
+## Why the plugin's namespace is the satellite folder basename, not the plugin.json `name`
+
+Empirically verified May 2026 and undocumented in VS Code's agent-plugins reference: VS Code's agent-plugin loader derives the chat namespace (`/<namespace>:<skill-name>`) from the **basename of the catalog entry's `source.path`** — the folder the payload gets cloned into under `~/.vscode/agent-plugins/github.com/<org>/<repo>/<basename>/`. It does NOT read this installer's `.claude-plugin/plugin.json` `name` field, and it does NOT use the catalog entry's `plugins[].name` (that's only the install identifier passed to `/plugin install <name>@<marketplace>`).
+
+The gap is invisible in practice because every entry in `github/copilot-plugins` and `github/awesome-copilot` happens to keep `plugins[].name == basename(source.path)`. `rad-orc-marketplace` was the first observed catalog where the two diverged, and that's the only reason this surfaced.
+
+This is a VS-Code-only quirk. Claude Code reads namespace from `.claude-plugin/plugin.json` `name`, and Copilot CLI reads it from the top-level `plugin.json` `name` — both correctly resolve `/rad-orc:…` regardless of where the payload lives on disk.
+
+**Implication for renames.** Every one of these has to move together; missing any one of them leaves a stale path or a duplicate entry in the VS Code Agent Plugins panel:
+
+- Satellite payload folder (e.g., `rad-orc-marketplace/rad-orc-vscode/`)
+- Catalog entry `plugins[].name` and `source.path` in `.github/plugin/marketplace.json`
+- Canonical `.claude-plugin/plugin.json` `name` (this installer)
+- Hook error-prefix strings in `hooks/hooks.json`
+- Test fixtures across `tests/*.test.mjs` that build the synthetic plugin tree
+- The rad-release sync mapping at `.claude/skills/rad-release/scripts/sync-satellite-and-tag.mjs` — its `PLUGINS[].dest` field determines where the next release writes the payload in the satellite
+
+The canonical folder name `harness-installers/copilot-vscode-plugin/` is internal-only — build scripts and tests pin it, but it never reaches users. It intentionally diverges from the satellite folder name.
+
+## VS Code caches plugin metadata in multiple layers — purge order for a clean reinstall
+
+After a satellite rename or republish, expect duplicate entries in the Agent Plugins panel and/or `Plugin source '<old-path>' not found after cloning` errors at install time. Both symptoms mean stale catalog data is cached somewhere outside the cloned payload tree. The file-system cache alone isn't enough; the SQLite caches below have to be cleaned too.
+
+**VS Code must be fully closed first** — open VS Code holds file locks on the cloned repos and an exclusive lock on the SQLite DB.
+
+1. **Cloned marketplace tree** — `~/.vscode/agent-plugins/github.com/<org>/<repo>/` (delete recursively; VS Code re-clones on next open)
+2. **Installed-plugin tracking** — `~/.vscode/agent-plugins/installed.json` (remove the stale entry or reset to `{"version":1,"installed":[]}`)
+3. **VS Code global SQLite state** at `%APPDATA%/Code/User/globalStorage/state.vscdb`. The Copilot Chat extension caches catalog data under four keys outside the cloned tree, so a renamed catalog can survive a folder-cache wipe via these. Edit via Python's `sqlite3` module (the `sqlite3` CLI isn't on Windows by default):
+   - `chat.plugins.lastFetchedPlugins.v2` — flat list of all marketplace plugins with full source descriptors; filter out entries whose `marketplace` matches the renamed catalog
+   - `chat.plugins.marketplaces.githubCache.v1` — per-marketplace cached plugin list keyed by canonical ID; delete the entry for the renamed catalog so VS Code re-fetches
+   - `chat.plugins.marketplaces.index.v1` — marketplace-to-local-path index; same deletion
+   - `chat.plugins.lastUpdateCheck.v1` — fetch-throttle timestamp; delete to force a re-fetch on next open (otherwise VS Code will trust the cache)
+4. Optional but worth doing if Copilot CLI is also installed on the machine — `~/.copilot/plugin-data/<plugin>/` (Copilot CLI runtime data; VS Code cross-discovers it)
+
+After all four purges, reopen VS Code; the Agent Plugins panel re-fetches the marketplace from scratch and shows a single clean entry per plugin.
 
 ## Seams
 

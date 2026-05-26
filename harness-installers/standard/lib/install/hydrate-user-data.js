@@ -10,6 +10,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import * as tar from 'tar';
 import { userDataPaths } from './user-data-paths.js';
 
 // The four shipped tier template filenames — constant, never derived from readdir.
@@ -58,11 +59,14 @@ export async function hydrateUserData(opts) {
     );
   }
 
-  // 5. ui/ — atomic tmp-rename (FR-16, AD-9).
-  //    Copy → wipe prior → rename. If the copy fails the prior ui/ is untouched.
+  // 5. ui/ — atomic tmp-rename (FR-16, AD-9). UI ships as a gzipped tarball
+  //    (ui.tgz) so node_modules/ and .next/ survive `npm pack`'s hardcoded
+  //    node_modules strip. Extract to tmp → wipe prior → rename. If the
+  //    extract fails the prior ui/ is untouched.
   const tmp = paths.ui + '.tmp-' + process.pid;
-  fs.rmSync(tmp, { recursive: true, force: true });             // clean any leftover tmp
-  fs.cpSync(path.join(sharedRoot, 'ui'), tmp, { recursive: true }); // copy to tmp
-  fs.rmSync(paths.ui, { recursive: true, force: true });        // wipe prior ui/
-  fs.renameSync(tmp, paths.ui);                                 // atomic rename
+  fs.rmSync(tmp, { recursive: true, force: true });               // clean any leftover tmp
+  fs.mkdirSync(tmp, { recursive: true });
+  await tar.x({ file: path.join(sharedRoot, 'ui.tgz'), cwd: tmp }); // extract to tmp
+  fs.rmSync(paths.ui, { recursive: true, force: true });          // wipe prior ui/
+  fs.renameSync(tmp, paths.ui);                                   // atomic rename
 }

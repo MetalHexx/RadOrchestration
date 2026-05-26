@@ -17,7 +17,7 @@ The steps, in execution order:
 5. `copy-runtime-config` — per-harness copy of `runtime-config/orchestration.yml` and `runtime-config/templates/` into each `output/<harness>/`.
 6. `emit-cli-bundle` — per-harness emit of the bundled `radorch.mjs` CLI into `output/<harness>/skills/rad-orchestration/scripts/`; chmod 0o755 on POSIX (NFR-6).
 7. `prune-scripts-sources` — per-harness prune leaving only `.js` / `.mjs` under each `output/<harness>/skills/rad-orchestration/scripts/`. `.gitignore` is excluded because `npm-packlist` hardcodes that filename as ignored; deploying it would break install with ENOENT (manifest references a file the tarball never ships).
-8. `emit-ui-bundle` — single emission to `output/ui/` at the top level (AD-9 — not per-harness).
+8. `emit-ui-bundle` — single emission to `output/ui.tgz` (gzipped tarball) at the top level (AD-9 — not per-harness). Tarball shape (vs a loose tree) lets `node_modules/` and `.next/` survive `npm pack`'s hardcoded `node_modules/` strip; `hydrate-user-data` extracts it on install.
 9. `expand-tokens` — per-harness token substitution over `output/<harness>/agents/` and `skills/` with `agentNames: []` (AD-6 — no `rad-orc:` namespacing rewrite).
 10. `emit-manifest` — per-harness manifest write to `manifests/<harness>/v<version>.json`, then copy that file plus every prior `manifests/<harness>/v*.json` into `output/<harness>/manifests/` (AD-4).
 11. `emit-per-harness-package-json` — writes a minimal `{name, version}` stub into each `output/<harness>/package.json` so `installHarness` can resolve the delivering version per harness without reading the source `standard/package.json`.

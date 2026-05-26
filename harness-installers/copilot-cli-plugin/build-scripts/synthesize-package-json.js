@@ -14,7 +14,7 @@ export function synthesizePackageJson({ wrapperPath, pluginJsonPath, outPath }) 
     type: 'module',
     files: [
       'plugin.json', 'agents/', 'skills/', 'hooks/',
-      'manifests/', 'orchestration.yml', 'templates/', 'ui/',
+      'manifests/', '_install-source/',
     ],
     engines: wrapper.engines ?? { node: '>=20' },
   };
