@@ -92,6 +92,25 @@ export async function runBuild(opts) {
     fs.cpSync(path.join(greenfield, 'runtime-config/templates'), path.join(out, '_install-source/templates'), { recursive: true });
   });
 
+  // action-events staging (FR-1, FR-19, AD-3, AD-10). Source:
+  // runtime-config/action-events/ → output/_install-source/action-events/.
+  // The filter ships ONLY the canonical `custom/README.md` from `custom/` —
+  // never user-authored files inside the slot (FR-20).
+  await step('copy-action-events', () => {
+    const customSep = `${path.sep}custom${path.sep}`;
+    const customReadme = `${path.sep}custom${path.sep}README.md`;
+    const filter = (src) => {
+      if (!src.includes(customSep)) return true;
+      if (src.endsWith(`${path.sep}custom`)) return true;
+      return src.endsWith(customReadme);
+    };
+    fs.cpSync(
+      path.join(greenfield, 'runtime-config/action-events'),
+      path.join(out, '_install-source/action-events'),
+      { recursive: true, filter },
+    );
+  });
+
   // cli/ lives at the repo root for the duration of iteration 1 per parent
   // design Decision 10 — read from `root`, not from `greenfield`.
   await step('emit-cli-bundle', () => emitCliBundle({

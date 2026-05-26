@@ -6,7 +6,7 @@
   "description": "Source-side wrapper for the Claude marketplace plugin installer. Never published — npm pack is run against output/ after build.",
   "scripts": {
     "build": "node build-scripts/build.js",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs tests/**/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

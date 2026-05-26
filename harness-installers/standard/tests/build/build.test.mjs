@@ -56,6 +56,13 @@ function makeFixture() {
   for (const tier of ['extra-high', 'high', 'medium', 'low']) {
     fs.writeFileSync(path.join(rcTemplates, `${tier}.yml`), `name: ${tier}\n`);
   }
+  // runtime-config/action-events/ — shipped catalog + custom/ slot (FR-1, FR-19, FR-20).
+  const aeDir = path.join(rcDir, 'action-events');
+  fs.mkdirSync(path.join(aeDir, 'custom'), { recursive: true });
+  fs.writeFileSync(path.join(aeDir, 'README.md'), '# action-events\n');
+  fs.writeFileSync(path.join(aeDir, 'action.spawn_coder.md'), '# spawn_coder\n');
+  fs.writeFileSync(path.join(aeDir, 'event.task_completed.md'), '# task_completed\n');
+  fs.writeFileSync(path.join(aeDir, 'custom/README.md'), '# custom slot\n');
 
   // cli/ source — synthetic. esbuild needs a real entry to bundle, but the
   // unit test skips emitCliBundle by virtue of the helper being called and
