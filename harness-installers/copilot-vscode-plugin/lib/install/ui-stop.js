@@ -53,7 +53,9 @@ export async function detectAndStopUi(opts = {}) {
   let entry;
   try { entry = JSON.parse(fs.readFileSync(pidFile, 'utf8')); }
   catch { return { wasRunning: false, stopped: false, status: null, reason: null }; }
-  if (!entry || typeof entry.pid !== 'number') {
+  // Guard against pid: 0 / negative / non-integer. process.kill(0, sig) on POSIX
+  // signals the whole process group; treat invalid pids as not-running.
+  if (!entry || !Number.isInteger(entry.pid) || entry.pid <= 0) {
     return { wasRunning: false, stopped: false, status: null, reason: null };
   }
   if (!isAlive(entry.pid)) {

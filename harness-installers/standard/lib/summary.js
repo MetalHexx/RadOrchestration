@@ -38,6 +38,7 @@ import { userDataPaths } from './install/user-data-paths.js';
  *   configPath: string,
  *   driftHint?: { installedVersion: string, pluginVersion: string } | boolean | null,
  *   uiBuilt?: boolean,
+ *   uiStopped?: boolean,
  * }} opts
  * @returns {void}
  */
