@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
-import { resolveInstallRoot, installPaths } from '../../src/lib/paths.js';
+import { resolveInstallRoot, installPaths, userDataPaths } from '../../src/lib/paths.js';
 
 describe('resolveInstallRoot', () => {
   it('returns ~/.radorc', () => {
@@ -29,5 +29,18 @@ describe('installPaths', () => {
     expect(paths.cliLog.startsWith(winRoot)).toBe(true);
     expect(paths.cliLog).not.toContain('Users\\example.radorc');
     expect(paths.logsDir.startsWith(winRoot)).toBe(true);
+  });
+});
+
+describe('userDataPaths.actionEvents', () => {
+  it('resolves to ~/.radorc/action-events', () => {
+    const p = userDataPaths();
+    expect(p.actionEvents).toBe(path.join(os.homedir(), '.radorc', 'action-events'));
+  });
+  it('is a sibling of root, not nested under templates or runtime', () => {
+    const p = userDataPaths();
+    expect(p.actionEvents.startsWith(p.root + path.sep)).toBe(true);
+    expect(p.actionEvents).not.toContain(path.sep + 'templates' + path.sep);
+    expect(p.actionEvents).not.toContain(path.sep + 'runtime' + path.sep);
   });
 });
