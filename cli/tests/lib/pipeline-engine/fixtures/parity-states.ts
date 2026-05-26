@@ -367,9 +367,11 @@ export function initSourceControlForTests(io: MockIO, config: OrchestrationConfi
  */
 export function driveTaskWith(io: MockIO, phase: number, task: number): PipelineResult {
   const ctx = { phase, task };
-  processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
+  // Per FR-11, `_started` events are no longer accepted. The optimistic write
+  // in processEvent (FR-10) transitions step nodes to in_progress without
+  // needing an explicit signal, so the drive helper dispatches only the
+  // completion events.
   processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
-  processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   const reviewDoc = codeReviewDoc(phase, task);
   seedDoc(reviewDoc);
   let result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -380,7 +382,6 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
 
   // If commit conditional fires, drive commit events at task scope
   if (result.action === 'invoke_source_control_commit') {
-    processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
   }
 
@@ -399,7 +400,8 @@ export function driveTaskWith(io: MockIO, phase: number, task: number): Pipeline
  * Post-Iter 8: phase_review absorbed phase_report; only one doc emitted.
  */
 export function drivePhaseReviewApproval(io: MockIO, phase: number): PipelineResult {
-  processEvent('phase_review_started', PROJECT_DIR, { phase }, io, TEST_PATH_CONTEXT);
+  // Per FR-11, `phase_review_started` is gone; the optimistic write in
+  // processEvent (FR-10) handles the in_progress transition.
   seedDoc(phaseReviewDoc(phase));
   let result = processEvent('phase_review_completed', PROJECT_DIR, {
     phase, doc_path: phaseReviewDoc(phase), verdict: 'approved', exit_criteria_met: true,
@@ -445,12 +447,12 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
   seedExplosionStateFor(io, 1, 2);
   processEvent('start', PROJECT_DIR, {}, io, TEST_PATH_CONTEXT);
 
-  // Drive two tasks (post-Iter 7: no task_handoff events; handoff is pre-seeded)
+  // Drive two tasks (post-Iter 7: no task_handoff events; handoff is pre-seeded).
+  // Per FR-11, `_started` events were removed; optimistic in_progress writes
+  // (FR-10) cover the transition.
   for (const t of [1, 2]) {
     const ctx = { phase: 1, task: t };
-    processEvent('execution_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     processEvent('task_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
-    processEvent('code_review_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     const crDoc = path.join(PROJECT_DIR, 'tasks', `p1-t${t}-review.md`);
     seedDoc(crDoc);
     let result = processEvent('code_review_completed', PROJECT_DIR, {
@@ -459,7 +461,6 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
 
     // If commit conditional fires, drive commit events at task scope
     if (result.action === 'invoke_source_control_commit') {
-      processEvent('commit_started', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
       result = processEvent('commit_completed', PROJECT_DIR, ctx, io, TEST_PATH_CONTEXT);
     }
 
@@ -469,8 +470,9 @@ export function driveToReviewTier(config: OrchestrationConfig): MockIO {
     }
   }
 
-  // Phase review (post-Iter 8: phase_report absorbed into phase_review)
-  processEvent('phase_review_started', PROJECT_DIR, { phase: 1 }, io, TEST_PATH_CONTEXT);
+  // Phase review (post-Iter 8: phase_report absorbed into phase_review).
+  // Per FR-11, `phase_review_started` is gone; the optimistic write in
+  // processEvent (FR-10) handles the in_progress transition.
   const prvDoc = path.join(PROJECT_DIR, 'phases', 'phase-1-review.md');
   seedDoc(prvDoc);
   let result: PipelineResult = processEvent('phase_review_completed', PROJECT_DIR, {

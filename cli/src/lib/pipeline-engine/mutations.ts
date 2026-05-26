@@ -89,32 +89,13 @@ export function resolveNodeState(
 
 const mutationRegistry = new Map<string, MutationFn>();
 
-// ── Planning _started mutations ───────────────────────────────────────────────
-
-const planningStartedSteps: Array<[string, string]> = [
-  [EVENTS.REQUIREMENTS_STARTED, 'requirements'],
-  [EVENTS.MASTER_PLAN_STARTED, 'master_plan'],
-];
-
-for (const [eventName, nodeId] of planningStartedSteps) {
-  mutationRegistry.set(eventName, (state, _context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    const mutations_applied: string[] = [];
-
-    const node = resolveNodeState(cloned, nodeId, 'top');
-    node.status = 'in_progress';
-    mutations_applied.push(`set ${nodeId}.status = in_progress`);
-
-    if (eventName === EVENTS.REQUIREMENTS_STARTED) {
-      cloned.graph.status = 'in_progress';
-      mutations_applied.push('set graph.status = in_progress');
-    }
-
-    return { state: cloned, mutations_applied };
-  });
-}
-
 // ── Planning _completed mutations ─────────────────────────────────────────────
+//
+// Per FR-11, no `*_started` mutation handlers exist. Step-node transitions to
+// `in_progress` happen via the optimistic write in `processEvent` (FR-10) on
+// the same writeState as the next-action emit. The `*_completed` handlers
+// below are responsible for finishing the step and setting any per-step state
+// (e.g. `doc_path`).
 
 const planningCompletedSteps: Array<[string, string]> = [
   [EVENTS.REQUIREMENTS_COMPLETED, 'requirements'],
@@ -137,26 +118,6 @@ for (const [eventName, nodeId] of planningCompletedSteps) {
     return { state: cloned, mutations_applied };
   });
 }
-
-// ── explosion_started mutation ────────────────────────────────────────────────
-
-mutationRegistry.set(EVENTS.EXPLOSION_STARTED, (state, _context, _config, _template): MutationResult => {
-  const cloned = structuredClone(state);
-  const mutations_applied: string[] = [];
-
-  const node = resolveNodeState(cloned, 'explode_master_plan', 'top');
-  node.status = 'in_progress';
-  mutations_applied.push('set explode_master_plan.status = in_progress');
-
-  // Defensive: explicitly clear any stale doc_path on the explode node, matching the
-  // idempotency guard in explosion_completed, cap-exceeded, and invalid-dispatch branches.
-  // A state.json produced by an older version may carry a lingering value. Clearing to null
-  // guarantees the UI doesn't render a spurious "Doc" link WHILE the explode step is in progress.
-  (node as StepNodeState).doc_path = null;
-  mutations_applied.push('set explode_master_plan.doc_path = null');
-
-  return { state: cloned, mutations_applied };
-});
 
 // ── explosion_completed mutation (clears parse-failure recovery state) ────────
 
@@ -312,34 +273,6 @@ mutationRegistry.set(EVENTS.FINAL_APPROVED, (state, _context, _config, _template
   mutations_applied.push('set final_approval_gate.gate_active = true');
   return { state: cloned, mutations_applied };
 });
-
-// ── Phase execution _started mutations ───────────────────────────────────────
-
-const phaseExecStartedSteps: Array<[string, string]> = [
-  [EVENTS.PHASE_REVIEW_STARTED, 'phase_review'],
-];
-
-for (const [eventName, nodeId] of phaseExecStartedSteps) {
-  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    const mutations_applied: string[] = [];
-
-    const phase = context.phase ?? resolveActivePhaseIndex(cloned);
-    try {
-      const node = resolveNodeState(cloned, nodeId, 'phase', phase);
-      node.status = 'in_progress';
-      mutations_applied.push(`set ${nodeId}.status = in_progress`);
-    } catch (err) {
-      throw new Error(
-        `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
-        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
-        `Pass --phase <N> to specify the phase explicitly.`
-      );
-    }
-
-    return { state: cloned, mutations_applied };
-  });
-}
 
 // ── phase_review_completed (stores doc_path + verdict, routes on verdict) ────
 
@@ -529,76 +462,6 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
 
   return { state: cloned, mutations_applied };
 });
-
-// ── Task execution _started mutations ────────────────────────────────────────
-
-const taskStartedSteps: Array<[string, string]> = [
-  [EVENTS.EXECUTION_STARTED, 'task_executor'],
-  [EVENTS.CODE_REVIEW_STARTED, 'code_review'],
-];
-
-for (const [eventName, nodeId] of taskStartedSteps) {
-  mutationRegistry.set(eventName, (state, context, _config, _template): MutationResult => {
-    const cloned = structuredClone(state);
-    const mutations_applied: string[] = [];
-
-    let phase = context.phase;
-    if (phase === undefined) {
-      try {
-        phase = resolveActivePhaseIndex(cloned);
-      } catch {
-        throw new Error(
-          `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
-          `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
-          `Pass --phase <N> to specify the phase explicitly.`
-        );
-      }
-    }
-
-    let task = context.task;
-    if (task === undefined) {
-      try {
-        task = resolveActiveTaskIndex(cloned, phase);
-      } catch {
-        throw new Error(
-          `Cannot apply mutation for "${eventName}": no active task could be resolved from state for phase ${phase}.\n` +
-          `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-          `Pass --task <N> to specify the task explicitly.`
-        );
-      }
-    }
-
-    try {
-      const node = resolveNodeState(cloned, nodeId, 'task', phase, task);
-      node.status = 'in_progress';
-      mutations_applied.push(`set ${nodeId}.status = in_progress`);
-    } catch {
-      if (context.phase === undefined) {
-        const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
-        const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
-        if (hasInProgressPhase) {
-          throw new Error(
-            `Cannot apply mutation for "${eventName}": no active task could be resolved from state for phase ${phase}.\n` +
-            `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-            `Pass --task <N> to specify the task explicitly.`
-          );
-        }
-        throw new Error(
-          `Cannot apply mutation for "${eventName}": no active phase could be resolved from state.\n` +
-          `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
-          `Pass --phase <N> to specify the phase explicitly.`
-        );
-      }
-      throw new Error(
-        `Cannot apply mutation for "${eventName}": no active task could be resolved from state for phase ${phase}.\n` +
-        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-        `Pass --task <N> to specify the task explicitly.`
-      );
-    }
-
-    return { state: cloned, mutations_applied };
-  });
-}
 
 // ── task_completed ───────────────────────────────────────────────────────
 
@@ -946,17 +809,6 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
 
 // ── Final review mutations ────────────────────────────────────────────────────
 
-mutationRegistry.set(EVENTS.FINAL_REVIEW_STARTED, (state, _context, _config, _template): MutationResult => {
-  const cloned = structuredClone(state);
-  const mutations_applied: string[] = [];
-
-  const node = resolveNodeState(cloned, 'final_review', 'top');
-  node.status = 'in_progress';
-  mutations_applied.push('set final_review.status = in_progress');
-
-  return { state: cloned, mutations_applied };
-});
-
 mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);
   const mutations_applied: string[] = [];
@@ -994,67 +846,6 @@ mutationRegistry.set(EVENTS.FINAL_REVIEW_COMPLETED, (state, context, _config, _t
 });
 
 // ── Source control commit mutations ───────────────────────────────────────────
-
-mutationRegistry.set(EVENTS.COMMIT_STARTED, (state, context, _config, _template): MutationResult => {
-  const cloned = structuredClone(state);
-  const mutations_applied: string[] = [];
-
-  let phase = context.phase;
-  if (phase === undefined) {
-    try {
-      phase = resolveActivePhaseIndex(cloned);
-    } catch {
-      throw new Error(
-        `Cannot apply mutation for "commit_started": no active phase could be resolved from state.\n` +
-        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
-        `Pass --phase <N> to specify the phase explicitly.`
-      );
-    }
-  }
-
-  let task = context.task;
-  if (task === undefined) {
-    try {
-      task = resolveActiveTaskIndex(cloned, phase);
-    } catch {
-      throw new Error(
-        `Cannot apply mutation for "commit_started": no active task could be resolved from state for phase ${phase}.\n` +
-        `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-        `Pass --task <N> to specify the task explicitly.`
-      );
-    }
-  }
-
-  try {
-    const node = resolveNodeState(cloned, 'commit', 'task', phase, task);
-    node.status = 'in_progress';
-    mutations_applied.push('set commit.status = in_progress');
-  } catch {
-    if (context.phase === undefined) {
-      const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
-      const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
-      if (hasInProgressPhase) {
-        throw new Error(
-          `Cannot apply mutation for "commit_started": no active task could be resolved from state for phase ${phase}.\n` +
-          `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-          `Pass --task <N> to specify the task explicitly.`
-        );
-      }
-      throw new Error(
-        `Cannot apply mutation for "commit_started": no active phase could be resolved from state.\n` +
-        `Either no phase is currently in_progress, or multiple phases are in_progress simultaneously.\n` +
-        `Pass --phase <N> to specify the phase explicitly.`
-      );
-    }
-    throw new Error(
-      `Cannot apply mutation for "commit_started": no active task could be resolved from state for phase ${phase}.\n` +
-      `Either no task is currently in_progress, or multiple tasks are in_progress simultaneously.\n` +
-      `Pass --task <N> to specify the task explicitly.`
-    );
-  }
-
-  return { state: cloned, mutations_applied };
-});
 
 mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _template): MutationResult => {
   const cloned = structuredClone(state);

@@ -33,30 +33,12 @@ const afterMasterPlanCompletedState = {
   },
 };
 
+// Per FR-11, `explosion_started` is no longer accepted as an event; step
+// transition to in_progress now happens via the optimistic write in
+// processEvent (FR-10). The behavioral arm for that signal was deleted with
+// the event identifier itself; the completed arm below carries the remaining
+// behavior coverage for the explode_master_plan step.
 describe('explosion events (FR-3, FR-7, DD-2, DD-4)', () => {
-  it('explosion_started marks explode_master_plan node in_progress and returns action=explode_master_plan', async () => {
-    const w = buildWorld({
-      template: { id: 'syn-planning', body: PLANNING_TEMPLATE_BODY },
-      state: afterMasterPlanCompletedState,
-      config: { default_template: 'syn-planning' },
-      sideFiles: [],
-    });
-    cleanups.push(w.cleanup);
-    const env = await captureEnvelope(async () => {
-      await runCommand(pipelineSignalCommand, {
-        argv: ['--event', 'explosion_started', '--project-dir', w.projectDir, '--config', w.configPath],
-        env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: w.projectDir },
-        isTTY: false, stderr: process.stderr,
-      });
-    });
-    assertEnvelopeStateSideFiles(env, {
-      projectDir: w.projectDir,
-      envelope: { ok: true, data: { action: 'explode_master_plan' } },
-      state: { graph: { nodes: { explode_master_plan: { status: 'in_progress' } } } },
-      sideFiles: [],
-    });
-  });
-
   it('explosion_completed marks explode_master_plan node completed and returns action=request_plan_approval', async () => {
     const stateWithExplosionInProgress = {
       ...afterMasterPlanCompletedState,

@@ -17,18 +17,24 @@ function buildEventIndex(nodes: NodeDef[], parentPath: string): EventIndex {
     const templatePath = parentPath === '' ? node.id : `${parentPath}.${node.id}`;
 
     if (node.kind === 'step') {
-      const startedEvent = node.events.started;
       const completedEvent = node.events.completed;
-
-      if (index.has(startedEvent)) {
-        throw new Error(`Duplicate event name in template: ${startedEvent}`);
-      }
       if (index.has(completedEvent)) {
         throw new Error(`Duplicate event name in template: ${completedEvent}`);
       }
-
-      index.set(startedEvent, { nodeDef: node, eventPhase: 'started', templatePath });
       index.set(completedEvent, { nodeDef: node, eventPhase: 'completed', templatePath });
+
+      // Per FR-11, no step's started-keyed event ends in `_started`. The
+      // `final_pr` step preserves a started-keyed `pr_requested` event for
+      // backwards compatibility with the historical signal name; index it
+      // with eventPhase `'completed'` so it falls through the walker
+      // identically to any other step event.
+      const startedEvent = node.events.started;
+      if (startedEvent !== undefined) {
+        if (index.has(startedEvent)) {
+          throw new Error(`Duplicate event name in template: ${startedEvent}`);
+        }
+        index.set(startedEvent, { nodeDef: node, eventPhase: 'completed', templatePath });
+      }
     } else if (node.kind === 'gate') {
       const approvedEvent = node.approved_event;
 

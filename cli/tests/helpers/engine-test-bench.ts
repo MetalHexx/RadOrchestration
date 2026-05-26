@@ -49,7 +49,7 @@ function templateBodyFor(firstAction: string): string {
     `    kind: step`,
     `    label: "${firstAction}"`,
     `    action: ${firstAction}`,
-    `    events: { started: ${firstAction}_started, completed: ${firstAction}_completed }`,
+    `    events: { completed: ${firstAction}_completed }`,
     `    context: { step: ${firstAction} }`,
     `    depends_on: []`,
   ].join('\n') + '\n';

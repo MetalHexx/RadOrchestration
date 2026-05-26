@@ -21,7 +21,6 @@ import type {
   NodeDef,
   NodeState,
   PathContext,
-  StepNodeDef,
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { validateState } from './validator.js';
@@ -466,21 +465,13 @@ export function processEvent(
     mutatedState.project.updated = new Date().toISOString();
     mutatedState.graph.current_node_path = resolveNodeStatePath(entry.templatePath, context);
 
+    // Per FR-11, all routed events now fall through to the walker; the
+    // former `entry.eventPhase === 'started'` short-circuit is gone. Step
+    // nodes get their `in_progress` transition from the optimistic write
+    // below (FR-10), so the walker's re-emit branch produces the same
+    // next-action envelope without a dedicated started-phase path.
     let nextAction;
-    if (entry.eventPhase === 'started') {
-      const stepNode = entry.nodeDef as StepNodeDef;
-      const rawContext = stepNode.context ?? {};
-      const enrichedCtx = enrichActionContext({
-        action: stepNode.action,
-        walkerContext: rawContext,
-        state: mutatedState,
-        config,
-        cliContext: context,
-      });
-      nextAction = { action: stepNode.action, context: enrichedCtx };
-      optimisticallyMarkStepInProgress(mutatedState, mutatedState.graph.current_node_path);
-      io.writeState(projectDir, mutatedState);
-    } else {
+    {
       const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);

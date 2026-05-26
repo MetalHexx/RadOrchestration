@@ -70,13 +70,15 @@ export const NEXT_ACTIONS = Object.freeze({
 } as const);
 
 // ── Events ────────────────────────────────────────────────────────────────────
+// Per FR-11, no `*_started` events are accepted by the engine. Step-node
+// transitions to `in_progress` happen via the optimistic write in `processEvent`
+// (FR-10) on the same writeState as the next-action emit. `pr_requested` is
+// the historical "started" event of `final_pr`; its identifier is preserved
+// because it does not match the `_started` suffix.
 export const EVENTS = Object.freeze({
   // ── Planning step events ──────────────────────────────────────────────
-  REQUIREMENTS_STARTED: 'requirements_started',
   REQUIREMENTS_COMPLETED: 'requirements_completed',
-  MASTER_PLAN_STARTED: 'master_plan_started',
   MASTER_PLAN_COMPLETED: 'master_plan_completed',
-  EXPLOSION_STARTED: 'explosion_started',
   EXPLOSION_COMPLETED: 'explosion_completed',
   EXPLOSION_FAILED: 'explosion_failed',
 
@@ -87,21 +89,16 @@ export const EVENTS = Object.freeze({
   FINAL_APPROVED: 'final_approved',
 
   // ── Task execution events ─────────────────────────────────────────────
-  EXECUTION_STARTED: 'execution_started',
   TASK_COMPLETED: 'task_completed',
-  CODE_REVIEW_STARTED: 'code_review_started',
   CODE_REVIEW_COMPLETED: 'code_review_completed',
 
   // ── Phase review events ───────────────────────────────────────────────
-  PHASE_REVIEW_STARTED: 'phase_review_started',
   PHASE_REVIEW_COMPLETED: 'phase_review_completed',
 
   // ── Final review events ───────────────────────────────────────────────
-  FINAL_REVIEW_STARTED: 'final_review_started',
   FINAL_REVIEW_COMPLETED: 'final_review_completed',
 
   // ── Source control events ─────────────────────────────────────────────
-  COMMIT_STARTED: 'commit_started',
   COMMIT_COMPLETED: 'commit_completed',
   PR_REQUESTED: 'pr_requested',
   PR_CREATED: 'pr_created',

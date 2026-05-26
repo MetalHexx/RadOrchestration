@@ -354,9 +354,9 @@ function walkNodes(
 
       // Step in_progress → re-emit the step's action so `start` is a true
       // resume entry point per pipeline-guide.md. Read-only; no state mutation.
-      // Mirrors the not-started step arm below and the `_started` event handler
-      // in engine.ts so cold-resume and `*_started` re-fire produce identical
-      // envelopes after context enrichment at the call site.
+      // Mirrors the not-started step arm below; the optimistic in_progress
+      // write in processEvent (FR-10) feeds this branch on every routed event,
+      // producing the same envelope shape across cold-resume and event re-fires.
       if (nodeDef.kind === 'step') {
         const stepDef = nodeDef as StepNodeDef;
         return {

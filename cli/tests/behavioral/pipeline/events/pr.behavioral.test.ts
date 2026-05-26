@@ -53,13 +53,13 @@ nodes:
             kind: step
             label: "Execute Task"
             action: execute_task
-            events: { started: execution_started, completed: task_completed }
+            events: { completed: task_completed }
             depends_on: [task_gate]
           - id: code_review
             kind: step
             label: "Code Review"
             action: spawn_code_reviewer
-            events: { started: code_review_started, completed: code_review_completed }
+            events: { completed: code_review_completed }
             doc_output_field: doc_path
             depends_on: [task_executor]
       - id: phase_gate
@@ -74,14 +74,14 @@ nodes:
         kind: step
         label: "Phase Review"
         action: spawn_phase_reviewer
-        events: { started: phase_review_started, completed: phase_review_completed }
+        events: { completed: phase_review_completed }
         doc_output_field: doc_path
         depends_on: [phase_gate]
   - id: final_review
     kind: step
     label: "Final Review"
     action: spawn_final_reviewer
-    events: { started: final_review_started, completed: final_review_completed }
+    events: { completed: final_review_completed }
     doc_output_field: doc_path
     depends_on: [phase_loop]
   - id: final_approval_gate

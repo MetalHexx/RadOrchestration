@@ -72,7 +72,7 @@ export function preRead(
     context = enrichedContext as Partial<EventContext>;
   }
 
-  if (entry.eventPhase === 'started' || entry.eventPhase === 'approved') {
+  if (entry.eventPhase === 'approved') {
     return { context };
   }
 
