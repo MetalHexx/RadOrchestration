@@ -6,7 +6,7 @@ description: "End-to-end test of the legacy rad-orchestration npm installer on a
 
 You are running a local end-to-end smoke of the `rad-orchestration` npm installer (the legacy install path). Follow each step precisely; verify at each checkpoint. This is the legacy-channel companion to `rad-test-plugin-release.prompt.md`.
 
-`~/.radorch/projects/` is sacred — never delete or mutate it during this flow.
+`~/.radorc/projects/` is sacred — never delete or mutate it during this flow.
 
 ---
 
@@ -88,9 +88,9 @@ Verify the in-skill CLI reports a version that matches the installer:
 - POSIX: `node $HOME/{harnessRoot}/skills/rad-orchestration/scripts/radorch.mjs --version`
 - Windows: `node %USERPROFILE%\{harnessRoot}\skills\rad-orchestration\scripts\radorch.mjs --version`
 
-Expected: prints a version string (e.g. `1.0.0-alpha.8`) that exactly matches `harnesses.{harness}.version` in `~/.radorch/install.json` (reported in Step 8). Any mismatch indicates the bundle and the manifest are out of sync.
+Expected: prints a version string (e.g. `1.0.0-alpha.8`) that exactly matches `harnesses.{harness}.version` in `~/.radorc/install.json` (reported in Step 8). Any mismatch indicates the bundle and the manifest are out of sync.
 
-Verify the UI landed: `ls ~/.radorch/ui/` shows the Next.js standalone bundle (server.js or .next/static).
+Verify the UI landed: `ls ~/.radorc/ui/` shows the Next.js standalone bundle (server.js or .next/static).
 
 ## Step 6 — Verify the sha256 manifest
 
@@ -118,7 +118,7 @@ The output must contain, in this order:
 - `/rad-plan` (produce requirements + master plan)
 - `/rad-execute` (run the pipeline through implementation)
 
-The output must NOT contain: `radorch.mjs`, `%USERPROFILE%`, `$HOME`, `~/.radorch/bin/`, or `setx PATH`.
+The output must NOT contain: `radorch.mjs`, `%USERPROFILE%`, `$HOME`, `~/.radorc/bin/`, or `setx PATH`.
 
 If the `claude` harness was installed, `/rad-ui-start` also appears as an optional dashboard step.
 
@@ -126,7 +126,7 @@ If the `claude` harness was installed, `/rad-ui-start` also appears as an option
 
 Report:
 - Harness tested
-- Versions: tarball version, `~/.radorch/install.json` `harnesses.{harness}.version`
+- Versions: tarball version, `~/.radorc/install.json` `harnesses.{harness}.version`
 - Pass/fail per check
 - Verbatim error output on any failure
 
@@ -138,4 +138,4 @@ Ask the user whether to keep or remove the local tarball. On yes-to-remove:
 cd {repoRoot}/installer && Remove-Item -Force {tarball}
 ```
 
-Do NOT delete `~/.radorch/projects/`.
+Do NOT delete `~/.radorc/projects/`.

@@ -130,7 +130,7 @@ test('fresh-install: install.json absent → action fresh-install, files copied,
     assert.strictEqual(result.code, 0);
     assert.strictEqual(result.deliveringVersion, '1.0.0');
 
-    const installJson = JSON.parse(fs.readFileSync(path.join(tmp, 'home/.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(tmp, 'home/.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses.claude.version, '1.0.0');
     assert.strictEqual(installJson.harnesses.claude.channel, 'standard');
 
@@ -162,9 +162,9 @@ test('upgrade-complete: install.json registers lower version → prior manifest 
     fs.writeFileSync(path.join(claudeRoot, 'skills/rad-orchestration/scripts/radorch.mjs'), '# old\n');
 
     const installedAt = '2024-01-01T00:00:00.000Z';
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           claude: {
@@ -185,7 +185,7 @@ test('upgrade-complete: install.json registers lower version → prior manifest 
     assert.strictEqual(result.deliveringVersion, '1.0.1');
     assert.strictEqual(result.installedVersion, '1.0.0');
 
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses.claude.version, '1.0.1');
     assert.strictEqual(installJson.harnesses.claude.last_writer_version, '1.0.1');
     assert.strictEqual(installJson.harnesses.claude.installed_at, installedAt, 'installed_at preserved on upgrade');
@@ -212,7 +212,7 @@ test('noop: install.json claims delivering version AND sentinel present → acti
     fs.mkdirSync(path.dirname(sentinel), { recursive: true });
     fs.writeFileSync(sentinel, '# existing\n');
 
-    const installJsonPath = path.join(home, '.radorch/install.json');
+    const installJsonPath = path.join(home, '.radorc/install.json');
     fs.mkdirSync(path.dirname(installJsonPath), { recursive: true });
     const original = {
       harnesses: {
@@ -258,9 +258,9 @@ test('sentinel-self-heal: install.json claims installed but sentinel missing →
 
     const home = path.join(tmp, 'home');
     // install.json says claude@1.0.0 installed but ~/.claude/ is empty (no sentinel).
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           claude: {
@@ -304,9 +304,9 @@ test('downgrade-refused: install.json registers higher version → non-zero code
     fs.mkdirSync(path.dirname(sentinel), { recursive: true });
     fs.writeFileSync(sentinel, '# newer\n');
 
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           claude: {
@@ -344,9 +344,9 @@ test('folder-mutex: install copilot-vscode while copilot-cli registered → part
     buildBundle(bundle, { version: '1.0.1' });
 
     const home = path.join(tmp, 'home');
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           'copilot-cli': {
@@ -365,7 +365,7 @@ test('folder-mutex: install copilot-vscode while copilot-cli registered → part
     assert.strictEqual(result.action, 'fresh-install', 'no prior copilot-vscode entry → fresh-install');
 
     // Partner removed.
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses['copilot-cli'], undefined, 'partner copilot-cli removed');
     assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.1');
 
@@ -388,9 +388,9 @@ test('cross-channel coexistence: install claude while claude-plugin registered �
     buildBundle(bundle, { version: '1.0.0' });
 
     const home = path.join(tmp, 'home');
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           'claude-plugin': {
@@ -413,7 +413,7 @@ test('cross-channel coexistence: install claude while claude-plugin registered �
     assert.match(stderr.text, /claude-plugin/);
 
     // claude-plugin entry untouched (they coexist).
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses['claude-plugin'].version, '1.0.0');
     assert.strictEqual(installJson.harnesses['claude'].version, '1.0.0');
 
@@ -436,9 +436,9 @@ test('plugin-coexist: install copilot-cli while copilot-cli-plugin registered �
     buildBundle(bundle, { version: '1.0.0' });
 
     const home = path.join(tmp, 'home');
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           'copilot-cli-plugin': {
@@ -458,7 +458,7 @@ test('plugin-coexist: install copilot-cli while copilot-cli-plugin registered �
     assert.strictEqual(result.code, 0);
     assert.match(stderr.text, /copilot-cli-plugin/, 'notice names the plugin partner');
 
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses['copilot-cli-plugin'].version, '1.0.0', 'plugin entry preserved');
     assert.strictEqual(installJson.harnesses['copilot-cli'].version, '1.0.0');
   } finally {
@@ -475,9 +475,9 @@ test('plugin-coexist: install copilot-vscode while copilot-vscode-plugin registe
     buildBundle(bundle, { version: '1.0.0' });
 
     const home = path.join(tmp, 'home');
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           'copilot-vscode-plugin': {
@@ -496,7 +496,7 @@ test('plugin-coexist: install copilot-vscode while copilot-vscode-plugin registe
     assert.strictEqual(result.action, 'fresh-install');
     assert.match(stderr.text, /copilot-vscode-plugin/);
 
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses['copilot-vscode-plugin'].version, '1.0.0', 'plugin entry preserved');
     assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.0');
   } finally {
@@ -513,9 +513,9 @@ test('plugin-coexist regression: install copilot-vscode while copilot-cli-plugin
     buildBundle(bundle, { version: '1.0.0' });
 
     const home = path.join(tmp, 'home');
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           'copilot-cli-plugin': {
@@ -534,7 +534,7 @@ test('plugin-coexist regression: install copilot-vscode while copilot-cli-plugin
     assert.strictEqual(result.action, 'fresh-install');
     assert.match(stderr.text, /copilot-cli-plugin/, 'cross-UI plugin partner surfaced in notice');
 
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.ok(installJson.harnesses['copilot-cli-plugin'], 'cross-UI plugin entry NOT evicted (regression guard)');
     assert.strictEqual(installJson.harnesses['copilot-cli-plugin'].version, '1.0.0');
     assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.0');
@@ -552,11 +552,11 @@ test('NFR-4 best-effort: stderr write throws during mutex/cross-channel emission
     buildBundle(bundle, { version: '1.0.1' });
 
     const home = path.join(tmp, 'home');
-    fs.mkdirSync(path.join(home, '.radorch'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
     // Seed BOTH a folder-mutex partner AND a cross-channel partner so both
     // emit paths fire and the throwing stderr is exercised.
     fs.writeFileSync(
-      path.join(home, '.radorch/install.json'),
+      path.join(home, '.radorc/install.json'),
       JSON.stringify({
         harnesses: {
           'copilot-cli': {
@@ -579,7 +579,7 @@ test('NFR-4 best-effort: stderr write throws during mutex/cross-channel emission
     assert.strictEqual(result.code, 0);
 
     // Registry was still updated (mutex resolved, partner removed, new entry written).
-    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorch/install.json'), 'utf8'));
+    const installJson = JSON.parse(fs.readFileSync(path.join(home, '.radorc/install.json'), 'utf8'));
     assert.strictEqual(installJson.harnesses['copilot-cli'], undefined);
     assert.strictEqual(installJson.harnesses['copilot-vscode'].version, '1.0.1');
   } finally {

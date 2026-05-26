@@ -71,7 +71,7 @@ export function detectCopilotVscodePlugin(opts?: {
 }
 
 /**
- * doctor reads ~/.radorch/install.json directly and emits one row per
+ * doctor reads ~/.radorc/install.json directly and emits one row per
  * install-key in the registry.
  */
 export interface HarnessInstallReport {
@@ -83,7 +83,7 @@ export interface HarnessInstallReport {
 
 export function scanUserLevelHarnesses(): HarnessInstallReport[] {
   const home = os.homedir();
-  const installJson = path.join(home, '.radorch', 'install.json');
+  const installJson = path.join(home, '.radorc', 'install.json');
   const reports: HarnessInstallReport[] = [];
 
   let registry: InstallJson | undefined;

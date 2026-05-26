@@ -39,7 +39,7 @@ async function makePluginRoot(version) {
   return dir;
 }
 
-test('fresh install hydrates ~/.radorch/, stamps install.json under copilot-vscode-plugin, logs fresh-install', async () => {
+test('fresh install hydrates ~/.radorc/, stamps install.json under copilot-vscode-plugin, logs fresh-install', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-'));
   const pluginRoot = await makePluginRoot('1.0.0');
   try {
@@ -47,7 +47,7 @@ test('fresh install hydrates ~/.radorch/, stamps install.json under copilot-vsco
     assert.strictEqual(result.action, 'fresh-install');
     assert.ok(fs.existsSync(join(radHome, 'orchestration.yml')));
     assert.ok(fs.existsSync(join(radHome, 'templates/medium.yml')));
-    assert.ok(fs.existsSync(join(radHome, 'ui/server.js')), 'UI hydrated to ~/.radorch/ui/');
+    assert.ok(fs.existsSync(join(radHome, 'ui/server.js')), 'UI hydrated to ~/.radorc/ui/');
     const ij = JSON.parse(fs.readFileSync(join(radHome, 'install.json'), 'utf8'));
     assert.strictEqual(ij.harnesses['copilot-vscode-plugin'].version, '1.0.0');
     assert.ok(!('state_schema_version' in ij));
@@ -146,7 +146,7 @@ test('hydration drop-list — installer never writes config.yml, registry.yml, .
   }
 });
 
-test('install never writes outside ~/.radorch/ — install-files dest-escape guard fires on malicious manifest entries', async () => {
+test('install never writes outside ~/.radorc/ — install-files dest-escape guard fires on malicious manifest entries', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-esc-'));
   const pluginRoot = await makePluginRoot('1.0.0');
   try {

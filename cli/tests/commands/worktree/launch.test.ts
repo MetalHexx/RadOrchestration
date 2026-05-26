@@ -11,7 +11,7 @@ import {
 } from '../../../src/commands/worktree/launch.js';
 import { runCommand } from '../../../src/framework/command.js';
 
-const addDir = path.join(os.homedir(), '.radorch', 'projects');
+const addDir = path.join(os.homedir(), '.radorc', 'projects');
 
 describe('validateLaunchFlags', () => {
   it('rejects --prompt with --agent vscode', () => {

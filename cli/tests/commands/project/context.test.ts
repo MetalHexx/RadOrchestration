@@ -26,7 +26,7 @@ describe('projectContext core', () => {
     expect(r.currentBranch).toBe('feature/x');
     expect(r.defaultBranch).toBe('main');
     expect(r.remoteUrl).toBe('https://github.com/org/repo');
-    expect(r.projectsBasePath).toBe(path.join(os.homedir(), '.radorch', 'projects'));
+    expect(r.projectsBasePath).toBe(path.join(os.homedir(), '.radorc', 'projects'));
     expect(r.projectDir).toBeNull();
     expect(r.sourceControlInitialized).toBeNull();
   });
@@ -39,7 +39,7 @@ describe('projectContext core', () => {
       'git remote get-url origin': 'https://github.com/org/repo.git\n',
     });
     const r = projectContext({ projectName: 'DOES-NOT-EXIST', exec });
-    expect(r.projectDir).toBe(path.join(os.homedir(), '.radorch', 'projects', 'DOES-NOT-EXIST'));
+    expect(r.projectDir).toBe(path.join(os.homedir(), '.radorc', 'projects', 'DOES-NOT-EXIST'));
     expect(r.sourceControlInitialized).toBe(false);
     expect(r.remoteUrl).toBe('https://github.com/org/repo');
   });

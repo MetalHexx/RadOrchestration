@@ -15,7 +15,7 @@ let tmpDir = '';
 
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-discover-test-'));
-  const projectsDir = path.join(dir, '.radorch', 'projects');
+  const projectsDir = path.join(dir, '.radorc', 'projects');
   await mkdir(projectsDir, { recursive: true });
 
   // (a) initialized-project: valid state.json with project.updated set

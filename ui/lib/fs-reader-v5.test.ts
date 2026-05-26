@@ -92,7 +92,7 @@ function makeV4State() {
 
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-v5-test-'));
-  const projectsDir = path.join(dir, '.radorch', 'projects');
+  const projectsDir = path.join(dir, '.radorc', 'projects');
   await mkdir(projectsDir, { recursive: true });
 
   // v5-project: valid v5 state.json (execution tier, in_progress graph)
@@ -162,7 +162,7 @@ async function run() {
       projects = await discoverProjects();
     });
 
-    const projectsDir = path.join(tmpDir, '.radorch', 'projects');
+    const projectsDir = path.join(tmpDir, '.radorc', 'projects');
 
     console.log('discoverProjects — v5 state support');
 

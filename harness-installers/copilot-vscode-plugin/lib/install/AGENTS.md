@@ -18,7 +18,7 @@ Flow:
 5. **Three-partner bidirectional coexistence**: emits a warning if any of `copilot-cli`, `copilot-vscode`, or `copilot-cli-plugin` is present alongside `copilot-vscode-plugin`, naming every partner in the message. The warning for `copilot-cli-plugin` includes the model-routing failure-mode prose: CLI-shaped model identifiers are not recognized by VS Code's resolver, and load-order ambiguity may let either plugin's agent files win at runtime.
 6. **Same-version fast path**: if prior version matches delivering version and sentinel exists and `!opts.force`, logs `noop` and returns.
 7. **Downgrade noop**: if `cmpSemver(deliveringVersion, installedVersionBefore) < 0` and `!opts.force`, logs `downgrade-noop` and returns.
-8. **Upgrade or fresh install**: reads the prior manifest from the new payload's bundled per-version catalog (`loadManifest(pluginRoot, priorVersion)`) — VS Code's flat `agentPlugins/` install path has no peer per-version directory from a prior install, so the manifest must come from the new payload; removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), extracts `${pluginRoot}/_install-source/ui.tgz` to `paths.ui` if present (the UI ships as a gzipped tarball so `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip), then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorch/` state (orchestration.yml, templates, ui) remains at the plugin install root. Writes updated `ij` via `writeInstallJson` and returns `action: 'upgrade-complete'` or `'fresh-install'`.
+8. **Upgrade or fresh install**: reads the prior manifest from the new payload's bundled per-version catalog (`loadManifest(pluginRoot, priorVersion)`) — VS Code's flat `agentPlugins/` install path has no peer per-version directory from a prior install, so the manifest must come from the new payload; removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), extracts `${pluginRoot}/_install-source/ui.tgz` to `paths.ui` if present (the UI ships as a gzipped tarball so `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip), then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorc/` state (orchestration.yml, templates, ui) remains at the plugin install root. Writes updated `ij` via `writeInstallJson` and returns `action: 'upgrade-complete'` or `'fresh-install'`.
 9. Logs every outcome (including errors) via `appendInstallLog`.
 
 Returns `{ action, deliveringVersion, installedVersionBefore }`.
@@ -55,9 +55,9 @@ Post-install fix-up that closes the VS Code agent-chat-shell gap. Walks `${plugi
 
 **`user-data-paths.js` — `userDataPaths(opts)`**
 
-Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorch')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`.
+Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorc')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`.
 
-Idempotency for the `UserPromptSubmit` bootstrap lives in `hooks.json` itself (self-uninstall pattern), not in a marker file under `~/.radorch/`. `bootstrap.mjs` removes any legacy marker file from the prior idempotency design on a best-effort basis.
+Idempotency for the `UserPromptSubmit` bootstrap lives in `hooks.json` itself (self-uninstall pattern), not in a marker file under `~/.radorc/`. `bootstrap.mjs` removes any legacy marker file from the prior idempotency design on a best-effort basis.
 
 ## Coding conventions
 
@@ -71,7 +71,7 @@ Idempotency for the `UserPromptSubmit` bootstrap lives in `hooks.json` itself (s
 ## Rules for making updates
 
 - The six `INSTALL_LOG_ACTIONS` values are a closed set. Adding a new action requires updating the `Set` in `install-log.js` and ensuring callers pass the new string.
-- `userDataPaths` is the single source of truth for all `~/.radorch/` sub-paths. Add new paths here rather than constructing them ad-hoc in callers.
+- `userDataPaths` is the single source of truth for all `~/.radorc/` sub-paths. Add new paths here rather than constructing them ad-hoc in callers.
 - All modules are imported by `bootstrap.mjs` and bundled by esbuild; they must stay ESM compatible (`"type": "module"` in the parent `package.json`). Do not introduce dynamic `require` calls.
 - Tests in `tests/` exercise this module; run them after any change here.
 - The manifest lookup always reads from the new payload's bundled catalog. Never attempt to read from a peer per-version directory — VS Code's flat `agentPlugins/` path has no such peer.
@@ -82,4 +82,4 @@ Idempotency for the `UserPromptSubmit` bootstrap lives in `hooks.json` itself (s
 
 ## Seam to userDataPaths
 
-`userDataPaths` is the single anchor for every `~/.radorch/` path. There is no `bootstrapMarker` entry — the `UserPromptSubmit` idempotency lives inside `hooks.json` itself (the bootstrap self-uninstalls its own entry on success).
+`userDataPaths` is the single anchor for every `~/.radorc/` path. There is no `bootstrapMarker` entry — the `UserPromptSubmit` idempotency lives inside `hooks.json` itself (the bootstrap self-uninstalls its own entry on success).

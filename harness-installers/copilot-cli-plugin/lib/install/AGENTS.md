@@ -18,7 +18,7 @@ Flow:
 5. Emits a coexistence warning if `ij.harnesses['copilot-cli']` **or** `ij.harnesses['copilot-vscode']` is present alongside `copilot-cli-plugin` (bidirectional, names every partner present in the warning message).
 6. **Same-version fast path**: if prior version matches delivering version and sentinel exists and `!opts.force`, logs `noop` and returns.
 7. **Downgrade noop**: if `cmpSemver(deliveringVersion, installedVersionBefore) < 0` and `!opts.force`, logs `downgrade-noop` and returns.
-8. **Upgrade or fresh install**: reads the prior manifest from the persisted snapshot at `paths.manifestSnapshot` when present (the new payload does not carry old-version manifest files), falling back to `loadManifest(pluginRoot, priorVersion)` for backward compatibility with installs that predate the snapshot; removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), extracts `${pluginRoot}/_install-source/ui.tgz` to `paths.ui` if present (the UI ships as a gzipped tarball so `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip), then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorch/` state (orchestration.yml, templates, ui) remains at the plugin install root. Persists the new manifest to `paths.manifestSnapshot`, writes updated `ij` via `writeInstallJson`, and returns `action: 'upgrade-complete'` or `'fresh-install'`.
+8. **Upgrade or fresh install**: reads the prior manifest from the persisted snapshot at `paths.manifestSnapshot` when present (the new payload does not carry old-version manifest files), falling back to `loadManifest(pluginRoot, priorVersion)` for backward compatibility with installs that predate the snapshot; removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), extracts `${pluginRoot}/_install-source/ui.tgz` to `paths.ui` if present (the UI ships as a gzipped tarball so `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip), then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorc/` state (orchestration.yml, templates, ui) remains at the plugin install root. Persists the new manifest to `paths.manifestSnapshot`, writes updated `ij` via `writeInstallJson`, and returns `action: 'upgrade-complete'` or `'fresh-install'`.
 9. Logs every outcome (including errors) via `appendInstallLog`.
 
 Returns `{ action, deliveringVersion, installedVersionBefore }`.
@@ -49,7 +49,7 @@ Reads `${pluginRoot}/manifests/v${version}.json`. Throws if absent. The manifest
 
 **`user-data-paths.js` — `userDataPaths(opts)`**
 
-Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorch')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`, `bootstrapMarker` (path to `~/.radorch/.copilot-cli-plugin-bootstrap.json`), `manifestSnapshot` (path to `~/.radorch/.copilot-cli-plugin-manifest.json`).
+Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorc')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`, `bootstrapMarker` (path to `~/.radorc/.copilot-cli-plugin-bootstrap.json`), `manifestSnapshot` (path to `~/.radorc/.copilot-cli-plugin-manifest.json`).
 
 ## Coding conventions
 
@@ -64,7 +64,7 @@ Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.ra
 
 - The six `INSTALL_LOG_ACTIONS` values are a closed set. Adding a new action requires updating the `Set` in `install-log.js` and ensuring callers pass the new string.
 - `migrateInstallJson` handles known legacy shapes. A new legacy shape needs a new branch; do not silently discard unknown shapes.
-- `userDataPaths` is the single source of truth for all `~/.radorch/` sub-paths. Add new paths here rather than constructing them ad-hoc in callers.
+- `userDataPaths` is the single source of truth for all `~/.radorc/` sub-paths. Add new paths here rather than constructing them ad-hoc in callers.
 - All modules are imported by `bootstrap.mjs` and bundled by esbuild; they must stay ESM compatible (`"type": "module"` in the parent `package.json`). Do not introduce dynamic `require` calls.
 - Tests in `tests/` exercise this module; run them after any change here.
 - The prior-manifest lookup prefers the persisted manifest snapshot at `paths.manifestSnapshot`; falls back to `loadManifest(pluginRoot, priorVersion)` only for backward compatibility. Never attempt to read from a peer per-version directory — Copilot CLI's flat install path has no such peer.

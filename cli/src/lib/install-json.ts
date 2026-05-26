@@ -104,10 +104,10 @@ export function detectChannelHeuristic(opts?: { home?: string }): InstallChannel
       // ignore filesystem errors and fall through
     }
   }
-  // The presence of ~/.radorch/ at all signals a legacy install — fresh systems
+  // The presence of ~/.radorc/ at all signals a legacy install — fresh systems
   // have neither, and we return 'unknown'.
   try {
-    if (fs.existsSync(path.join(home, '.radorch'))) return 'legacy-installer';
+    if (fs.existsSync(path.join(home, '.radorc'))) return 'legacy-installer';
   } catch {
     // ignore
   }

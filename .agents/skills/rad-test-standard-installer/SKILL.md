@@ -154,7 +154,7 @@ Expected: exit 0; banner renders; per-harness spinner resolves to a green check;
 
 Once the user reports the install is complete, verify the installed artifacts by reading three sources:
 
-1. **install.json version match**: Read `~/.radorch/install.json` and confirm that `harnesses.<harness>.version === {version}`.
+1. **install.json version match**: Read `~/.radorc/install.json` and confirm that `harnesses.<harness>.version === {version}`.
 
 2. **Sentinel file check**: Confirm that `~/.<harness-dir>/skills/rad-orchestration/scripts/radorch.mjs` exists (sentinel for installed pipeline).
 

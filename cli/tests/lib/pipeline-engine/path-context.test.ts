@@ -4,15 +4,15 @@ import path from 'node:path';
 import { resolvePathContext, resolveDiscoveredConfigPath } from '../../../src/lib/pipeline-engine/path-context.js';
 
 describe('path-context resolves from the bundle location', () => {
-  it('templatesDir resolves to ~/.radorch/templates/', () => {
+  it('templatesDir resolves to ~/.radorc/templates/', () => {
     const ctx = resolvePathContext();
-    expect(ctx.templatesDir).toBe(path.join(os.homedir(), '.radorch', 'templates'));
+    expect(ctx.templatesDir).toBe(path.join(os.homedir(), '.radorc', 'templates'));
   });
   it('PathContext carries scriptsDir and templatesDir and nothing else', () => {
     const ctx = resolvePathContext();
     expect(Object.keys(ctx).sort()).toEqual(['scriptsDir', 'templatesDir']);
   });
-  it('default discovered config path is ~/.radorch/orchestration.yml', () => {
-    expect(resolveDiscoveredConfigPath()).toBe(path.join(os.homedir(), '.radorch', 'orchestration.yml'));
+  it('default discovered config path is ~/.radorc/orchestration.yml', () => {
+    expect(resolveDiscoveredConfigPath()).toBe(path.join(os.homedir(), '.radorc', 'orchestration.yml'));
   });
 });

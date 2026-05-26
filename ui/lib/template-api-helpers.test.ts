@@ -58,20 +58,20 @@ const MINIMAL_CONFIG: OrchestrationConfig = {
 /* ------------------------------------------------------------------ */
 
 describe('resolveTemplateDir', () => {
-  it('returns ~/.radorch/templates regardless of workspaceRoot', () => {
+  it('returns ~/.radorc/templates regardless of workspaceRoot', () => {
     const result = resolveTemplateDir('/workspace', MINIMAL_CONFIG);
-    assert.equal(result, path.join(os.homedir(), '.radorch', 'templates'));
+    assert.equal(result, path.join(os.homedir(), '.radorc', 'templates'));
   });
 
   it('returns the same path for any config', () => {
     const result = resolveTemplateDir('/workspace', MINIMAL_CONFIG);
-    assert.equal(result, path.join(os.homedir(), '.radorch', 'templates'));
+    assert.equal(result, path.join(os.homedir(), '.radorc', 'templates'));
   });
 
   it('returns the same path regardless of workspaceRoot argument', () => {
     const result1 = resolveTemplateDir('/my/workspace', MINIMAL_CONFIG);
     const result2 = resolveTemplateDir('/other/path', MINIMAL_CONFIG);
-    const expected = path.join(os.homedir(), '.radorch', 'templates');
+    const expected = path.join(os.homedir(), '.radorc', 'templates');
     assert.equal(result1, expected);
     assert.equal(result2, expected);
   });

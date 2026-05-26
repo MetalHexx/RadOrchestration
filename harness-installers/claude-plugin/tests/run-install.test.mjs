@@ -41,7 +41,7 @@ async function makePluginRoot(version) {
   return dir;
 }
 
-test('fresh install hydrates ~/.radorch/, stamps install.json under claude-plugin, logs fresh-install', async () => {
+test('fresh install hydrates ~/.radorc/, stamps install.json under claude-plugin, logs fresh-install', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-'));
   const pluginRoot = await makePluginRoot('1.0.0');
   try {
@@ -145,7 +145,7 @@ test('--force bypasses the same-version noop short-circuit', async () => {
   }
 });
 
-test('fresh install copies ui/ tree to ~/.radorch/ui/', async () => {
+test('fresh install copies ui/ tree to ~/.radorc/ui/', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-ui-'));
   const pluginRoot = await makePluginRoot('1.0.0');
   try {
@@ -231,7 +231,7 @@ test('hydration scope — no config.yml / registry.yml / .harness / .gitignore /
     for (const banned of ['config.yml', 'registry.yml', '.harness', '.gitignore']) {
       assert.ok(!fs.existsSync(join(radHome, banned)), `installer must not write ${banned}`);
     }
-    assert.ok(!fs.existsSync(join(radHome, 'runtime')), 'installer must not mkdir ~/.radorch/runtime/');
+    assert.ok(!fs.existsSync(join(radHome, 'runtime')), 'installer must not mkdir ~/.radorc/runtime/');
   } finally {
     fs.rmSync(radHome, { recursive: true, force: true });
     fs.rmSync(pluginRoot, { recursive: true, force: true });

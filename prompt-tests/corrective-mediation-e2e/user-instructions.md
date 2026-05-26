@@ -125,7 +125,7 @@ This check confirms the UI renders the new corrective-cycle fields AND doesn't r
 cd ui && npm run build && npm run dev
 ```
 
-Open `http://localhost:3000`. The UI reads projects from `~/.radorch/projects`. For this harness run, the output folder lives under `prompt-tests/corrective-mediation-e2e/output/` — symlink or move the run-specific project folder into the resolved projects directory so the UI can see it. Then verify:
+Open `http://localhost:3000`. The UI reads projects from `~/.radorc/projects`. For this harness run, the output folder lives under `prompt-tests/corrective-mediation-e2e/output/` — symlink or move the run-specific project folder into the resolved projects directory so the UI can see it. Then verify:
 
 1. **Document viewer** — open the review doc (`reports/BROKEN-COLORS-CODE-REVIEW-P01-T01-GET-COLORS.md`) in the UI. The new frontmatter fields should render: `orchestrator_mediated`, `effective_outcome`, `corrective_handoff_path`, `corrective_index`, `corrective_scope`, `budget_max`, `budget_remaining`. No fields silently dropped.
 

@@ -6,10 +6,10 @@ import type { PathContext } from './types.js';
 export function resolvePathContext(): PathContext {
   const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
   const templatesDir = process.env['RADORCH_TEMPLATES_DIR']
-    ?? path.join(os.homedir(), '.radorch', 'templates');
+    ?? path.join(os.homedir(), '.radorc', 'templates');
   return { scriptsDir, templatesDir };
 }
 
 export function resolveDiscoveredConfigPath(): string {
-  return path.join(os.homedir(), '.radorch', 'orchestration.yml');
+  return path.join(os.homedir(), '.radorc', 'orchestration.yml');
 }

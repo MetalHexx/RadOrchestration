@@ -13,8 +13,8 @@ This is a **goals document**, not a design document or implementation plan. Capt
 
 ## File Mechanics
 
-- **Path**: `~/.radorch/projects/{PROJECT-NAME}/{PROJECT-NAME}-BRAINSTORMING.md`
-- **Folder creation**: Create `~/.radorch/projects/{PROJECT-NAME}/` if it doesn't exist. Do NOT create subfolders (`phases/`, `tasks/`, `reports/`) — the Orchestrator handles that during project initialization.
+- **Path**: `~/.radorc/projects/{PROJECT-NAME}/{PROJECT-NAME}-BRAINSTORMING.md`
+- **Folder creation**: Create `~/.radorc/projects/{PROJECT-NAME}/` if it doesn't exist. Do NOT create subfolders (`phases/`, `tasks/`, `reports/`) — the Orchestrator handles that during project initialization.
 - **Template**: Use [../templates/BRAINSTORMING.md](../templates/BRAINSTORMING.md) as the structural skeleton.
 - **Project name**: Always `SCREAMING-CASE` (e.g., `MY-NEW-FEATURE`).
 

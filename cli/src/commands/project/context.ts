@@ -83,8 +83,8 @@ export function projectContext(opts: ProjectContextOptions = {}): ProjectContext
   const platformMap: Record<string, 'windows' | 'mac' | 'linux'> = { win32: 'windows', darwin: 'mac' };
   const platform = platformMap[process.platform] ?? 'linux';
 
-  const projectsBasePath = path.join(os.homedir(), '.radorch', 'projects');
-  const configPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+  const projectsBasePath = path.join(os.homedir(), '.radorc', 'projects');
+  const configPath = path.join(os.homedir(), '.radorc', 'orchestration.yml');
 
   let configAutoCommit = 'ask';
   let configAutoPr = 'ask';

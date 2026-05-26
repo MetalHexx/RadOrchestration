@@ -18,7 +18,7 @@ Restart your session. After restart, the slash-command surface is populated and 
 
 ## State location
 
-Project state lives at `~/.radorch/projects/` (state preserved on uninstall).
+Project state lives at `~/.radorc/projects/` (state preserved on uninstall).
 
 ## Slash command surface
 
@@ -30,7 +30,7 @@ Plugin-shipped skills are namespaced with the plugin's id. A few examples:
 
 ## Updates and uninstall
 
-Update with `/plugin update rad-orchestration`. Uninstall with `/plugin uninstall rad-orchestration`. Project state under `~/.radorch/projects/` is preserved across both — uninstall does not delete your work.
+Update with `/plugin update rad-orchestration`. Uninstall with `/plugin uninstall rad-orchestration`. Project state under `~/.radorc/projects/` is preserved across both — uninstall does not delete your work.
 
 ## Per-harness support
 

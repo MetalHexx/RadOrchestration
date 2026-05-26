@@ -8,11 +8,11 @@ Two hooks that ship inside the Copilot CLI plugin payload and manage install lif
 
 **`bootstrap.mjs` — `userPromptSubmitted` hook**
 
-Runs once on the user's first prompt after plugin installation. Calls `runInstall({ pluginRoot, radHome })` from `lib/install/run-install.js`. On success, writes a marker file at `~/.radorch/.copilot-cli-plugin-bootstrap.json` so the hook skips all subsequent runs (marker-file idempotency). On failure, writes an error marker (`status: "error"`) with the delivering version (per DD-14) so the next bootstrap invocation reads the marker, sees `status !== "success"`, and falls through to a retry (per DD-16). The marker is the last write in both success and failure paths, so its state always reflects the most recent outcome.
+Runs once on the user's first prompt after plugin installation. Calls `runInstall({ pluginRoot, radHome })` from `lib/install/run-install.js`. On success, writes a marker file at `~/.radorc/.copilot-cli-plugin-bootstrap.json` so the hook skips all subsequent runs (marker-file idempotency). On failure, writes an error marker (`status: "error"`) with the delivering version (per DD-14) so the next bootstrap invocation reads the marker, sees `status !== "success"`, and falls through to a retry (per DD-16). The marker is the last write in both success and failure paths, so its state always reflects the most recent outcome.
 
 Idempotency uses a marker file rather than rewriting `hooks.json` in place — Copilot CLI reads `hooks.json` from a disk cache at session start and does not re-read it mid-session, making mid-session `hooks.json` rewrites unsafe. The marker approach matches the platform's cache-and-read semantics.
 
-Path-resolution uses `import.meta.url` (no `COPILOT_CLI_PLUGIN_ROOT` env var injected by the platform — scripts self-resolve). `RAD_HOME` is optional (tests override it; production falls back to `~/.radorch`).
+Path-resolution uses `import.meta.url` (no `COPILOT_CLI_PLUGIN_ROOT` env var injected by the platform — scripts self-resolve). `RAD_HOME` is optional (tests override it; production falls back to `~/.radorc`).
 
 **`drift-check.mjs` — `sessionStart` hook**
 
@@ -39,7 +39,7 @@ Registers both hooks with Copilot CLI's hook system. Event names are camelCase p
 - If `bootstrap.mjs` gains new `lib/install/` imports, `emit-hook-bundle` in `build-scripts/build.js` handles them automatically via esbuild bundling — no build-script change needed.
 - Changes to `hooks.json` hook names or event types must match Copilot CLI's hook system contract. Event names are camelCase.
 - `drift-check.mjs` must remain dependency-free (Node built-ins only) so it can ship verbatim.
-- The marker file path (`~/.radorch/.copilot-cli-plugin-bootstrap.json`) is part of the install contract — do not rename it without updating `lib/install/run-install.js` and migration logic in `lib/install/install-json.js`.
+- The marker file path (`~/.radorc/.copilot-cli-plugin-bootstrap.json`) is part of the install contract — do not rename it without updating `lib/install/run-install.js` and migration logic in `lib/install/install-json.js`.
 
 ## Seam to lib/install/
 

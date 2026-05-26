@@ -21,11 +21,11 @@ This document is a thin index. Every design decision, scope boundary, and ration
 
 | # | Iteration | Scope | Status | Brainstorm |
 |---|-----------|-------|--------|------------|
-| 1 | `SCRIPT-FOLD-1` | rad-source-control (`git-commit`, `gh-pr`) + `cli/AGENTS.md` | Landed | [SCRIPT-FOLD-1-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-1/SCRIPT-FOLD-1-BRAINSTORMING.md) |
-| 2 | `SCRIPT-FOLD-2` | rad-execute + rad-execute-parallel (`gather-context`, `find-projects`, `create-worktree`, `inject-theme`, `launch-claude`) | Landed | [SCRIPT-FOLD-2-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-2/SCRIPT-FOLD-2-BRAINSTORMING.md) |
-| 3 | `SCRIPT-FOLD-3` | rad-orchestration (`explode-master-plan`, `list-repo-skills`) + rad-create-plans (`token-lint` deleted) | Landed | [SCRIPT-FOLD-3-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-3/SCRIPT-FOLD-3-BRAINSTORMING.md) |
-| 4 | `SCRIPT-FOLD-4` | Greenfield copy of the pipeline runtime into the CLI under a new `pipeline signal` subcommand. Old pipeline untouched; cross-skill prose sweep and build-pipeline cleanup deferred to iter 5. | Brainstormed | [SCRIPT-FOLD-4-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-4/SCRIPT-FOLD-4-BRAINSTORMING.md) |
-| 5 | `SCRIPT-FOLD-5` | Retirement of the old pipeline + cross-skill prose sweep (~35 surfaces) + build-pipeline ceremony retirement + `.agents/skills/pipeline-changes/` restructuring + distribution-model investigation. Closes the coexistence window iter 4 opens. | Landed | [SCRIPT-FOLD-5-BRAINSTORMING.md](~/.radorch/projects/SCRIPT-FOLD-5/SCRIPT-FOLD-5-BRAINSTORMING.md) |
+| 1 | `SCRIPT-FOLD-1` | rad-source-control (`git-commit`, `gh-pr`) + `cli/AGENTS.md` | Landed | [SCRIPT-FOLD-1-BRAINSTORMING.md](~/.radorc/projects/SCRIPT-FOLD-1/SCRIPT-FOLD-1-BRAINSTORMING.md) |
+| 2 | `SCRIPT-FOLD-2` | rad-execute + rad-execute-parallel (`gather-context`, `find-projects`, `create-worktree`, `inject-theme`, `launch-claude`) | Landed | [SCRIPT-FOLD-2-BRAINSTORMING.md](~/.radorc/projects/SCRIPT-FOLD-2/SCRIPT-FOLD-2-BRAINSTORMING.md) |
+| 3 | `SCRIPT-FOLD-3` | rad-orchestration (`explode-master-plan`, `list-repo-skills`) + rad-create-plans (`token-lint` deleted) | Landed | [SCRIPT-FOLD-3-BRAINSTORMING.md](~/.radorc/projects/SCRIPT-FOLD-3/SCRIPT-FOLD-3-BRAINSTORMING.md) |
+| 4 | `SCRIPT-FOLD-4` | Greenfield copy of the pipeline runtime into the CLI under a new `pipeline signal` subcommand. Old pipeline untouched; cross-skill prose sweep and build-pipeline cleanup deferred to iter 5. | Brainstormed | [SCRIPT-FOLD-4-BRAINSTORMING.md](~/.radorc/projects/SCRIPT-FOLD-4/SCRIPT-FOLD-4-BRAINSTORMING.md) |
+| 5 | `SCRIPT-FOLD-5` | Retirement of the old pipeline + cross-skill prose sweep (~35 surfaces) + build-pipeline ceremony retirement + `.agents/skills/pipeline-changes/` restructuring + distribution-model investigation. Closes the coexistence window iter 4 opens. | Landed | [SCRIPT-FOLD-5-BRAINSTORMING.md](~/.radorc/projects/SCRIPT-FOLD-5/SCRIPT-FOLD-5-BRAINSTORMING.md) |
 
 ---
 
@@ -62,7 +62,7 @@ Once every subcommand emits radorch's standard envelope, downstream consumers (n
 
 ## Related design lineage
 
-- [GLOBAL-WORKSPACES-01-CLI-SCAFFOLD](~/.radorch/projects/GLOBAL-WORKSPACES-01-CLI-SCAFFOLD/GLOBAL-WORKSPACES-01-CLI-SCAFFOLD-BRAINSTORMING.md) — established the `radorch` CLI architecture (layered, max-strict TS, commander, JSON envelope, hybrid noun-grouping). Reserved "fold the pipeline runtime into radorch" as future Wave 9; this series begins to redeem that reservation.
+- [GLOBAL-WORKSPACES-01-CLI-SCAFFOLD](~/.radorc/projects/GLOBAL-WORKSPACES-01-CLI-SCAFFOLD/GLOBAL-WORKSPACES-01-CLI-SCAFFOLD-BRAINSTORMING.md) — established the `radorch` CLI architecture (layered, max-strict TS, commander, JSON envelope, hybrid noun-grouping). Reserved "fold the pipeline runtime into radorch" as future Wave 9; this series begins to redeem that reservation.
 - [INSTALL-REFACTOR-DESIGN](./INSTALL-REFACTOR-DESIGN.md) — established the harness-files / harness-adapters / harness-installers layout and the `${PLUGIN_ROOT}` token resolution path the SKILL.md call rewrites depend on.
 
 ---
@@ -77,6 +77,6 @@ SCRIPT-FOLD-4 (pipeline runtime fold) ships in two PRs rather than one, departin
 
 ## Side project between iterations 4 and 5 — CLI-BEHAVIORAL-TESTS
 
-Between SCRIPT-FOLD-4 (pipeline runtime lands in the CLI) and SCRIPT-FOLD-5 (legacy pipeline implementation retired), a side project — [CLI-BEHAVIORAL-TESTS](~/.radorch/projects/CLI-BEHAVIORAL-TESTS/CLI-BEHAVIORAL-TESTS-BRAINSTORMING.md) — establishes a behavioral-test tier for CLI commands, with the new `pipeline` command as the first adopter. Tests assert on the externally-observable contract (envelope + state.json + side-files) against synthetic per-test fixtures, so the suite stays durable across both pipeline-internal refactors and production-template tuning.
+Between SCRIPT-FOLD-4 (pipeline runtime lands in the CLI) and SCRIPT-FOLD-5 (legacy pipeline implementation retired), a side project — [CLI-BEHAVIORAL-TESTS](~/.radorc/projects/CLI-BEHAVIORAL-TESTS/CLI-BEHAVIORAL-TESTS-BRAINSTORMING.md) — establishes a behavioral-test tier for CLI commands, with the new `pipeline` command as the first adopter. Tests assert on the externally-observable contract (envelope + state.json + side-files) against synthetic per-test fixtures, so the suite stays durable across both pipeline-internal refactors and production-template tuning.
 
 This is intentionally not numbered as a SCRIPT-FOLD iteration: it does not fold any script, does not touch SKILL.md call sites, and does not affect the coexistence window. It runs in parallel with iter-5's legacy cleanup and gives that cleanup behavioral cover before the legacy paths are deleted. The CLI-wide convention it ships is reusable by every command added in later folds.

@@ -32,14 +32,14 @@ The multi-repo design closes that gap. Repos become first-class registry entries
 
 | Term | Definition |
 |---|---|
-| **Install** | One per machine, rooted at `~/.radorch/`. Holds the runtime, config, registry, projects, and worktrees. |
+| **Install** | One per machine, rooted at `~/.radorc/`. Holds the runtime, config, registry, projects, and worktrees. |
 | **Repo** | A first-class registry entry. Has a name, local path, default branch, and remote URL. The single source of truth for repo identity. |
 | **Workspace** | A named, optional grouping of repos (e.g., `my-app-stack` = `[frontend, backend, infra]`). No defaults block, no primary. Exists only for project targeting, UI grouping, and validation. |
-| **Project** | A unit of orchestration work. Lives at `~/.radorch/projects/<NAME>/` regardless of which repo(s) it touches. Targets either a single repo or a workspace. |
-| **Worktree** | A git worktree of a registered repo, created transiently for one project's lifetime at `~/.radorch/worktrees/<PROJECT>/<REPO>/`. |
+| **Project** | A unit of orchestration work. Lives at `~/.radorc/projects/<NAME>/` regardless of which repo(s) it touches. Targets either a single repo or a workspace. |
+| **Worktree** | A git worktree of a registered repo, created transiently for one project's lifetime at `~/.radorc/worktrees/<PROJECT>/<REPO>/`. |
 | **Task** | A unit of code change inside a project, executed by the Coder agent from a self-contained handoff. Names the target repo(s) explicitly. |
 
-A project at `~/.radorch/projects/BUILD-FOO/` targets `workspace: my-app-stack`. Its tasks specify `repos: ["backend"]` (always a plural array of registry keys; multi-repo tasks carry more than one). The Coder gets the worktree path resolved from `~/.radorch/worktrees/BUILD-FOO/backend/`. The source-control agent commits/PRs against that worktree's git remote.
+A project at `~/.radorc/projects/BUILD-FOO/` targets `workspace: my-app-stack`. Its tasks specify `repos: ["backend"]` (always a plural array of registry keys; multi-repo tasks carry more than one). The Coder gets the worktree path resolved from `~/.radorc/worktrees/BUILD-FOO/backend/`. The source-control agent commits/PRs against that worktree's git remote.
 
 ---
 
@@ -259,6 +259,6 @@ These were parked during earlier brainstorming and remain unresolved:
 
 ## Status
 
-This direction is captured for the moment multi-repo work is picked up as its own iteration. Until then, the document is parked. The state.json schema is at v5; no v6 migration tooling exists yet. The registry / workspace files don't ship in `~/.radorch/` today — they're a forward design, not current behavior.
+This direction is captured for the moment multi-repo work is picked up as its own iteration. Until then, the document is parked. The state.json schema is at v5; no v6 migration tooling exists yet. The registry / workspace files don't ship in `~/.radorc/` today — they're a forward design, not current behavior.
 
 When this work is scheduled, spawn a project brainstorm derived from these lock-ins; do not assume the design is implementation-ready as-is.

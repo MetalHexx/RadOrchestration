@@ -72,7 +72,7 @@ test('orchestration.yml is copied on fresh install and preserved when already pr
     await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
-    const radorch = path.join(home, '.radorch');
+    const radorch = path.join(home, '.radorc');
 
     // First call — orchestration.yml absent.
     await hydrateUserData({ bundleRoot: bundle });
@@ -101,7 +101,7 @@ test('four shipped tier files overwrite on every install; user-added templates s
     await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
-    const radorch = path.join(home, '.radorch');
+    const radorch = path.join(home, '.radorc');
     const templatesDir = path.join(radorch, 'templates');
 
     // Seed stale versions of the four shipped files plus a user-added template.
@@ -136,7 +136,7 @@ test('UI bundle copies via tmp-rename: prior ui/ oldfile.js gone, new main.js pr
     await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
-    const radorch = path.join(home, '.radorch');
+    const radorch = path.join(home, '.radorc');
 
     // Seed a prior ui/ with a file that the new bundle does NOT contain.
     const uiDir = path.join(radorch, 'ui');
@@ -174,7 +174,7 @@ test('projects/ and logs/ dirs are created if absent (FR-2)', async () => {
     await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
-    const radorch = path.join(home, '.radorch');
+    const radorch = path.join(home, '.radorc');
 
     await hydrateUserData({ bundleRoot: bundle });
 
@@ -194,7 +194,7 @@ test('existing projects/ contents survive hydration (AD-13)', async () => {
     await buildBundle(bundle);
 
     const home = path.join(tmp, 'home');
-    const radorch = path.join(home, '.radorch');
+    const radorch = path.join(home, '.radorc');
 
     // Seed an existing project with a state.json.
     const projectDir = path.join(radorch, 'projects', 'MY-PROJECT');

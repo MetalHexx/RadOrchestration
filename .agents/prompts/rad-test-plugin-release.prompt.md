@@ -72,7 +72,7 @@ Print a block like the following to the user, substituting `<REPO_ROOT>` with th
 > /plugin install rad-orchestration@rad-orchestration-dogfood
 > ```
 >
-> Reload Claude Code if prompted. The SessionStart hook will auto-bootstrap `~/.radorch/` on next session start.
+> Reload Claude Code if prompted. The SessionStart hook will auto-bootstrap `~/.radorc/` on next session start.
 >
 > Come back here when you're done dogfooding — I'll offer cleanup.
 

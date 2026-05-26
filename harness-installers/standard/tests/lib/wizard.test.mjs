@@ -6,7 +6,7 @@
 // end-to-end via the smoke-test skill.
 //
 // All tests pass a synthetic `homeDir` (a tmpdir staging area) so the test
-// suite never touches the real ~/.claude or ~/.radorch — that would couple
+// suite never touches the real ~/.claude or ~/.radorc — that would couple
 // CI results to the developer's local machine.
 
 import { describe, it } from 'node:test';
@@ -54,7 +54,7 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
   it('headless uninstall: forceAction + cliOverrides returns action="uninstall" and bypasses confirmation', async () => {
     const home = mkHome('std-wiz-uninstall-headless-');
     try {
-      const radorchDir = path.join(home, '.radorch');
+      const radorchDir = path.join(home, '.radorc');
       fs.mkdirSync(radorchDir, { recursive: true });
       fs.writeFileSync(
         path.join(radorchDir, 'install.json'),
@@ -87,7 +87,7 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
   it('headless uninstall: throws NOT_INSTALLED when the override harness is not registered', async () => {
     const home = mkHome('std-wiz-uninstall-not-installed-');
     try {
-      const radorchDir = path.join(home, '.radorch');
+      const radorchDir = path.join(home, '.radorc');
       fs.mkdirSync(radorchDir, { recursive: true });
       fs.writeFileSync(
         path.join(radorchDir, 'install.json'),
@@ -111,13 +111,13 @@ describe('runWizard — headless (skipConfirmation) behavior', () => {
   });
 
   it('skipConfirmation bypasses the destructive-pick confirm even when the override would otherwise prompt', async () => {
-    // Stage a synthetic ~/.radorch/install.json with copilot-vscode already
+    // Stage a synthetic ~/.radorc/install.json with copilot-vscode already
     // registered. Picking copilot-cli would normally be destructive (mutex
     // eviction) and fire the confirm prompt — but skipConfirmation=true
     // short-circuits that.
     const home = mkHome('std-wiz-destructive-headless-');
     try {
-      const radorchDir = path.join(home, '.radorch');
+      const radorchDir = path.join(home, '.radorc');
       fs.mkdirSync(radorchDir, { recursive: true });
       fs.writeFileSync(
         path.join(radorchDir, 'install.json'),
@@ -300,7 +300,7 @@ describe('detectInstalledHarnesses', () => {
 
 describe('runWizard — uninstall plugin filtering', () => {
   function seedRegistry(home, harnesses) {
-    const radorchDir = path.join(home, '.radorch');
+    const radorchDir = path.join(home, '.radorc');
     fs.mkdirSync(radorchDir, { recursive: true });
     fs.writeFileSync(
       path.join(radorchDir, 'install.json'),

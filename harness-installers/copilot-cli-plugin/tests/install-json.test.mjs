@@ -33,7 +33,7 @@ test('migrateInstallJson lifts both legacy shapes into harnesses-keyed unversion
   assert.strictEqual(liftedKeyed.harnesses['copilot-cli-plugin'].version, '1.0.0');
 });
 
-test('installManifestFiles rejects a manifest entry whose expanded destinationPath escapes ~/.radorch/ via .. traversal (NFR-1, AD-2)', () => {
+test('installManifestFiles rejects a manifest entry whose expanded destinationPath escapes ~/.radorc/ via .. traversal (NFR-1, AD-2)', () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'esc-ij-'));
   const pluginRoot = fs.mkdtempSync(join(os.tmpdir(), 'esc-pr-'));
   try {
@@ -54,7 +54,7 @@ test('installManifestFiles rejects a manifest entry whose expanded destinationPa
   }
 });
 
-test('removeManifestFiles skips (does not rmSync) a manifest entry whose expanded destinationPath escapes ~/.radorch/ (NFR-1, AD-11)', () => {
+test('removeManifestFiles skips (does not rmSync) a manifest entry whose expanded destinationPath escapes ~/.radorc/ (NFR-1, AD-11)', () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'esc-rj-'));
   const outsideDir = fs.mkdtempSync(join(os.tmpdir(), 'outside-rj-'));
   const sentinel = join(outsideDir, 'must-survive.txt');
@@ -69,7 +69,7 @@ test('removeManifestFiles skips (does not rmSync) a manifest entry whose expande
       ],
     };
     removeManifestFiles(manifest, { radHome });
-    assert.ok(fs.existsSync(sentinel), 'sentinel outside ~/.radorch/ must survive');
+    assert.ok(fs.existsSync(sentinel), 'sentinel outside ~/.radorc/ must survive');
   } finally {
     fs.rmSync(radHome, { recursive: true, force: true });
     fs.rmSync(outsideDir, { recursive: true, force: true });

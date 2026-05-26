@@ -55,16 +55,16 @@ export async function runStart(opts: {
     );
   }
   // UI dir resolution: the bootstrap (SessionStart hook) copies ui/ from the
-  // plugin cache into ~/.radorch/ui/ via the manifest routing in route.ts.
-  // Always launch from ~/.radorch/ui so the UI process is independent of the
+  // plugin cache into ~/.radorc/ui/ via the manifest routing in route.ts.
+  // Always launch from ~/.radorc/ui so the UI process is independent of the
   // plugin cache location. RADORCH_UI_DIR is the explicit override for tests.
   const uiDir = opts.env['RADORCH_UI_DIR']
     ?? path.join(resolveInstallRoot(), 'ui');
   const serverJs = path.join(uiDir, 'server.js');
   const spawnFn = opts._spawn ?? defaultSpawn;
-  // In plugin mode, ~/.radorch is the canonical workspace and orch root in
-  // one. WORKSPACE_ROOT must point at ~/.radorch so the UI can read
-  // orchestration.yml at ~/.radorch/orchestration.yml (provisioned by the
+  // In plugin mode, ~/.radorc is the canonical workspace and orch root in
+  // one. WORKSPACE_ROOT must point at ~/.radorc so the UI can read
+  // orchestration.yml at ~/.radorc/orchestration.yml (provisioned by the
   // SessionStart hook); ORCH_ROOT="." means workspace IS the orch root.
   // The UI's ui/lib/path-resolver.ts then reads orchestration.yml's
   // base_path field (default "projects") to resolve the projects dir.

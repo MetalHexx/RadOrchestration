@@ -48,10 +48,10 @@ async function run() {
 
     // ── readConfig() tests ────────────────────────────────────────────────
 
-    console.log('\nreadConfig() — reads from ~/.radorch/orchestration.yml');
+    console.log('\nreadConfig() — reads from ~/.radorc/orchestration.yml');
 
-    await test('reads config from ~/.radorch/orchestration.yml', async () => {
-      const radorcDir = path.join(tmpDir, '.radorch');
+    await test('reads config from ~/.radorc/orchestration.yml', async () => {
+      const radorcDir = path.join(tmpDir, '.radorc');
       await mkdir(radorcDir, { recursive: true });
       await writeFile(path.join(radorcDir, 'orchestration.yml'), MINIMAL_CONFIG_YAML);
 

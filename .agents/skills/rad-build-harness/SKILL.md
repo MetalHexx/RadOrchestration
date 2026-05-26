@@ -9,7 +9,7 @@ description: 'End-to-end installer test for a contributor: builds a local tarbal
 
 Run the real installer end-to-end from local source. This skill selects a harness, builds the canonical adapter sources, packs the installer into a tarball, runs the wizard non-interactively via npx, bootstraps the plugin (with `--force` to defeat the version-equal short-circuit on repeat runs), and verifies the result.
 
-`~/.radorch/projects/` is never touched at any point in this workflow — existing user projects survive unchanged.
+`~/.radorc/projects/` is never touched at any point in this workflow — existing user projects survive unchanged.
 
 ## When to Use This Skill
 
@@ -67,7 +67,7 @@ npx {repoRoot}/installer/{tarball} --yes --harness {harness}
 ```
 
 > Expected: installer completes without interactive prompts and exits with code 0.
-> `~/.radorch/projects/` is not touched.
+> `~/.radorc/projects/` is not touched.
 
 ### 6. Bootstrap the plugin with --force
 

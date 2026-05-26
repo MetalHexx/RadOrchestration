@@ -32,7 +32,7 @@ const ORIGINAL_CLI_PATH = process.env.RADORCH_CLI_PATH;
 
 before(async () => {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'gate-route-test-'));
-  const projectDir = path.join(tmpDir, '.radorch', 'projects', 'PROJECT-X');
+  const projectDir = path.join(tmpDir, '.radorc', 'projects', 'PROJECT-X');
   await mkdir(projectDir, { recursive: true });
   await writeFile(path.join(projectDir, 'state.json'), MINIMAL_V5_STATE, 'utf-8');
 });

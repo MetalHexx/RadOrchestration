@@ -20,7 +20,7 @@ export function installManifestFiles(manifest, pluginRoot, opts = {}) {
     const dest = path.resolve(expand(entry.destinationPath, paths));
     const rel = path.relative(rootResolved, dest);
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
-      throw new Error(`install: destination escapes ~/.radorch/: ${dest}`);
+      throw new Error(`install: destination escapes ~/.radorc/: ${dest}`);
     }
     const src = path.join(pluginRoot, entry.sourcePath);
     fs.mkdirSync(path.dirname(dest), { recursive: true });

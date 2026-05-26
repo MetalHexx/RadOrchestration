@@ -14,7 +14,7 @@ Top-level container for every installer variant and the shared mechanical helper
 ## Inputs this layer consumes (but does not own)
 
 - `harness-adapters/output/claude/` — compiled agents and skills produced by the adapter engine
-- `runtime-config/` — `orchestration.yml` and `templates/` staged under each build's `_install-source/`; the bootstrap hook hydrates them to `~/.radorch/` on install and then removes the staging dir so no shadow copy remains at the plugin install root
+- `runtime-config/` — `orchestration.yml` and `templates/` staged under each build's `_install-source/`; the bootstrap hook hydrates them to `~/.radorc/` on install and then removes the staging dir so no shadow copy remains at the plugin install root
 - `cli/` and `ui/` at the repo root — bundled into the plugin output by `emitCliBundle` and `emitUiBundle`
 
 ## Coding conventions

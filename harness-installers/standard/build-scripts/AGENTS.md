@@ -39,6 +39,6 @@ The steps, in execution order:
 
 **Writes**: `output/` (gitignored) with per-harness bundles, shared runtime-config, CLI, UI, and manifests.
 
-**Consumer**: The published tarball produced by `npm pack` at the installer's package root. The installer unpacks this tarball and uses the manifests to deploy files to user-level (`~/.claude/`, `~/.copilot/`, `~/.radorch/`).
+**Consumer**: The published tarball produced by `npm pack` at the installer's package root. The installer unpacks this tarball and uses the manifests to deploy files to user-level (`~/.claude/`, `~/.copilot/`, `~/.radorc/`).
 
 **Never reads or writes**: Project state, user-level harness folders, or any non-canonical source directory.

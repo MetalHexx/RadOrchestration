@@ -25,7 +25,7 @@ import { validateState } from './validator.js';
 // Canonical user-data projects directory. Mirrors cli/src/lib/upgrade/user-data-paths.ts
 // (userDataPaths().projects); inlined here because the pipeline runtime in
 // skills/rad-orchestration/scripts/ has no shared TS surface with cli/.
-const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorch', 'projects');
+const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorc', 'projects');
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 

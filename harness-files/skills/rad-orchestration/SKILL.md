@@ -6,7 +6,7 @@ user-invocable: false
 
 # Orchestration
 
-Unified orchestration skill containing the pipeline runtime, validator, and role-specific reference documents. System configuration (`orchestration.yml`) and tier templates live at `~/.radorch/` and are documented below. All pipeline agents load this skill for system context.
+Unified orchestration skill containing the pipeline runtime, validator, and role-specific reference documents. System configuration (`orchestration.yml`) and tier templates live at `~/.radorc/` and are documented below. All pipeline agents load this skill for system context.
 
 ## Reference Documents
 
@@ -30,5 +30,5 @@ This skill bundles:
 
 Runtime user-data files (not shipped inside the skill folder):
 
-- **`~/.radorch/orchestration.yml`** — System configuration; provisioned to the user-data root at install time from `runtime-config/orchestration.yml`
-- **`~/.radorch/templates/`** — The four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); provisioned from `runtime-config/templates/` at install time
+- **`~/.radorc/orchestration.yml`** — System configuration; provisioned to the user-data root at install time from `runtime-config/orchestration.yml`
+- **`~/.radorc/templates/`** — The four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`); provisioned from `runtime-config/templates/` at install time

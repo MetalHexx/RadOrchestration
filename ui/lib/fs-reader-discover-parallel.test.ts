@@ -42,7 +42,7 @@ function makeV5State(projectName: string): string {
 
 async function setupIsolation(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-parallel-'));
-  const projectsDir = path.join(dir, '.radorch', 'projects');
+  const projectsDir = path.join(dir, '.radorc', 'projects');
   await mkdir(projectsDir, { recursive: true });
 
   // Interleave good + malformed entries to prove isolation.
@@ -62,7 +62,7 @@ async function setupIsolation(): Promise<string> {
 
 async function setupLargeFixture(count: number): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-parallel-big-'));
-  const projectsDir = path.join(dir, '.radorch', 'projects');
+  const projectsDir = path.join(dir, '.radorc', 'projects');
   await mkdir(projectsDir, { recursive: true });
   // Zero-pad to keep readdir's lexical order deterministic for assertions.
   const pad = String(count).length;
@@ -129,7 +129,7 @@ async function run() {
     await test('result order matches readdir directory-entry order', async () => {
       // readdir order is filesystem-defined; we compare against readdir's
       // own output to prove the Promise.all traversal is stable.
-      const projectsDir = path.join(tmpDir, '.radorch', 'projects');
+      const projectsDir = path.join(tmpDir, '.radorc', 'projects');
       const entries = await readdir(projectsDir, { withFileTypes: true });
       const expectedNames = entries
         .filter((e) => e.isDirectory())

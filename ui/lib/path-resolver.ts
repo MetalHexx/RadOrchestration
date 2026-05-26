@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 function radorchHome(): string {
-  return path.join(os.homedir(), '.radorch');
+  return path.join(os.homedir(), '.radorc');
 }
 export function getProjectsRoot(): string { return path.join(radorchHome(), 'projects'); }
 export function getTemplatesRoot(): string { return path.join(radorchHome(), 'templates'); }

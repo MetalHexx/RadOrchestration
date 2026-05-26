@@ -18,10 +18,10 @@ afterEach(async () => {
   await fs.rm(home, { recursive: true, force: true });
 });
 
-// resolveInstallRoot() = path.join(home, '.radorch')
-// installPaths(root).uiPidFile = path.join(home, '.radorch', 'runtime', 'ui.pid')
-function pidFilePath(): string { return path.join(home, '.radorch', 'runtime', 'ui.pid'); }
-function runtimeDir(): string { return path.join(home, '.radorch', 'runtime'); }
+// resolveInstallRoot() = path.join(home, '.radorc')
+// installPaths(root).uiPidFile = path.join(home, '.radorc', 'runtime', 'ui.pid')
+function pidFilePath(): string { return path.join(home, '.radorc', 'runtime', 'ui.pid'); }
+function runtimeDir(): string { return path.join(home, '.radorc', 'runtime'); }
 
 describe('pid-file', () => {
   it('writes and reads {pid, port, started_at}', async () => {
@@ -133,12 +133,12 @@ describe('ui start (with mocked spawn)', () => {
     const pidFile = await readPidFile(pidFilePath());
     expect(pidFile?.pid).toBe(4242);
     expect(pidFile?.port).toBe(3000);
-    // verify env-bridge: in plugin mode ~/.radorch IS the canonical workspace
+    // verify env-bridge: in plugin mode ~/.radorc IS the canonical workspace
     // and orch root in one, so WORKSPACE_ROOT=root, ORCH_ROOT=".". The UI's
     // path-resolver then reads orchestration.yml at <root>/skills/...
     const spawnCall = fakeSpawn.mock.calls[0];
     const spawnEnv = spawnCall[2].env;
-    expect(spawnEnv.WORKSPACE_ROOT).toBe(path.join(home, '.radorch'));
+    expect(spawnEnv.WORKSPACE_ROOT).toBe(path.join(home, '.radorc'));
     expect(spawnEnv.ORCH_ROOT).toBe('.');
     expect(spawnCall[2].detached).toBe(true);
     expect(spawnCall[2].windowsHide).toBe(true);

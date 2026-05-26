@@ -266,7 +266,7 @@ The docs are sparse here. What is documented:
 
 The docs are **silent on**: rename-swap vs in-place overwrite during update, persistent-file safety outside the plugin dir, mid-session effect of an update.
 
-User-shipped persistent files **outside** the plugin install dir (e.g., `~/.radorch/`, project workspaces) are untouched — this is implied by the install-isolation model but not stated as a guarantee. **Plan accordingly:** anything the plugin writes outside `~/.copilot/installed-plugins/<your-plugin>/` will survive uninstall/update, so be conservative.
+User-shipped persistent files **outside** the plugin install dir (e.g., `~/.radorc/`, project workspaces) are untouched — this is implied by the install-isolation model but not stated as a guarantee. **Plan accordingly:** anything the plugin writes outside `~/.copilot/installed-plugins/<your-plugin>/` will survive uninstall/update, so be conservative.
 
 ### Does `userPromptSubmitted` fire reliably after `plugin update`?
 

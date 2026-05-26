@@ -18,7 +18,7 @@ Flow:
 5. Emits a coexistence warning if `ij.harnesses.claude` is present alongside `claude-plugin`.
 6. **Same-version fast path**: if prior version matches delivering version and sentinel exists and `!opts.force`, logs `noop` and returns.
 7. **Downgrade noop**: if `cmpSemver(deliveringVersion, installedVersionBefore) < 0` and `!opts.force`, logs `downgrade-noop` and returns.
-8. **Upgrade or fresh install**: removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), extracts `${pluginRoot}/_install-source/ui.tgz` to `paths.ui` if present (the UI ships as a gzipped tarball so `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip), then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorch/` state (orchestration.yml, templates, ui) remains at the plugin install root. Writes updated `ij` via `writeInstallJson` and returns `action: 'upgrade-complete'` or `'fresh-install'` (fresh-install when the sentinel was absent regardless of prior version record).
+8. **Upgrade or fresh install**: removes prior manifest files via `removeManifestFiles`, installs new files via `installManifestFiles` (sourcePaths read from `${pluginRoot}/_install-source/...`), extracts `${pluginRoot}/_install-source/ui.tgz` to `paths.ui` if present (the UI ships as a gzipped tarball so `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip), then deletes `${pluginRoot}/_install-source/` so no shadow of `~/.radorc/` state (orchestration.yml, templates, ui) remains at the plugin install root. Writes updated `ij` via `writeInstallJson` and returns `action: 'upgrade-complete'` or `'fresh-install'` (fresh-install when the sentinel was absent regardless of prior version record).
 9. Logs every outcome (including errors) via `appendInstallLog`.
 
 Returns `{ action, deliveringVersion, installedVersionBefore }`.
@@ -49,7 +49,7 @@ Reads `${pluginRoot}/manifests/v${version}.json`. Throws if absent.
 
 **`user-data-paths.js` — `userDataPaths(opts)`**
 
-Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorch')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`.
+Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.radorc')`: `root`, `installJson`, `orchestrationYml`, `templates`, `ui`, `projects`, `logs`, `installLog`.
 
 ## Coding conventions
 
@@ -63,6 +63,6 @@ Returns a path bundle derived from `opts.radHome ?? path.join(os.homedir(), '.ra
 
 - The six `INSTALL_LOG_ACTIONS` values are a closed set. Adding a new action requires updating the `Set` in `install-log.js` and ensuring callers pass the new string.
 - `migrateInstallJson` handles the two known legacy shapes. A third legacy shape would need a new branch; do not silently discard unknown shapes.
-- `userDataPaths` is the single source of truth for all `~/.radorch/` sub-paths. If a new path is needed, add it here rather than constructing it ad-hoc in callers.
+- `userDataPaths` is the single source of truth for all `~/.radorc/` sub-paths. If a new path is needed, add it here rather than constructing it ad-hoc in callers.
 - All modules are imported by `bootstrap.mjs` and bundled by esbuild; they must stay CommonJS/ESM compatible (currently ESM via `"type": "module"` in the parent `package.json`). Do not introduce dynamic `require` calls.
 - Tests in `tests/run-install.test.mjs`, `tests/install-json.test.mjs`, and `tests/install-log.test.mjs` exercise this module; run them after any change here.

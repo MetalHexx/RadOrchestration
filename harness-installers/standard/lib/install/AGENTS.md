@@ -13,7 +13,7 @@ Per-harness install orchestrator consumed by `lib/wizard.js` and (via `index.js`
 - `noop` — Requested version already installed; no write occurs.
 - `downgrade-refused` — Downgrade detected; rejected loudly (distinct from the plugin's quieter `downgrade-noop`). User is informed and must act.
 
-`install-files.js` and `remove-files.js` are manifest-driven workers: they iterate over file manifests and perform copy, symlink, or removal operations according to the manifest's instructions. `hydrate-user-data.js` enforces sole-writer rules: per AD-13, each file class (`orchestration.yml`, tier templates, shipped tiers, agents, skills, plugins) is owned by exactly one writer. Fresh installs preserve nothing. Upgrades preserve user edits in `orchestration.yml` only; shipped tier templates under `~/.radorch/templates/` are always refreshed to pick up upstream improvements, and any user-added templates outside the four shipped tiers are preserved. User-owned files (those not in the shipped manifest) are never touched.
+`install-files.js` and `remove-files.js` are manifest-driven workers: they iterate over file manifests and perform copy, symlink, or removal operations according to the manifest's instructions. `hydrate-user-data.js` enforces sole-writer rules: per AD-13, each file class (`orchestration.yml`, tier templates, shipped tiers, agents, skills, plugins) is owned by exactly one writer. Fresh installs preserve nothing. Upgrades preserve user edits in `orchestration.yml` only; shipped tier templates under `~/.radorc/templates/` are always refreshed to pick up upstream improvements, and any user-added templates outside the four shipped tiers are preserved. User-owned files (those not in the shipped manifest) are never touched.
 
 ## Coding standards
 
@@ -29,6 +29,6 @@ Per-harness install orchestrator consumed by `lib/wizard.js` and (via `index.js`
 
 **Reads**: `install.json` (sole writer per AD-13); adapters' pre-compiled bundles from `harness-adapters/output/<harness>/`; `runtime-config/orchestration.yml` and `runtime-config/templates/`.
 
-**Writes**: `~/.claude/agents/`, `~/.claude/skills/`, `~/.claude/plugins/`, `~/.copilot/agents/`, `~/.copilot/skills/`, `~/.copilot/plugins/`, `~/.radorch/orchestration.yml` (fresh install only; preserved on upgrade), `~/.radorch/templates/`, `~/.radorch/ui/`.
+**Writes**: `~/.claude/agents/`, `~/.claude/skills/`, `~/.claude/plugins/`, `~/.copilot/agents/`, `~/.copilot/skills/`, `~/.copilot/plugins/`, `~/.radorc/orchestration.yml` (fresh install only; preserved on upgrade), `~/.radorc/templates/`, `~/.radorc/ui/`.
 
 **Never reads**: `cli/`, `ui/`, `build-scripts/`, or any upstream design artifact.
