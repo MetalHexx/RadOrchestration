@@ -61,16 +61,22 @@ export async function uninstallHarness({ bundleRoot, harness }) {
   const manifest = loadBundledManifest(bundleRoot, harness, installedVersion);
 
   // Defensive containment: every resolved destination path must live under
-  // the harness root. Throws if a future manifest-shape bug ever produced an
-  // absolute path outside that scope; this never triggers under normal
-  // operation but guards against catastrophic deletion if it ever did.
+  // the harness root OR under ${RAD_HOME} (user-data assets such as the
+  // action-events catalog destinate to ${RAD_HOME}/action-events/... — see
+  // emit-manifest's USER_DATA_PREFIXES). Throws if a future manifest-shape
+  // bug ever produced an absolute path outside both scopes; this never
+  // triggers under normal operation but guards against catastrophic
+  // deletion if it ever did.
   const root = harnessRoot(harness);
+  const radRoot = paths.root;
   for (const file of manifest.files ?? []) {
     const resolved = expandDestinationTokens(file.destinationPath, harness);
-    if (!resolved.startsWith(root + path.sep) && resolved !== root) {
+    const underHarness = resolved === root || resolved.startsWith(root + path.sep);
+    const underRad = resolved === radRoot || resolved.startsWith(radRoot + path.sep);
+    if (!underHarness && !underRad) {
       throw new Error(
         `uninstall safety: manifest entry '${file.bundlePath}' resolves to '${resolved}', ` +
-        `which is outside the harness root '${root}'. Refusing to proceed.`,
+        `which is outside both the harness root '${root}' and the rad root '${radRoot}'. Refusing to proceed.`,
       );
     }
   }
