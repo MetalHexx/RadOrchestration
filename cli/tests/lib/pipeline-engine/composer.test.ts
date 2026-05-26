@@ -36,7 +36,19 @@ describe('composeActionPrompt — customs', () => {
     expect(out.indexOf('## When complete')).toBeLessThan(out.indexOf('## After signaling'));
   });
 
-  it('throws when a relevant custom names an unknown action', () => {
+  it('throws when the envelope consumes an action whose custom pre exists but catalog is missing', () => {
+    const dir = makeCatalog();
+    // No action.ghost_action.md created — catalog is intentionally missing.
+    fs.writeFileSync(path.join(dir, 'custom', 'action.ghost_action.pre.md'), 'pre body');
+
+    expect(() => composeActionPrompt({
+      actionName: 'ghost_action',
+      completionEvent: null,
+      catalogRoot: dir,
+    })).toThrow(/action\.ghost_action\.md/);
+  });
+
+  it('does not throw when an unrelated custom for an unknown event is outside the current envelope (AD-7)', () => {
     const dir = makeCatalog();
     fs.writeFileSync(path.join(dir, 'action.real_action.md'), [
       '---', 'kind: action', 'name: real_action', 'title: t', 'description: d',
