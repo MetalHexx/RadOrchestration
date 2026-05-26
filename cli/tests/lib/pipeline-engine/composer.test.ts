@@ -10,6 +10,63 @@ function makeCatalog(): string {
   return dir;
 }
 
+describe('composeActionPrompt — customs', () => {
+  it('emits all three slot headings when matching customs exist', () => {
+    const dir = makeCatalog();
+    fs.writeFileSync(path.join(dir, 'action.spawn_planner.md'), [
+      '---', 'kind: action', 'name: spawn_planner', 'title: t', 'description: d',
+      'category: agent-spawn', 'completion_event: requirements_completed', '---',
+      'Main body.', '',
+    ].join('\n'));
+    fs.writeFileSync(path.join(dir, 'event.requirements_completed.md'), [
+      '---', 'kind: event', 'name: requirements_completed', 'title: t', 'description: d',
+      'signal_payload: {}', '---',
+      'Event body.', '',
+    ].join('\n'));
+    fs.writeFileSync(path.join(dir, 'custom', 'action.spawn_planner.pre.md'), 'Pre-action custom.');
+    fs.writeFileSync(path.join(dir, 'custom', 'event.requirements_completed.pre.md'), 'Pre-signal custom.');
+    fs.writeFileSync(path.join(dir, 'custom', 'event.requirements_completed.post.md'), 'Post-signal custom.');
+
+    const out = composeActionPrompt({
+      actionName: 'spawn_planner', completionEvent: 'requirements_completed', catalogRoot: dir,
+    });
+    expect(out.indexOf('## Before doing this action')).toBeLessThan(out.indexOf('Main body.'));
+    expect(out.indexOf('Main body.')).toBeLessThan(out.indexOf('## Before signaling'));
+    expect(out.indexOf('## Before signaling')).toBeLessThan(out.indexOf('## When complete'));
+    expect(out.indexOf('## When complete')).toBeLessThan(out.indexOf('## After signaling'));
+  });
+
+  it('throws when a relevant custom names an unknown action', () => {
+    const dir = makeCatalog();
+    fs.writeFileSync(path.join(dir, 'action.real_action.md'), [
+      '---', 'kind: action', 'name: real_action', 'title: t', 'description: d',
+      'category: gate', 'completion_event: null', '---', 'body', '',
+    ].join('\n'));
+    fs.writeFileSync(path.join(dir, 'custom', 'action.real_action.pre.md'), 'ok');
+    // An UNRELATED custom for an unknown event — not consumed by this envelope, so does not fail.
+    fs.writeFileSync(path.join(dir, 'custom', 'event.never_referenced.post.md'), 'ignored');
+
+    // Composing action.real_action with no event should succeed (AD-7).
+    expect(() => composeActionPrompt({
+      actionName: 'real_action', completionEvent: null, catalogRoot: dir,
+    })).not.toThrow();
+  });
+
+  it('errors when an event custom targets an unknown event name', () => {
+    const dir = makeCatalog();
+    fs.writeFileSync(path.join(dir, 'action.with_event.md'), [
+      '---', 'kind: action', 'name: with_event', 'title: t', 'description: d',
+      'category: agent-spawn', 'completion_event: bogus_event', '---', 'body', '',
+    ].join('\n'));
+    // Custom referencing bogus_event exists and IS consumed by the envelope.
+    fs.writeFileSync(path.join(dir, 'custom', 'event.bogus_event.pre.md'), 'oops');
+
+    expect(() => composeActionPrompt({
+      actionName: 'with_event', completionEvent: 'bogus_event', catalogRoot: dir,
+    })).toThrow(/event\.bogus_event\.md/);
+  });
+});
+
 describe('composeActionPrompt — bare (no customs)', () => {
   it('composes action body + When complete heading + signal line with flags', () => {
     const dir = makeCatalog();

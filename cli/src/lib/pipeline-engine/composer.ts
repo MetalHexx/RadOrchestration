@@ -35,6 +35,26 @@ function readEvent(filePath: string, filename: string): { body: string; fm: Even
   return { body: parsed.body, fm: parsed.frontmatter as EventFrontmatter };
 }
 
+/**
+ * Validates that when a custom slot file exists for the current envelope,
+ * the referenced catalog file also exists (AD-7: scoped to envelope only).
+ */
+function validateCustomSlot(
+  customFile: string,
+  catalogFile: string,
+  customFilename: string,
+  catalogFilename: string,
+  kind: 'action' | 'event',
+  catalogRoot: string,
+): void {
+  if (fs.existsSync(customFile) && !fs.existsSync(catalogFile)) {
+    throw new Error(
+      `Composer validation: custom '${customFilename}' references unknown ${kind} — ` +
+      `expected catalog file '${catalogFilename}' under '${catalogRoot}'.`,
+    );
+  }
+}
+
 function readCustomBodyIfExists(filePath: string): string | null {
   if (!fs.existsSync(filePath)) return null;
   return fs.readFileSync(filePath, 'utf8');
@@ -65,38 +85,68 @@ export function composeActionPrompt(input: ComposeInput): string {
   const customRoot = path.join(catalogRoot, 'custom');
   const sections: string[] = [];
 
+  // Validate: action-pre custom implies action catalog must exist (AD-7).
+  const actionCustomPre = path.join(customRoot, `action.${actionName}.pre.md`);
+  const actionCatalog = path.join(catalogRoot, `action.${actionName}.md`);
+  validateCustomSlot(
+    actionCustomPre,
+    actionCatalog,
+    `custom/action.${actionName}.pre.md`,
+    `action.${actionName}.md`,
+    'action',
+    catalogRoot,
+  );
+
   // Slot 1: custom action pre
   appendSection(
     sections,
     H_ACTION_PRE,
-    readCustomBodyIfExists(path.join(customRoot, `action.${actionName}.pre.md`)),
+    readCustomBodyIfExists(actionCustomPre),
   );
 
   // Main body (no heading — DD-7).
-  const actionBody = readBodyIfExists(
-    path.join(catalogRoot, `action.${actionName}.md`),
-    `action.${actionName}.md`,
-    'action',
-  );
+  const actionBody = readBodyIfExists(actionCatalog, `action.${actionName}.md`, 'action');
   if (actionBody === null) {
-    throw new Error(`Composer: missing catalog file 'action.${actionName}.md' under '${catalogRoot}'.`);
+    throw new Error(
+      `Composer validation: expected catalog file 'action.${actionName}.md' under '${catalogRoot}'.`,
+    );
   }
   appendSection(sections, null, actionBody);
 
   // Event-driven sections only when completionEvent is non-null.
   if (completionEvent !== null) {
+    // Validate: event-pre custom implies event catalog must exist (AD-7).
+    const eventCustomPre = path.join(customRoot, `event.${completionEvent}.pre.md`);
+    const eventCatalog = path.join(catalogRoot, `event.${completionEvent}.md`);
+    const eventCustomPost = path.join(customRoot, `event.${completionEvent}.post.md`);
+    validateCustomSlot(
+      eventCustomPre,
+      eventCatalog,
+      `custom/event.${completionEvent}.pre.md`,
+      `event.${completionEvent}.md`,
+      'event',
+      catalogRoot,
+    );
+    validateCustomSlot(
+      eventCustomPost,
+      eventCatalog,
+      `custom/event.${completionEvent}.post.md`,
+      `event.${completionEvent}.md`,
+      'event',
+      catalogRoot,
+    );
+
     appendSection(
       sections,
       H_EVENT_PRE,
-      readCustomBodyIfExists(path.join(customRoot, `event.${completionEvent}.pre.md`)),
+      readCustomBodyIfExists(eventCustomPre),
     );
 
-    const evt = readEvent(
-      path.join(catalogRoot, `event.${completionEvent}.md`),
-      `event.${completionEvent}.md`,
-    );
+    const evt = readEvent(eventCatalog, `event.${completionEvent}.md`);
     if (!evt) {
-      throw new Error(`Composer: missing catalog file 'event.${completionEvent}.md' under '${catalogRoot}'.`);
+      throw new Error(
+        `Composer validation: expected catalog file 'event.${completionEvent}.md' under '${catalogRoot}'.`,
+      );
     }
     const whenCompleteBody = trimBody(evt.body) + '\n\n' + deriveSignalLine(completionEvent, evt.fm);
     appendSection(sections, H_WHEN_DONE, whenCompleteBody);
@@ -104,7 +154,7 @@ export function composeActionPrompt(input: ComposeInput): string {
     appendSection(
       sections,
       H_EVENT_POST,
-      readCustomBodyIfExists(path.join(customRoot, `event.${completionEvent}.post.md`)),
+      readCustomBodyIfExists(eventCustomPost),
     );
   }
 
