@@ -1,6 +1,6 @@
 ---
 kind: event
-name: final_approval_gate_approved
+name: final_approved
 title: Final approval gate approved
 description: The operator has approved the final review and the pipeline may conclude.
 signal_payload: {}

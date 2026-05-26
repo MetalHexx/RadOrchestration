@@ -1,6 +1,6 @@
 ---
 kind: action
-name: display_plan_approval_gate
+name: request_plan_approval
 title: Display plan approval gate
 description: Present the completed Master Plan to the operator and wait for approval before the pipeline proceeds to execution.
 category: gate

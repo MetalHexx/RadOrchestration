@@ -1,6 +1,6 @@
 ---
 kind: action
-name: display_task_gate
+name: gate_task
 title: Display task gate
 description: Present the completed task results to the operator and wait for approval before the pipeline advances to the next task.
 category: gate
@@ -11,4 +11,4 @@ Show the operator the task's outcome: the code-review verdict, any corrective cy
 
 Ask the operator to approve or reject. Hold here until they respond. If they reject, collect a brief reason — the pipeline routes back to a corrective cycle using that reason.
 
-Signal `task_gate_approved` when the operator approves. Signal `task_gate_rejected --reason "<reason>"` when the operator rejects.
+Signal `task_gate_approved` when the operator approves. Signal `gate_rejected --gate-type task --reason "<reason>"` when the operator rejects.

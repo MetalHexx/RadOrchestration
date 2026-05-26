@@ -1,6 +1,6 @@
 ---
 kind: action
-name: display_phase_gate
+name: gate_phase
 title: Display phase gate
 description: Present the completed phase results to the operator and wait for approval before the pipeline advances to the next phase.
 category: gate
@@ -11,4 +11,4 @@ Show the operator the phase review summary: exit-criteria assessment, cumulative
 
 Ask the operator to approve or reject. Hold here until they respond. If they reject, collect a brief reason — the pipeline routes back to a corrective cycle using that reason.
 
-Signal `phase_gate_approved` when the operator approves. Signal `phase_gate_rejected --reason "<reason>"` when the operator rejects.
+Signal `phase_gate_approved` when the operator approves. Signal `gate_rejected --gate-type phase --reason "<reason>"` when the operator rejects.

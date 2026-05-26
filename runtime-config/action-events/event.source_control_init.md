@@ -1,7 +1,7 @@
 ---
 kind: event
-name: source_control_init_completed
-title: Source control init completed
+name: source_control_init
+title: Source control init
 description: Source-control context has been initialized and persisted to the pipeline state.
 signal_payload:
   branch:

@@ -1,7 +1,7 @@
 ---
 kind: event
-name: pr_completed
-title: PR completed
+name: pr_created
+title: PR created
 description: The source-control agent has finished the PR-creation attempt for the project branch.
 signal_payload:
   pr-url:
