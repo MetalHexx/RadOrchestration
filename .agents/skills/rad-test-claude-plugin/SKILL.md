@@ -22,7 +22,7 @@ You do **not** install or verify the plugin yourself — that happens in a separ
 
 ## Important — coexisting with the legacy `rad-orchestration` channel
 
-This skill installs the greenfield plugin under name `rad-orc` (marketplace `rad-orc-dogfood`), distinct from the legacy `rad-test-plugin-release` channel which installs as `rad-orchestration` (marketplace `rad-orchestration-dogfood`). The two CAN coexist as separate Claude plugins, but both deliver the same `skills/rad-orchestration/` set and both bootstrap `~/.radorch/`, so running them side-by-side will produce duplicate skills and racy bootstrap behavior. If the user previously installed the legacy dogfood marketplace, they should remove it inside the test session **before** the install commands you hand them in Step 6:
+This skill installs the greenfield plugin under name `rad-orc` (marketplace `rad-orc-dogfood`), distinct from the legacy `rad-test-plugin-release` channel which installs as `rad-orchestration` (marketplace `rad-orchestration-dogfood`). The two CAN coexist as separate Claude plugins, but both deliver the same `skills/rad-orchestration/` set and both bootstrap `~/.radorc/`, so running them side-by-side will produce duplicate skills and racy bootstrap behavior. If the user previously installed the legacy dogfood marketplace, they should remove it inside the test session **before** the install commands you hand them in Step 6:
 
 ```
 /plugin uninstall rad-orchestration
@@ -141,7 +141,7 @@ Print a block like the following, substituting `{repoRoot}` and `{version}` with
 > /plugin install rad-orc@rad-orc-dogfood
 > ```
 >
-> Reload Claude Code if prompted. The `UserPromptSubmit` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent unless the cache's plugin version differs from `~/.radorch/install.json`.
+> Reload Claude Code if prompted. The `UserPromptSubmit` hook will auto-bootstrap `~/.radorc/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent unless the cache's plugin version differs from `~/.radorc/install.json`.
 >
 > Come back here when you're done dogfooding — I'll offer cleanup.
 

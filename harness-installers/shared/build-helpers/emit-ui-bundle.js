@@ -4,7 +4,7 @@
 // both git (satellite `.gitignore` strips `node_modules/` and `.next/`) and
 // npm-packlist (hardcoded strip of `node_modules/`), so the UI runtime
 // survives both publish transports. Installers extract the tarball into
-// `~/.radorch/ui/` at install time.
+// `~/.radorc/ui/` at install time.
 //
 // Dev workflows (npm run dev inside ui/) remain unaffected — they create
 // .next/ on demand and own it themselves; this helper applies only to
@@ -33,7 +33,7 @@ export async function emitUiBundle(opts) {
   await runner();
 
   // Stage the runtime layout under a sibling temp dir so tar.c sees a clean
-  // tree rooted at the same shape installers will extract into ~/.radorch/ui/.
+  // tree rooted at the same shape installers will extract into ~/.radorc/ui/.
   const staging = target + '.staging';
   fs.rmSync(staging, { recursive: true, force: true });
   fs.mkdirSync(staging, { recursive: true });

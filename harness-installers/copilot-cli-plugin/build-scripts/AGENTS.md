@@ -15,10 +15,10 @@ Exports `runBuild(opts)` and executes the following fixed step sequence, fail-fa
 3. **clean-output** — wipes `output/`.
 4. **copy-agents** — copies adapter output from `harness-adapters/output/copilot-cli/agents/`; agent files carry the `.agent.md` suffix.
 5. **copy-skills** — copies adapter output from `harness-adapters/output/copilot-cli/skills/`.
-6. **copy-runtime-config** — stages `runtime-config/orchestration.yml` and `runtime-config/templates/` under `_install-source/` (not the plugin root) so the bootstrap hook can hydrate them to `~/.radorch/` and then delete the staging dir, leaving no shadow copy.
+6. **copy-runtime-config** — stages `runtime-config/orchestration.yml` and `runtime-config/templates/` under `_install-source/` (not the plugin root) so the bootstrap hook can hydrate them to `~/.radorc/` and then delete the staging dir, leaving no shadow copy.
 7. **emit-cli-bundle** — bundles `cli/` via `emitCliBundle`.
 8. **prune-scripts-sources** — removes `.ts` sources, tests, and tooling from `output/skills/rad-orchestration/scripts/`; retains only `.js`, `.mjs`, and `.gitignore`.
-9. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle` and packs it as a gzipped tarball at `_install-source/ui.tgz` so the bootstrap can extract it to `~/.radorch/ui/` alongside the manifest-driven files, with the same post-hydrate cleanup. The tarball shape (vs a loose tree) lets `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip.
+9. **emit-ui-bundle** — builds Next.js standalone via `emitUiBundle` and packs it as a gzipped tarball at `_install-source/ui.tgz` so the bootstrap can extract it to `~/.radorc/ui/` alongside the manifest-driven files, with the same post-hydrate cleanup. The tarball shape (vs a loose tree) lets `node_modules/` and `.next/` survive the satellite `.gitignore` and `npm pack`'s hardcoded `node_modules` strip.
 10. **emit-hook-bundle** — bundles `hooks/bootstrap.mjs` (with `lib/install/*` inlined) and copies verbatim files via `emitHookBundle`.
 11. **expand-tokens** — substitutes `${SKILLS_ROOT}` and `${PLUGIN_ROOT}` tokens in `agents/` and `skills/`. Agent namespacing (`rad-orc:<name>`) is a no-op for Copilot CLI — `agentNames` is not passed, so `expandTokens` performs token substitution only.
 12. **copy-plugin-manifest** — copies `plugin.json` from the package root to `output/plugin.json` (not under `output/.claude-plugin/` as in the claude-plugin).

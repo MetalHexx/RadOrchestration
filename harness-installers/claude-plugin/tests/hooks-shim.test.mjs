@@ -100,7 +100,7 @@ function stageFixturePluginRoot() {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'shim-'));
   fs.mkdirSync(path.join(fixture, 'hooks'), { recursive: true });
   // Sentinel-only bootstrap — avoids running the real install logic, which
-  // would touch ~/.radorch/. The test only needs to know the shim was able
+  // would touch ~/.radorc/. The test only needs to know the shim was able
   // to dynamic-import the file pointed at by the normalized CLAUDE_PLUGIN_ROOT.
   fs.writeFileSync(
     path.join(fixture, 'hooks', 'bootstrap.mjs'),

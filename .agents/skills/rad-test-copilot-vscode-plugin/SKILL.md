@@ -148,7 +148,7 @@ After the user picks, print the corresponding instructions substituting `{repoRo
 >
 > Save the file. VS Code will load the plugin from the local path on the next chat session start — no restart required in most cases, but restart VS Code if the plugin does not appear under Chat → Plugins.
 >
-> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
+> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorc/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
 >
 > Come back here when you're done dogfooding — I'll offer cleanup.
 
@@ -172,7 +172,7 @@ After the user picks, print the corresponding instructions substituting `{repoRo
 >
 > Open VS Code's **Chat: Plugins** panel (or the Extensions view with the `@agentPlugins` filter). The `rad-orc-vscode` plugin from the `rad-orc-vscode-dogfood` marketplace should now appear alongside the published catalogs. Click install. Reload VS Code if prompted.
 >
-> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
+> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorc/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
 >
 > Come back here when you're done dogfooding — I'll offer cleanup. (To uninstall, remove via the Chat → Plugins UI AND remove the `file:///` entry from `chat.plugins.marketplaces` so the catalog stops appearing on next launch.)
 
@@ -196,7 +196,7 @@ After the user picks, print the corresponding instructions substituting `{repoRo
 >
 > VS Code will read the `.github/plugin/marketplace.json` catalog, find `rad-orc-vscode`, and install it. Reload VS Code if prompted.
 >
-> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
+> The `UserPromptSubmit` hook will auto-bootstrap `~/.radorc/` on your first prompt in the new session. `SessionStart`'s drift-check stays silent on a clean install (per FR-5, FR-6).
 >
 > Come back here when you're done dogfooding — I'll offer cleanup.
 

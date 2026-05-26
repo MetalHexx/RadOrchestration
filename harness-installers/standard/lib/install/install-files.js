@@ -5,7 +5,7 @@
 // `ui/` resolve from `sharedRoot` instead of `bundleRoot`. (The legacy
 // installer keeps shared assets one level up from per-harness payloads.)
 //
-// AD-13: any entry whose resolved target falls under ~/.radorch/projects/ is
+// AD-13: any entry whose resolved target falls under ~/.radorc/projects/ is
 // skipped unconditionally — projects/ is sacred user data. A one-line
 // `[install] skipping projects/ entry '<bundlePath>'` log is emitted per skip.
 //

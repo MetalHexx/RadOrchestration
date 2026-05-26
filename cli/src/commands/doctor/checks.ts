@@ -71,7 +71,7 @@ export async function runInstallChecks(): Promise<CheckResult[]> {
   }
 
   // 3. (retired) `radorch-bin-on-path` — the CLI no longer ships at
-  // ~/.radorch/bin/; it lives inside the rad-orchestration skill folder and
+  // ~/.radorc/bin/; it lives inside the rad-orchestration skill folder and
   // is invoked through the harness's slash commands or `node <skill-path>`.
   // There is no PATH-on-shell concern to surface here anymore.
 
@@ -367,7 +367,7 @@ export async function runPluginChecks(opts: {
     });
   }
   // multi-harness-install-table (DD-8 + Section 6): render per-install-key status
-  // from the v6 registry at ~/.radorch/install.json. Each install-key emits one
+  // from the v6 registry at ~/.radorc/install.json. Each install-key emits one
   // line with `(channel)` suffix. When both `claude` and `claude-plugin` are
   // present, append an info line recommending consolidation.
   {

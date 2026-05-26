@@ -3,15 +3,25 @@ import path from 'node:path';
 import * as tar from 'tar';
 import { userDataPaths } from './user-data-paths.js';
 import {
-  loadRegistry, writeInstallJson, buildCopilotCliPluginEntry,
+  loadRegistry, writeInstallJson, buildCopilotCliPluginEntry, isEntryCurrent,
 } from './install-json.js';
 import { loadManifest } from './catalog.js';
 import { installManifestFiles } from './install-files.js';
 import { removeManifestFiles } from './remove-files.js';
 import { appendInstallLog } from './install-log.js';
+import { detectAndStopUi, formatUiLockMessage } from './ui-stop.js';
 
 const INSTALL_KEY = 'copilot-cli-plugin';
 const COEXISTENCE_PARTNERS = ['copilot-cli', 'copilot-vscode'];
+
+/** Thrown when the dashboard UI is running and could not be stopped pre-install. */
+export class UiLockError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = 'UiLockError';
+    this.uiStatus = status;
+  }
+}
 
 function cmpSemver(a, b) {
   const pa = a.split(/[.-]/).map((p) => /^\d+$/.test(p) ? Number(p) : p);
@@ -45,19 +55,49 @@ function emitCoexistenceWarning(stderr, partnersPresent) {
   const partnerList = partnersPresent.join(' and ');
   stderr(
     `WARNING: A standard-installer ${partnerList} install of rad-orchestration is already registered\n` +
-    `alongside copilot-cli-plugin. All keys coexist in ~/.radorch/install.json so neither install\n` +
+    `alongside copilot-cli-plugin. All keys coexist in ~/.radorc/install.json so neither install\n` +
     `clobbers the other's metadata, but the standard-installer's user-level files at ~/.copilot/\n` +
     `will shadow plugin-shipped agents and skills per Copilot CLI's documented load order.\n` +
     `Consider removing the standard-installer (${partnerList}) install if the plugin is the canonical channel.\n`,
   );
 }
 
-/** @param {{ pluginRoot: string, radHome?: string, force?: boolean, stderr?: (msg:string)=>void }} opts */
+function cleanupStagingDir(pluginRoot) {
+  // Sweep the staging dir (_install-source/) and the legacy top-level shadows
+  // (templates/, orchestration.yml, ui/) left by pre-relocation payloads on
+  // existing installs. Called only on the success branches now (not in
+  // finally) so a transient failure doesn't permanently break retries.
+  try {
+    fs.rmSync(path.join(pluginRoot, '_install-source'), { recursive: true, force: true });
+    fs.rmSync(path.join(pluginRoot, 'templates'), { recursive: true, force: true });
+    fs.rmSync(path.join(pluginRoot, 'orchestration.yml'), { force: true });
+    fs.rmSync(path.join(pluginRoot, 'ui'), { recursive: true, force: true });
+  } catch { /* best-effort cleanup — do not mask the primary outcome */ }
+}
+
+/**
+ * @param {{
+ *   pluginRoot: string,
+ *   radHome?: string,
+ *   force?: boolean,
+ *   stderr?: (msg:string)=>void,
+ *   _detectAndStopUi?: typeof detectAndStopUi,
+ * }} opts
+ * @returns {Promise<{
+ *   action: 'noop'|'downgrade-noop'|'fresh-install'|'upgrade-complete',
+ *   deliveringVersion: string,
+ *   installedVersionBefore: string | null,
+ *   uiStopped: boolean,
+ *   installJsonUpserted: boolean,
+ * }>}
+ */
 export async function runInstall(opts) {
   const stderr = opts.stderr ?? ((msg) => process.stderr.write(msg));
+  const detect = opts._detectAndStopUi ?? detectAndStopUi;
   const paths = userDataPaths({ radHome: opts.radHome });
   let deliveringVersion = null;
   let installedVersionBefore = null;
+  let uiStopped = false;
   try {
     deliveringVersion = readDeliveringVersion(opts.pluginRoot);
     const sentinel = path.join(opts.pluginRoot, 'skills/rad-orchestration/scripts/radorch.mjs');
@@ -74,18 +114,44 @@ export async function runInstall(opts) {
     const partnersPresent = COEXISTENCE_PARTNERS.filter((k) => ij.harnesses[k]);
     if (partnersPresent.length > 0) emitCoexistenceWarning(stderr, partnersPresent);
 
-    // Same-version fast path with sentinel self-heal.
+    // Same-version fast path with sentinel self-heal. Still upserts the
+    // install.json entry when missing or shape-drifted so install.json
+    // remains authoritative for "is this harness installed?".
     if (prior && installedVersionBefore === deliveringVersion && sentinelPresent && !opts.force) {
+      let installJsonUpserted = false;
+      if (!isEntryCurrent(prior, deliveringVersion)) {
+        ij.harnesses[INSTALL_KEY] = buildCopilotCliPluginEntry(deliveringVersion);
+        writeInstallJson(paths.installJson, ij);
+        installJsonUpserted = true;
+      }
       appendInstallLog(paths.installLog, { action: 'noop', deliveringVersion, installedVersionBefore });
-      return { action: 'noop', deliveringVersion, installedVersionBefore };
+      cleanupStagingDir(opts.pluginRoot);
+      return { action: 'noop', deliveringVersion, installedVersionBefore, uiStopped: false, installJsonUpserted };
     }
 
-    // Downgrade-noop (FR-21).
+    // Downgrade-noop (FR-21). Same install.json upsert as above.
     if (prior && cmpSemver(deliveringVersion, installedVersionBefore) < 0 && !opts.force) {
       stderr(`[install] Delivering v${deliveringVersion} is older than installed v${installedVersionBefore}; downgrade accepted as no-op.\n`);
+      let installJsonUpserted = false;
+      if (!isEntryCurrent(prior, installedVersionBefore)) {
+        ij.harnesses[INSTALL_KEY] = buildCopilotCliPluginEntry(installedVersionBefore);
+        writeInstallJson(paths.installJson, ij);
+        installJsonUpserted = true;
+      }
       appendInstallLog(paths.installLog, { action: 'downgrade-noop', deliveringVersion, installedVersionBefore });
-      return { action: 'downgrade-noop', deliveringVersion, installedVersionBefore };
+      cleanupStagingDir(opts.pluginRoot);
+      return { action: 'downgrade-noop', deliveringVersion, installedVersionBefore, uiStopped: false, installJsonUpserted };
     }
+
+    // Pre-flight UI gate. Runs only when actual file work is required (past
+    // the two NOOP branches above). A running UI holds a file lock on
+    // ~/.radorc/ui/ that would break the wholesale tarball extract below;
+    // stop it cleanly or abort the whole install with a clear message.
+    const ui = await detect({ radHome: opts.radHome });
+    if (ui.wasRunning && !ui.stopped) {
+      throw new UiLockError(formatUiLockMessage(ui.status, ui.reason), ui.status);
+    }
+    uiStopped = ui.stopped;
 
     // Upgrade or fresh install — remove prior manifest entries (skip user-config), install new.
     if (prior && installedVersionBefore !== deliveringVersion) {
@@ -99,7 +165,7 @@ export async function runInstall(opts) {
 
     // UI ships as a gzipped tarball (ui.tgz) so node_modules/ and .next/
     // survive the satellite `.gitignore` and `npm pack`'s hardcoded
-    // node_modules strip. Extract it wholesale into ~/.radorch/ui/.
+    // node_modules strip. Extract it wholesale into ~/.radorc/ui/.
     const pluginUiTarball = path.join(opts.pluginRoot, '_install-source/ui.tgz');
     if (fs.existsSync(pluginUiTarball)) {
       fs.rmSync(paths.ui, { recursive: true, force: true });
@@ -112,22 +178,14 @@ export async function runInstall(opts) {
 
     const action = (installedVersionBefore && sentinelPresent) ? 'upgrade-complete' : 'fresh-install';
     appendInstallLog(paths.installLog, { action, deliveringVersion, installedVersionBefore });
-    return { action, deliveringVersion, installedVersionBefore };
+
+    // Success-only staging cleanup. A failure leaves _install-source/ intact
+    // so the next bootstrap firing can retry without ENOENT cascades.
+    cleanupStagingDir(opts.pluginRoot);
+
+    return { action, deliveringVersion, installedVersionBefore, uiStopped, installJsonUpserted: true };
   } catch (err) {
     appendInstallLog(paths.installLog, { action: 'error', deliveringVersion, installedVersionBefore });
     throw err;
-  } finally {
-    // Unconditional shadow-cleanup. Runs on every exit path (noop,
-    // downgrade-noop, fresh-install, upgrade-complete, error) so the plugin
-    // install root never carries a copy of ~/.radorch/ state. Sweeps both
-    // the current-format staging dir (_install-source/) and the legacy
-    // top-level shadows (templates/, orchestration.yml, ui/) left by
-    // pre-relocation payloads on existing installs.
-    try {
-      fs.rmSync(path.join(opts.pluginRoot, '_install-source'), { recursive: true, force: true });
-      fs.rmSync(path.join(opts.pluginRoot, 'templates'), { recursive: true, force: true });
-      fs.rmSync(path.join(opts.pluginRoot, 'orchestration.yml'), { force: true });
-      fs.rmSync(path.join(opts.pluginRoot, 'ui'), { recursive: true, force: true });
-    } catch { /* best-effort cleanup — do not mask the primary outcome */ }
   }
 }

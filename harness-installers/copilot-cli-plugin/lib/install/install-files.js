@@ -14,7 +14,7 @@ export function installManifestFiles(manifest, pluginRoot, opts = {}) {
     const dest = expand(entry.destinationPath, paths);
     const resolvedDest = path.resolve(dest);
     if (resolvedDest !== resolvedRoot && !resolvedDest.startsWith(resolvedRoot + path.sep)) {
-      throw new Error(`install: destination escapes ~/.radorch/: ${dest}`);
+      throw new Error(`install: destination escapes ~/.radorc/: ${dest}`);
     }
     // FR-11: orchestration.yml preserved on existing (user-config ownership skipped on re-install if file exists).
     if (entry.ownership === 'user-config' && fs.existsSync(resolvedDest)) continue;

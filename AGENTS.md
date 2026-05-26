@@ -61,7 +61,7 @@ The rest of the repo splits by job:
 - **`harness-adapters/`** — self-contained per-harness adapters (one folder per harness; see that folder's `AGENTS.md`).
 - **`harness-dogfood/`** — the dogfood build CLI that drives adapters into `dist/staging/<harness>/` and deploys to the active user-level location.
 - **`harness-installers/<variant>/`** — one installer per shippable variant (`standard`, `claude-plugin`, `copilot-cli-plugin`), plus a `shared/` seam consumed by all of them.
-- **`runtime-config/`** — `orchestration.yml` and tier templates shipped verbatim by every installer into the user's `~/.radorch/`.
+- **`runtime-config/`** — `orchestration.yml` and tier templates shipped verbatim by every installer into the user's `~/.radorc/`.
 - **`cli/`, `ui/`, `docs/`, `prompt-tests/`, `.agents/`, `.githooks/`, `.github/`** — unchanged contributors to the system; see their own folders.
 
 The `rad-*` reserved-namespace rule above applies to `harness-files/skills/` — it does not change with the restructure.
@@ -156,7 +156,7 @@ The repo ships three installer variants, each living under `harness-installers/`
 - `harness-installers/claude-plugin/` — Claude marketplace plugin builder; produces a plugin tree the user installs through Claude Code's `/plugin` flow.
 - `harness-installers/copilot-cli-plugin/` — Copilot CLI marketplace plugin builder; produces a plugin tree the user installs through Copilot CLI's `/plugin` flow.
 
-All three consume `harness-installers/shared/build-helpers/` as the cross-variant seam, and all three ship `runtime-config/orchestration.yml` and `runtime-config/templates/` verbatim into the user's `~/.radorch/`. None of the installers ships settings files or top-level instruction files — those are user-owned.
+All three consume `harness-installers/shared/build-helpers/` as the cross-variant seam, and all three ship `runtime-config/orchestration.yml` and `runtime-config/templates/` verbatim into the user's `~/.radorc/`. None of the installers ships settings files or top-level instruction files — those are user-owned.
 
 ## Skill and agent loading
 
@@ -181,4 +181,4 @@ The canonical sources at `harness-files/agents/` and `harness-files/skills/` are
 - `.githooks/`, `.github/` — git and CI configuration (committed)
 - `dist/staging/<harness>/`, `dist/dogfood-prior-<harness>.json`, `dist/` — **gitignored** generated artifacts (build outputs, staging hopper, prior-manifest snapshots)
 - `harness-installers/<plugin>/output/`, `harness-installers/<plugin>/dogfood-marketplace/` — **gitignored** build artifacts owned by each marketplace plugin builder
-- `~/.claude/`, `~/.copilot/`, `~/.radorch/` — **user-level destinations** that the build/installer write to (NOT in the repo)
+- `~/.claude/`, `~/.copilot/`, `~/.radorc/` — **user-level destinations** that the build/installer write to (NOT in the repo)

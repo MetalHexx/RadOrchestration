@@ -40,13 +40,13 @@ Final:     Comprehensive Review → PR Creation (if auto_pr) → Human Approval 
 
 ## Configuration
 
-System configuration lives in `~/.radorch/orchestration.yml`. It controls:
+System configuration lives in `~/.radorc/orchestration.yml`. It controls:
 - Pipeline limits (max phases, tasks, retries)
 - Human gate defaults
 
 ## Project Files
 
-Project artifacts are stored at `~/.radorch/projects/{PROJECT-NAME}/`.
+Project artifacts are stored at `~/.radorc/projects/{PROJECT-NAME}/`.
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@brainstormer`)

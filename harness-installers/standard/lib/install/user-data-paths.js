@@ -1,5 +1,5 @@
 // harness-installers/standard/lib/install/user-data-paths.js —
-// Returns the canonical user-data paths under ~/.radorch/. The standard
+// Returns the canonical user-data paths under ~/.radorc/. The standard
 // installer never creates `runtime/` (the dashboard creates it lazily — FR-2)
 // and ships no `config.yml`, `registry.yml`, or `.harness` pointer (AD-1).
 
@@ -20,7 +20,7 @@ import path from 'node:path';
  */
 export function userDataPaths(opts = {}) {
   const home = opts.home ?? os.homedir();
-  const root = path.join(home, '.radorch');
+  const root = path.join(home, '.radorc');
   return {
     root,
     installJson: path.join(root, 'install.json'),
@@ -29,5 +29,6 @@ export function userDataPaths(opts = {}) {
     templates: path.join(root, 'templates'),
     projects: path.join(root, 'projects'),
     logs: path.join(root, 'logs'),
+    uiPidFile: path.join(root, 'runtime', 'ui.pid'),
   };
 }

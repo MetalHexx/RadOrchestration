@@ -4,9 +4,9 @@ import path from 'node:path';
 import { resolveInstallRoot, installPaths } from '../../src/lib/paths.js';
 
 describe('resolveInstallRoot', () => {
-  it('returns ~/.radorch', () => {
+  it('returns ~/.radorc', () => {
     const root = resolveInstallRoot();
-    expect(root).toBe(path.join(os.homedir(), '.radorch'));
+    expect(root).toBe(path.join(os.homedir(), '.radorc'));
   });
 });
 
@@ -23,11 +23,11 @@ describe('installPaths', () => {
     expect(p.harnessesDir).toBe(path.join(root, 'runtime', 'harnesses'));
   });
   it('produces native paths when given a Windows-style root', () => {
-    const winRoot = 'C:\\Users\\example\\.radorch';
+    const winRoot = 'C:\\Users\\example\\.radorc';
     const paths = installPaths(winRoot);
     // The cliLog must be a contiguous descendant of the root, not a corrupted prefix.
     expect(paths.cliLog.startsWith(winRoot)).toBe(true);
-    expect(paths.cliLog).not.toContain('Users\\example.radorch');
+    expect(paths.cliLog).not.toContain('Users\\example.radorc');
     expect(paths.logsDir.startsWith(winRoot)).toBe(true);
   });
 });

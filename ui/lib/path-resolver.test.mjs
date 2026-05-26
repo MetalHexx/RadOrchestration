@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
 
-test('getProjectsRoot returns ~/.radorch/projects/', async () => {
+test('getProjectsRoot returns ~/.radorc/projects/', async () => {
   const m = await import('./path-resolver.ts');
   const r = m.getProjectsRoot();
-  assert.equal(r, path.join(os.homedir(), '.radorch', 'projects'));
+  assert.equal(r, path.join(os.homedir(), '.radorc', 'projects'));
 });
 
-test('getTemplatesRoot returns ~/.radorch/templates/', async () => {
+test('getTemplatesRoot returns ~/.radorc/templates/', async () => {
   const m = await import('./path-resolver.ts');
   const r = m.getTemplatesRoot();
-  assert.equal(r, path.join(os.homedir(), '.radorch', 'templates'));
+  assert.equal(r, path.join(os.homedir(), '.radorc', 'templates'));
 });
 
 test('PROJECTS_DIR is ignored entirely', async () => {
@@ -32,7 +32,7 @@ test('no getWorkspaceRoot export remains', async () => {
   assert.equal(m.getWorkspaceRoot, undefined);
 });
 
-test('resolveProjectDir composes ~/.radorch/projects/<name>', async () => {
+test('resolveProjectDir composes ~/.radorc/projects/<name>', async () => {
   const m = await import('./path-resolver.ts');
-  assert.equal(m.resolveProjectDir('MY-PROJ'), path.join(os.homedir(), '.radorch', 'projects', 'MY-PROJ'));
+  assert.equal(m.resolveProjectDir('MY-PROJ'), path.join(os.homedir(), '.radorc', 'projects', 'MY-PROJ'));
 });

@@ -3,7 +3,7 @@
 // under a tmp dir, runs the real `runBuild` against it (with adapter-engine /
 // ui-runner / bootstrap skipped), and then drives `installHarness` and
 // `hydrateUserData` against the produced `output/<harness>/` payload. Asserts
-// on the resulting `~/.radorch/` and `~/.<harness>/` on-disk shapes against
+// on the resulting `~/.radorc/` and `~/.<harness>/` on-disk shapes against
 // every FR-2 / FR-3 / FR-14 / FR-15 / FR-16 expectation in a single test.
 //
 // This test is the cross-cutting validator that exercises P03+P04 modules
@@ -115,7 +115,7 @@ function makeFixture(root) {
   }
 }
 
-test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes for each harness', async () => {
+test('build then install produces correct ~/.radorc/ and ~/.<harness>/ shapes for each harness', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'std-e2e-'));
   // Capture and restore HOME / USERPROFILE so we don't pollute the real user
   // home if the test throws between set and finally-block.
@@ -165,9 +165,9 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
     });
 
     // ---------------------------------------------------------------------
-    // FR-2: ~/.radorch/ shape — canonical single-shape user-data tree.
+    // FR-2: ~/.radorc/ shape — canonical single-shape user-data tree.
     // ---------------------------------------------------------------------
-    const rad = path.join(home, '.radorch');
+    const rad = path.join(home, '.radorc');
     assert.ok(fs.existsSync(path.join(rad, 'install.json')),
       'FR-2: install.json present');
     assert.ok(fs.existsSync(path.join(rad, 'orchestration.yml')),
@@ -275,7 +275,7 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
       'FR-16: bundle ui/server.js present after re-hydrate');
 
     // ---------------------------------------------------------------------
-    // NFR-10c: ~/.radorch/projects/ is never written into by manifest copies.
+    // NFR-10c: ~/.radorc/projects/ is never written into by manifest copies.
     // ---------------------------------------------------------------------
     fs.mkdirSync(path.join(rad, 'projects/sample'), { recursive: true });
     fs.writeFileSync(path.join(rad, 'projects/sample/state.json'), '{}');
@@ -289,7 +289,7 @@ test('build then install produces correct ~/.radorch/ and ~/.<harness>/ shapes f
       stderr: { write() { /* swallow */ } },
     });
     assert.ok(fs.existsSync(path.join(rad, 'projects/sample/state.json')),
-      'NFR-10c: ~/.radorch/projects/sample/state.json survives second install');
+      'NFR-10c: ~/.radorc/projects/sample/state.json survives second install');
     assert.strictEqual(
       fs.readFileSync(path.join(rad, 'projects/sample/state.json'), 'utf8'),
       '{}',

@@ -29,7 +29,7 @@ describe('doctor — bootstrap-skeleton check retired', () => {
 });
 
 /**
- * Seed a minimal ~/.radorch layout so doctor checks pass / warn.
+ * Seed a minimal ~/.radorc layout so doctor checks pass / warn.
  * Replaces the deleted writeInstallSkeleton helper — inline only the
  * files each test actually depends on.
  */
@@ -65,8 +65,8 @@ afterEach(async () => {
 });
 
 describe('radorch doctor', () => {
-  it('reports Install failure when ~/.radorch is absent', async () => {
-    // tmp/.radorch does not exist — spy makes resolveInstallRoot() return tmp/.radorch
+  it('reports Install failure when ~/.radorc is absent', async () => {
+    // tmp/.radorc does not exist — spy makes resolveInstallRoot() return tmp/.radorc
     const result = await runDoctor({ env: process.env });
     expect(result.all_passed).toBe(false);
     const installCategory = result.checks.filter((c) => c.category === 'Install');
@@ -74,7 +74,7 @@ describe('radorch doctor', () => {
   });
 
   it('reports all_passed=true when installed (Environment + Install + Plugin only)', async () => {
-    const root = path.join(tmp, '.radorch');
+    const root = path.join(tmp, '.radorc');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     // Scope to the three categories named in the test title; Tooling depends on
@@ -90,7 +90,7 @@ describe('radorch doctor', () => {
   });
 
   it('every check carries a closed-enum status', async () => {
-    const root = path.join(tmp, '.radorch');
+    const root = path.join(tmp, '.radorc');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     for (const c of result.checks) {
@@ -99,7 +99,7 @@ describe('radorch doctor', () => {
   });
 
   it('includes Tooling category after Environment, Install, Plugin', async () => {
-    const root = path.join(tmp, '.radorch');
+    const root = path.join(tmp, '.radorc');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     const categoriesInOrder = result.checks.map((c) => c.category);
@@ -109,7 +109,7 @@ describe('radorch doctor', () => {
     expect(firstToolingIdx).toBeGreaterThan(lastPluginIdx);
   });
   it('renderDoctorForTest emits a Tooling heading once when Tooling checks are present', async () => {
-    const root = path.join(tmp, '.radorch');
+    const root = path.join(tmp, '.radorc');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
     const rendered = renderDoctorForTest(result);
@@ -354,7 +354,7 @@ describe('runPluginChecks — new plugin-install checks (FR-14)', () => {
 
   it('runDoctor end-to-end does not throw when no rad-orchestration binary is on PATH', async () => {
     // Force PATH to an empty directory so spawn cannot find rad-orchestration.
-    // homedirSpy (outer beforeEach) makes resolveInstallRoot() return tmp/.radorch.
+    // homedirSpy (outer beforeEach) makes resolveInstallRoot() return tmp/.radorc.
     const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-empty-path-'));
     try {
       await expect(
@@ -379,8 +379,8 @@ describe('doctor: 1.3 canonical checks', () => {
   });
 
   it('reports retired-properties-present warn when orchestration.yml carries any of the four', async () => {
-    // Arrange ~/.radorch/orchestration.yml with `system.orch_root: .claude`.
-    const radorchDir = path.join(tmp13, '.radorch');
+    // Arrange ~/.radorc/orchestration.yml with `system.orch_root: .claude`.
+    const radorchDir = path.join(tmp13, '.radorc');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'orchestration.yml'),
@@ -404,7 +404,7 @@ describe('doctor: 1.3 canonical checks', () => {
 
   it('table renders one line per install-key with (channel) suffix', async () => {
     // Stage an install.json with all four install-keys present except one.
-    const radorchDir = path.join(tmp13, '.radorch');
+    const radorchDir = path.join(tmp13, '.radorc');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
@@ -428,7 +428,7 @@ describe('doctor: 1.3 canonical checks', () => {
   });
 
   it('appends a consolidation recommendation when both claude and claude-plugin are present', async () => {
-    const radorchDir = path.join(tmp13, '.radorch');
+    const radorchDir = path.join(tmp13, '.radorc');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
@@ -447,7 +447,7 @@ describe('doctor: 1.3 canonical checks', () => {
 
   it('copilot mutex — only one copilot key present at a time produces a single registered copilot row', async () => {
     // Registered: copilot-cli only. copilot-vscode must render as not installed.
-    const radorchDir = path.join(tmp13, '.radorch');
+    const radorchDir = path.join(tmp13, '.radorc');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),
@@ -464,8 +464,8 @@ describe('doctor: 1.3 canonical checks', () => {
   });
 
   it('templates-folder check passes when four canonical tier files present', async () => {
-    // Create ~/.radorch/templates/ with all four canonical tier files.
-    const radorchDir = path.join(tmp13, '.radorch');
+    // Create ~/.radorc/templates/ with all four canonical tier files.
+    const radorchDir = path.join(tmp13, '.radorc');
     const templatesDir = path.join(radorchDir, 'templates');
     await fs.mkdir(templatesDir, { recursive: true });
     for (const tier of ['extra-high', 'high', 'medium', 'low']) {
@@ -490,9 +490,9 @@ describe('Section 9 — plugin check noise suppression', () => {
   });
 
   it('S9-1: no plugin-prefixed check names when neither CLAUDE_PLUGIN_ROOT nor claude-plugin registered', async () => {
-    // No pluginRoot, no ~/.radorch/install.json with claude-plugin.
+    // No pluginRoot, no ~/.radorc/install.json with claude-plugin.
     // bundle-integrity, plugin-skills-enumerable, plugin-agents-resolvable must be absent.
-    const root = path.join(s9Home, '.radorch');
+    const root = path.join(s9Home, '.radorc');
     const result = await runPluginChecks({ root, localVersion: '1.0.0' });
     const pluginSpecific = ['bundle-integrity', 'plugin-skills-enumerable', 'plugin-agents-resolvable'];
     for (const name of pluginSpecific) {
@@ -503,7 +503,7 @@ describe('Section 9 — plugin check noise suppression', () => {
   });
 
   it('S9-2: all three plugin checks run and report pass when CLAUDE_PLUGIN_ROOT is set and tree is valid', async () => {
-    const root = path.join(s9Home, '.radorch');
+    const root = path.join(s9Home, '.radorc');
     const pluginRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'rad-plug-s9-'));
     try {
       // Build a minimal valid plugin tree.
@@ -531,7 +531,7 @@ describe('Section 9 — plugin check noise suppression', () => {
   it('S9-3: three plugin checks emit (not skipped) when claude-plugin is registered in install.json but env var absent', async () => {
     // Simulate running doctor outside a Claude Code session: env var absent but
     // claude-plugin is registered.
-    const radorchDir = path.join(s9Home, '.radorch');
+    const radorchDir = path.join(s9Home, '.radorc');
     await fs.mkdir(radorchDir, { recursive: true });
     await fs.writeFile(
       path.join(radorchDir, 'install.json'),

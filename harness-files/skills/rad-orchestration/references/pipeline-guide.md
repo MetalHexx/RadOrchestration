@@ -112,7 +112,7 @@ If the pipeline exits with code 1, the envelope carries error details:
 **On every `ok: false` envelope:**
 
 1. **Classify** the error using the table above
-2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `~/.radorch/projects/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the envelope:
+2. **Log the error**: Invoke the `rad-log-error` skill to append a structured entry to `{NAME}-ERROR-LOG.md` in the project directory (e.g., `~/.radorc/projects/MYAPP/MYAPP-ERROR-LOG.md`). Populate the entry fields from the envelope:
    - **Pipeline Event**: from `data.event`
    - **Pipeline Action**: from `data.action` (or `N/A` if not present)
    - **Severity**: classify using the skill's severity guide (`critical` = blocks execution, `high` = incorrect state, `medium` = degraded behavior, `low` = cosmetic)
@@ -137,7 +137,7 @@ When spawning a subagent, always provide:
 4. **Output expectations**: Where to save the output document (derive from project naming conventions)
 
 Example spawn instructions:
-> "Create the requirements for the MYAPP project. If a brainstorming document exists at `~/.radorch/projects/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the requirements to `~/.radorch/projects/MYAPP/MYAPP-REQUIREMENTS.md`."
+> "Create the requirements for the MYAPP project. If a brainstorming document exists at `~/.radorc/projects/MYAPP/MYAPP-BRAINSTORMING.md`, read that. Save the requirements to `~/.radorc/projects/MYAPP/MYAPP-REQUIREMENTS.md`."
 
 ### Source Control — PR Mode
 

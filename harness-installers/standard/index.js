@@ -30,6 +30,7 @@ import { renderPostInstallSummary, renderUninstallSummary } from './lib/summary.
 import { installHarness } from './lib/install/install-harness.js';
 import { uninstallHarness } from './lib/install/uninstall-harness.js';
 import { hydrateUserData } from './lib/install/hydrate-user-data.js';
+import { UiLockError } from './lib/install/ui-stop.js';
 import { loadRegistry } from './lib/install/install-json.js';
 import { userDataPaths } from './lib/install/user-data-paths.js';
 
@@ -175,12 +176,23 @@ async function runInstallFlow({ packageRoot, sharedRoot, harnesses }) {
   }
 
   const firstHarness = harnesses[0];
-  await hydrateUserData({
-    bundleRoot: path.join(packageRoot, 'output', firstHarness),
-    sharedRoot,
-  });
+  let uiStopped = false;
+  try {
+    const hydrateResult = await hydrateUserData({
+      bundleRoot: path.join(packageRoot, 'output', firstHarness),
+      sharedRoot,
+    });
+    uiStopped = hydrateResult.uiStopped;
+  } catch (err) {
+    if (err instanceof UiLockError) {
+      process.stderr.write(`\nERROR: ${err.message}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    throw err;
+  }
 
-  const configPath = path.join(os.homedir(), '.radorch', 'orchestration.yml');
+  const configPath = path.join(os.homedir(), '.radorc', 'orchestration.yml');
   const driftHint = computeDriftHint();
 
   renderPostInstallSummary({
@@ -188,6 +200,7 @@ async function runInstallFlow({ packageRoot, sharedRoot, harnesses }) {
     configPath,
     driftHint,
     uiBuilt: true,
+    uiStopped,
   });
 }
 

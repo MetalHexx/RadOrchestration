@@ -1,7 +1,7 @@
 # Install Refactor — Design Document
 
 **Date:** 2026-05-13 (updated 2026-05-19 post-LIFT to reflect as-shipped reality)
-**Status:** Refactor in progress; this document is reality-grounded against the merged work through INSTALL-REFACTOR-LIFT. Execution shipped as a six-project series: [ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md) → [CLAUDE-PLUGIN](~/.radorch/projects/INSTALL-REFACTOR-CLAUDE-PLUGIN/INSTALL-REFACTOR-CLAUDE-PLUGIN-BRAINSTORMING.md) → [STANDARD](~/.radorch/projects/INSTALL-REFACTOR-STANDARD/INSTALL-REFACTOR-STANDARD-BRAINSTORMING.md) → [COPILOT-CLI](~/.radorch/projects/INSTALL-REFACTOR-COPILOT-CLI/INSTALL-REFACTOR-COPILOT-CLI-BRAINSTORMING.md) → [LIFT](~/.radorch/projects/INSTALL-REFACTOR-LIFT/INSTALL-REFACTOR-LIFT-BRAINSTORMING.md) (non-destructive lift of greenfield subtrees to repo root, merged) → [RETIRE-LEGACY](~/.radorch/projects/INSTALL-REFACTOR-RETIRE-LEGACY/INSTALL-REFACTOR-RETIRE-LEGACY-BRAINSTORMING.md) (destructive: deletes legacy folders, retires the legacy publish workflow without replacement, consolidates orientation docs) → publish-wiring iteration (designs and ships the new publish flow; ships `1.0.0-alpha.9` from the new shape). The greenfield staging pattern described below was the staging mechanism through the four subsystem iterations; LIFT promoted the subtrees to repo root, and `greenfield/` no longer exists.
+**Status:** Refactor in progress; this document is reality-grounded against the merged work through INSTALL-REFACTOR-LIFT. Execution shipped as a six-project series: [ADAPTERS](~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md) → [CLAUDE-PLUGIN](~/.radorc/projects/INSTALL-REFACTOR-CLAUDE-PLUGIN/INSTALL-REFACTOR-CLAUDE-PLUGIN-BRAINSTORMING.md) → [STANDARD](~/.radorc/projects/INSTALL-REFACTOR-STANDARD/INSTALL-REFACTOR-STANDARD-BRAINSTORMING.md) → [COPILOT-CLI](~/.radorc/projects/INSTALL-REFACTOR-COPILOT-CLI/INSTALL-REFACTOR-COPILOT-CLI-BRAINSTORMING.md) → [LIFT](~/.radorc/projects/INSTALL-REFACTOR-LIFT/INSTALL-REFACTOR-LIFT-BRAINSTORMING.md) (non-destructive lift of greenfield subtrees to repo root, merged) → [RETIRE-LEGACY](~/.radorc/projects/INSTALL-REFACTOR-RETIRE-LEGACY/INSTALL-REFACTOR-RETIRE-LEGACY-BRAINSTORMING.md) (destructive: deletes legacy folders, retires the legacy publish workflow without replacement, consolidates orientation docs) → publish-wiring iteration (designs and ships the new publish flow; ships `1.0.0-alpha.9` from the new shape). The greenfield staging pattern described below was the staging mechanism through the four subsystem iterations; LIFT promoted the subtrees to repo root, and `greenfield/` no longer exists.
 
 ---
 
@@ -15,7 +15,7 @@ The current installer layout carries cruft from incremental decisions:
 - `cli/` carries an `install` command wired into the CLI but never invoked in any production install path — vestigial.
 - Source content (`agents/`, `skills/`) sits loose at the repo root, mixed with generated artifacts (`.claude/`, `.github/`), build outputs, and packages.
 
-This document captures the target architecture for the installer + bundler side. The adapter subsystem has its own companion at [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md), referenced wherever it touches the broader layout.
+This document captures the target architecture for the installer + bundler side. The adapter subsystem has its own companion at [INSTALL-REFACTOR-ADAPTERS](~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md), referenced wherever it touches the broader layout.
 
 ---
 
@@ -27,7 +27,7 @@ This document captures the target architecture for the installer + bundler side.
 │   ├── agents/                               #   body files + per-harness frontmatter ymls
 │   ├── skills/                               #   skills with inline (LCD-authored) frontmatter
 │   └── AGENTS.md
-│                                             #   Authoring details: ~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/
+│                                             #   Authoring details: ~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/
 │
 ├── harness-adapters/                         # translation subsystem
 │   ├── engine/                               #   harness-blind translator
@@ -37,13 +37,13 @@ This document captures the target architecture for the installer + bundler side.
 │   │   └── copilot-cli/
 │   ├── output/                               #   .gitignored; translated harness-shape files
 │   └── AGENTS.md
-│                                             #   Subsystem details: ~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/
+│                                             #   Subsystem details: ~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/
 │
 ├── cli/                                      # radorch CLI source (TypeScript)
 │                                             #   bundled into the rad-orchestration skill at install time
 │
 ├── ui/                                       # Next.js dashboard
-│                                             #   deployed to ~/.radorch/ui/ by both installers
+│                                             #   deployed to ~/.radorc/ui/ by both installers
 │
 └── harness-installers/
     │
@@ -117,7 +117,7 @@ This document captures the target architecture for the installer + bundler side.
 
 **Post-LIFT additions to the layout** (shipped, not shown in the block above):
 
-- `runtime-config/` at repo root — `orchestration.yml` template + `templates/` tier files. Both installers consume it via `emit-runtime-config` style helpers; the standard installer and both plugin installers hydrate `~/.radorch/` from here.
+- `runtime-config/` at repo root — `orchestration.yml` template + `templates/` tier files. Both installers consume it via `emit-runtime-config` style helpers; the standard installer and both plugin installers hydrate `~/.radorc/` from here.
 - `harness-dogfood/` at repo root — the developer inner-loop build script plus a small set of cross-module tests. Carries its own minimal manifest-driven deploy library so it does NOT reach into any installer's `lib/install/` internals (decoupling principle landed in LIFT, reversing the pre-refactor coupling smell). See Decision 9 below.
 - `harness-files/tests/` — canonical-source integrity tests (e.g., that every `skills: -` ref in agent frontmatter resolves to a real skill). New folder added in LIFT to host the one survivor from the aggressive `tests/scripts/` cull.
 
@@ -127,7 +127,7 @@ The four subsystem iterations (ADAPTERS, CLAUDE-PLUGIN, STANDARD, COPILOT-CLI) s
 
 ## Adapter & engine subsystem
 
-The translation subsystem under `harness-adapters/` has its own companion doc, [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md), covering its design and motivation in full. Headlines:
+The translation subsystem under `harness-adapters/` has its own companion doc, [INSTALL-REFACTOR-ADAPTERS](~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md), covering its design and motivation in full. Headlines:
 
 - **Adapter is a pure translation layer.** The engine is harness-blind; adapters declare per-harness rules (filename templates, body-token replacements) as small modules.
 - **Per-harness frontmatter is hand-authored.** Each agent has one yml per harness alongside its body file in `harness-files/agents/`. No projection logic, no neutral schema, no tool/model dictionaries in adapters.
@@ -152,7 +152,7 @@ Source of truth for multi-harness content. Hand-authored agents and skills. Ever
 UI and CLI stay at the repo root rather than under `harness-files/` because both are self-contained npm packages with their own build systems and deploy to non-harness destinations. Hooks (`hooks.json`) live under the claude-plugin installer because hooks are plugin-specific.
 
 ### `/harness-adapters/`
-Translation subsystem. See [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md).
+Translation subsystem. See [INSTALL-REFACTOR-ADAPTERS](~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md).
 
 ### `/cli/`
 Source of `radorch.mjs` — the runtime utility belt that ships inside the `rad-orchestration` skill.
@@ -163,13 +163,13 @@ radorch is a pure runtime utility belt: `doctor`, `where`, `harness use/list`, `
 - `cli/src/lib/upgrade/*` — upgrade logic lives inside the claude-plugin installer (`harness-installers/claude-plugin/lib/install/`), its only real consumer.
 
 ### `/ui/`
-Next.js dashboard. Lives at repo root: a self-contained npm package, deployed to `~/.radorch/ui/` (not into a harness folder), shared across all installers. Both installers consume it via the same `emit-ui-bundle` helper.
+Next.js dashboard. Lives at repo root: a self-contained npm package, deployed to `~/.radorc/ui/` (not into a harness folder), shared across all installers. Both installers consume it via the same `emit-ui-bundle` helper.
 
 ### `/harness-installers/`
 Top-level monorepo of installer variants and shared installer helpers.
 
 - **`shared/build-helpers/`** — small helpers like `emit-cli-bundle.js`, `emit-ui-bundle.js`. Adapter knowledge is **not** here; it lives in `harness-adapters/`. Installers consume the adapter engine's output tree as input.
-- **`standard/`** — user-facing npm installer. One npm tarball ships all three harnesses; the wizard selects which to deploy. Mutually-exclusive Copilot harness selection (vscode XOR cli, mutex on `~/.copilot/`). Owns `lib/install/` for its install state machine. Hydrates `~/.radorch/` to the same shape the claude-plugin writes: `install.json`, `orchestration.yml`, `templates/`, `ui/`, plus empty `projects/` and `logs/`. Cross-channel coexistence warning (`claude` ↔ `claude-plugin`) emitted at install end.
+- **`standard/`** — user-facing npm installer. One npm tarball ships all three harnesses; the wizard selects which to deploy. Mutually-exclusive Copilot harness selection (vscode XOR cli, mutex on `~/.copilot/`). Owns `lib/install/` for its install state machine. Hydrates `~/.radorc/` to the same shape the claude-plugin writes: `install.json`, `orchestration.yml`, `templates/`, `ui/`, plus empty `projects/` and `logs/`. Cross-channel coexistence warning (`claude` ↔ `claude-plugin`) emitted at install end.
 - **`claude-plugin/`** — UserPromptSubmit-triggered headless installer. Ships only the claude variant. Adds plugin-specific concerns: `install-log` (jsonl), atomic `install.json` + `hooks.json` writes, sentinel-driven self-heal. Earlier design iterations included `hash-check` (file-level drift detection) and `bootstrap-lock` (concurrency lock); both were dropped during INSTALL-REFACTOR-CLAUDE-PLUGIN iteration 1 scrutiny (see that brainstorm's scrutiny section for rationale).
 - **`copilot-cli-plugin/`** and **`copilot-vscode-plugin/`** — placeholders for future plugin-style installers.
 
@@ -184,11 +184,11 @@ Each installer is a separately publishable npm package with its own `package.jso
 1. User runs `npx rad-orchestration` (or `npx ./<tarball>`).
 2. `harness-installers/standard/index.js` runs the wizard (or `--yes` headless mode) and collects harness selection.
 3. The bundled tarball contains `harness-installers/standard/output/<harness>/` with translated agents/skills (sourced from `harness-adapters/output/<harness>/` at pack time), the bundled `radorch.mjs`, the built UI, and the manifest catalog.
-4. `harness-installers/standard/lib/install/install-harness.js` reads `~/.radorch/install.json` to detect prior install version.
+4. `harness-installers/standard/lib/install/install-harness.js` reads `~/.radorc/install.json` to detect prior install version.
 5. On upgrade: loads prior version's manifest from `dist/<harness>/manifests/v<prior>.json`, calls `removeManifestFiles` to clean up old files at their templated destinations.
 6. Loads current version's manifest, calls `installManifestFiles` to copy from `dist/<harness>/` to `~/.claude/` or `~/.copilot/`.
-7. Hydrates `~/.radorch/` shared assets — copies `orchestration.yml` and `templates/` from the bundle, copies the UI standalone bundle to `~/.radorch/ui/`, `mkdir -p ~/.radorch/projects/` and `~/.radorch/logs/`.
-8. Stamps `~/.radorch/install.json` atomically (tmp + rename) under the harness's `InstallKey`.
+7. Hydrates `~/.radorc/` shared assets — copies `orchestration.yml` and `templates/` from the bundle, copies the UI standalone bundle to `~/.radorc/ui/`, `mkdir -p ~/.radorc/projects/` and `~/.radorc/logs/`.
+8. Stamps `~/.radorc/install.json` atomically (tmp + rename) under the harness's `InstallKey`.
 9. Prints post-install summary; emits cross-channel drift warning if `install.json` shows a `claude-plugin` entry at a different version.
 
 ### Claude plugin install flow (UserPromptSubmit hook)
@@ -198,20 +198,20 @@ Updated by INSTALL-REFACTOR-CLAUDE-PLUGIN (iteration 1) — see that brainstorm 
 1. User installs the Claude plugin via marketplace. Claude Code copies the plugin payload to `~/.claude/plugins/cache/<marketplace>/rad-orchestration/<version>/`.
 2. User submits their first prompt in any Claude Code session. Claude Code's `UserPromptSubmit` hook fires (the platform's only reliably-fired event after `/plugin install` or `/plugin update`).
 3. The hook invokes `node ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap.mjs` (the merged install orchestrator — replaces parent design's earlier `index.js` reference).
-4. `bootstrap.mjs` reads delivering version from `${CLAUDE_PLUGIN_ROOT}/package.json`, compares against `~/.radorch/install.json`'s `claude-plugin` InstallKey entry; sentinel-checks for `radorch.mjs` on disk.
+4. `bootstrap.mjs` reads delivering version from `${CLAUDE_PLUGIN_ROOT}/package.json`, compares against `~/.radorc/install.json`'s `claude-plugin` InstallKey entry; sentinel-checks for `radorch.mjs` on disk.
 5. On version match + sentinel pass: no-op, self-uninstall the `UserPromptSubmit` entry from `hooks.json`, exit.
 6. On version mismatch or fresh install: import stages from `harness-installers/claude-plugin/lib/install/*` (bundled into `bootstrap.mjs` at build time so plugin cache doesn't need `node_modules/`) and run them in order:
    - Load prior version's manifest from bundled catalog
    - Remove prior version's files (skip entries with `ownership: 'user-config'` like `orchestration.yml`); prune emptied parent directories upward
-   - `mkdir -p ~/.radorch/projects/`, `~/.radorch/logs/`
-   - Copy runtime-config to `~/.radorch/orchestration.yml` and `~/.radorch/templates/`
-   - Copy UI bundle to `~/.radorch/ui/`
-   - Stamp `~/.radorch/install.json` atomically (tmp + rename) under `InstallKey = 'claude-plugin'`
-   - Append a JSONL entry to `~/.radorch/logs/install.log` (6-action vocabulary, best-effort write)
+   - `mkdir -p ~/.radorc/projects/`, `~/.radorc/logs/`
+   - Copy runtime-config to `~/.radorc/orchestration.yml` and `~/.radorc/templates/`
+   - Copy UI bundle to `~/.radorc/ui/`
+   - Stamp `~/.radorc/install.json` atomically (tmp + rename) under `InstallKey = 'claude-plugin'`
+   - Append a JSONL entry to `~/.radorc/logs/install.log` (6-action vocabulary, best-effort write)
    - On success, atomically rewrite `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` to remove the `UserPromptSubmit` entry (leave `SessionStart` intact). On failure, leave `hooks.json` untouched so next prompt retries.
-7. SessionStart's `drift-check.mjs` hook continues firing every session for cross-channel drift detection (plugin version vs `~/.radorch/install.json`); never self-uninstalls.
+7. SessionStart's `drift-check.mjs` hook continues firing every session for cross-channel drift detection (plugin version vs `~/.radorc/install.json`); never self-uninstalls.
 
-Both installers write the same shape to `~/.radorch/`: `install.json`, `orchestration.yml`, `templates/`, `ui/`, plus empty `projects/` and `logs/`.
+Both installers write the same shape to `~/.radorc/`: `install.json`, `orchestration.yml`, `templates/`, `ui/`, plus empty `projects/` and `logs/`.
 
 ### Build flow (pack time, per installer)
 
@@ -247,7 +247,7 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - `harness-files/skills/` holds skills with inline frontmatter (LCD authored).
 - `/hooks/` lives under `harness-installers/claude-plugin/hooks/` — it's plugin-specific.
 - `/ui/` and `/cli/` stay at repo root — they're self-contained npm packages with their own build systems.
-- Adapter-side details: [INSTALL-REFACTOR-ADAPTERS](~/.radorch/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md).
+- Adapter-side details: [INSTALL-REFACTOR-ADAPTERS](~/.radorc/projects/INSTALL-REFACTOR-ADAPTERS/INSTALL-REFACTOR-ADAPTERS-BRAINSTORMING.md).
 - **Rationale:** "harness-files" names the role: files that get harness-adapted. Keeping them in one folder separates source content from generated artifacts and packages.
 
 ### Decision 2: Adapter subsystem owns translation; installers own packaging
@@ -261,7 +261,7 @@ The adapter engine separates `harness-files/ → output/` (translation) from `ou
 - **Rationale:** install logic belongs to installers, not the runtime CLI.
 
 ### Decision 4: `/ui/` stays at root, not under `/harness-files/`
-- **Rationale:** UI is consumed by both installers and deploys to `~/.radorch/ui/`. It's a self-contained npm package, not harness-translated content.
+- **Rationale:** UI is consumed by both installers and deploys to `~/.radorc/ui/`. It's a self-contained npm package, not harness-translated content.
 
 ### Decision 5: Each installer owns its own install state machine
 - `harness-installers/standard/lib/install/` and `harness-installers/claude-plugin/lib/install/` each contain a full state machine.

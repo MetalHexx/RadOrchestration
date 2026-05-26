@@ -1,7 +1,7 @@
 // harness-installers/standard/tests/install/uninstall-harness.test.mjs —
 // End-to-end of the uninstall function. Each test installs a synthetic bundle
 // first, then asserts that uninstall removes the per-harness files + registry
-// entry but leaves ~/.radorch/ (orchestration.yml, projects/, etc.) untouched.
+// entry but leaves ~/.radorc/ (orchestration.yml, projects/, etc.) untouched.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -64,7 +64,7 @@ function mkTmp(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-test('uninstallHarness removes per-harness files and the registry entry; preserves ~/.radorch/ assets', async () => {
+test('uninstallHarness removes per-harness files and the registry entry; preserves ~/.radorc/ assets', async () => {
   const tmp = mkTmp('std-uih-happy-');
   const restoreHome = withHome(path.join(tmp, 'home'));
   try {
@@ -82,10 +82,10 @@ test('uninstallHarness removes per-harness files and the registry entry; preserv
     assert.ok(fs.existsSync(orchestratorPath), 'install put orchestrator.md in place');
     assert.ok(fs.existsSync(radorchMjsPath), 'install put radorch.mjs in place');
 
-    // Seed ~/.radorch/ assets that the uninstall should leave alone. Some
+    // Seed ~/.radorc/ assets that the uninstall should leave alone. Some
     // would normally be put there by hydrateUserData; we stage them here so
     // we can prove uninstall doesn't touch them.
-    const radorchDir = path.join(home, '.radorch');
+    const radorchDir = path.join(home, '.radorc');
     fs.mkdirSync(path.join(radorchDir, 'projects/my-cool-project'), { recursive: true });
     fs.writeFileSync(path.join(radorchDir, 'projects/my-cool-project/notes.md'), 'user data');
     fs.writeFileSync(path.join(radorchDir, 'orchestration.yml'), 'tier: medium\n');
@@ -140,7 +140,7 @@ test('uninstallHarness removes per-harness files and the registry entry; preserv
       'user-authored agent file survives because it is not in the manifest',
     );
 
-    // ~/.radorch/ assets all untouched.
+    // ~/.radorc/ assets all untouched.
     assert.ok(fs.existsSync(path.join(radorchDir, 'orchestration.yml')), 'orchestration.yml survives');
     assert.ok(
       fs.existsSync(path.join(radorchDir, 'projects/my-cool-project/notes.md')),

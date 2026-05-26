@@ -1,9 +1,9 @@
 // harness-installers/standard/lib/install/uninstall-harness.js —
 // Reverse of installHarness. Removes the per-harness on-disk files exactly
 // as recorded by the manifest that shipped with the user's installed version,
-// then drops the harnesses[<key>] entry from ~/.radorch/install.json. The
+// then drops the harnesses[<key>] entry from ~/.radorc/install.json. The
 // install.json FILE itself is preserved (an empty { "harnesses": {} } is the
-// residual shape when the last harness is uninstalled). ~/.radorch/ itself —
+// residual shape when the last harness is uninstalled). ~/.radorc/ itself —
 // orchestration.yml, templates/, projects/, logs/, ui/ — is never touched
 // (user direction; see plan).
 //

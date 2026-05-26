@@ -1,7 +1,7 @@
 // tests/lib/drift-hint.test.mjs — Cross-channel drift hint derived from
-// ~/.radorch/install.json (AD-15, FR-9). Every case stages a tmpdir with a
+// ~/.radorc/install.json (AD-15, FR-9). Every case stages a tmpdir with a
 // synthetic install.json and passes `installJsonPath` explicitly so the real
-// ~/.radorch is never read (NFR-9).
+// ~/.radorc is never read (NFR-9).
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

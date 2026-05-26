@@ -34,7 +34,7 @@ Bundles `${source}/bootstrap.mjs` (with `lib/install/*` inlined by esbuild) to `
 
 No function in this folder may reference:
 - Installer package names (`claude-plugin`, `standard`, etc.)
-- Destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
+- Destination paths (`~/.radorc/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
 - Specific token keys or agent names
 
 All such values are supplied by the caller.

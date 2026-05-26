@@ -12,7 +12,7 @@ The Orchestrator invokes this skill when the `radorch pipeline signal` envelope 
 
 ## Workflow
 
-1. **Determine the error log file path**: `{PROJECT-DIR}/{NAME}-ERROR-LOG.md` (e.g., `~/.radorch/projects/MYAPP/MYAPP-ERROR-LOG.md`)
+1. **Determine the error log file path**: `{PROJECT-DIR}/{NAME}-ERROR-LOG.md` (e.g., `~/.radorc/projects/MYAPP/MYAPP-ERROR-LOG.md`)
 
 2. **If the file does not exist** — create it using the bundled template at `templates/ERROR-LOG.md`, fill the frontmatter fields (`project`, `created`, `last_updated`), then write the first entry as `## Error 1`
 

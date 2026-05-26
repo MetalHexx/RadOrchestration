@@ -56,7 +56,7 @@ async function makePluginRootWithVersionedTemplate(version) {
   return dir;
 }
 
-test('fresh install hydrates ~/.radorch/, stamps install.json under copilot-cli-plugin, logs fresh-install', async () => {
+test('fresh install hydrates ~/.radorc/, stamps install.json under copilot-cli-plugin, logs fresh-install', async () => {
   const radHome = fs.mkdtempSync(join(os.tmpdir(), 'rad-home-'));
   const pluginRoot = await makePluginRoot('1.0.0');
   try {

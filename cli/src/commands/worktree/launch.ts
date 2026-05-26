@@ -109,7 +109,7 @@ export function worktreeLaunch(opts: WorktreeLaunchOptions): WorktreeLaunchResul
   const platform = opts.platform ?? process.platform;
   const spawn = opts.spawn ?? (defaultSpawn as unknown as SpawnFn);
   const repaired = repairMsysPrompt(opts.prompt);
-  const addDir = path.join(os.homedir(), '.radorch', 'projects');
+  const addDir = path.join(os.homedir(), '.radorc', 'projects');
 
   let agentArgs: string[] = [];
   if (opts.agent === 'claude') {

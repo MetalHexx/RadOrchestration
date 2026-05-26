@@ -84,7 +84,7 @@ test('installManifestFiles — copies skills/ to ~/.claude/', () => {
   assert.equal(result.copiedCount, 1);
 });
 
-test('installManifestFiles — copies templates/ to ~/.radorch/templates/', () => {
+test('installManifestFiles — copies templates/ to ~/.radorc/templates/', () => {
   fs.mkdirSync(path.join(pluginRoot, 'templates'), { recursive: true });
   fs.writeFileSync(path.join(pluginRoot, 'templates', 'high.yml'), 'template-body');
   const manifest = {
@@ -94,8 +94,8 @@ test('installManifestFiles — copies templates/ to ~/.radorch/templates/', () =
     }],
   };
   const result = installManifestFiles(manifest, pluginRoot, 'claude');
-  const target = path.join(tmp, '.radorch', 'templates', 'high.yml');
-  assert.ok(fs.existsSync(target), 'template should be in ~/.radorch/templates/');
+  const target = path.join(tmp, '.radorc', 'templates', 'high.yml');
+  assert.ok(fs.existsSync(target), 'template should be in ~/.radorc/templates/');
   assert.equal(fs.readFileSync(target, 'utf8'), 'template-body');
   assert.equal(result.copiedCount, 1);
 });
@@ -110,7 +110,7 @@ test('installManifestFiles — AD-7: skips entries under projects/', () => {
     }],
   };
   const result = installManifestFiles(manifest, pluginRoot, 'claude');
-  const target = path.join(tmp, '.radorch', 'projects', 'evil', 'state.json');
+  const target = path.join(tmp, '.radorc', 'projects', 'evil', 'state.json');
   assert.ok(!fs.existsSync(target), 'projects/ must not be touched');
   assert.equal(result.copiedCount, 0);
   assert.equal(result.skippedCount, 1);

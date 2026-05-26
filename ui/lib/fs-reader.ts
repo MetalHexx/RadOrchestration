@@ -13,7 +13,7 @@ import { derivePlanningStatus, deriveExecutionStatus } from '@/lib/status-deriva
 
 /**
  * Resolve the absolute path to orchestration.yml.
- * Always returns ~/.radorch/orchestration.yml.
+ * Always returns ~/.radorc/orchestration.yml.
  *
  * @returns Absolute path to orchestration.yml
  */
@@ -22,7 +22,7 @@ export function getConfigPath(): string {
 }
 
 /**
- * Read and parse orchestration.yml from ~/.radorch/orchestration.yml.
+ * Read and parse orchestration.yml from ~/.radorc/orchestration.yml.
  *
  * @returns Parsed OrchestrationConfig
  * @throws If orchestration.yml does not exist or is invalid YAML
@@ -91,7 +91,7 @@ export function resolveOrchRoot(_config: OrchestrationConfig): string {
 }
 
 /**
- * Discover all projects under ~/.radorch/projects/. Returns summaries with tier info.
+ * Discover all projects under ~/.radorc/projects/. Returns summaries with tier info.
  * Each subdirectory is treated as a project.
  * If state.json exists and is parseable, extract the pipeline tier.
  * If state.json is missing, mark hasState: false.
@@ -103,7 +103,7 @@ export function resolveOrchRoot(_config: OrchestrationConfig): string {
  * sequential implementation became the dominant cost on large workspaces
  * once Iter 5 grew state.json from ~2 KB to ~50–200 KB per project.
  *
- * @returns Array of ProjectSummary objects (one per directory under ~/.radorch/projects/)
+ * @returns Array of ProjectSummary objects (one per directory under ~/.radorc/projects/)
  */
 export async function discoverProjects(): Promise<ProjectSummary[]> {
   const absBasePath = getProjectsRoot();

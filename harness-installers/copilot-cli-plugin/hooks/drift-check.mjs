@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // drift-check.mjs — sessionStart hook. Compares plugin-delivered version
-// against ~/.radorch/install.json's copilot-cli-plugin entry. Single
+// against ~/.radorc/install.json's copilot-cli-plugin entry. Single
 // stdout line on mismatch; silent on match. Never self-uninstalls.
 
 import fs from 'node:fs';
@@ -19,12 +19,12 @@ function run() {
   const pj = readJsonSafe(path.join(pluginRoot, 'plugin.json'));
   const deliveringVersion = pj?.version;
   if (!deliveringVersion) return;
-  const radHome = process.env.RAD_HOME ?? path.join(os.homedir(), '.radorch');
+  const radHome = process.env.RAD_HOME ?? path.join(os.homedir(), '.radorc');
   const installed = readJsonSafe(path.join(radHome, 'install.json'));
   const installedVersion = installed?.harnesses?.['copilot-cli-plugin']?.version;
   if (installedVersion && installedVersion !== deliveringVersion) {
     process.stdout.write(
-      `[rad-orchestration drift] ~/.radorch/install.json is at version ${installedVersion}. ` +
+      `[rad-orchestration drift] ~/.radorc/install.json is at version ${installedVersion}. ` +
       `The Copilot CLI plugin's bundled rad-orchestration is at version ${deliveringVersion}. ` +
       `Recommend running \`copilot plugin update rad-orc\` (or re-running the standard installer) to keep them in sync.\n`,
     );

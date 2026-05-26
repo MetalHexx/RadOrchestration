@@ -77,7 +77,7 @@ describe('projectFind CLI path (runCommand argv → handler args)', () => {
     const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
     await runCommand(probeDef, {
       argv: [
-        '--projects-base-path', '/home/u/.radorch/projects',
+        '--projects-base-path', '/home/u/.radorc/projects',
         '--repo-root', '/repo',
         '--project-name', 'MYPROJ',
       ],
@@ -85,7 +85,7 @@ describe('projectFind CLI path (runCommand argv → handler args)', () => {
       isTTY: false,
       stderr: process.stderr,
     });
-    expect(received['projects-base-path']).toBe('/home/u/.radorch/projects');
+    expect(received['projects-base-path']).toBe('/home/u/.radorc/projects');
     expect(received['repo-root']).toBe('/repo');
     expect(received['project-name']).toBe('MYPROJ');
     const arg = (log.mock.calls[0]?.[0] ?? '') as string;

@@ -1,5 +1,5 @@
 // harness-installers/standard/lib/drift-hint.js — Cross-channel
-// version-drift hint computed from ~/.radorch/install.json (AD-15, FR-9).
+// version-drift hint computed from ~/.radorc/install.json (AD-15, FR-9).
 //
 // AD-15 fixes the drift source: the standard installer and the plugin channel
 // both record themselves in `install.json` under `harnesses.<key>`. Drift is

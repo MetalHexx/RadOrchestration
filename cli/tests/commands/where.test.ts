@@ -39,33 +39,33 @@ afterEach(async () => {
 });
 
 describe('runWhere', () => {
-  it('projects resolves to <home>/.radorch/projects on stdout, exit 0', async () => {
+  it('projects resolves to <home>/.radorc/projects on stdout, exit 0', async () => {
     const s = makeStreams();
     const code = await runWhere({ name: 'projects', stdout: s.stdout, stderr: s.stderr, env: {} });
     expect(code).toBe(0);
-    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorch', 'projects'));
+    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorc', 'projects'));
     expect(s.readStderr()).toBe('');
   });
 
-  it('root resolves to <home>/.radorch', async () => {
+  it('root resolves to <home>/.radorc', async () => {
     const s = makeStreams();
     const code = await runWhere({ name: 'root', stdout: s.stdout, stderr: s.stderr, env: {} });
     expect(code).toBe(0);
-    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorch'));
+    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorc'));
   });
 
-  it('install-json resolves to <home>/.radorch/install.json', async () => {
+  it('install-json resolves to <home>/.radorc/install.json', async () => {
     const s = makeStreams();
     const code = await runWhere({ name: 'install-json', stdout: s.stdout, stderr: s.stderr, env: {} });
     expect(code).toBe(0);
-    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorch', 'install.json'));
+    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorc', 'install.json'));
   });
 
-  it('logs resolves to <home>/.radorch/logs', async () => {
+  it('logs resolves to <home>/.radorc/logs', async () => {
     const s = makeStreams();
     const code = await runWhere({ name: 'logs', stdout: s.stdout, stderr: s.stderr, env: {} });
     expect(code).toBe(0);
-    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorch', 'logs'));
+    expect(s.readStdout().trim()).toBe(path.join(tmp, '.radorc', 'logs'));
   });
 
   it('plugin-root errors with exit 1 on stderr when CLAUDE_PLUGIN_ROOT is unset', async () => {
@@ -109,7 +109,7 @@ describe('runWhere', () => {
     for (const n of Object.keys(WHERE_NAMES)) {
       expect(out).toContain(n);
     }
-    expect(out).toContain(path.join(tmp, '.radorch', 'projects'));
+    expect(out).toContain(path.join(tmp, '.radorc', 'projects'));
     expect(out).toContain('<unset: CLAUDE_PLUGIN_ROOT is not set>');
   });
 

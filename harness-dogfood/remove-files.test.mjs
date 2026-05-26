@@ -55,8 +55,8 @@ test('removeManifestFiles — deletes file under ~/.copilot/ for copilot-vscode'
   assert.equal(result.removedCount, 1);
 });
 
-test('removeManifestFiles — deletes ~/.radorch/templates/ entry', () => {
-  const target = path.join(tmp, '.radorch', 'templates', 'high.yml');
+test('removeManifestFiles — deletes ~/.radorc/templates/ entry', () => {
+  const target = path.join(tmp, '.radorc', 'templates', 'high.yml');
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, 'template-body');
 
@@ -83,7 +83,7 @@ test('removeManifestFiles — idempotent: missing file is a no-op', () => {
 });
 
 test('removeManifestFiles — AD-7: never deletes under projects/', () => {
-  const projectFile = path.join(tmp, '.radorch', 'projects', 'mine', 'state.json');
+  const projectFile = path.join(tmp, '.radorc', 'projects', 'mine', 'state.json');
   fs.mkdirSync(path.dirname(projectFile), { recursive: true });
   fs.writeFileSync(projectFile, '{"sacred":true}');
 
@@ -98,7 +98,7 @@ test('removeManifestFiles — AD-7: never deletes under projects/', () => {
   assert.equal(result.removedCount, 0);
 });
 
-test('removeManifestFiles — prunes emptied parent dirs but does not cross above ~/.radorch/ or harness root', () => {
+test('removeManifestFiles — prunes emptied parent dirs but does not cross above ~/.radorc/ or harness root', () => {
   // Create a deeply nested file under ~/.claude/skills/rad-plan/refs/guide.md
   // and a sibling untouched file in ~/.claude/skills/rad-other/SKILL.md.
   // Removing rad-plan should prune rad-plan/refs and rad-plan, but leave

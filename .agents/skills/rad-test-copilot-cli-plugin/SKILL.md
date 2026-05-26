@@ -133,7 +133,7 @@ Print a block like the following, substituting `{repoRoot}` and `{version}` with
 >
 > (Equivalently inside a Copilot CLI session: `/plugin install rad-orc@rad-orc-dogfood`. The `@rad-orc-dogfood` marketplace qualifier is required — bare `rad-orc` fails with "Invalid plugin spec".)
 >
-> The `userPromptSubmitted` hook will auto-bootstrap `~/.radorch/` on your first prompt in the new session. `sessionStart`'s drift-check stays silent on a clean install.
+> The `userPromptSubmitted` hook will auto-bootstrap `~/.radorc/` on your first prompt in the new session. `sessionStart`'s drift-check stays silent on a clean install.
 >
 > Come back here when you're done dogfooding — I'll offer cleanup.
 

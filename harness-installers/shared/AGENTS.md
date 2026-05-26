@@ -14,7 +14,7 @@ No install-time (runtime) logic lives here. These are build-time tools only.
 
 Every function in `shared/` accepts all installer-specific values as parameters. No function here references:
 - Installer names (`claude-plugin`, `standard`, etc.)
-- Hardcoded destination paths (`~/.radorch/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
+- Hardcoded destination paths (`~/.radorc/`, `${CLAUDE_PLUGIN_ROOT}`, etc.)
 - Hardcoded token maps or agent name lists
 
 Current consumers are `harness-installers/claude-plugin/build-scripts/build.js` and `harness-installers/copilot-cli-plugin/build-scripts/build.js`. Each installer imports the same helpers with its own parameter set — the claude-plugin variant passes an `agentNames` list to enable agent-namespacing in `expandTokens`, the copilot-cli-plugin variant passes none so the namespacing pass is a no-op (per FR-3 / AD-10).

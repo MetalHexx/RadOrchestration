@@ -3,12 +3,31 @@ import path from 'node:path';
 import * as tar from 'tar';
 import { userDataPaths } from './user-data-paths.js';
 import {
-  loadRegistry, writeInstallJson, buildCopilotVscodePluginEntry,
+  loadRegistry, writeInstallJson, buildCopilotVscodePluginEntry, isEntryCurrent,
 } from './install-json.js';
 import { loadManifest } from './catalog.js';
 import { installManifestFiles } from './install-files.js';
 import { removeManifestFiles } from './remove-files.js';
 import { appendInstallLog } from './install-log.js';
+import { detectAndStopUi, formatUiLockMessage } from './ui-stop.js';
+
+/** Thrown when the dashboard UI is running and could not be stopped pre-install. */
+export class UiLockError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = 'UiLockError';
+    this.uiStatus = status;
+  }
+}
+
+function cleanupStagingDir(pluginRoot) {
+  try {
+    fs.rmSync(path.join(pluginRoot, '_install-source'), { recursive: true, force: true });
+    fs.rmSync(path.join(pluginRoot, 'templates'), { recursive: true, force: true });
+    fs.rmSync(path.join(pluginRoot, 'orchestration.yml'), { force: true });
+    fs.rmSync(path.join(pluginRoot, 'ui'), { recursive: true, force: true });
+  } catch { /* best-effort cleanup */ }
+}
 
 const INSTALL_KEY = 'copilot-vscode-plugin';
 const COEXISTENCE_PARTNERS = ['copilot-vscode', 'copilot-cli', 'copilot-cli-plugin'];
@@ -82,19 +101,27 @@ function emitCoexistenceWarning(stderr, partnersPresent) {
     : '';
   stderr(
     `WARNING: rad-orchestration is already registered under ${partnerList} alongside copilot-vscode-plugin.\n` +
-    `All install-keys coexist in ~/.radorch/install.json so neither install clobbers the other's metadata,\n` +
+    `All install-keys coexist in ~/.radorc/install.json so neither install clobbers the other's metadata,\n` +
     `but the standard-installer's ~/.copilot/ writes can shadow plugin-shipped agents and skills per\n` +
     `VS Code's documented load order. The copilot-vscode-plugin ships correctly-shaped model identifiers\n` +
     `for VS Code's resolver and is the recommended canonical channel for VS-Code-heavy users.\n${extra}`,
   );
 }
 
-/** @param {{ pluginRoot: string, radHome?: string, force?: boolean, stderr?: (msg:string)=>void }} opts */
+/**
+ * @param {{
+ *   pluginRoot: string, radHome?: string, force?: boolean,
+ *   stderr?: (msg:string)=>void,
+ *   _detectAndStopUi?: typeof detectAndStopUi,
+ * }} opts
+ */
 export async function runInstall(opts) {
   const stderr = opts.stderr ?? ((msg) => process.stderr.write(msg));
+  const detect = opts._detectAndStopUi ?? detectAndStopUi;
   const paths = userDataPaths({ radHome: opts.radHome });
   let deliveringVersion = null;
   let installedVersionBefore = null;
+  let uiStopped = false;
   try {
     deliveringVersion = readDeliveringVersion(opts.pluginRoot);
     const sentinel = path.join(opts.pluginRoot, 'skills/rad-orchestration/scripts/radorch.mjs');
@@ -111,18 +138,41 @@ export async function runInstall(opts) {
     const partnersPresent = COEXISTENCE_PARTNERS.filter((k) => ij.harnesses[k]);
     if (partnersPresent.length > 0) emitCoexistenceWarning(stderr, partnersPresent);
 
-    // Same-version fast path with sentinel self-heal (FR-15).
+    // Same-version fast path with sentinel self-heal (FR-15). Upserts
+    // install.json when entry is missing or shape-drifted so install.json
+    // remains authoritative for "is this harness installed?".
     if (prior && installedVersionBefore === deliveringVersion && sentinelPresent && !opts.force) {
+      let installJsonUpserted = false;
+      if (!isEntryCurrent(prior, deliveringVersion)) {
+        ij.harnesses[INSTALL_KEY] = buildCopilotVscodePluginEntry(deliveringVersion);
+        writeInstallJson(paths.installJson, ij);
+        installJsonUpserted = true;
+      }
       appendInstallLog(paths.installLog, { action: 'noop', deliveringVersion, installedVersionBefore });
-      return { action: 'noop', deliveringVersion, installedVersionBefore };
+      cleanupStagingDir(opts.pluginRoot);
+      return { action: 'noop', deliveringVersion, installedVersionBefore, uiStopped: false, installJsonUpserted };
     }
 
-    // Downgrade-noop (FR-23).
+    // Downgrade-noop (FR-23). Same upsert.
     if (prior && cmpSemver(deliveringVersion, installedVersionBefore) < 0 && !opts.force) {
       stderr(`[install] Delivering v${deliveringVersion} is older than installed v${installedVersionBefore}; downgrade accepted as no-op.\n`);
+      let installJsonUpserted = false;
+      if (!isEntryCurrent(prior, installedVersionBefore)) {
+        ij.harnesses[INSTALL_KEY] = buildCopilotVscodePluginEntry(installedVersionBefore);
+        writeInstallJson(paths.installJson, ij);
+        installJsonUpserted = true;
+      }
       appendInstallLog(paths.installLog, { action: 'downgrade-noop', deliveringVersion, installedVersionBefore });
-      return { action: 'downgrade-noop', deliveringVersion, installedVersionBefore };
+      cleanupStagingDir(opts.pluginRoot);
+      return { action: 'downgrade-noop', deliveringVersion, installedVersionBefore, uiStopped: false, installJsonUpserted };
     }
+
+    // Pre-flight UI gate — runs only when actual file work is required.
+    const ui = await detect({ radHome: opts.radHome });
+    if (ui.wasRunning && !ui.stopped) {
+      throw new UiLockError(formatUiLockMessage(ui.status, ui.reason), ui.status);
+    }
+    uiStopped = ui.stopped;
 
     // Upgrade or fresh install — remove prior manifest entries (skip user-config), install new (FR-16).
     if (prior && installedVersionBefore !== deliveringVersion) {
@@ -149,22 +199,14 @@ export async function runInstall(opts) {
 
     const action = (installedVersionBefore && sentinelPresent) ? 'upgrade-complete' : 'fresh-install';
     appendInstallLog(paths.installLog, { action, deliveringVersion, installedVersionBefore });
-    return { action, deliveringVersion, installedVersionBefore };
+
+    // Success-only staging cleanup. A failure leaves _install-source/ intact
+    // so the next bootstrap firing can retry without ENOENT cascades.
+    cleanupStagingDir(opts.pluginRoot);
+
+    return { action, deliveringVersion, installedVersionBefore, uiStopped, installJsonUpserted: true };
   } catch (err) {
     appendInstallLog(paths.installLog, { action: 'error', deliveringVersion, installedVersionBefore });
     throw err;
-  } finally {
-    // Unconditional shadow-cleanup. Runs on every exit path (noop,
-    // downgrade-noop, fresh-install, upgrade-complete, error) so the plugin
-    // install root never carries a copy of ~/.radorch/ state. Sweeps both
-    // the current-format staging dir (_install-source/) and the legacy
-    // top-level shadows (templates/, orchestration.yml, ui/) left by
-    // pre-relocation payloads on existing installs.
-    try {
-      fs.rmSync(path.join(opts.pluginRoot, '_install-source'), { recursive: true, force: true });
-      fs.rmSync(path.join(opts.pluginRoot, 'templates'), { recursive: true, force: true });
-      fs.rmSync(path.join(opts.pluginRoot, 'orchestration.yml'), { force: true });
-      fs.rmSync(path.join(opts.pluginRoot, 'ui'), { recursive: true, force: true });
-    } catch { /* best-effort cleanup — do not mask the primary outcome */ }
   }
 }

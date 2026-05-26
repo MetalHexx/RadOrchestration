@@ -1,5 +1,5 @@
 // harness-installers/standard/lib/install/install-json.js —
-// Reads/writes ~/.radorch/install.json (structural single-shape; no schema
+// Reads/writes ~/.radorc/install.json (structural single-shape; no schema
 // version field). The standard installer writes structurally from the first
 // install (AD-1) — it never migrates from a prior shape.
 //
@@ -161,6 +161,22 @@ export function loadRegistry(installJsonPath) {
   } catch {
     return { harnesses: {} };
   }
+}
+
+/**
+ * True when the entry carries every canonical field; false when missing or
+ * shape-drifted. Used by the NOOP path to decide whether install.json needs
+ * an upsert even though no file work is required.
+ *
+ * Channel value is intentionally not checked — old standard installs may
+ * carry `channel: 'legacy-installer'` and that's metadata-only per AD-10.
+ */
+export function isEntryCurrent(entry, version) {
+  if (!entry || typeof entry !== 'object') return false;
+  return entry.version === version
+    && typeof entry.channel === 'string'
+    && typeof entry.installed_at === 'string'
+    && entry.last_writer_version === version;
 }
 
 /**

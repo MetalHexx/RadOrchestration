@@ -104,7 +104,7 @@ export const projectFindCommand = defineCommand({
   name: 'project-find',
   description: 'Find execution-tier projects under the projects base path',
   args: {
-    'projects-base-path': { description: 'Absolute path to the projects base directory (typically ~/.radorch/projects)', required: true },
+    'projects-base-path': { description: 'Absolute path to the projects base directory (typically ~/.radorc/projects)', required: true },
     'repo-root': { description: 'Absolute path to the repository root used to enumerate active git worktrees', required: true },
     'project-name': { description: 'Optional single-project lookup; when supplied the tier filter is bypassed' },
   },

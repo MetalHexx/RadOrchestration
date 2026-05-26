@@ -11,9 +11,9 @@ describe('runCommand E2E (envelope + NDJSON in one run)', () => {
   beforeEach(async () => {
     tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), 'radorch-e2e-'));
     homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmpHome);
-    // resolveInstallRoot() = path.join(tmpHome, '.radorch')
-    // installPaths(root).cliLog = path.join(tmpHome, '.radorch', 'logs', 'cli.log')
-    await fs.mkdir(path.join(tmpHome, '.radorch', 'logs'), { recursive: true });
+    // resolveInstallRoot() = path.join(tmpHome, '.radorc')
+    // installPaths(root).cliLog = path.join(tmpHome, '.radorc', 'logs', 'cli.log')
+    await fs.mkdir(path.join(tmpHome, '.radorc', 'logs'), { recursive: true });
   });
 
   afterEach(async () => {
@@ -77,8 +77,8 @@ describe('runCommand E2E (envelope + NDJSON in one run)', () => {
     expect(envelope.data).toEqual({ msg: 'hello' });
     expect(exitCode).toBe(0);
 
-    // NDJSON entry in cli.log under tmpHome/.radorch/logs/
-    const logPath = path.join(tmpHome, '.radorch', 'logs', 'cli.log');
+    // NDJSON entry in cli.log under tmpHome/.radorc/logs/
+    const logPath = path.join(tmpHome, '.radorc', 'logs', 'cli.log');
     const logContent = await fs.readFile(logPath, 'utf8');
     const logLines = logContent.split('\n').filter((l) => l.length > 0).map((l) => JSON.parse(l));
     const completeEntry = logLines.find((e) => e.message === 'command_complete');

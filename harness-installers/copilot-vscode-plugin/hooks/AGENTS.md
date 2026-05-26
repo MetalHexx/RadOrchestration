@@ -12,11 +12,11 @@ Runs on the user's first prompt after plugin installation. Calls `runInstall({ p
 
 The bake step is VS Code-specific: VS Code injects the plugin-root env var only into hook processes (per the agent-plugins format-vs-token table), not into the agent's chat-shell where bash blocks from SKILL.md execute. The Claude and Copilot CLI siblings don't need a bake — their runtimes populate the env var in the chat-shell. See the root `AGENTS.md` "Why SKILL.md tokens are baked to absolute paths at install time" section for the full rationale.
 
-Idempotency lives in `hooks.json` itself (no marker file). A best-effort `fs.unlinkSync` removes the legacy `~/.radorch/.copilot-vscode-plugin-bootstrap.json` marker file from the prior idempotency design so upgraded installs don't leave an orphan.
+Idempotency lives in `hooks.json` itself (no marker file). A best-effort `fs.unlinkSync` removes the legacy `~/.radorc/.copilot-vscode-plugin-bootstrap.json` marker file from the prior idempotency design so upgraded installs don't leave an orphan.
 
 The prior design used a marker file with the rationale that "VS Code's cache-and-read semantics make mid-session hooks.json mutations unreliable." Empirical reality contradicted that: the Claude plugin sibling (which auto-loads in VS Code via cross-discovery) and the Copilot CLI sibling both rewrite hooks.json successfully. The self-uninstall pattern matches both siblings.
 
-Path-resolution: `bootstrap.mjs` derives the plugin root from its own `import.meta.url` and publishes `COPILOT_VSCODE_PLUGIN_ROOT` to the process environment before calling downstream modules. `RAD_HOME` is optional (tests override it; production falls back to `~/.radorch`).
+Path-resolution: `bootstrap.mjs` derives the plugin root from its own `import.meta.url` and publishes `COPILOT_VSCODE_PLUGIN_ROOT` to the process environment before calling downstream modules. `RAD_HOME` is optional (tests override it; production falls back to `~/.radorc`).
 
 **`drift-check.mjs` — `SessionStart` hook**
 

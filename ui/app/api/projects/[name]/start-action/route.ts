@@ -61,7 +61,7 @@ export async function POST(
     );
   }
 
-  // 3. Validate project exists under ~/.radorch/projects/ (AD-5)
+  // 3. Validate project exists under ~/.radorc/projects/ (AD-5)
   let projectExists = false;
   try {
     const projects = await discoverProjects();
@@ -78,7 +78,7 @@ export async function POST(
 
   // 4. Compose prompt server-side and invoke launcher (FR-4, FR-5, AD-3, AD-4)
   const prompt = composePrompt(action, name);
-  const workspaceRoot = path.join(os.homedir(), '.radorch');
+  const workspaceRoot = path.join(os.homedir(), '.radorc');
   const result = await invokeLaunchClaudeProject({ workspaceRoot, prompt });
 
   if (!result.success) {

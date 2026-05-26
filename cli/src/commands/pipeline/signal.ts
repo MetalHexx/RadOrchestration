@@ -83,7 +83,7 @@ export const pipelineSignalCommand = defineCommand({
     template: { description: 'Pipeline template id (extra-high | high | medium | low) for the start event', type: 'string' },
     step: { description: 'Internal step identifier carried by *_started events from the v5 DAG walker', type: 'string' },
     'parse-error': { description: 'JSON object { line, expected, found, message } carried on explosion_failed', type: 'string' },
-    config: { description: 'Override path to orchestration.yml; default ~/.radorch/orchestration.yml', type: 'string' },
+    config: { description: 'Override path to orchestration.yml; default ~/.radorc/orchestration.yml', type: 'string' },
   },
   handler: async ({ args, flags }: { args: SignalArgs; flags: SignalFlags; ctx: CommandContext }) => {
     const event = args.event!;

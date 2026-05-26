@@ -17,12 +17,12 @@ import type { TemplateSummary, TemplateDefinition } from '@/types/template';
 
 /**
  * Resolve the absolute path to the global templates directory.
- * Path: ~/.radorch/templates/ — the user-data root, provisioned at install time.
+ * Path: ~/.radorc/templates/ — the user-data root, provisioned at install time.
  * Params are retained on the public signature for caller stability but no longer
  * consulted; underscore prefix marks them intentionally unused.
  */
 export function resolveTemplateDir(_workspaceRoot: string, _config: OrchestrationConfig): string {
-  return path.join(os.homedir(), '.radorch', 'templates');
+  return path.join(os.homedir(), '.radorc', 'templates');
 }
 
 /**

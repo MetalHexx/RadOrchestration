@@ -23,7 +23,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 ## Inputs this package reads but does not own
 
 - `harness-adapters/output/copilot-cli/` — compiled agents and skills produced by the adapter engine; agent filenames carry the `.agent.md` suffix for the Copilot CLI harness
-- `runtime-config/` — `orchestration.yml` and `templates/` staged under the build's `_install-source/`; bootstrap hydrates to `~/.radorch/` then removes the staging dir
+- `runtime-config/` — `orchestration.yml` and `templates/` staged under the build's `_install-source/`; bootstrap hydrates to `~/.radorc/` then removes the staging dir
 - `cli/` and `ui/` at the repo root — bundled via `emitCliBundle` and `emitUiBundle`
 - `harness-installers/shared/build-helpers/` — shared `emitCliBundle`, `emitHookBundle`, `emitUiBundle`, `expandTokens` helpers
 
@@ -34,7 +34,7 @@ A self-contained npm package (`@rad-orchestration/copilot-cli-plugin-source`) wh
 | Plugin manifest location | `.claude-plugin/plugin.json` | `plugin.json` at package root |
 | Agent filename suffix | `.md` | `.agent.md` |
 | Agent namespacing | `rad-orc:<name>` injected by `expand-tokens` | No namespacing — `expand-tokens` is a no-op for that transform |
-| Bootstrap idempotency | `selfUninstall` rewrites `hooks.json` in-place | Marker file at `~/.radorch/.copilot-cli-plugin-bootstrap.json` — mid-session `hooks.json` rewrites are unsafe under Copilot CLI's cache-and-read semantics |
+| Bootstrap idempotency | `selfUninstall` rewrites `hooks.json` in-place | Marker file at `~/.radorc/.copilot-cli-plugin-bootstrap.json` — mid-session `hooks.json` rewrites are unsafe under Copilot CLI's cache-and-read semantics |
 | Coexistence partners | warns on `harnesses.claude` | warns on both `harnesses['copilot-cli']` and `harnesses['copilot-vscode']` |
 | Build step stderr prefix | `[build:claude-plugin]` | `[build:copilot-cli-plugin]` |
 | Validate gate 3 | namespaced-token check | omitted (no namespacing) |

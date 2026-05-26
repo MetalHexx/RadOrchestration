@@ -32,14 +32,14 @@ The multi-repo design closes that gap. Repos become first-class registry entries
 
 | Term | Definition |
 |---|---|
-| **Install** | One per machine, rooted at `~/.radorch/`. Holds the runtime, config, registry, projects, and worktrees. |
+| **Install** | One per machine, rooted at `~/.radorc/`. Holds the runtime, config, registry, projects, and worktrees. |
 | **Repo** | A first-class registry entry. Has a name, local path, default branch, and remote URL. The single source of truth for repo identity. |
 | **Workspace** | A named, optional grouping of repos (e.g., `my-app-stack` = `[frontend, backend, infra]`). No defaults block, no primary. Exists only for project targeting, UI grouping, and validation. |
-| **Project** | A unit of orchestration work. Lives at `~/.radorch/projects/<NAME>/` regardless of which repo(s) it touches. Targets either a single repo or a workspace. |
-| **Worktree** | A git worktree of a registered repo, created transiently for one project's lifetime at `~/.radorch/worktrees/<PROJECT>/<REPO>/`. |
+| **Project** | A unit of orchestration work. Lives at `~/.radorc/projects/<NAME>/` regardless of which repo(s) it touches. Targets either a single repo or a workspace. |
+| **Worktree** | A git worktree of a registered repo, created transiently for one project's lifetime at `~/.radorc/worktrees/<PROJECT>/<REPO>/`. |
 | **Task** | A unit of code change inside a project, executed by the Coder agent from a self-contained handoff. Names the target repo(s) explicitly. |
 
-A project at `~/.radorch/projects/BUILD-FOO/` targets `workspace: my-app-stack`. Its tasks specify `repos: ["backend"]` (always a plural array of registry keys; multi-repo tasks carry more than one). The Coder gets the worktree path resolved from `~/.radorch/worktrees/BUILD-FOO/backend/`. The source-control agent commits/PRs against that worktree's git remote.
+A project at `~/.radorc/projects/BUILD-FOO/` targets `workspace: my-app-stack`. Its tasks specify `repos: ["backend"]` (always a plural array of registry keys; multi-repo tasks carry more than one). The Coder gets the worktree path resolved from `~/.radorc/worktrees/BUILD-FOO/backend/`. The source-control agent commits/PRs against that worktree's git remote.
 
 ---
 
@@ -66,8 +66,8 @@ The `.local.yml` suffix carries the "don't commit; deep-merges over the team fil
 **Pipeline-as-path-resolver.** The engine pre-resolves all paths into `result.context.working_directories` per Wave 3. The engine enumerates the project's repos via `state.project.target` (the `{kind, name}` discriminator) plus the live `repo-registry.yml` (resolves workspace targets to their current member list; single-repo targets resolve to themselves). No frozen "snapshot" field on `state.json` — registry edits flow through to the next engine call, and projects see live registry state on each spawn. The pipeline is the deterministic resolver each spawn.
 
 **Two-moment path-resolution flow.** (Worth being explicit since the local-bound path and the worktree path are different things.)
-1. **At worktree creation** — `radorch worktree create <project> <repo>` reads `repo-registry.local.yml` to find the source repo's local path on this machine, then runs `git worktree add ${RADORCH_HOME}/worktrees/<project>/<repo>/ <branch>` from that source.
-2. **At engine runtime, every spawn** — engine derives `working_directories[repo]` purely from `${RADORCH_HOME}/worktrees/<project>/<repo>/` by convention, with no file reads.
+1. **At worktree creation** — `radorch worktree create <project> <repo>` reads `repo-registry.local.yml` to find the source repo's local path on this machine, then runs `git worktree add ~/.radorc/worktrees/<project>/<repo>/ <branch>` from that source.
+2. **At engine runtime, every spawn** — engine derives `working_directories[repo]` purely from `~/.radorc/worktrees/<project>/<repo>/` by convention, with no file reads.
 
 The `.local.yml` path is the *source* git location; the worktree path is the project's *workspace* git location. Worktree creation is the only moment the bridge is needed.
 
@@ -83,7 +83,7 @@ The schema bumps to `orchestration-state-v6`. Migration via explicit `radorch mi
 
 - **Primarily single-repo per task; multi-repo permitted for tightly-coupled work.** Each task targets one or more repos via the handoff's `repos: string[]` field — always an array, single-repo tasks have a one-element array. Default planner guidance is one repo per task. Multi-repo tasks are reserved for cases where coupling makes splitting artificial (e.g., introducing a new API contract that requires both the route and its typed client at the same time). Phase-scope corrective handoffs that need cross-repo fixes are also multi-repo tasks — no special-casing.
 - **`pipeline.source_control` becomes a map keyed by repo name** — `by_repo: { frontend: {...}, backend: {...} }`. Each per-repo entry holds branch, base_branch, remote_url, compare_url, pr_url. Shared `auto_commit` and `auto_pr` stay at the parent level inside `pipeline.source_control` — siblings to `by_repo`, NOT inside `state.config`. The DAG template's `state_ref: pipeline.source_control.auto_commit` lookup requires this exact path, so the placement is contractual, not a stylistic choice. Direct lookup by registry name; adding a repo mid-flight is an upsert.
-- **Worktree path is derived, not stored.** Computed at read time from `${RADORCH_HOME}/worktrees/<PROJECT>/<REPO>/`. Eliminates the absolute-path-portability problem in state entirely. If we ever need custom worktree locations, an optional override field can be added later.
+- **Worktree path is derived, not stored.** Computed at read time from `~/.radorc/worktrees/<PROJECT>/<REPO>/`. Eliminates the absolute-path-portability problem in state entirely. If we ever need custom worktree locations, an optional override field can be added later.
 - **`state.project.target` is discriminated by kind** — `{ kind: 'workspace' | 'repo', name: string }`. Single-repo project: `{ kind: 'repo', name: 'frontend' }`. Workspace project: `{ kind: 'workspace', name: 'my-app-stack' }`.
 
 ### Type-system rigor
@@ -102,7 +102,7 @@ The schema bumps to `orchestration-state-v6`. Migration via explicit `radorch mi
 
 The engine pre-resolves path arithmetic and diff scoping before handing the agent its spawn prompt. Agents read pre-resolved fields and act on them directly — no path math, no SHA derivation, no section-name-to-repo lookups for file edits.
 
-- **`working_directories: { [repo]: path }`** in `result.context` for repo-scoped actions (`execute_task`, `spawn_code_reviewer`, `spawn_phase_reviewer`, `spawn_final_reviewer`, `invoke_source_control_commit`, `invoke_source_control_pr`). Always a map regardless of repo count. Each path computed from `${RADORCH_HOME}/worktrees/<PROJECT>/<REPO>/`. Agents use this as cwd when running build/test commands per repo.
+- **`working_directories: { [repo]: path }`** in `result.context` for repo-scoped actions (`execute_task`, `spawn_code_reviewer`, `spawn_phase_reviewer`, `spawn_final_reviewer`, `invoke_source_control_commit`, `invoke_source_control_pr`). Always a map regardless of repo count. Each path computed from `~/.radorc/worktrees/<PROJECT>/<REPO>/`. Agents use this as cwd when running build/test commands per repo.
 - **`file_operations`** in `result.context` for `execute_task`. Engine parses the handoff's per-repo `**Files for <repo>:**` subsections, joins each relative path with the matching `working_directories[<repo>]`, emits entries like `{ repo: 'frontend', op: 'create', path: '/abs/path/.../src/profile.tsx' }`. Coder edits files at the absolute paths directly.
 - **`diff_plan`** in `result.context` for review actions. Shape varies by scope: task review → `{ [repo]: { head_sha } }`; phase review → `{ [repo]: { first_sha, head_sha } }`; final review → `{ [repo]: { base_sha, head_sha } }`. SHAs are independently nullable per repo (null when no commit was made for that repo). Reviewer iterates the map and runs `git diff` in each repo's worktree.
 - **Orchestrator propagates pre-resolved fields verbatim** from `result.context` to the spawn prompt. No agent-side derivation; pure relay.
@@ -259,6 +259,6 @@ These were parked during earlier brainstorming and remain unresolved:
 
 ## Status
 
-This direction is captured for the moment multi-repo work is picked up as its own iteration. Until then, the document is parked. The state.json schema is at v5; no v6 migration tooling exists yet. The registry / workspace files don't ship in `~/.radorch/` today — they're a forward design, not current behavior.
+This direction is captured for the moment multi-repo work is picked up as its own iteration. Until then, the document is parked. The state.json schema is at v5; no v6 migration tooling exists yet. The registry / workspace files don't ship in `~/.radorc/` today — they're a forward design, not current behavior.
 
 When this work is scheduled, spawn a project brainstorm derived from these lock-ins; do not assume the design is implementation-ready as-is.

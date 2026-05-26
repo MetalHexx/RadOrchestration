@@ -18,7 +18,7 @@ describe('scanUserLevelHarnesses (single-shape registry reader)', () => {
   });
 
   function writeRegistry(harnesses: Record<string, { version: string; channel: string }>): void {
-    const dir = path.join(tmp, '.radorch');
+    const dir = path.join(tmp, '.radorc');
     fs.mkdirSync(dir, { recursive: true });
     const entries: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(harnesses)) {
@@ -35,7 +35,7 @@ describe('scanUserLevelHarnesses (single-shape registry reader)', () => {
     );
   }
 
-  it('returns absent for every install-key when ~/.radorch/install.json is missing', () => {
+  it('returns absent for every install-key when ~/.radorc/install.json is missing', () => {
     const r = scanUserLevelHarnesses();
     expect(r.length).toBe(INSTALL_KEYS.length);
     for (const key of INSTALL_KEYS) {
@@ -76,7 +76,7 @@ describe('scanUserLevelHarnesses (single-shape registry reader)', () => {
   });
 
   it('falls back to all not-installed when install.json is unreadable JSON', () => {
-    const dir = path.join(tmp, '.radorch');
+    const dir = path.join(tmp, '.radorc');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'install.json'), 'not-valid-json{');
     const r = scanUserLevelHarnesses();

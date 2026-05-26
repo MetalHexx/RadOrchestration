@@ -12,7 +12,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 
 **Per-harness install state machine** (`lib/install/`): Isolated install flow for each harness (Claude, Copilot in VS Code, Copilot CLI). Each state machine owns its own file write logic, symlink/copy decisions, and integration points with the chosen harness. The state machine ensures atomic, idempotent writes.
 
-**Runtime user-data locations**: The installer populates `~/.radorch/` with `orchestration.yml` and `templates/`, and populates `~/.claude/` and `~/.copilot/` with agents, skills, and marketplace plugin bundles (where applicable per harness).
+**Runtime user-data locations**: The installer populates `~/.radorc/` with `orchestration.yml` and `templates/`, and populates `~/.claude/` and `~/.copilot/` with agents, skills, and marketplace plugin bundles (where applicable per harness).
 
 ## Coding standards
 
@@ -26,7 +26,7 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 
 **Inputs (read at build and runtime)**:
 - **`harness-adapters/output/<harness>/`** — Per-harness adapted agents, skills, and marketplace plugin definitions. The installer consumes these pre-built bundles and copies them into user-level locations. Adapters run once at build time (not at install time), so the installer always works offline.
-- **`runtime-config/`** — `orchestration.yml` template and the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`). `orchestration.yml` is copied to `~/.radorch/orchestration.yml` only on fresh install (FR-14) — present files are preserved untouched so user edits survive upgrades. The four shipped tier templates always overwrite their counterparts under `~/.radorch/templates/` on every install (FR-15); any user-added templates in that folder are preserved.
+- **`runtime-config/`** — `orchestration.yml` template and the four review-intensity tier templates (`extra-high.yml`, `high.yml`, `medium.yml`, `low.yml`). `orchestration.yml` is copied to `~/.radorc/orchestration.yml` only on fresh install (FR-14) — present files are preserved untouched so user edits survive upgrades. The four shipped tier templates always overwrite their counterparts under `~/.radorc/templates/` on every install (FR-15); any user-added templates in that folder are preserved.
 - **`cli/`** — CLI parsing and launch surface (separate from the installer wizard proper). The installer is invoked by the `rad-orchestration` binary, which delegates to the wizard.
 - **`ui/`** — Pre-compiled dashboard bundle (if included). Conditionally installed based on user choice in the wizard.
 - **`cli/src/`** — The pipeline runtime and every other helper subcommand. `emit-cli-bundle` bundles `cli/src/` into `radorch.mjs` and ships it to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/`; skills invoke the pipeline as `radorch pipeline signal`.
@@ -40,6 +40,6 @@ This folder is a self-contained npm package that produces the publishable `rad-o
 - **`~/.claude/plugins/`** — Marketplace plugin manifests and offline hooks cache (if applicable).
 - **`~/.copilot/agents/`** — Copilot VS Code / CLI agents (if Copilot harness chosen).
 - **`~/.copilot/skills/`** — Copilot skills (if Copilot harness chosen).
-- **`~/.radorch/orchestration.yml`** — System configuration (user-owned; preserved on reinstall).
-- **`~/.radorch/templates/`** — Review-intensity tier templates (refreshed on each install to pick up upstream improvements).
-- **`~/.radorch/ui/`** — Dashboard code (if user opted in).
+- **`~/.radorc/orchestration.yml`** — System configuration (user-owned; preserved on reinstall).
+- **`~/.radorc/templates/`** — Review-intensity tier templates (refreshed on each install to pick up upstream improvements).
+- **`~/.radorc/ui/`** — Dashboard code (if user opted in).

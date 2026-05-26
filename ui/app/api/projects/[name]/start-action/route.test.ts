@@ -26,8 +26,8 @@ let origHomedir: typeof os.homedir;
 
 async function setup() {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-'));
-  const radorcDir = path.join(tmpDir, '.radorch');
-  // Write orchestration.yml under ~/.radorch/
+  const radorcDir = path.join(tmpDir, '.radorc');
+  // Write orchestration.yml under ~/.radorc/
   await mkdir(radorcDir, { recursive: true });
   await writeFile(path.join(radorcDir, 'orchestration.yml'), VALID_YAML, 'utf-8');
   projectsDir = path.join(radorcDir, 'projects');
@@ -102,7 +102,7 @@ async function invokePOST(body: unknown, name: string) {
       console.log('✓ start-planning happy path → 200 success:true');
     }
 
-    // home pointing to dir with no .radorch/projects/ subdir → 500
+    // home pointing to dir with no .radorc/projects/ subdir → 500
     {
       const emptyDir = await mkdtemp(path.join(os.tmpdir(), 'start-action-empty-'));
       try {

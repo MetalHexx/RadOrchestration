@@ -50,7 +50,7 @@ let origHomedir: typeof os.homedir;
 /** Create a temp radorch home with an empty templates/ dir */
 async function setupWorkspace(): Promise<void> {
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'templates-test-'));
-  templateDir = path.join(tmpDir, '.radorch', 'templates');
+  templateDir = path.join(tmpDir, '.radorc', 'templates');
   await mkdir(templateDir, { recursive: true });
   origHomedir = os.homedir;
   (os as unknown as { homedir: () => string }).homedir = () => tmpDir;

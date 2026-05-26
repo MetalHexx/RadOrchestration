@@ -259,12 +259,12 @@ export interface PipelineState {
 // which derives `scriptsDir` from the location of `path-context.ts` itself
 // (`cli/src/lib/pipeline-engine/` in source, the equivalent location in the
 // esbuild bundle) and `templatesDir` from `RADORCH_TEMPLATES_DIR` env var with
-// fallback to `~/.radorch/templates/`. Threading the resolved values down
+// fallback to `~/.radorc/templates/`. Threading the resolved values down
 // avoids `fileURLToPath(import.meta.url)` walks inside the engine modules.
 
 export interface PathContext {
   scriptsDir: string;      // absolute path of the engine source folder (`cli/src/lib/pipeline-engine/`)
-  templatesDir: string;    // absolute path of `~/.radorch/templates/`
+  templatesDir: string;    // absolute path of `~/.radorc/templates/`
 }
 
 // Pipeline Result (engine output contract)

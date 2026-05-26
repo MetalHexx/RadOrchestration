@@ -35,6 +35,7 @@ import {
   cmpSemver,
   resolveFolderConflict,
   detectPluginCoexistence,
+  isEntryCurrent,
 } from './install-json.js';
 
 const STANDARD_CHANNEL = 'standard';
@@ -106,11 +107,26 @@ export async function installHarness(opts) {
   const cmp = cmpSemver(deliveringVersion, installedVersion);
 
   if (cmp === 0) {
+    // NOOP fast path. Upsert install.json when the entry is missing fields
+    // (e.g. an old standard install wrote without `last_writer_version`) so
+    // install.json remains authoritative for "is this harness installed?".
+    let installJsonUpserted = false;
+    if (!isEntryCurrent(existingEntry, deliveringVersion)) {
+      registry.harnesses[installKey] = {
+        version: deliveringVersion,
+        channel: STANDARD_CHANNEL,
+        installed_at: existingEntry.installed_at ?? new Date().toISOString(),
+        last_writer_version: deliveringVersion,
+      };
+      writeInstallJson(paths.installJson, registry);
+      installJsonUpserted = true;
+    }
     return {
       action: 'noop',
       code: 0,
       deliveringVersion,
       installedVersion,
+      installJsonUpserted,
     };
   }
 
@@ -144,7 +160,7 @@ function doFreshInstall({
   paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr,
   installedVersion,
 }) {
-  // Ensure ~/.radorch/ skeleton exists.
+  // Ensure ~/.radorc/ skeleton exists.
   fs.mkdirSync(paths.root, { recursive: true });
 
   // Copy the delivering manifest's files.

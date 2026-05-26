@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Source of truth for harness-neutral runtime configuration. Installers copy this content verbatim to `~/.radorch/`; nothing here is transformed, templated, or made harness-specific.
+Source of truth for harness-neutral runtime configuration. Installers copy this content verbatim to `~/.radorc/`; nothing here is transformed, templated, or made harness-specific.
 
 ## How it works
 
@@ -16,7 +16,7 @@ Two types of content:
 - `medium.yml` — phase review + final review (no per-task review)
 - `low.yml` — final review only
 
-The `build-scripts/build.js` `copy-runtime-config` step copies `orchestration.yml` and `templates/` into `output/`; the plugin's `installManifestFiles` then places them under `~/.radorch/`.
+The `build-scripts/build.js` `copy-runtime-config` step copies `orchestration.yml` and `templates/` into `output/`; the plugin's `installManifestFiles` then places them under `~/.radorc/`.
 
 ## Coding conventions
 

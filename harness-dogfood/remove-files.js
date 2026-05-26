@@ -1,7 +1,7 @@
 // harness-dogfood/remove-files.js — Minimal manifest-driven remove library
 // used by the dogfood build only. Decoupled from installer/lib/install/ per
 // AD-2. Removes manifest entries from their resolved destinations and prunes
-// emptied parent directories, never crossing above ~/.radorch/ or the harness
+// emptied parent directories, never crossing above ~/.radorc/ or the harness
 // root. The AD-7 `projects/` skip remains.
 
 import fs from 'node:fs';

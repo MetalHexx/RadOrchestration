@@ -17,7 +17,7 @@ I have project goals I'd like to develop into a full scale plan.
 
 ## Step 0: Resolve project_dir and project-goals input
 
-- Set `project_dir = ~/.radorch/projects/{project_name}/`. Create the directory if missing.
+- Set `project_dir = ~/.radorc/projects/{project_name}/`. Create the directory if missing.
 - Resolve the planner's project-goals source by checking, in order:
   1. `{project_dir}/{project_name}-BRAINSTORMING.md` exists → proceed silently. The planner will read it via the spawn prompt.
   2. `project_context_prose` is non-empty → proceed silently. Step 4 will inline the prose into the first planner spawn.
@@ -49,7 +49,7 @@ mandatory anchors in every tier.
 - If `project_template` was passed as an argument:
   - If it matches one of the shipped tier names (`extra-high`, `high`,
     `medium`, `low`) or is the name of a user-authored custom template
-    present in the `~/.radorch/templates/` directory, use it.
+    present in the `~/.radorc/templates/` directory, use it.
   - Otherwise respond with an error message indicating the template was
     not found.
 - If no `project_template` was passed, use the `askQuestions` /

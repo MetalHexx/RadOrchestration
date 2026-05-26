@@ -230,10 +230,10 @@ function uninstallPromptLines(pick) {
     '',
     'Will remove:',
     `    Agent and skill files under ${installRootForPick}`,
-    `    The '${pick}' entry from ~/.radorch/install.json`,
+    `    The '${pick}' entry from ~/.radorc/install.json`,
     '',
     'Will keep:',
-    '    ~/.radorch/orchestration.yml, templates/, projects/, ui/',
+    '    ~/.radorc/orchestration.yml, templates/, projects/, ui/',
     '    Any other harnesses you have installed',
     `    Any files in ${installRootForPick} you created yourself`,
   ];

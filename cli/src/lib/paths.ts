@@ -14,7 +14,7 @@ export interface UserDataPaths {
 }
 
 export function userDataPaths(): UserDataPaths {
-  const root = path.join(os.homedir(), '.radorch');
+  const root = path.join(os.homedir(), '.radorc');
   return {
     root,
     installJson: path.join(root, 'install.json'),
@@ -43,7 +43,7 @@ export interface InstallPaths {
 }
 
 export function resolveInstallRoot(): string {
-  return path.join(os.homedir(), '.radorch');
+  return path.join(os.homedir(), '.radorc');
 }
 
 export function installPaths(root: string): InstallPaths {

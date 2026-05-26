@@ -1,6 +1,6 @@
 # Configuration
 
-`orchestration.yml` is the single configuration file for the orchestration system. It lives at `~/.radorch/orchestration.yml`. The file controls pipeline limits, human-gate behavior, and source-control automation. Sensible defaults ship out of the box; most users never need to edit it.
+`orchestration.yml` is the single configuration file for the orchestration system. It lives at `~/.radorc/orchestration.yml`. The file controls pipeline limits, human-gate behavior, and source-control automation. Sensible defaults ship out of the box; most users never need to edit it.
 
 ## orchestration.yml
 
@@ -37,7 +37,7 @@ The rad-orchestration package version that wrote this file. Updated automaticall
 
 ### default_template
 
-Default review-intensity tier the planner proposes when starting a new project. Accepts `ask`, `extra-high`, `high`, `medium`, or `low`. The default `ask` defers the choice to project-creation time. Tier names map to the four templates under `~/.radorch/templates/`.
+Default review-intensity tier the planner proposes when starting a new project. Accepts `ask`, `extra-high`, `high`, `medium`, or `low`. The default `ask` defers the choice to project-creation time. Tier names map to the four templates under `~/.radorc/templates/`.
 
 ### limits.max_phases
 
@@ -81,7 +81,7 @@ The review-intensity tier (`extra-high`, `high`, `medium`, `low`) and the Phase/
 
 ## State and Snapshots
 
-`state.json` is the resumable record of a project. It lives at `~/.radorch/projects/{PROJECT-NAME}/state.json` and tracks project identity, planning progress, phase and task state, review verdicts, and source-control references. The pipeline writes it after every action.
+`state.json` is the resumable record of a project. It lives at `~/.radorc/projects/{PROJECT-NAME}/state.json` and tracks project identity, planning progress, phase and task state, review verdicts, and source-control references. The pipeline writes it after every action.
 
 When a project is created, the pipeline copies `limits`, `human_gates`, and `source_control` modes out of `orchestration.yml` into `state.json` and locks them in. Subsequent runs read from the snapshot, not from `orchestration.yml`. Editing `orchestration.yml` mid-project has no effect on that project; new values apply only to projects created afterward.
 
