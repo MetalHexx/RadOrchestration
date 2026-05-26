@@ -1,15 +1,18 @@
 // cli/tests/behavioral/pipeline/events/pr.behavioral.test.ts
 // Covers pr_requested and pr_created events (FR-3, FR-8, DD-2).
 // NFR-5: if the state schema changes, update the seeded states below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent, assertPromptForEnvelopeAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // Synthetic template that includes a final_pr step.
 // pr_requested / pr_created are NOT out-of-band events; they require template
@@ -205,6 +208,9 @@ describe('pr_requested event (FR-3, FR-8, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — invoke_source_control_pr's completion event is pr_created
+    // (renamed from pr_completed in P04-PHASE-C1).
+    assertPromptForEvent(env, 'pr_created');
   });
 });
 
@@ -247,5 +253,11 @@ describe('pr_created event (FR-3, FR-8, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-5, FR-23 — after pr_created the walker has nothing left to do;
+    // the envelope carries whichever next action the walker resolves (terminal
+    // display_complete in this template). assertPromptForEnvelopeAction reads
+    // the action from the envelope and matches its completion_event against
+    // the real catalog (null → terminal-prompt assertion).
+    assertPromptForEnvelopeAction(env);
   });
 });

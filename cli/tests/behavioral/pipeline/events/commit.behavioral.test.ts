@@ -3,15 +3,18 @@
 // NFR-5: if the state schema changes, update the seeded states below accordingly.
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, it, afterEach, expect } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEnvelopeAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // Synthetic template that includes a commit step in the task body.
 // commit_started / commit_completed are NOT out-of-band events; they require
@@ -213,5 +216,9 @@ describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
     const onDisk = JSON.parse(fs.readFileSync(path.join(w.projectDir, 'state.json'), 'utf8'));
     const taskIteration = onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0];
     expect(taskIteration.commit_hash, 'task_iteration[0].commit_hash').toBe('abc1234');
+    // FR-4, FR-23 — after commit_completed the walker advances to the next
+    // step (spawn_code_reviewer per the template); the composed prompt
+    // carries that action's completion event from the real catalog.
+    assertPromptForEnvelopeAction(env);
   });
 });

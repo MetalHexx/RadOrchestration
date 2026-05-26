@@ -1,15 +1,18 @@
 // cli/tests/behavioral/pipeline/events/gate_mode_set.behavioral.test.ts
 // NFR-5: if the state schema changes, update the seeded state below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEnvelopeAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State after plan_approved + gate_mode_selection triggered: pipeline.gate_mode is null.
 // gate_mode_selection has gate_active=true (gate was triggered by the walker),
@@ -62,5 +65,7 @@ describe('gate_mode_set event (FR-3, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — next action's completion event resolved from the catalog.
+    assertPromptForEnvelopeAction(env);
   });
 });

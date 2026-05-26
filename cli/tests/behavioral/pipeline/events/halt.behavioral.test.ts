@@ -2,16 +2,19 @@
 // Covers halt event (FR-3, FR-9, DD-2).
 // Routes through pipelineSignalCommand as an out-of-band event (AD-4, AD-11).
 // NFR-5: if the state schema changes, update the seeded state below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForTerminalAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State mid-execution — pipeline can be halted at any point.
 const midExecutionState = {
@@ -103,6 +106,10 @@ describe('halt event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-5 — halt's next action is display_halted, a terminal action with
+    // completion_event = null. The composed prompt must omit "## When complete"
+    // and the Signal line entirely.
+    assertPromptForTerminalAction(env);
   });
 
   it('halt with no --reason uses default halt_reason', async () => {
@@ -132,5 +139,7 @@ describe('halt event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-5 — terminal envelope; same assertion as the explicit-reason arm.
+    assertPromptForTerminalAction(env);
   });
 });

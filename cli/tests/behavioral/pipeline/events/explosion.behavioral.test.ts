@@ -1,14 +1,17 @@
 // cli/tests/behavioral/pipeline/events/explosion.behavioral.test.ts
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { PLANNING_TEMPLATE_BODY } from './fixtures/planning-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State after master_plan_completed: requirements+master_plan=completed, rest=not_started
 const afterMasterPlanCompletedState = {
@@ -77,5 +80,7 @@ describe('explosion events (FR-3, FR-7, DD-2, DD-4)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — request_plan_approval's completion event is plan_approved.
+    assertPromptForEvent(env, 'plan_approved');
   });
 });

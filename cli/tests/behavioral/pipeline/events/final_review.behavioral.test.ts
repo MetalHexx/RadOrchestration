@@ -2,17 +2,20 @@
 // Covers final_review_started, final_review_completed (verdict=approved), and final_approved events
 // (FR-3, FR-9, DD-2, DD-4, DD-5).
 // NFR-5: if the state schema changes, update the seeded states below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import path from 'node:path';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent, assertPromptForTerminalAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State after final_review_started: final_review=in_progress.
 const afterFinalReviewStartedState = {
@@ -167,6 +170,8 @@ describe('final_review_completed event with verdict=approved (FR-3, FR-9, DD-2, 
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — request_final_approval's completion event is final_approved.
+    assertPromptForEvent(env, 'final_approved');
   });
 });
 
@@ -197,5 +202,9 @@ describe('final_approved event (FR-3, FR-9, DD-2, DD-5)', () => {
       },
       sideFiles: [],
     });
+    // FR-5 — display_complete is terminal (completion_event = null). The
+    // composed prompt omits both the "## When complete" heading and the
+    // Signal line entirely.
+    assertPromptForTerminalAction(env);
   });
 });

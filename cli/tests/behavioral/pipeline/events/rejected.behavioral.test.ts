@@ -2,10 +2,12 @@
 // Covers plan_rejected, gate_rejected, and final_rejected events (FR-3, FR-9, DD-2).
 // All three route through pipelineSignalCommand as out-of-band events (AD-4, AD-11).
 // NFR-5: if the state schema changes, update the seeded states below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEnvelopeAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
@@ -13,6 +15,7 @@ import { PLANNING_TEMPLATE_BODY } from './fixtures/planning-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State at plan_approval_gate (plan ready for approval or rejection).
 // Uses the planning template which defines master_plan and plan_approval_gate.
@@ -143,6 +146,8 @@ describe('plan_rejected event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — remediation action's completion event resolved from catalog.
+    assertPromptForEnvelopeAction(env);
   });
 });
 
@@ -177,6 +182,9 @@ describe('gate_rejected event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-5, FR-23 — gate_rejected halts the pipeline; next action is
+    // display_halted (terminal) per the catalog.
+    assertPromptForEnvelopeAction(env);
   });
 });
 
@@ -205,5 +213,7 @@ describe('final_rejected event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — remediation action's completion event resolved from catalog.
+    assertPromptForEnvelopeAction(env);
   });
 });
