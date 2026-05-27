@@ -7,6 +7,11 @@ export interface ComposeInput {
   actionName: string;
   completionEvent: string | null;
   catalogRoot: string;
+  /** Optional in-memory overlay keyed by `<kind>.<name>.<slot>` (slot ∈ `pre` | `post`).
+   *  A present key supersedes the on-disk custom file; an empty-string value suppresses the slot.
+   *  When undefined the behavior is byte-identical to omitting the field (NFR-9).
+   */
+  overlay?: Record<string, string>;
 }
 
 // Fixed heading strings (DD-6).
@@ -60,6 +65,17 @@ function readCustomBodyIfExists(filePath: string): string | null {
   return fs.readFileSync(filePath, 'utf8');
 }
 
+function makeCustomReader(overlay: Record<string, string> | undefined) {
+  return (filePath: string, overlayKey: string): string | null => {
+    if (overlay && Object.prototype.hasOwnProperty.call(overlay, overlayKey)) {
+      const v = overlay[overlayKey];
+      return v === '' ? null : v;
+    }
+    if (!fs.existsSync(filePath)) return null;
+    return fs.readFileSync(filePath, 'utf8');
+  };
+}
+
 function deriveSignalLine(eventName: string, fm: EventFrontmatter): string {
   const keys = Object.keys(fm.signal_payload ?? {});
   if (keys.length === 0) return `Signal: ${eventName}`;
@@ -84,6 +100,7 @@ export function composeActionPrompt(input: ComposeInput): string {
   const { actionName, completionEvent, catalogRoot } = input;
   const customRoot = path.join(catalogRoot, 'custom');
   const sections: string[] = [];
+  const readCustom = makeCustomReader(input.overlay);
 
   // Validate: action-pre custom implies action catalog must exist (AD-7).
   const actionCustomPre = path.join(customRoot, `action.${actionName}.pre.md`);
@@ -101,7 +118,7 @@ export function composeActionPrompt(input: ComposeInput): string {
   appendSection(
     sections,
     H_ACTION_PRE,
-    readCustomBodyIfExists(actionCustomPre),
+    readCustom(actionCustomPre, `action.${actionName}.pre`),
   );
 
   // Main body (no heading — DD-7).
@@ -139,7 +156,7 @@ export function composeActionPrompt(input: ComposeInput): string {
     appendSection(
       sections,
       H_EVENT_PRE,
-      readCustomBodyIfExists(eventCustomPre),
+      readCustom(eventCustomPre, `event.${completionEvent}.pre`),
     );
 
     const evt = readEvent(eventCatalog, `event.${completionEvent}.md`);
@@ -154,7 +171,7 @@ export function composeActionPrompt(input: ComposeInput): string {
     appendSection(
       sections,
       H_EVENT_POST,
-      readCustomBodyIfExists(eventCustomPost),
+      readCustom(eventCustomPost, `event.${completionEvent}.post`),
     );
   }
 
