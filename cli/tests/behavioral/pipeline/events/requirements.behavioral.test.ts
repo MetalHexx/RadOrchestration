@@ -77,7 +77,7 @@ describe('requirements events (FR-3, FR-7, DD-2, DD-4)', () => {
         graph: {
           nodes: {
             requirements: { status: 'completed' },
-            master_plan: { status: 'not_started' },
+            master_plan: { status: 'in_progress' },
           },
         },
       },

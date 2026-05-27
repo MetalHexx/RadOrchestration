@@ -7,7 +7,7 @@ category: agent-spawn
 completion_event: explosion_completed
 ---
 
-Invoke the explosion subcommand — no agent spawn. Run `node "${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" plan explode` with `--project-dir`, `--master-plan`, and `--project-name`. The script parses the approved Master Plan, emits per-phase and per-task docs into `phases/` and `tasks/`, and pre-seeds `state.graph.nodes.phase_loop.iterations[]` with `doc_path` on each phase and task iteration.
+Invoke the explosion subcommand — no agent spawn. Run `radorch.mjs" plan explode` with `--project-dir`, `--master-plan`, and `--project-name`. The script parses the approved Master Plan, emits per-phase and per-task docs into `phases/` and `tasks/`, and pre-seeds `state.graph.nodes.phase_loop.iterations[]` with `doc_path` on each phase and task iteration.
 
 If `phases/` or `tasks/` already contain anything, the script first moves the existing contents into `backups/{ISO-timestamp}/` before re-seeding.
 

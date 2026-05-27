@@ -96,7 +96,7 @@ describe('start event (FR-3, DD-2)', () => {
     assertEnvelopeStateSideFiles(env, {
       projectDir: w.projectDir,
       envelope: { ok: true, data: { action: 'spawn_requirements' } },
-      state: { graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'not_started' } } } },
+      state: { graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'in_progress' } } } },
       sideFiles: [],
     });
     // FR-4, FR-23 — engine composes the spawn_requirements prompt with

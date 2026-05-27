@@ -35,7 +35,7 @@
     {
       "bundlePath": "action-events/action.explode_master_plan.md",
       "destinationPath": "${RAD_HOME}/action-events/action.explode_master_plan.md",
-      "sha256": "a394d8c2f8672aa18a33e74119e6460bd419b5b4c3a5845c68a7ea23a0ee9aec"
+      "sha256": "47f825fa329a6dce7080c47bd94b10a75fc4dceef6a64b2a34937fc694a89ea2"
     },
     {
       "bundlePath": "action-events/action.gate_phase.md",
@@ -230,7 +230,7 @@
     {
       "bundlePath": "agents/orchestrator.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/orchestrator.agent.md",
-      "sha256": "a872431d900eb44938802a4ac860cd13f2e89c0af4da85a3bf4d72eaf9678232"
+      "sha256": "9cd1b3d8b0bfbb84e9f12657e16fcbda36d59faa44486b0315baadec4949f2a8"
     },
     {
       "bundlePath": "agents/planner.agent.md",
@@ -445,7 +445,7 @@
     {
       "bundlePath": "skills/rad-plan/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan/SKILL.md",
-      "sha256": "e937fd5844bad992bfc65516081dba455398ed783dd946770d69f48fc30db8e2"
+      "sha256": "71e7b7b43242000b382d835407e9af61c90c71ca5d3e0b36aaab8263816c20cb"
     },
     {
       "bundlePath": "skills/rad-run-tests/SKILL.md",
