@@ -1,8 +1,13 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { pipelineSignal } from '../../../src/commands/pipeline/signal.js';
+import { __setActionEventsRootForTests } from '../../../src/lib/pipeline-engine/engine.js';
 import type { IOAdapter, PathContext, PipelineResult } from '../../../src/lib/pipeline-engine/types.js';
+
+const REPO_ACTION_EVENTS_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'action-events');
+beforeEach(() => { __setActionEventsRootForTests(REPO_ACTION_EVENTS_DIR); });
+afterEach(() => { __setActionEventsRootForTests(null); });
 
 function makeStubIO(_result: PipelineResult): { io: IOAdapter; calls: unknown[] } {
   const calls: unknown[] = [];

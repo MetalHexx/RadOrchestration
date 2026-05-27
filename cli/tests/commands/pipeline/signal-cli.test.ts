@@ -6,14 +6,20 @@ import { pipelineSignalCommand } from '../../../src/commands/pipeline/signal.js'
 import { runCommand } from '../../../src/framework/command.js';
 
 const REPO_TEMPLATES_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'templates');
+const REPO_ACTION_EVENTS_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'runtime-config', 'action-events');
 let originalTemplatesEnv: string | undefined;
+let originalActionEventsEnv: string | undefined;
 beforeEach(() => {
   originalTemplatesEnv = process.env['RADORCH_TEMPLATES_DIR'];
+  originalActionEventsEnv = process.env['RADORCH_ACTION_EVENTS_DIR'];
   process.env['RADORCH_TEMPLATES_DIR'] = REPO_TEMPLATES_DIR;
+  process.env['RADORCH_ACTION_EVENTS_DIR'] = REPO_ACTION_EVENTS_DIR;
 });
 afterEach(() => {
   if (originalTemplatesEnv === undefined) delete process.env['RADORCH_TEMPLATES_DIR'];
   else process.env['RADORCH_TEMPLATES_DIR'] = originalTemplatesEnv;
+  if (originalActionEventsEnv === undefined) delete process.env['RADORCH_ACTION_EVENTS_DIR'];
+  else process.env['RADORCH_ACTION_EVENTS_DIR'] = originalActionEventsEnv;
 });
 
 function captureStdout(): { chunks: string[]; restore: () => void } {

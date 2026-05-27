@@ -30,18 +30,24 @@ import { validateState } from './validator.js';
 // skills/rad-orchestration/scripts/ has no shared TS surface with cli/.
 const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorc', 'projects');
 
-// ── Catalog-root test override (FR-4, AD-6) ──────────────────────────────────
+// ── Catalog-root resolution (FR-4, AD-6) ─────────────────────────────────────
 // Production reads the action/event catalog root from `userDataPaths().actionEvents`.
-// Tests inject a temp catalog via `__setActionEventsRootForTests(dir)` so the
-// engine composer reads from a synthetic catalog without touching the user's
-// real ~/.radorc/action-events/ tree. Passing `null` resets to the production
-// path. This is a deliberate test seam; no production code path uses it.
+// Two override surfaces exist:
+//   - `__setActionEventsRootForTests(dir)` — in-process test seam, used by the
+//     behavioral-suite helper at `cli/tests/behavioral/pipeline/helpers/catalog.ts`.
+//   - `RADORCH_ACTION_EVENTS_DIR` env var — out-of-process override for tests
+//     that spawn the bundled CLI as a subprocess (mirrors the existing
+//     `RADORCH_TEMPLATES_DIR` env var in `path-context.ts`).
+// Both are deliberate test seams; production callers rely on the user-data path.
 let __actionEventsRootOverride: string | null = null;
 export function __setActionEventsRootForTests(root: string | null): void {
   __actionEventsRootOverride = root;
 }
 function resolveActionEventsRoot(): string {
-  return __actionEventsRootOverride ?? userDataPaths().actionEvents;
+  if (__actionEventsRootOverride !== null) return __actionEventsRootOverride;
+  const envOverride = process.env['RADORCH_ACTION_EVENTS_DIR'];
+  if (envOverride) return envOverride;
+  return userDataPaths().actionEvents;
 }
 
 /**
