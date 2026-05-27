@@ -50,3 +50,17 @@ test('readShippedEntry returns null for missing entry (FR-27)', () => {
   const root = seedRoot();
   assert.strictEqual(readShippedEntry(root, 'action', 'nope'), null);
 });
+
+test('listCatalogEntries marks unreferenced events as is_orphan: true and referenced events as is_orphan: false (FR-3)', () => {
+  const root = seedRoot();
+  const entries = listCatalogEntries(root);
+  // x_done is referenced by spawn_x's completion_event → not an orphan
+  const referenced = entries.find((e) => e.kind === 'event' && e.name === 'x_done')!;
+  assert.strictEqual(referenced.is_orphan, false);
+  // orphan_evt is not referenced by any action → is an orphan
+  const orphan = entries.find((e) => e.kind === 'event' && e.name === 'orphan_evt')!;
+  assert.strictEqual(orphan.is_orphan, true);
+  // action entries are never orphans
+  const action = entries.find((e) => e.kind === 'action' && e.name === 'spawn_x')!;
+  assert.strictEqual(action.is_orphan, false);
+});

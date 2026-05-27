@@ -19,7 +19,7 @@ export function groupCatalog(entries: CatalogEntry[], query = ""): GroupedCatalo
   for (const e of entries) {
     if (!matchesQuery(e)) continue;
     if (e.kind === "action" && e.category) groups.actions[e.category as ActionCategory].push(e);
-    else if (e.kind === "event" && (e.applicable_slot_count ?? 0) > 0) groups.orphans.push(e);
+    else if (e.kind === "event" && e.is_orphan === true) groups.orphans.push(e);
   }
   return groups;
 }

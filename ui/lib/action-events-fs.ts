@@ -24,6 +24,7 @@ export interface CatalogEntry {
   signal_line?: string;
   applicable_slot_count: number;
   populated_slot_count: number;
+  is_orphan: boolean;
 }
 
 export function listCatalogEntries(catalogRoot: string): CatalogEntry[] {
@@ -68,6 +69,7 @@ export function listCatalogEntries(catalogRoot: string): CatalogEntry[] {
         completion_event: af.completion_event,
         applicable_slot_count: applicable,
         populated_slot_count: populated,
+        is_orphan: false,
       });
     } else {
       const ef = fm as EventFrontmatter;
@@ -75,7 +77,6 @@ export function listCatalogEntries(catalogRoot: string): CatalogEntry[] {
       let populated = 0;
       if (fs.existsSync(path.join(customRoot, `event.${p.entry.name}.pre.md`))) populated++;
       if (fs.existsSync(path.join(customRoot, `event.${p.entry.name}.post.md`))) populated++;
-      void isOrphan;
       out.push({
         kind: 'event',
         name: p.entry.name,
@@ -85,6 +86,7 @@ export function listCatalogEntries(catalogRoot: string): CatalogEntry[] {
         signal_line: deriveSignalLine(p.entry.name, ef),
         applicable_slot_count: 2,
         populated_slot_count: populated,
+        is_orphan: isOrphan,
       });
     }
   }
