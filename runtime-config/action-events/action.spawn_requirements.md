@@ -9,6 +9,6 @@ completion_event: requirements_completed
 
 Spawn the `rad-orc:planner` agent in Requirements mode to author the project's FR/NFR/AD/DD ledger. The agent's output is `{NAME}-REQUIREMENTS.md`.
 
-Before spawning, inline `repository_skills_block` verbatim into the spawn prompt per the orchestrator agent's *Planner Spawn Manifest* section. When that field is the empty string, omit the manifest entirely.
+Before spawning, inline `repository_skills_block` verbatim into the agent's spawn prompt. When that field is the empty string, omit it entirely.
 
 Extract the requirements doc path from the agent's final message.
