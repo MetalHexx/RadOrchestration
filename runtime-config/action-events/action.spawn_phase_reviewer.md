@@ -13,4 +13,4 @@ Pass `phase_first_sha` (the first task's initial commit) and `phase_head_sha` (t
 
 Extract the review doc path from the agent's final message.
 
-When the reviewer's verdict is `changes_requested`, mediate before signaling — see `corrective-playbook.md`.
+When the reviewer's verdict is `changes_requested|rejected`, perform correction mediation before signaling.

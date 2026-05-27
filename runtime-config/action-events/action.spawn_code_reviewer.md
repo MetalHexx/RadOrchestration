@@ -13,4 +13,4 @@ Pass `head_sha` — the commit hash of the task's commit (resolved from the acti
 
 Extract the review doc path from the agent's final message.
 
-When the reviewer's verdict is `changes_requested`, mediate before signaling — see `corrective-playbook.md`.
+When the reviewer's verdict is `changes_requested|rejected`, perform correction mediation before signaling.
