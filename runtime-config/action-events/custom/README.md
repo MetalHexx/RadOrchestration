@@ -1,6 +1,6 @@
 # action-events/custom overlay
 
-Project teams drop files here to extend the shipped catalog without modifying the versioned entries in the parent folder. The loader merges custom content at startup — no service restart is needed (NFR-6 cold-read guarantee).
+Project teams drop files here to extend the shipped catalog without modifying the versioned entries in the parent folder. The composer cold-reads custom files on every envelope build, so edits take effect on the next pipeline event — no service restart is needed (NFR-6).
 
 ## Slot shapes
 
@@ -10,7 +10,7 @@ Three slot shapes are recognized:
 - **`event.<name>.pre.md`** — prepended instruction prose injected before the shipped event body when the pipeline renders event context.
 - **`event.<name>.post.md`** — appended instruction prose injected after the shipped event body.
 
-Each slot file uses the same frontmatter contract as its parent catalog entry (same `kind`, `name`, `title`, `description`) so the validator can confirm the slot targets a real catalog entry (FR-9).
+Slot files are markdown-only — do not include YAML frontmatter. The composer reads the file body verbatim and validates the target by filename (the `<name>` segment must match an existing `action.<name>.md` or `event.<name>.md` in the parent catalog folder; FR-9).
 
 ## Anchor rationale
 
@@ -22,4 +22,4 @@ Write slot bodies in instruction voice — tell the agent what to do, not what t
 
 ## Validation
 
-On load the validator checks that every custom slot references an existing catalog `kind` + `name` pair. Unknown targets are rejected with a clear error rather than silently ignored (FR-9).
+On every envelope build the composer checks that any slot file it would compose references an existing catalog `kind` + `name` pair. Unknown targets are rejected with a clear error rather than silently ignored (FR-9). Files that no envelope ever consumes remain inert (AD-7).

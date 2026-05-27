@@ -16,8 +16,20 @@ const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
 beforeEach(() => { cleanups.push(useRealCatalog()); });
 
-function readPersistedState(projectDir: string): any {
-  return JSON.parse(fs.readFileSync(path.join(projectDir, 'state.json'), 'utf8'));
+type StateNode = {
+  status: string;
+  iterations?: Array<{ nodes: Record<string, StateNode> }>;
+  nodes?: Record<string, StateNode>;
+};
+
+type PersistedState = {
+  graph: {
+    nodes: Record<string, StateNode>;
+  };
+};
+
+function readPersistedState(projectDir: string): PersistedState {
+  return JSON.parse(fs.readFileSync(path.join(projectDir, 'state.json'), 'utf8')) as PersistedState;
 }
 
 function mkWorld() {

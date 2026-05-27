@@ -71,9 +71,10 @@ function resolveCompletionEvent(
 
 /**
  * Attach `prompt` (composed catalog text) and `completion_event` (resolved
- * event name) to the engine's success envelope context. Failure envelopes
- * never reach this helper — they construct their context inline with the
- * `error: { ... }` field (FR-7).
+ * event name) to the engine's success envelope. Per FR-7 these fields live
+ * inside `data` alongside `action` and `context` — they are NOT nested
+ * inside `context`. Failure envelopes never reach this helper — they
+ * construct their result inline with the `error: { ... }` field.
  *
  * Skips attachment entirely when the action's catalog file does not exist
  * on disk; the envelope still surfaces `action` and the enriched context so
@@ -83,7 +84,7 @@ function resolveCompletionEvent(
 function attachPromptIfActionResolved(
   next: { action: string; context: Record<string, unknown> } | null,
   template: PipelineTemplate,
-): { action: string | null; context: Record<string, unknown> } {
+): PipelineResult {
   if (!next) return { action: null, context: {} };
   const completion_event = resolveCompletionEvent(next.action, template);
   if (completion_event === undefined) {
@@ -95,7 +96,7 @@ function attachPromptIfActionResolved(
     completionEvent: completion_event,
     catalogRoot: resolveActionEventsRoot(),
   });
-  return { action: next.action, context: { ...next.context, prompt, completion_event } };
+  return { action: next.action, context: next.context, prompt, completion_event };
 }
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────

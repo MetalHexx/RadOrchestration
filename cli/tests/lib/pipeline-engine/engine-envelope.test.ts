@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { processEvent } from '../../../src/lib/pipeline-engine/engine.js';
 import { makeTestIO, seedCatalog, seedTemplate } from '../../helpers/engine-test-bench.js';
 
-describe('success envelope carries data.prompt and data.completion_event', () => {
+describe('success envelope carries top-level data.prompt and data.completion_event (FR-7)', () => {
   it('populates prompt with composed catalog text and completion_event with the resolved event name', () => {
     const bench = seedCatalog({
       'action.spawn_planner.md': {
@@ -25,9 +25,9 @@ describe('success envelope carries data.prompt and data.completion_event', () =>
 
     const result = processEvent('start', bench.projectDir, {}, io, bench.pathContext);
     expect(result.action).toBe('spawn_planner');
-    expect((result.context as Record<string, unknown>)['prompt']).toContain('BODY-FROM-CATALOG');
-    expect((result.context as Record<string, unknown>)['prompt']).toContain('Signal: requirements_completed');
-    expect((result.context as Record<string, unknown>)['completion_event']).toBe('requirements_completed');
+    expect(result.prompt).toContain('BODY-FROM-CATALOG');
+    expect(result.prompt).toContain('Signal: requirements_completed');
+    expect(result.completion_event).toBe('requirements_completed');
   });
 
   it('omits prompt and completion_event on failure envelopes', () => {
@@ -39,7 +39,7 @@ describe('success envelope carries data.prompt and data.completion_event', () =>
       { scriptsDir: '/x', templatesDir: '/x' },
     );
     expect(result.error).toBeDefined();
-    expect((result.context as Record<string, unknown>)['prompt']).toBeUndefined();
-    expect((result.context as Record<string, unknown>)['completion_event']).toBeUndefined();
+    expect(result.prompt).toBeUndefined();
+    expect(result.completion_event).toBeUndefined();
   });
 });

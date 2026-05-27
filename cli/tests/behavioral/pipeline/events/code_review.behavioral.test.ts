@@ -3,7 +3,7 @@
 // NFR-5: if the state schema changes, update the seeded states below accordingly.
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, it, beforeEach, afterEach, expect } from 'vitest';
+import { describe, it, afterEach, expect } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
@@ -186,10 +186,10 @@ describe('code_review prompt composition — custom slots (FR-5, FR-9, AD-7, NFR
     });
     cleanups.push(w.cleanup);
     const env = await fireTaskCompleted(w.projectDir, w.configPath);
-    const data = env.data as { action?: string; context?: { prompt?: string; completion_event?: string | null } };
+    const data = env.data as { action?: string; prompt?: string; completion_event?: string | null };
     expect(data.action, 'next action after task_completed').toBe('spawn_code_reviewer');
-    expect(data.context?.completion_event).toBe('code_review_completed');
-    const prompt = data.context!.prompt as string;
+    expect(data.completion_event).toBe('code_review_completed');
+    const prompt = data.prompt as string;
     // Heading present and immediately followed by the custom body (DD-6).
     expect(prompt).toContain('## Before signaling');
     expect(prompt).toContain(customBody);
@@ -219,10 +219,10 @@ describe('code_review prompt composition — custom slots (FR-5, FR-9, AD-7, NFR
     cleanups.push(w.cleanup);
     const env = await fireTaskCompleted(w.projectDir, w.configPath);
     expect(env.ok, 'envelope should succeed despite the inert unrelated custom').toBe(true);
-    const data = env.data as { action?: string; context?: { prompt?: string } };
+    const data = env.data as { action?: string; prompt?: string };
     expect(data.action).toBe('spawn_code_reviewer');
     // The bogus custom body must not have leaked into the composed prompt.
-    expect(data.context?.prompt as string).not.toContain('Bogus custom that should be inert.');
+    expect(data.prompt as string).not.toContain('Bogus custom that should be inert.');
   });
 
   it('unknown completion_event in the action frontmatter raises a validation error naming the missing catalog file (FR-9, NFR-7)', async () => {

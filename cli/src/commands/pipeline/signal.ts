@@ -18,7 +18,15 @@ export interface PipelineSignalInput {
 }
 
 export type PipelineSignalEnvelope =
-  | { ok: true; data: { action: string | null; context: Record<string, unknown> } }
+  | {
+      ok: true;
+      data: {
+        action: string | null;
+        context: Record<string, unknown>;
+        prompt?: string;
+        completion_event?: string | null;
+      };
+    }
   | { ok: false; data: { event: string; field?: string }; error: { type: 'user_error'; message: string } };
 
 export function makeDefaultIO(): IOAdapter {
@@ -43,7 +51,15 @@ export async function pipelineSignal(input: PipelineSignalInput): Promise<Pipeli
       error: { type: 'user_error', message: result.error.message },
     };
   }
-  return { ok: true, data: { action: result.action, context: result.context } };
+  const data: {
+    action: string | null;
+    context: Record<string, unknown>;
+    prompt?: string;
+    completion_event?: string | null;
+  } = { action: result.action, context: result.context };
+  if (result.prompt !== undefined) data.prompt = result.prompt;
+  if (result.completion_event !== undefined) data.completion_event = result.completion_event;
+  return { ok: true, data };
 }
 
 interface SignalArgs { event?: string; 'project-dir'?: string }

@@ -16,47 +16,47 @@ import { realCatalogRoot } from './catalog.js';
 
 type Envelope = { ok: boolean; data?: unknown; error?: unknown };
 
-function getContext(env: Envelope): Record<string, unknown> {
+function getData(env: Envelope): Record<string, unknown> {
   expect(env.ok, 'envelope.ok').toBe(true);
-  const data = env.data as { context?: unknown } | undefined;
+  const data = env.data as Record<string, unknown> | undefined;
   expect(data, 'envelope.data').toBeDefined();
-  const context = data!.context;
-  expect(context, 'envelope.data.context').toBeTypeOf('object');
-  return context as Record<string, unknown>;
+  expect(data, 'envelope.data shape').toBeTypeOf('object');
+  return data!;
 }
 
 /** Assert the envelope's prompt + completion_event contract for a NON-terminal
- *  action. Anchors:
- *    - prompt is a non-empty string
- *    - completion_event === expectedEvent
- *    - prompt contains `Signal: ${expectedEvent}` (FR-23 — composed signal line) */
+ *  action. Per FR-7 prompt and completion_event live at the top level of
+ *  `data` (alongside `action` and `context`). Anchors:
+ *    - data.prompt is a non-empty string
+ *    - data.completion_event === expectedEvent
+ *    - data.prompt contains `Signal: ${expectedEvent}` (FR-23 — composed signal line) */
 export function assertPromptForEvent(env: Envelope, expectedEvent: string): void {
-  const context = getContext(env);
-  expect(context, 'context should carry prompt').toHaveProperty('prompt');
-  expect(typeof context['prompt'], 'context.prompt typeof').toBe('string');
-  expect((context['prompt'] as string).length, 'context.prompt.length').toBeGreaterThan(0);
-  expect(context, 'context should carry completion_event').toHaveProperty('completion_event');
-  expect(context['completion_event'], 'context.completion_event').toBe(expectedEvent);
-  expect(context['prompt'] as string, 'context.prompt should contain Signal line').toContain(
+  const data = getData(env);
+  expect(data, 'data should carry prompt').toHaveProperty('prompt');
+  expect(typeof data['prompt'], 'data.prompt typeof').toBe('string');
+  expect((data['prompt'] as string).length, 'data.prompt.length').toBeGreaterThan(0);
+  expect(data, 'data should carry completion_event').toHaveProperty('completion_event');
+  expect(data['completion_event'], 'data.completion_event').toBe(expectedEvent);
+  expect(data['prompt'] as string, 'data.prompt should contain Signal line').toContain(
     `Signal: ${expectedEvent}`,
   );
 }
 
 /** Assert the envelope's prompt + completion_event contract for a TERMINAL
- *  action (FR-5). Terminal actions have `completion_event: null` and the
+ *  action (FR-5). Terminal actions have `data.completion_event: null` and the
  *  composed prompt must omit both the `## When complete` heading and the
  *  `Signal:` line. */
 export function assertPromptForTerminalAction(env: Envelope): void {
-  const context = getContext(env);
-  expect(context, 'context should carry prompt').toHaveProperty('prompt');
-  expect(typeof context['prompt'], 'context.prompt typeof').toBe('string');
-  expect((context['prompt'] as string).length, 'context.prompt.length').toBeGreaterThan(0);
-  expect(context, 'context should carry completion_event').toHaveProperty('completion_event');
-  expect(context['completion_event'], 'context.completion_event').toBeNull();
-  expect(context['prompt'] as string, 'terminal prompt should omit ## When complete').not.toContain(
+  const data = getData(env);
+  expect(data, 'data should carry prompt').toHaveProperty('prompt');
+  expect(typeof data['prompt'], 'data.prompt typeof').toBe('string');
+  expect((data['prompt'] as string).length, 'data.prompt.length').toBeGreaterThan(0);
+  expect(data, 'data should carry completion_event').toHaveProperty('completion_event');
+  expect(data['completion_event'], 'data.completion_event').toBeNull();
+  expect(data['prompt'] as string, 'terminal prompt should omit ## When complete').not.toContain(
     '## When complete',
   );
-  expect(context['prompt'] as string, 'terminal prompt should omit Signal:').not.toContain('Signal:');
+  expect(data['prompt'] as string, 'terminal prompt should omit Signal:').not.toContain('Signal:');
 }
 
 /** Read the catalog's `action.<name>.md` frontmatter and return its

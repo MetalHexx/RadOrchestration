@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { walkDAG } from '../../../src/lib/pipeline-engine/dag-walker.js';
 import { NODE_STATUSES } from '../../../src/lib/pipeline-engine/constants.js';
-import type { PipelineState, PipelineTemplate, OrchestrationConfig } from '../../../src/lib/pipeline-engine/types.js';
+import type { PipelineState, PipelineTemplate, OrchestrationConfig, StepNodeDef, StepNodeState } from '../../../src/lib/pipeline-engine/types.js';
 
 const CFG: OrchestrationConfig = {
   limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
@@ -14,8 +14,8 @@ function makeFlatTwoStepTemplate(): PipelineTemplate {
   return {
     template: { id: 't', version: '1.0.0', description: 'd' },
     nodes: [
-      { id: 'a', kind: 'step', label: 'A', action: 'do_a', events: { completed: 'a_done' }, depends_on: [] } as any,
-      { id: 'b', kind: 'step', label: 'B', action: 'do_b', events: { completed: 'b_done' }, depends_on: ['a'] } as any,
+      { id: 'a', kind: 'step', label: 'A', action: 'do_a', events: { completed: 'a_done' }, depends_on: [] } as StepNodeDef,
+      { id: 'b', kind: 'step', label: 'B', action: 'do_b', events: { completed: 'b_done' }, depends_on: ['a'] } as StepNodeDef,
     ],
   } as PipelineTemplate;
 }
@@ -31,8 +31,8 @@ function makeStateWithStatuses(a: string, b: string): PipelineState {
       status: 'in_progress',
       current_node_path: null,
       nodes: {
-        a: { kind: 'step', status: a, doc_path: null, retries: 0 } as any,
-        b: { kind: 'step', status: b, doc_path: null, retries: 0 } as any,
+        a: { kind: 'step', status: a, doc_path: null, retries: 0 } as StepNodeState,
+        b: { kind: 'step', status: b, doc_path: null, retries: 0 } as StepNodeState,
       },
     },
   } as PipelineState;

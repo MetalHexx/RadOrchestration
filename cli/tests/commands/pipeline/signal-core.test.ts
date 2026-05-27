@@ -27,12 +27,12 @@ const pathContext: PathContext = {
 };
 
 describe('pipelineSignal core function', () => {
-  it('projects engine result into { action, context } on success', async () => {
+  it('projects engine result into { action, context, prompt, completion_event } on success (FR-7)', async () => {
     const { io } = makeStubIO({ action: 'spawn_requirements', context: {} });
     const r = await pipelineSignal({ event: 'start', projectDir: '/tmp/proj', context: {}, io, pathContext });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(Object.keys(r.data).sort()).toEqual(['action', 'context']);
+      expect(Object.keys(r.data).sort()).toEqual(['action', 'completion_event', 'context', 'prompt']);
     }
   });
 

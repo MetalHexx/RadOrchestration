@@ -17,7 +17,7 @@ function walk(dir: string, acc: string[] = []): string[] {
 }
 
 // FR-12 keeps the literal status value `not_started` in the codebase — node
-// statuses still include it. The regex below uses a negative lookbehind on
+// statuses still include it. The regex below uses a negative lookahead on
 // `not_` so the scanner targets only the eight deleted event identifiers
 // (e.g. `explosion_started`, `master_plan_started`, `commit_started`) and
 // never trips on `not_started`.

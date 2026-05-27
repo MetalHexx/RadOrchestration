@@ -6,4 +6,4 @@ Every file must open with a YAML frontmatter block containing `kind`, `name`, `t
 
 The `custom/` subfolder holds project-level overlays that extend or annotate catalog entries without modifying the shipped files. See `custom/README.md` for the slot shapes and merge behavior.
 
-This folder is read by the pipeline at load time — it is not consumed directly by agents. Do not place agent-facing instructions here.
+The pipeline composer cold-reads these files on every envelope build and assembles their bodies into `data.prompt` for the orchestrator to act on. Bodies must therefore be written in instruction voice addressed to the orchestrator (FR-16) — they are the agent-facing surface. The `custom/` subfolder is the only place to layer additional instructions on top of the shipped catalog; do not edit the shipped files directly.

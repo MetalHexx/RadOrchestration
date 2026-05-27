@@ -10,14 +10,16 @@ const MANIFESTS = [
   join(REPO_ROOT, 'harness-installers', 'standard', 'manifests', 'copilot-cli', 'v1.0.0-alpha.9.json'),
   join(REPO_ROOT, 'harness-installers', 'standard', 'manifests', 'copilot-vscode', 'v1.0.0-alpha.9.json'),
 ];
-const CANONICAL_COMMAND = 'node "${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" plan explode';
+const CANONICAL_COMMAND = '`radorch.mjs plan explode`';
 
 describe('action.explode_master_plan.md is intact and manifest SHAs agree', () => {
-  it('action file contains the canonical node command on line 10', () => {
+  it('action file contains the canonical radorch.mjs command on line 10', () => {
     const body = readFileSync(ACTION_FILE, 'utf8');
     const line10 = body.split(/\r?\n/)[9];
     expect(line10).toContain(CANONICAL_COMMAND);
-    expect(line10).not.toContain('`radorch.mjs" plan'); // bare-filename stray-quote signature (backtick immediately before bare filename)
+    // Regression guard: bare-filename stray-quote signature (backtick before
+    // bare filename followed by a stray double-quote before the subcommand).
+    expect(line10).not.toContain('`radorch.mjs" plan');
   });
 
   it('all three standard manifests carry the file\'s actual SHA256 for the action.explode_master_plan.md entry', () => {
