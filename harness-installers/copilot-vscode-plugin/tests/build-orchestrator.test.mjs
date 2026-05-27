@@ -23,6 +23,12 @@ function makeFixtureRoot() {
   for (const t of ['extra-high', 'high', 'medium', 'low']) {
     fs.writeFileSync(join(root, `runtime-config/templates/${t}.yml`), `name: ${t}\n`);
   }
+  // runtime-config/action-events/ — shipped catalog + custom/ slot (FR-1, FR-19, FR-20).
+  fs.mkdirSync(join(root, 'runtime-config/action-events/custom'), { recursive: true });
+  fs.writeFileSync(join(root, 'runtime-config/action-events/README.md'), '# action-events\n');
+  fs.writeFileSync(join(root, 'runtime-config/action-events/action.spawn_coder.md'), '# spawn_coder\n');
+  fs.writeFileSync(join(root, 'runtime-config/action-events/event.task_completed.md'), '# task_completed\n');
+  fs.writeFileSync(join(root, 'runtime-config/action-events/custom/README.md'), '# custom slot\n');
 
   // Synthetic cli/ and ui/ stubs so emit-cli-bundle and emit-ui-bundle run.
   fs.mkdirSync(join(root, 'cli/src/bin'), { recursive: true });

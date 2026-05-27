@@ -1,14 +1,17 @@
 // cli/tests/behavioral/pipeline/events/plan_approved.behavioral.test.ts
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForTerminalAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { PLANNING_TEMPLATE_BODY } from './fixtures/planning-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // Master plan doc has total_phases and total_tasks required by plan_approved pre-read validation.
 // The path is relative and will be resolved to projectDir/master-plan.md by the engine.
@@ -69,5 +72,8 @@ describe('plan_approved event (FR-3, FR-8, FR-9, DD-2, DD-5)', () => {
       },
       sideFiles: [],
     });
+    // FR-5 — display_complete is terminal; composed prompt omits both the
+    // "## When complete" heading and the Signal line.
+    assertPromptForTerminalAction(env);
   });
 });

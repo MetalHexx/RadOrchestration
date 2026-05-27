@@ -1,16 +1,19 @@
 // cli/tests/behavioral/pipeline/events/gate_approved.behavioral.test.ts
 // Covers task_gate_approved and phase_gate_approved events (FR-3, FR-9, DD-2).
 // NFR-5: if the state schema changes, update the seeded states below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State for task_gate_approved: phase_loop[0].task_loop[0].task_gate is not_started with gate_active=true.
 // gate_mode_selection is completed; phase[0] is in_progress; task[0] is in_progress; task_gate is pending.
@@ -153,6 +156,8 @@ describe('task_gate_approved event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — execute_task's completion event is task_completed.
+    assertPromptForEvent(env, 'task_completed');
   });
 });
 
@@ -182,5 +187,7 @@ describe('phase_gate_approved event (FR-3, FR-9, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — spawn_phase_reviewer's completion event is phase_review_completed.
+    assertPromptForEvent(env, 'phase_review_completed');
   });
 });

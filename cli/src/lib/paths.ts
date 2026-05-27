@@ -11,6 +11,7 @@ export interface UserDataPaths {
   readonly logs: string;
   readonly runtime: string;
   readonly bootstrapLock: string;
+  readonly actionEvents: string;
 }
 
 export function userDataPaths(): UserDataPaths {
@@ -25,6 +26,7 @@ export function userDataPaths(): UserDataPaths {
     logs: path.join(root, 'logs'),
     runtime: path.join(root, 'runtime'),
     bootstrapLock: path.join(root, 'runtime', 'bootstrap.lock'),
+    actionEvents: path.join(root, 'action-events'),
   };
 }
 

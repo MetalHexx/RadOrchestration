@@ -3,6 +3,211 @@
   "channel": "standard",
   "files": [
     {
+      "bundlePath": "action-events/.gitkeep",
+      "destinationPath": "${RAD_HOME}/action-events/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bundlePath": "action-events/README.md",
+      "destinationPath": "${RAD_HOME}/action-events/README.md",
+      "sha256": "762fb78e7f10fe8e2647308602a4ee839ca0cb2f3b21ea0e2127995fd3b37657"
+    },
+    {
+      "bundlePath": "action-events/action.ask_gate_mode.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.ask_gate_mode.md",
+      "sha256": "777c4fdf4f321cb14a13202cde94bc5c9e12098febd9e6e386c5db965ce8febc"
+    },
+    {
+      "bundlePath": "action-events/action.display_complete.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.display_complete.md",
+      "sha256": "87ea6459e4739a3e433f91b74914d6a612d23bb05636123f2be0697b70e71e83"
+    },
+    {
+      "bundlePath": "action-events/action.display_halted.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.display_halted.md",
+      "sha256": "548817c0cb372db26f8247c9c02c8537b1b7fbcf348e3fe681d91ca86eb9e139"
+    },
+    {
+      "bundlePath": "action-events/action.execute_task.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.execute_task.md",
+      "sha256": "29401536746cfd3c1cf24fbd786ecbfbe187c91d3ffb769efdaa6675870538cf"
+    },
+    {
+      "bundlePath": "action-events/action.explode_master_plan.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.explode_master_plan.md",
+      "sha256": "a938cce53de7579379a34ee928463e4b4a02be18875e6698d0cc9e0829e11aa4"
+    },
+    {
+      "bundlePath": "action-events/action.gate_phase.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.gate_phase.md",
+      "sha256": "aa2b1ee0c8180c7d6ebb192136a508706b6c648d3bfbedf975717cc9877fd106"
+    },
+    {
+      "bundlePath": "action-events/action.gate_task.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.gate_task.md",
+      "sha256": "ff1b4cef86502a08326b1b012214210ad76f385baa153f2cd736c75313efe2c0"
+    },
+    {
+      "bundlePath": "action-events/action.invoke_source_control_commit.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.invoke_source_control_commit.md",
+      "sha256": "73dbba1fc256251a9bb89bef508a3d9eb779c387e3b288c2d4885bce66cf4280"
+    },
+    {
+      "bundlePath": "action-events/action.invoke_source_control_pr.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.invoke_source_control_pr.md",
+      "sha256": "17bf94f55e29e2d5b6c36b11e7b9f30086b6ca1d12cffcc8455cdf1ee62bbf4c"
+    },
+    {
+      "bundlePath": "action-events/action.request_final_approval.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.request_final_approval.md",
+      "sha256": "aed01445bb726eddcdac4dbf61e6b817d38f32ec922071fb1eaa7ea667e3f50a"
+    },
+    {
+      "bundlePath": "action-events/action.request_plan_approval.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.request_plan_approval.md",
+      "sha256": "5774632cb2ec9f9e37a2d2680154c5bb449a4186de6569391fa4116ffe92fd02"
+    },
+    {
+      "bundlePath": "action-events/action.spawn_code_reviewer.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.spawn_code_reviewer.md",
+      "sha256": "309437cffa80dcb1f78f356e821ed4cbd125f627019b92aaface2ef4c3427c29"
+    },
+    {
+      "bundlePath": "action-events/action.spawn_final_reviewer.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.spawn_final_reviewer.md",
+      "sha256": "9c75a5ed7e475c8e356288e9f793a2cf8b61b250491d46ac2adb852e77a9a925"
+    },
+    {
+      "bundlePath": "action-events/action.spawn_master_plan.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.spawn_master_plan.md",
+      "sha256": "19967f101308c0772cff2383af1a13a1c7f61e2b6dcf8e4e3fd701d56a33d433"
+    },
+    {
+      "bundlePath": "action-events/action.spawn_phase_reviewer.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.spawn_phase_reviewer.md",
+      "sha256": "e3a04812d245f525a973ea239ff03b8bdcb89e6bbe7c392560571c8a1746a1dd"
+    },
+    {
+      "bundlePath": "action-events/action.spawn_requirements.md",
+      "destinationPath": "${RAD_HOME}/action-events/action.spawn_requirements.md",
+      "sha256": "5284e643b27cd1509afe897372c1bfd4015d42188876de5f68f1f045e0dbec08"
+    },
+    {
+      "bundlePath": "action-events/custom/README.md",
+      "destinationPath": "${RAD_HOME}/action-events/custom/README.md",
+      "sha256": "422c010d45ed0e47117344259d9194d9051158873265bbd2a1561c59cf5247c3"
+    },
+    {
+      "bundlePath": "action-events/event.code_review_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.code_review_completed.md",
+      "sha256": "f8a9cb935d98fdf69281ba18fdeff80f3caca03928b97b4a29dc8df7a3f60aca"
+    },
+    {
+      "bundlePath": "action-events/event.commit_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.commit_completed.md",
+      "sha256": "848d6ff29d92cc5f3c7231f6da83ab613e2186d14ba8708f58795d59dd7b684b"
+    },
+    {
+      "bundlePath": "action-events/event.explosion_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.explosion_completed.md",
+      "sha256": "7a59fbf5c1ab1ea8a741eac2fb879a115be8c0693ef2be9a55ce5cafbf43b5a6"
+    },
+    {
+      "bundlePath": "action-events/event.explosion_failed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.explosion_failed.md",
+      "sha256": "449b7fea2ff6de927af72b3877ec0223b4e681d5488242f690c63443b9207580"
+    },
+    {
+      "bundlePath": "action-events/event.final_approved.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.final_approved.md",
+      "sha256": "d5aded00a5ca43a861770b43e820babe6540e440a681a0a03df778b42b41a3a3"
+    },
+    {
+      "bundlePath": "action-events/event.final_rejected.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.final_rejected.md",
+      "sha256": "3380e4dc325cc70464968ec0ebb113798ace46f9632a0b9625755775cfa5deaf"
+    },
+    {
+      "bundlePath": "action-events/event.final_review_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.final_review_completed.md",
+      "sha256": "c1f7897cdc6081e0456b8b8b267e7c5ded66079584fe2e9bc65f05df9b5c1b8b"
+    },
+    {
+      "bundlePath": "action-events/event.gate_mode_set.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.gate_mode_set.md",
+      "sha256": "3a0580215356a01b8500a4272adecaad1c42ffa15c40674162e50cf0f3a06647"
+    },
+    {
+      "bundlePath": "action-events/event.gate_rejected.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.gate_rejected.md",
+      "sha256": "c082a4b7139ad6318d0a73d5041ae8d8b902c3e76fdf7dfde497b6cca844f96c"
+    },
+    {
+      "bundlePath": "action-events/event.halt.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.halt.md",
+      "sha256": "9d038d9261aa472a026c2fddd96c7d2a013cf93ca9b7d09f9f09fa369ab41826"
+    },
+    {
+      "bundlePath": "action-events/event.master_plan_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.master_plan_completed.md",
+      "sha256": "d0b8d8dd75b94dc8999388f7ecf9aeb8179ec2e82ad5880bbe8f4cdc46f18086"
+    },
+    {
+      "bundlePath": "action-events/event.phase_gate_approved.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.phase_gate_approved.md",
+      "sha256": "a3dd3ecb6e43c4c6ba19a87508115be1022edd432a2d3ef52b8a5175c9ff63d1"
+    },
+    {
+      "bundlePath": "action-events/event.phase_review_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.phase_review_completed.md",
+      "sha256": "8f6e71f55ff41fcca74b81003765c3885b9ce87a72f79e701fa3d10cc8f286a5"
+    },
+    {
+      "bundlePath": "action-events/event.plan_approved.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.plan_approved.md",
+      "sha256": "bd0747a7fcb372e6179ce154b5a8af9a7cf5f3669eedf765934b92c44e299124"
+    },
+    {
+      "bundlePath": "action-events/event.plan_rejected.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.plan_rejected.md",
+      "sha256": "8afbd5acee8fe8d9e7f345eccf820526a061eb72ab932f3632f48e965ffc7142"
+    },
+    {
+      "bundlePath": "action-events/event.pr_created.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.pr_created.md",
+      "sha256": "2ad5bd2355152582aa5cfdf9cd582e2e6f8b3752b0d62d5c4143a769c3d7c4a0"
+    },
+    {
+      "bundlePath": "action-events/event.pr_requested.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.pr_requested.md",
+      "sha256": "e34621350936e0cca57d8a3f0989b3d78adbb9df9745edd490bd99aa1a01cb4b"
+    },
+    {
+      "bundlePath": "action-events/event.requirements_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.requirements_completed.md",
+      "sha256": "083615a19c1e402ffa25f59a4530c2fce614a80d07fb9d15837dc9da28bfc92d"
+    },
+    {
+      "bundlePath": "action-events/event.source_control_init.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.source_control_init.md",
+      "sha256": "a90ef67ca1ba84155507767321fc77f3d3c671daded48f15ef4f62464cf90d55"
+    },
+    {
+      "bundlePath": "action-events/event.start.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.start.md",
+      "sha256": "4b1ee858efa196a652581701105394b4c50cbd711520b9eb337920cbf0b7f5e0"
+    },
+    {
+      "bundlePath": "action-events/event.task_completed.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.task_completed.md",
+      "sha256": "aabc7e3457573e5514f180455512923c05d080d11137aa3c9ee68a73ed5b52a4"
+    },
+    {
+      "bundlePath": "action-events/event.task_gate_approved.md",
+      "destinationPath": "${RAD_HOME}/action-events/event.task_gate_approved.md",
+      "sha256": "4ad7281cc35d472da69cfb82bb219957fbda21590b87f0e01817f28e02b9d8d1"
+    },
+    {
       "bundlePath": "agents/brainstormer.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/brainstormer.agent.md",
       "sha256": "8c26e19097095cd42ec604d7d3f1ad383d35a098af8dce12cb03a6445d159274"
@@ -25,7 +230,7 @@
     {
       "bundlePath": "agents/orchestrator.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/orchestrator.agent.md",
-      "sha256": "a872431d900eb44938802a4ac860cd13f2e89c0af4da85a3bf4d72eaf9678232"
+      "sha256": "9cd1b3d8b0bfbb84e9f12657e16fcbda36d59faa44486b0315baadec4949f2a8"
     },
     {
       "bundlePath": "agents/planner.agent.md",
@@ -175,32 +380,27 @@
     {
       "bundlePath": "skills/rad-orchestration/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/SKILL.md",
-      "sha256": "e92ed092a98fe4f03a91bbd3e5598734deede1df155c6160d6d1bc3f3fe83c85"
-    },
-    {
-      "bundlePath": "skills/rad-orchestration/references/action-event-reference.md",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/action-event-reference.md",
-      "sha256": "2f01bbe3e404bf2b01bb58629b01957325e60132e1dff6233800ddb3cb432f5f"
+      "sha256": "a75b684f85771be804bf16a854e69134053d213adbe2fa997c68369a42498c7e"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/context.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/context.md",
-      "sha256": "c0dc05be76253206d25283afea36efad5479babcf67fed977fca3d72a321e5cb"
+      "sha256": "910580aea4983726d8616a3e86af60dee194a7cde97b90c07dc8ff63b40bcb83"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/corrective-playbook.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/corrective-playbook.md",
-      "sha256": "cb4e731f18cc565874add3d8e9443a041ad54bd19b08d131a3f9e943c72670c3"
+      "sha256": "ed90a994f5cbf057397c057d78d6df498aa9c723ef50d6ae4c952dd2b6b7bd79"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/document-conventions.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/document-conventions.md",
-      "sha256": "11a050e87a4340fb498371e4c6ea07da582c02f54a8ddfe1dbcac51bc4240b9b"
+      "sha256": "e9dead197b7e8fff428fa98ea5eb91feff8c96a6ef71742f172d7bdc54cafdce"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/pipeline-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/pipeline-guide.md",
-      "sha256": "2a1654c9cb338c6495f3fa49dd7d2e0b0d250c2b3617c606c52b91c91cf0177f"
+      "sha256": "c67b9d6b75a35287cc2f83bad27fe4c37b3880ce04769d1c9f4f0ef795003b28"
     },
     {
       "bundlePath": "skills/rad-orchestration/schemas/legacy/state-v4.schema.json",
@@ -215,7 +415,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "0576ab8c6e916e420478d7cddcd972cb3d5c56caaa86dee2e924df26bcbb24b0"
+      "sha256": "857f24f037cdb5b945fc89473a0f7ca5007ca369550f7f6d56ec1aead5f1325e"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
@@ -245,7 +445,7 @@
     {
       "bundlePath": "skills/rad-plan/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan/SKILL.md",
-      "sha256": "e937fd5844bad992bfc65516081dba455398ed783dd946770d69f48fc30db8e2"
+      "sha256": "71e7b7b43242000b382d835407e9af61c90c71ca5d3e0b36aaab8263816c20cb"
     },
     {
       "bundlePath": "skills/rad-run-tests/SKILL.md",

@@ -8,7 +8,14 @@ function expand(destPath, paths) {
 
 /** Copies every entry in the manifest from <pluginRoot>/<sourcePath> to its
  *  expanded destinationPath. Every destination must live under
- *  paths.root. */
+ *  paths.root.
+ *
+ *  FR-20: any entry marked `ownership: "user-config"` is seeded on first
+ *  install only — if the destination already exists, the copy is skipped so
+ *  user-edited content is preserved. Symmetric to the user-config
+ *  preservation pattern used by the other plugin installers. The canonical
+ *  `action-events/custom/README.md` is the second user-config entry (the
+ *  first is `orchestration.yml`). */
 export function installManifestFiles(manifest, pluginRoot, opts = {}) {
   const paths = userDataPaths(opts);
   // Resolved-relative containment: works across mixed separators (manifest paths
@@ -22,6 +29,8 @@ export function installManifestFiles(manifest, pluginRoot, opts = {}) {
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error(`install: destination escapes ~/.radorc/: ${dest}`);
     }
+    // FR-20 / FR-14: user-config entries are seeded on first install only.
+    if (entry.ownership === 'user-config' && fs.existsSync(dest)) continue;
     const src = path.join(pluginRoot, entry.sourcePath);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(src, dest);

@@ -1,10 +1,12 @@
 // cli/tests/behavioral/pipeline/events/start.behavioral.test.ts
-import { describe, it, afterEach, expect } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { PLANNING_TEMPLATE_BODY } from './fixtures/planning-template.js';
@@ -12,6 +14,7 @@ import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // Seed mirroring the live PUBLISH-TEST-1 repro: task_executor is in_progress
 // after the orchestrator fired `execution_started` and lost session context
@@ -93,9 +96,12 @@ describe('start event (FR-3, DD-2)', () => {
     assertEnvelopeStateSideFiles(env, {
       projectDir: w.projectDir,
       envelope: { ok: true, data: { action: 'spawn_requirements' } },
-      state: { graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'not_started' } } } },
+      state: { graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'in_progress' } } } },
       sideFiles: [],
     });
+    // FR-4, FR-23 — engine composes the spawn_requirements prompt with
+    // completion_event=requirements_completed (per the action catalog).
+    assertPromptForEvent(env, 'requirements_completed');
   });
 
   it('start event resumes an in-progress task_executor by re-emitting action=execute_task', async () => {
@@ -119,6 +125,8 @@ describe('start event (FR-3, DD-2)', () => {
       state: { graph: { template_id: 'syn-exec', status: 'in_progress' } },
       sideFiles: [],
     });
+    // FR-4, FR-23 — execute_task completion is task_completed.
+    assertPromptForEvent(env, 'task_completed');
     // start preserves the in_progress frontier — no node-status mutation.
     // Targeted read because partialDeepEqual treats array members as strict
     // toEqual, which would force restating every sibling field in the iteration.
@@ -143,10 +151,13 @@ describe('start event (FR-3, DD-2)', () => {
         isTTY: false, stderr: process.stderr,
       });
     });
-    const first = await fire() as { data: { action: string; context: unknown } };
-    const second = await fire() as { data: { action: string; context: unknown } };
+    const first = await fire() as { ok: boolean; data: { action: string; context: unknown } };
+    const second = await fire() as { ok: boolean; data: { action: string; context: unknown } };
     expect(second.data.action).toBe(first.data.action);
     expect(second.data.context).toEqual(first.data.context);
+    // FR-4 — idempotent re-emission still carries the composed prompt.
+    assertPromptForEvent(first, 'task_completed');
+    assertPromptForEvent(second, 'task_completed');
     // And the node state has not advanced past in_progress.
     const onDisk = JSON.parse(fs.readFileSync(path.join(w.projectDir, 'state.json'), 'utf8'));
     expect(onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0].nodes.task_executor.status).toBe('in_progress');

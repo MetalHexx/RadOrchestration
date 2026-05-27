@@ -6,7 +6,13 @@ export type NodeStatus = 'not_started' | 'in_progress' | 'completed' | 'failed' 
 
 export type GraphStatus = 'not_started' | 'in_progress' | 'completed' | 'halted';
 
-export type EventPhase = 'started' | 'completed' | 'approved';
+// Per FR-11, no `*_started` events are accepted by the engine; step-node
+// in_progress transitions are written optimistically in `processEvent`.
+// `pr_requested` (the `final_pr` step's started-keyed event) is preserved
+// because its identifier does not end in `_started`; the template loader
+// still indexes a started-keyed event when present, with eventPhase
+// `'completed'` collapsed into the same fall-through walker branch.
+export type EventPhase = 'completed' | 'approved';
 
 export type ConditionOperator = 'eq' | 'neq' | 'in' | 'not_in' | 'truthy' | 'falsy';
 
@@ -51,7 +57,11 @@ export interface StepNodeDef extends BaseNodeDef {
   kind: 'step';
   action: string;
   events: {
-    started: string;
+    // Per FR-11, no template step declares a `*_started` event. The optional
+    // `started` field remains so `final_pr` may declare its historical
+    // `pr_requested` signal; the template-loader indexes it with
+    // eventPhase `'completed'` (same fall-through walker branch).
+    started?: string;
     completed: string;
   };
   context?: Record<string, unknown>;
@@ -268,10 +278,18 @@ export interface PathContext {
 }
 
 // Pipeline Result (engine output contract)
+//
+// `prompt` (catalog body + optional pre/post slots) and `completion_event`
+// (the action's resolved completion event name, or null for terminal actions)
+// sit inside `data` alongside `action` and `context` per FR-7. Both fields are
+// intentionally optional so failure envelopes (which set `error`) naturally
+// omit them.
 
 export interface PipelineResult {
   action: string | null;
   context: Record<string, unknown>;
+  prompt?: string;
+  completion_event?: string | null;
   error?: { message: string; event: string; field?: string };
 }
 

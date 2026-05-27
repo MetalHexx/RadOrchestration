@@ -118,6 +118,28 @@ export async function runBuild(opts) {
     }
   });
 
+  // Per-harness action-events staging (FR-1, FR-19, AD-3). Ships the canonical
+  // `action.*.md` / `event.*.md` files plus the top-level `README.md` and
+  // `custom/README.md` ONLY. The filter excludes any user-authored content
+  // inside `custom/` (FR-20) — only the shipped `custom/README.md` survives.
+  await step('copy-action-events', () => {
+    const aeSrc = path.join(greenfield, 'runtime-config/action-events');
+    const customSep = `${path.sep}custom${path.sep}`;
+    const customReadme = `${path.sep}custom${path.sep}README.md`;
+    const filter = (src) => {
+      // Always allow directory entries themselves (cpSync needs them to traverse).
+      // The `custom/` slot filters down to README.md only.
+      if (!src.includes(customSep)) return true;
+      // Allow the custom/ directory entry itself (no trailing path beyond `custom`).
+      if (src.endsWith(`${path.sep}custom`)) return true;
+      // Allow only the shipped custom/README.md.
+      return src.endsWith(customReadme);
+    };
+    for (const h of HARNESSES) {
+      fs.cpSync(aeSrc, path.join(out, h, 'action-events'), { recursive: true, filter });
+    }
+  });
+
   // Per-harness CLI bundle. cli/ lives at the repo root.
   await step('emit-cli-bundle', async () => {
     for (const h of HARNESSES) {

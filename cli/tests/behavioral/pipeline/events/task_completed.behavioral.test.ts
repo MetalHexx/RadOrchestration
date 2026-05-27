@@ -1,16 +1,19 @@
 // cli/tests/behavioral/pipeline/events/task_completed.behavioral.test.ts
 // Covers task_completed event (FR-3, DD-2).
 // NFR-5: if the state schema changes, update the seeded state below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State after execution_started: task_executor=in_progress.
 const afterExecutionStartedState = {
@@ -93,5 +96,7 @@ describe('task_completed event (FR-3, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — spawn_code_reviewer's completion event is code_review_completed.
+    assertPromptForEvent(env, 'code_review_completed');
   });
 });

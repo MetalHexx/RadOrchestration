@@ -2,7 +2,7 @@
 
 Canonical reference for all pipeline-produced document naming, placement, and frontmatter values.
 
-Covers all documents produced during pipeline execution. Planning documents (Master Plan, Requirements, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Review).
+Covers all documents produced during pipeline execution. Planning documents (Master Plan, Requirements, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Review). Also covers the action / event catalog files that drive the composer at envelope-build time.
 
 ## Filename Patterns & Placement
 
@@ -85,11 +85,3 @@ The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It
 - Zero-padded numbers use `{NN}` only inside filename patterns (shorthand for a two-digit number); in frontmatter fields, use the explicit name (e.g., `{PHASE-NUMBER}`)
 - The `{TASK-ID}` compound token (e.g., `T01-AUTH`) is a named exception — it is a composite of task number and title slug, not a general placeholder
 - `{ISO-DATE}` means ISO 8601 date-time string (e.g., `2026-03-22T00:00:00.000Z`)
-
-## Maintenance Note
-
-Changes to filename patterns in this file must be propagated to three other locations to maintain consistency:
-
-1. **Action routing tables** in `orchestrator.agent.md` and `pipeline-guide.md`
-2. **Individual SKILL.md save paths** in each producing skill's output contract
-3. **`docs/project-structure.md`** project folder tree and naming conventions table

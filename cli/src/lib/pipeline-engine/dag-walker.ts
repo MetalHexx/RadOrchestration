@@ -352,13 +352,12 @@ function walkNodes(
         return iterResult;
       }
 
-      // Step in_progress → re-emit the step's action so `start` is a true
-      // resume entry point per pipeline-guide.md. Read-only; no state mutation.
-      // Mirrors the not-started step arm below and the `_started` event handler
-      // in engine.ts so cold-resume and `*_started` re-fire produce identical
-      // envelopes after context enrichment at the call site.
+      // Optimistic in_progress at action-return: keep the in_progress flag set
+      // when re-emitting a step's action. Single source of truth for step
+      // status writes (carries FR-10 / AD-2 from ACTION-EVENT-DATA-1).
       if (nodeDef.kind === 'step') {
         const stepDef = nodeDef as StepNodeDef;
+        nodeState.status = NODE_STATUSES.IN_PROGRESS;
         return {
           action: stepDef.action,
           context: stepDef.context ?? {},
@@ -382,9 +381,13 @@ function walkNodes(
 
     // Status: not_started
     if (nodeState.status === NODE_STATUSES.NOT_STARTED) {
-      // Step node
+      // Optimistic in_progress at action-return: flip a resolved step node
+      // to in_progress on the same walk that returns its action (carries
+      // FR-10 / AD-2 from ACTION-EVENT-DATA-1; previously written by the
+      // post-walk helper in engine.ts, now walker-owned per AD-1).
       if (nodeDef.kind === 'step') {
         const stepDef = nodeDef as StepNodeDef;
+        nodeState.status = NODE_STATUSES.IN_PROGRESS;
         return {
           action: stepDef.action,
           context: stepDef.context ?? {},

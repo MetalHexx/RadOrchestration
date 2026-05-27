@@ -4,6 +4,13 @@
 // still contains a user-authored file — anything not in the manifest — is
 // preserved. The harness root itself is never pruned. projects/ entries are
 // skipped unconditionally (idempotent symmetry with install-files.js).
+//
+// FR-20 defensive guard: scans the manifest before the per-entry removal
+// loop and throws if any entry targets a path under
+// ${RAD_HOME}/action-events/custom/ other than the canonical
+// custom/README.md. Belt-and-suspenders against future manifest-shape drift;
+// the build-time filter is the primary guarantee that the manifest never
+// lists user-authored custom payloads.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,8 +29,37 @@ export function removeManifestFiles(manifest, harness) {
   let removedCount = 0;
   const dirsTouched = new Set();
 
+  // FR-20 defensive guard: refuse any manifest entry that targets a user
+  // payload under action-events/custom/. Only the canonical
+  // custom/README.md is permitted; everything else is a manifest drift bug
+  // and aborts the uninstall before any file work.
+  const customSegment = `${path.sep}action-events${path.sep}custom${path.sep}`;
+  const allowedCustomAbs = expandDestinationTokens(
+    '${RAD_HOME}/action-events/custom/README.md',
+    harness,
+  );
+  for (const entry of manifest.files ?? []) {
+    const resolved = expandDestinationTokens(entry.destinationPath, harness);
+    if (resolved.includes(customSegment) && resolved !== allowedCustomAbs) {
+      throw new Error(
+        `uninstall safety: manifest entry '${entry.bundlePath}' targets an action-events/custom/ ` +
+        `payload. Only the shipped custom/README.md may be listed. Refusing to proceed.`,
+      );
+    }
+  }
+
+  // FR-20 preservation skip: the shipped custom/README.md is a user-editable
+  // seed file; uninstall must never remove it (mirrors the `ownership:
+  // user-config` skip in the plugin installers).
+  const customReadmeAbs = expandDestinationTokens(
+    '${RAD_HOME}/action-events/custom/README.md',
+    harness,
+  );
+
   for (const entry of manifest.files) {
     const abs = expandDestinationTokens(entry.destinationPath, harness);
+
+    if (abs === customReadmeAbs) continue;
 
     if (abs.startsWith(projectsRoot)) {
       console.warn(`[remove] skipping projects/ entry '${entry.bundlePath}'`);

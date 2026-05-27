@@ -1,14 +1,17 @@
 // cli/tests/behavioral/pipeline/events/requirements.behavioral.test.ts
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEvent } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { PLANNING_TEMPLATE_BODY } from './fixtures/planning-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // Shared scaffolded state that mirrors the engine output after the start event.
 const afterStartState = {
@@ -33,30 +36,12 @@ const afterStartState = {
   },
 };
 
+// Per FR-11, `requirements_started` is no longer accepted as an event; step
+// transition to in_progress now happens via the optimistic write in
+// processEvent (FR-10). The behavioral arm for that signal was deleted with
+// the event identifier itself; the completed arm below carries the remaining
+// behavior coverage for the requirements step.
 describe('requirements events (FR-3, FR-7, DD-2, DD-4)', () => {
-  it('requirements_started marks requirements node in_progress and returns action=spawn_requirements', async () => {
-    const w = buildWorld({
-      template: { id: 'syn-planning', body: PLANNING_TEMPLATE_BODY },
-      state: afterStartState,
-      config: { default_template: 'syn-planning' },
-      sideFiles: [],
-    });
-    cleanups.push(w.cleanup);
-    const env = await captureEnvelope(async () => {
-      await runCommand(pipelineSignalCommand, {
-        argv: ['--event', 'requirements_started', '--project-dir', w.projectDir, '--config', w.configPath],
-        env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: w.projectDir },
-        isTTY: false, stderr: process.stderr,
-      });
-    });
-    assertEnvelopeStateSideFiles(env, {
-      projectDir: w.projectDir,
-      envelope: { ok: true, data: { action: 'spawn_requirements' } },
-      state: { graph: { nodes: { requirements: { status: 'in_progress' } } } },
-      sideFiles: [],
-    });
-  });
-
   it('requirements_completed marks requirements node completed and returns action=spawn_master_plan', async () => {
     const stateWithRequirementsInProgress = {
       ...afterStartState,
@@ -92,11 +77,13 @@ describe('requirements events (FR-3, FR-7, DD-2, DD-4)', () => {
         graph: {
           nodes: {
             requirements: { status: 'completed' },
-            master_plan: { status: 'not_started' },
+            master_plan: { status: 'in_progress' },
           },
         },
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — spawn_master_plan's completion event is master_plan_completed.
+    assertPromptForEvent(env, 'master_plan_completed');
   });
 });

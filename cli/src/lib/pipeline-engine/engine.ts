@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { loadTemplate } from './template-loader.js';
@@ -7,6 +8,9 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
+import { composeActionPrompt } from './composer.js';
+import { parseActionEventFile } from './action-event-loader.js';
+import { userDataPaths } from '../paths.js';
 import type {
   PipelineState,
   PipelineResult,
@@ -17,7 +21,6 @@ import type {
   NodeDef,
   NodeState,
   PathContext,
-  StepNodeDef,
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { validateState } from './validator.js';
@@ -26,6 +29,81 @@ import { validateState } from './validator.js';
 // (userDataPaths().projects); inlined here because the pipeline runtime in
 // skills/rad-orchestration/scripts/ has no shared TS surface with cli/.
 const PROJECTS_BASE_PATH = path.join(os.homedir(), '.radorc', 'projects');
+
+// ── Catalog-root resolution (FR-4, AD-6) ─────────────────────────────────────
+// Production reads the action/event catalog root from `userDataPaths().actionEvents`.
+// Two override surfaces exist:
+//   - `__setActionEventsRootForTests(dir)` — in-process test seam, used by the
+//     behavioral-suite helper at `cli/tests/behavioral/pipeline/helpers/catalog.ts`.
+//   - `RADORCH_ACTION_EVENTS_DIR` env var — out-of-process override for tests
+//     that spawn the bundled CLI as a subprocess (mirrors the existing
+//     `RADORCH_TEMPLATES_DIR` env var in `path-context.ts`).
+// Both are deliberate test seams; production callers rely on the user-data path.
+let __actionEventsRootOverride: string | null = null;
+export function __setActionEventsRootForTests(root: string | null): void {
+  __actionEventsRootOverride = root;
+}
+function resolveActionEventsRoot(): string {
+  if (__actionEventsRootOverride !== null) return __actionEventsRootOverride;
+  const envOverride = process.env['RADORCH_ACTION_EVENTS_DIR'];
+  if (envOverride) return envOverride;
+  return userDataPaths().actionEvents;
+}
+
+/**
+ * Cold-read the catalog action file's frontmatter (AD-6) and return its
+ * `completion_event` field. Returns `null` if the action's completion event
+ * is explicitly null in the catalog. Returns `undefined` if the catalog file
+ * does not exist on disk — callers treat this as "skip prompt attachment"
+ * (the catalog will be populated incrementally; missing files must not break
+ * success envelope routing). All other parse errors propagate.
+ */
+function resolveCompletionEvent(
+  actionName: string,
+  _template: PipelineTemplate,
+): string | null | undefined {
+  const root = resolveActionEventsRoot();
+  const filename = `action.${actionName}.md`;
+  const filePath = path.join(root, filename);
+  if (!fs.existsSync(filePath)) return undefined;
+  const text = fs.readFileSync(filePath, 'utf8');
+  const parsed = parseActionEventFile(text, filename);
+  if (parsed.kind !== 'action') {
+    throw new Error(`Catalog file '${filePath}' parsed kind '${parsed.kind}' but action expected.`);
+  }
+  const fm = parsed.frontmatter as { kind: 'action'; completion_event: string | null };
+  return fm.completion_event;
+}
+
+/**
+ * Attach `prompt` (composed catalog text) and `completion_event` (resolved
+ * event name) to the engine's success envelope. Per FR-7 these fields live
+ * inside `data` alongside `action` and `context` — they are NOT nested
+ * inside `context`. Failure envelopes never reach this helper — they
+ * construct their result inline with the `error: { ... }` field.
+ *
+ * Skips attachment entirely when the action's catalog file does not exist
+ * on disk; the envelope still surfaces `action` and the enriched context so
+ * downstream consumers that do not depend on the composed prompt continue
+ * to operate (catalog population proceeds independently of pipeline routing).
+ */
+function attachPromptIfActionResolved(
+  next: { action: string; context: Record<string, unknown> } | null,
+  template: PipelineTemplate,
+): PipelineResult {
+  if (!next) return { action: null, context: {} };
+  const completion_event = resolveCompletionEvent(next.action, template);
+  if (completion_event === undefined) {
+    // No catalog file → skip composer; preserve existing envelope shape.
+    return { action: next.action, context: next.context };
+  }
+  const prompt = composeActionPrompt({
+    actionName: next.action,
+    completionEvent: completion_event,
+    catalogRoot: resolveActionEventsRoot(),
+  });
+  return { action: next.action, context: next.context, prompt, completion_event };
+}
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
@@ -186,10 +264,10 @@ export function processEvent(
             })
           : {};
 
-        return {
-          action: nextAction?.action ?? null,
-          context: enrichedContext,
-        };
+        return attachPromptIfActionResolved(
+          nextAction ? { action: nextAction.action, context: enrichedContext } : null,
+          template,
+        );
       } else {
         const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
 
@@ -215,10 +293,10 @@ export function processEvent(
               cliContext: context,
             })
           : {};
-        return {
-          action: walkerResult?.action ?? null,
-          context: enrichedContext,
-        };
+        return attachPromptIfActionResolved(
+          walkerResult ? { action: walkerResult.action, context: enrichedContext } : null,
+          template,
+        );
       }
     }
 
@@ -291,10 +369,10 @@ export function processEvent(
           })
         : {};
 
-      return {
-        action: walkerResult?.action ?? null,
-        context: enrichedContext,
-      };
+      return attachPromptIfActionResolved(
+        walkerResult ? { action: walkerResult.action, context: enrichedContext } : null,
+        template,
+      );
     }
 
     // ── gate_approved alias resolution ──────────────────────────────────
@@ -372,20 +450,10 @@ export function processEvent(
     mutatedState.project.updated = new Date().toISOString();
     mutatedState.graph.current_node_path = resolveNodeStatePath(entry.templatePath, context);
 
+    // Per FR-11, all routed events now fall through to the walker; the
+    // former `entry.eventPhase === 'started'` short-circuit is gone.
     let nextAction;
-    if (entry.eventPhase === 'started') {
-      const stepNode = entry.nodeDef as StepNodeDef;
-      const rawContext = stepNode.context ?? {};
-      const enrichedCtx = enrichActionContext({
-        action: stepNode.action,
-        walkerContext: rawContext,
-        state: mutatedState,
-        config,
-        cliContext: context,
-      });
-      nextAction = { action: stepNode.action, context: enrichedCtx };
-      io.writeState(projectDir, mutatedState);
-    } else {
+    {
       const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);
@@ -418,10 +486,7 @@ export function processEvent(
       }
     }
 
-    return {
-      action: nextAction?.action ?? null,
-      context: nextAction?.context ?? {},
-    };
+    return attachPromptIfActionResolved(nextAction ?? null, template);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return {

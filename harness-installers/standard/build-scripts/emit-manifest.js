@@ -7,10 +7,16 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// User-data assets that belong to post-install state-machine steps, not the
-// installable harness tree (AD-3). Any bundlePath starting with one of these
-// prefixes is excluded from the manifest.
-const USER_DATA_PREFIXES = ['orchestration.yml', 'templates/', 'ui/'];
+// Assets that belong to post-install state-machine steps (hydrated by
+// hydrate-user-data, not by installManifestFiles). bundlePaths matching any
+// of these prefixes are excluded from the manifest entirely (AD-3).
+const HYDRATION_EXCLUDED_PREFIXES = ['orchestration.yml', 'templates/', 'ui/'];
+
+// Assets that DO appear in the manifest but install into the shared user-data
+// root (~/.radorc/) rather than the per-harness root. Their manifest entries
+// use ${RAD_HOME} destinations so installManifestFiles routes them correctly
+// (FR-1, FR-19, AD-3). The action-events catalog is the first such asset.
+const USER_DATA_PREFIXES = ['action-events/'];
 
 /**
  * Recursively collects all file paths under `dir`, returning absolute paths.
@@ -53,14 +59,21 @@ export async function emitManifest({ harnessOutputDir, harness, version, manifes
     const rel = path.relative(harnessOutputDir, absPath);
     const bundlePath = rel.split(path.sep).join('/');
 
-    // AD-3: skip user-data assets.
-    if (USER_DATA_PREFIXES.some((prefix) => bundlePath === prefix || bundlePath.startsWith(prefix))) {
+    // AD-3: skip hydration-owned user-data assets entirely.
+    if (HYDRATION_EXCLUDED_PREFIXES.some((prefix) => bundlePath === prefix || bundlePath.startsWith(prefix))) {
       continue;
     }
 
     const buf = fs.readFileSync(absPath);
     const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
-    const destinationPath = '${HARNESS_ROOT}/' + bundlePath;
+    // User-data assets (e.g. action-events/) install into ${RAD_HOME}/...; all
+    // other manifest entries install into the per-harness ${HARNESS_ROOT}/...
+    const isUserData = USER_DATA_PREFIXES.some(
+      (prefix) => bundlePath === prefix || bundlePath.startsWith(prefix),
+    );
+    const destinationPath = isUserData
+      ? '${RAD_HOME}/' + bundlePath
+      : '${HARNESS_ROOT}/' + bundlePath;
 
     files.push({ bundlePath, destinationPath, sha256 });
   }

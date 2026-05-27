@@ -7,6 +7,7 @@ import path from 'node:path';
 const execP = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 const TEMPLATES_DIR = path.resolve(repoRoot, '..', 'runtime-config', 'templates');
+const ACTION_EVENTS_DIR = path.resolve(repoRoot, '..', 'runtime-config', 'action-events');
 
 describe('pipeline signal end-to-end via the built bundle', () => {
   it('emits a canonical envelope on stdout for `start`', async () => {
@@ -16,9 +17,10 @@ describe('pipeline signal end-to-end via the built bundle', () => {
     const { stdout } = await execP('node', [
       'dist/cli/src/bin/radorch.js', 'pipeline', 'signal',
       '--event', 'start', '--project-dir', dir, '--template', 'medium',
-    ], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: TEMPLATES_DIR } });
+    ], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: TEMPLATES_DIR, RADORCH_ACTION_EVENTS_DIR: ACTION_EVENTS_DIR } });
     const env = JSON.parse(stdout);
     expect(env.ok).toBe(true);
-    expect(Object.keys(env.data).sort()).toEqual(['action', 'context']);
+    // Per FR-7, success envelopes carry top-level prompt and completion_event.
+    expect(Object.keys(env.data).sort()).toEqual(['action', 'completion_event', 'context', 'prompt']);
   }, 60_000);
 });

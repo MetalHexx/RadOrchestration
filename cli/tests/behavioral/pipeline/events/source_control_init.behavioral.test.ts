@@ -1,16 +1,19 @@
 // cli/tests/behavioral/pipeline/events/source_control_init.behavioral.test.ts
 // Covers source_control_init event (FR-3, FR-7, DD-2).
 // NFR-5: if the state schema changes, update the seeded state below accordingly.
-import { describe, it, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import { buildWorld } from '../helpers/world.js';
 import { captureEnvelope } from '../helpers/capture.js';
 import { assertEnvelopeStateSideFiles } from '../helpers/assert.js';
+import { useRealCatalog } from '../helpers/catalog.js';
+import { assertPromptForEnvelopeAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
 import { EXECUTION_TEMPLATE_BODY } from './fixtures/execution-template.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State for source_control_init: pipeline is in_progress, gate_mode_selection done,
 // phase_loop has no iterations yet (source_control not yet set).
@@ -76,5 +79,10 @@ describe('source_control_init event (FR-3, FR-7, DD-2)', () => {
       },
       sideFiles: [],
     });
+    // FR-4, FR-23 — source_control_init is out-of-band; after mutation the
+    // walker advances to the next pending step. The envelope's action drives
+    // which event the composed prompt's Signal line names (per the real
+    // catalog at runtime-config/action-events/).
+    assertPromptForEnvelopeAction(env);
   });
 });

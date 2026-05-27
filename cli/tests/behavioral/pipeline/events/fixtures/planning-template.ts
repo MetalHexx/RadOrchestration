@@ -8,7 +8,7 @@ nodes:
     kind: step
     label: "Requirements"
     action: spawn_requirements
-    events: { started: requirements_started, completed: requirements_completed }
+    events: { completed: requirements_completed }
     context: { step: requirements }
     doc_output_field: doc_path
     depends_on: []
@@ -16,7 +16,7 @@ nodes:
     kind: step
     label: "Master Plan"
     action: spawn_master_plan
-    events: { started: master_plan_started, completed: master_plan_completed }
+    events: { completed: master_plan_completed }
     context: { step: master_plan }
     doc_output_field: doc_path
     depends_on: [requirements]
@@ -24,7 +24,7 @@ nodes:
     kind: step
     label: "Explode Master Plan"
     action: explode_master_plan
-    events: { started: explosion_started, completed: explosion_completed }
+    events: { completed: explosion_completed }
     context: { step: explode_master_plan }
     depends_on: [master_plan]
   - id: plan_approval_gate

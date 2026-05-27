@@ -23,11 +23,14 @@ function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'code
     // Required per-harness artifacts (gate 1)
     fs.mkdirSync(path.join(hOut, 'skills/rad-orchestration/scripts'), { recursive: true });
     fs.mkdirSync(path.join(hOut, 'templates'), { recursive: true });
+    fs.mkdirSync(path.join(hOut, 'action-events/custom'), { recursive: true });
     fs.writeFileSync(path.join(hOut, 'orchestration.yml'), 'pipeline: {}\n');
     for (const tier of ['extra-high', 'high', 'medium', 'low']) {
       fs.writeFileSync(path.join(hOut, `templates/${tier}.yml`), `name: ${tier}\n`);
     }
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '// radorch\n');
+    fs.writeFileSync(path.join(hOut, 'action-events/README.md'), '# action-events\n');
+    fs.writeFileSync(path.join(hOut, 'action-events/custom/README.md'), '# custom slot\n');
     // Canonical agents (gate 2). Per-harness filename suffix matches the adapter:
     // claude emits `<name>.md`, copilot variants emit `<name>.agent.md`.
     fs.mkdirSync(path.join(hOut, 'agents'), { recursive: true });

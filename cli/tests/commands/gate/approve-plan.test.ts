@@ -40,12 +40,12 @@ async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   fs.writeFileSync(reqDoc, '---\nproject: gate-test\ntype: requirements\nrequirement_count: 1\n---\n# requirements\n');
   const mpDoc = path.join(dir, 'master-plan.md');
   fs.writeFileSync(mpDoc, '---\nproject: gate-test\ntype: master_plan\ntotal_phases: 1\ntotal_tasks: 1\n---\n# master plan\n');
-  // requirements completion
-  processEvent('requirements_started', dir, {}, io, pathContext);
+  // Per FR-11, `_started` events are no longer accepted. Step nodes transition
+  // to in_progress via the optimistic write in processEvent (FR-10), so
+  // dispatching only `_completed` events is sufficient to advance the planner
+  // chain from requirements → master_plan → explode_master_plan.
   processEvent('requirements_completed', dir, { doc_path: reqDoc }, io, pathContext);
-  processEvent('master_plan_started', dir, {}, io, pathContext);
   processEvent('master_plan_completed', dir, { doc_path: mpDoc }, io, pathContext);
-  processEvent('explosion_started', dir, {}, io, pathContext);
   processEvent('explosion_completed', dir, {}, io, pathContext);
   // After explosion_completed walkDAG should reach plan_approval_gate and
   // emit request_plan_approval; the gate node is now ready for plan_approved.

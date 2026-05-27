@@ -77,6 +77,25 @@ export async function runBuild(opts) {
     fs.cpSync(path.join(root, 'runtime-config/templates'), path.join(out, '_install-source/templates'), { recursive: true });
   });
 
+  // action-events staging (FR-1, FR-19, AD-3, AD-10). Source:
+  // runtime-config/action-events/ → output/_install-source/action-events/.
+  // The filter ships ONLY the canonical `custom/README.md` from `custom/` —
+  // never user-authored files inside the slot (FR-20).
+  await step('copy-action-events', () => {
+    const customSep = `${path.sep}custom${path.sep}`;
+    const customReadme = `${path.sep}custom${path.sep}README.md`;
+    const filter = (src) => {
+      if (!src.includes(customSep)) return true;
+      if (src.endsWith(`${path.sep}custom`)) return true;
+      return src.endsWith(customReadme);
+    };
+    fs.cpSync(
+      path.join(root, 'runtime-config/action-events'),
+      path.join(out, '_install-source/action-events'),
+      { recursive: true, filter },
+    );
+  });
+
   await step('emit-cli-bundle', () => emitCliBundle({
     source: path.join(root, 'cli'),
     target: path.join(out, 'skills/rad-orchestration/scripts/radorch.mjs'),
