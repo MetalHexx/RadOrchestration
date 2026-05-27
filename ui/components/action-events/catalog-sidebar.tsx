@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupLabel,
   SidebarGroupContent, SidebarMenu, SidebarMenuItem,
@@ -12,20 +12,30 @@ import { useCatalog, groupCatalog, type ActionCategory } from "@/hooks/use-catal
 
 const CATEGORY_ORDER: ActionCategory[] = ["agent-spawn", "gate", "terminal", "source-control"];
 
-interface Props { selectedKind?: string; selectedName?: string; }
+interface Props {
+  selectedKind?: string;
+  selectedName?: string;
+  /** Called before in-app navigation. Return true to allow immediately, false to defer (guard). */
+  onNavigateAttempt?: (href: string) => boolean;
+}
 
-export function CatalogSidebar({ selectedKind, selectedName }: Props) {
+export function CatalogSidebar({ selectedKind, selectedName, onNavigateAttempt }: Props) {
   const { entries } = useCatalog();
   const [searchQuery, setSearchQuery] = useState("");
   const groups = groupCatalog(entries, searchQuery);
 
   const renderEntry = (e: typeof entries[number], hrefKind: "action" | "event") => {
     const isActive = selectedKind === hrefKind && selectedName === e.name;
+    const href = `/action-events/${hrefKind}/${e.name}`;
+    const handleClick = onNavigateAttempt
+      ? (ev: React.MouseEvent) => { if (!onNavigateAttempt(href)) ev.preventDefault(); }
+      : undefined;
     return (
       <SidebarMenuItem key={`${hrefKind}-${e.name}`}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link href={`/action-events/${hrefKind}/${e.name}`} aria-current={isActive ? "page" : undefined}
+            <Link href={href} aria-current={isActive ? "page" : undefined}
+              onClick={handleClick}
               className={`flex w-full items-center justify-between rounded px-2 py-1 text-sm ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}`}>
               <span className="font-mono">{e.name}</span>
               <Tooltip>
