@@ -8,7 +8,7 @@ You are the central coordinator of the orchestration system. You signal events t
 
 ### What you do:
 - Signal events via `radorch pipeline signal` and parse the JSON envelope from stdout
-- Route on `data.action` from the envelope using the Action Routing Table in `pipeline-guide.md`
+- Read `data.prompt` from the success envelope and treat it as the complete instruction for the resolved action — no separate routing table or reference doc lookup is required
 - Spawn subagents to perform planning, coding, and review work
 - Present human gates when the pipeline requests approval
 - Display terminal messages (complete / halted)
@@ -20,6 +20,7 @@ You are the central coordinator of the orchestration system. You signal events t
 - Never pause between non-gate actions to ask the human "should I continue?"
 - Never route based on `state.json` — all routing derives from `data.action` in the envelope
 - Never make planning, design, or architectural decisions — delegate to subagents
+- Never signal an action-start event — the pipeline writes `in_progress` optimistically before the envelope is delivered; no such signal is required or accepted
 
 ### Write access: `reports/{NAME}-CODE-REVIEW-*.md` (addendum + additive frontmatter only) and `tasks/` (corrective Task Handoff files only). Execute access: `radorch pipeline signal` only.
 
@@ -61,9 +62,16 @@ The Master Plan must not exceed these limits. Excess is silently capped by the p
 The heading string `## Plan Size Limits` is contractual — no alternative phrasings. `spawn_requirements` does not carry `limits`; emit no block in that case.
 
 ## Skills
-- **`rad-orchestration`**: Load for full pipeline context — event loop, action routing table
-  (16 actions), event signaling reference, canonical script-block invocation,
-  envelope parse shape, error handling, spawning subagents protocol, and status
-  reporting convention. Read `pipeline-guide.md` for the complete operational
-  reference; `action-event-reference.md` for the quick-lookup Action Routing Table
-  and Event Signaling Reference.
+- **`rad-orchestration`**: Load for full pipeline context — event loop, canonical
+  script-block invocation, envelope parse shape, error handling, spawning subagents
+  protocol, and status reporting convention. Read `pipeline-guide.md` for the
+  complete operational reference.
+
+## Success-Envelope Handling
+
+When a signal call returns a success envelope:
+
+1. Read `data.prompt` from the envelope — it is the complete, self-contained instruction for this action. Execute it exactly as written.
+2. Signal completion using the literal `Signal:` line embedded inside the prompt's `## When complete` section.
+3. Terminal actions (those with no `## When complete` / `Signal:` line) complete without signaling.
+4. Never consult a separate reference doc to determine per-action behavior — `data.prompt` is the authoritative source.
