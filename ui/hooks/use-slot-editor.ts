@@ -19,7 +19,9 @@ function urlFor(k: SlotKey): string {
   return `/api/action-events/custom/${k.kind}/${k.name}/${k.slot}`;
 }
 
-export function useSlotEditor(key: SlotKey, onDirtyChange: (key: string, dirty: boolean) => void, onPersistComplete?: () => void) {
+export interface PersistCompleteArg { delta: number }
+
+export function useSlotEditor(key: SlotKey, onDirtyChange: (key: string, dirty: boolean) => void, onPersistComplete?: (arg: PersistCompleteArg) => void) {
   const [content, setContent] = useState("");
   const [savedContent, setSavedContent] = useState("");
   const [exists, setExists] = useState(false);
@@ -33,13 +35,14 @@ export function useSlotEditor(key: SlotKey, onDirtyChange: (key: string, dirty: 
     if (res.status === 404) { setContent(""); setSavedContent(""); setExists(false); return; }
     const body = await res.json();
     setContent(body.content); setSavedContent(body.content); setExists(true);
-  }, [key]);
+  }, [key.kind, key.name, key.slot]);
 
   useEffect(() => { void load(); }, [load]);
 
   const save = useCallback(async () => {
     const op = decideSaveOperation({ content, exists });
     if (op.method === "NOOP") return;
+    const previousExists = exists;
     if (op.method === "DELETE") {
       const res = await fetch(urlFor(key), { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
@@ -49,8 +52,10 @@ export function useSlotEditor(key: SlotKey, onDirtyChange: (key: string, dirty: 
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Save failed"); }
       setExists(true); setSavedContent(op.body!);
     }
-    onPersistComplete?.();
-  }, [content, exists, key, onPersistComplete]);
+    const newExists = op.method === "DELETE" ? false : true;
+    const delta = (newExists ? 1 : 0) - (previousExists ? 1 : 0);
+    onPersistComplete?.({ delta });
+  }, [content, exists, key.kind, key.name, key.slot, onPersistComplete]);
 
   const discard = useCallback(() => setContent(savedContent), [savedContent]);
 

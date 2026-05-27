@@ -3,14 +3,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useSlotEditor, type SlotKey } from "@/hooks/use-slot-editor";
+import { useSlotEditor, type SlotKey, type PersistCompleteArg } from "@/hooks/use-slot-editor";
 
 interface Props {
   slotKey: SlotKey;
   slotLabel: string;          // e.g. "1. Before doing this action — custom"
   placeholder: string;        // empty-state guidance per DD-11
   onDirtyChange: (key: string, dirty: boolean) => void;
-  onPersistComplete?: () => void;
+  onPersistComplete?: (arg: PersistCompleteArg) => void;
   onContentChange?: (key: string, value: string) => void;
 }
 

@@ -24,6 +24,11 @@ export function groupCatalog(entries: CatalogEntry[], query = ""): GroupedCatalo
   return groups;
 }
 
+/** Pure helper — returns a new array with only the matching entry's populated_slot_count replaced. */
+export function applyEntryDelta(entries: CatalogEntry[], kind: string, name: string, populatedSlotCount: number): CatalogEntry[] {
+  return entries.map((e) => e.kind === kind && e.name === name ? { ...e, populated_slot_count: populatedSlotCount } : e);
+}
+
 export function useCatalog() {
   const [entries, setEntries] = useState<CatalogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +44,11 @@ export function useCatalog() {
     } catch (e) { setError(e instanceof Error ? e.message : "Failed"); }
     finally { setLoading(false); }
   };
+  const refreshEntry = (kind: string, name: string, populatedSlotCount: number): void => {
+    setEntries((prev) => applyEntryDelta(prev, kind, name, populatedSlotCount));
+  };
   useEffect(() => { void refresh(); }, []);
-  return { entries, error, loading, refresh };
+  return { entries, error, loading, refresh, refreshEntry };
 }
 
 export function findEntry(entries: import("@/lib/action-events-fs").CatalogEntry[], kind: "action" | "event", name: string) {

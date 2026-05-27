@@ -40,3 +40,44 @@ test('groupCatalog applies case-insensitive name-substring filter and hides empt
   assert.strictEqual(groups.actions['gate'].length, 0);
   assert.strictEqual(groups.orphans.length, 0);
 });
+
+test('refreshEntry updates only the affected entry without invoking the full catalog list path (AD-8, FR-21)', async () => {
+  // refreshEntry(kind, name, populatedSlotCount) is a delta-only operation — no fetch call.
+  // This test verifies that calling refreshEntry updates only the matching entry's
+  // populated_slot_count and leaves other entries reference-equal.
+  //
+  // Since refreshEntry is a hook return value (requires React context), we verify
+  // the contract by importing the module and confirming the exported surface, then
+  // testing the applyEntryDelta helper (which refreshEntry delegates to) directly.
+  const mod = await import('./use-catalog');
+  // refreshEntry must be exported from useCatalog return — verify it is present in module
+  assert.strictEqual(typeof mod.applyEntryDelta, 'function',
+    'applyEntryDelta must be exported as a pure helper so it can be tested without a React renderer');
+
+  const entries = [
+    { kind: 'action', name: 'spawn_planner', category: 'agent-spawn', completion_event: null, applicable_slot_count: 3, populated_slot_count: 0, title: 't', description: 'd', is_orphan: false },
+    { kind: 'action', name: 'gate_phase', category: 'gate', completion_event: null, applicable_slot_count: 3, populated_slot_count: 1, title: 't', description: 'd', is_orphan: false },
+  ] as any[];
+
+  const updated = mod.applyEntryDelta(entries, 'action', 'spawn_planner', 1);
+
+  // Only the matching entry's populated_slot_count changes
+  const target = updated.find((e: any) => e.name === 'spawn_planner');
+  assert.strictEqual(target?.populated_slot_count, 1, 'matching entry populated_slot_count must be updated to 1');
+
+  // The other entry must be reference-equal (not cloned)
+  const other = updated.find((e: any) => e.name === 'gate_phase');
+  assert.strictEqual(other, entries[1], 'non-matching entry must be reference-equal to the original');
+
+  // The full catalog list endpoint must NOT be invoked (no fetch at all)
+  const fetchCalls: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string) => { fetchCalls.push(String(url)); return { ok: true, json: async () => ({}) }; }) as any;
+  try {
+    mod.applyEntryDelta(entries, 'action', 'spawn_planner', 2);
+    assert.strictEqual(fetchCalls.length, 0, 'applyEntryDelta must not call fetch at all');
+    assert.ok(!fetchCalls.includes('/api/action-events/catalog'), 'full catalog list endpoint must not be called');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
