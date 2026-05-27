@@ -48,8 +48,18 @@ export function removeManifestFiles(manifest, harness) {
     }
   }
 
+  // FR-20 preservation skip: the shipped custom/README.md is a user-editable
+  // seed file; uninstall must never remove it (mirrors the `ownership:
+  // user-config` skip in the plugin installers).
+  const customReadmeAbs = expandDestinationTokens(
+    '${RAD_HOME}/action-events/custom/README.md',
+    harness,
+  );
+
   for (const entry of manifest.files) {
     const abs = expandDestinationTokens(entry.destinationPath, harness);
+
+    if (abs === customReadmeAbs) continue;
 
     if (abs.startsWith(projectsRoot)) {
       console.warn(`[remove] skipping projects/ entry '${entry.bundlePath}'`);

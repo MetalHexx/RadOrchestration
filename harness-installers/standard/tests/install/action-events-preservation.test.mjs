@@ -89,6 +89,17 @@ test('removeManifestFiles refuses any non-shipped entry under action-events/cust
   });
 });
 
+test('user-edited custom/README.md survives standard uninstall (FR-20)', async () => {
+  await withTempHome(async (home) => {
+    const { manifest } = installFull(home, { harness: 'claude' });
+    const readmeAbs = path.join(home, '.radorc', 'action-events', 'custom', 'README.md');
+    fs.writeFileSync(readmeAbs, 'MY-EDITED-CONTENT');
+    uninstallHarness(home, { harness: 'claude', manifest });
+    assert.ok(fs.existsSync(readmeAbs), 'custom/README.md must still exist after uninstall');
+    assert.strictEqual(fs.readFileSync(readmeAbs, 'utf8'), 'MY-EDITED-CONTENT', 'user edits must be preserved');
+  });
+});
+
 test('removeManifestFiles accepts the shipped action-events/custom/README.md entry (does not over-trigger guard)', async () => {
   await withTempHome(async (home) => {
     const { bundle, manifest } = stageActionEventsBundle(home, { harness: 'claude' });
