@@ -138,7 +138,7 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline sign
   --template <project_template>
 ```
 
-Parse the JSON envelope and route on `data.action` per `rad-orchestration/references/action-event-reference.md`. The first action will be `spawn_requirements`; follow Action #1's two-step protocol and spawn the **planner**.
+Parse the JSON envelope and act on `data.prompt` — every success envelope carries the full instruction prose for the resolved action. The first action will be `spawn_requirements`; follow the prose in `data.prompt` exactly and spawn the **planner**.
 
 **Sizing amendment — every planner spawn (`spawn_requirements` and `spawn_master_plan`).** Append verbatim:
 > "Task size preference: {task_size_preference}. Size all tasks according to that tier per the sizing rubric in the master-plan workflow."
