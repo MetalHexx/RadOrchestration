@@ -35,7 +35,7 @@
     {
       "bundlePath": "action-events/action.explode_master_plan.md",
       "destinationPath": "${RAD_HOME}/action-events/action.explode_master_plan.md",
-      "sha256": "47f825fa329a6dce7080c47bd94b10a75fc4dceef6a64b2a34937fc694a89ea2"
+      "sha256": "a394d8c2f8672aa18a33e74119e6460bd419b5b4c3a5845c68a7ea23a0ee9aec"
     },
     {
       "bundlePath": "action-events/action.gate_phase.md",
