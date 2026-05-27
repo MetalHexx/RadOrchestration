@@ -42,7 +42,7 @@ describe('processEvent rejects any _started event as unknown', () => {
   it('returns an "Unknown event" error envelope for explosion_started', async () => {
     const { processEvent } = await import('../../../src/lib/pipeline-engine/engine.js');
     const { makeBench } = await import('../../helpers/engine-test-bench.js');
-    const bench = makeBench({ firstAction: 'spawn_planner' });
+    const bench = makeBench({ firstAction: 'spawn_planner', firstNodeId: 'planner_step' });
     // Seed initial state so we're past the null-state guard.
     processEvent('start', bench.projectDir, {}, bench.io, bench.pathContext);
     const out = processEvent('explosion_started', bench.projectDir, {}, bench.io, bench.pathContext);
