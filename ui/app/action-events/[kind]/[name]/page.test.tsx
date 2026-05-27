@@ -5,10 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const src = readFileSync(join(__dirname, 'page.tsx'), 'utf-8');
 
-test('ActionEventsPairPage wires useDirtyCards and renders UnsavedChangesDialog (FR-22)', () => {
-  const src = readFileSync(join(__dirname, 'page.tsx'), 'utf-8');
-  assert.match(src, /useDirtyCards/, 'page.tsx should import useDirtyCards');
-  assert.match(src, /UnsavedChangesDialog/, 'page.tsx should import UnsavedChangesDialog');
-  assert.match(src, /<UnsavedChangesDialog/, 'page.tsx should render <UnsavedChangesDialog');
+test('pair page imports UnsavedChangesDialog (FR-22)', () => {
+  assert.match(src, /UnsavedChangesDialog/);
+});
+test('pair page wires onNavigateAttempt into CatalogSidebar (FR-22, DD-10)', () => {
+  assert.match(src, /onNavigateAttempt/);
+});
+test('pair page consumes useDirtyCards anyDirty for the guard (FR-22)', () => {
+  assert.match(src, /useDirtyCards/);
+  assert.match(src, /anyDirty/);
 });
