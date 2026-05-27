@@ -76,7 +76,7 @@ function makeCustomReader(overlay: Record<string, string> | undefined) {
   };
 }
 
-function deriveSignalLine(eventName: string, fm: EventFrontmatter): string {
+export function deriveSignalLine(eventName: string, fm: EventFrontmatter): string {
   const keys = Object.keys(fm.signal_payload ?? {});
   if (keys.length === 0) return `Signal: ${eventName}`;
   const flags = keys.map((k) => `--${k} <value>`).join(' ');
@@ -176,5 +176,38 @@ export function composeActionPrompt(input: ComposeInput): string {
   }
 
   // DD-3: no leading blank, no double blank between sections. Join with one blank line.
+  return sections.join('\n\n');
+}
+
+export interface OrphanComposeInput {
+  eventName: string;
+  catalogRoot: string;
+  overlay?: Record<string, string>;
+}
+
+export function composeOrphanEventPrompt(input: OrphanComposeInput): string {
+  const { eventName, catalogRoot, overlay } = input;
+  const customRoot = path.join(catalogRoot, 'custom');
+  const readCustom = makeCustomReader(overlay);
+  const sections: string[] = [];
+
+  const eventCatalog = path.join(catalogRoot, `event.${eventName}.md`);
+  const eventCustomPre = path.join(customRoot, `event.${eventName}.pre.md`);
+  const eventCustomPost = path.join(customRoot, `event.${eventName}.post.md`);
+
+  validateCustomSlot(eventCustomPre, eventCatalog, `custom/event.${eventName}.pre.md`, `event.${eventName}.md`, 'event', catalogRoot);
+  validateCustomSlot(eventCustomPost, eventCatalog, `custom/event.${eventName}.post.md`, `event.${eventName}.md`, 'event', catalogRoot);
+
+  appendSection(sections, H_EVENT_PRE, readCustom(eventCustomPre, `event.${eventName}.pre`));
+
+  const evt = readEvent(eventCatalog, `event.${eventName}.md`);
+  if (!evt) {
+    throw new Error(`Composer validation: expected catalog file 'event.${eventName}.md' under '${catalogRoot}'.`);
+  }
+  const whenCompleteBody = trimBody(evt.body) + '\n\n' + deriveSignalLine(eventName, evt.fm);
+  appendSection(sections, H_WHEN_DONE, whenCompleteBody);
+
+  appendSection(sections, H_EVENT_POST, readCustom(eventCustomPost, `event.${eventName}.post`));
+
   return sections.join('\n\n');
 }
