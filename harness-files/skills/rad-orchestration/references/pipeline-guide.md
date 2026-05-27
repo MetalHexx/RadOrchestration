@@ -30,23 +30,6 @@ The orchestrator reads `data.prompt` as the sole instruction source for the acti
 
 `data.context` carries the action-specific payload (file paths, phase/task identifiers, configuration). When the prompt references a context field by name (e.g., `handoff_doc`, `repository_skills_block`, `worktree_path`), read that field from `data.context`.
 
-## Frontmatter Onboarding — action / event files
-
-Catalog files under `~/.radorc/action-events/` follow `<kind>.<name>.md`:
-
-- **`action.<name>.md`** — frontmatter requires `kind: action`, `name`, `title`, `description`, `category` (one of `agent-spawn`, `gate`, `terminal`, `source-control`), and `completion_event` (string or `null`). The body is instruction prose — what the orchestrator does when this action is returned.
-- **`event.<name>.md`** — frontmatter requires `kind: event`, `name`, `title`, `description`, and `signal_payload` (a map of flag-name → flag definition; `{}` when the event takes no flags). The body is instruction prose — what to confirm before signaling.
-- **`custom/<...>.md`** — project-level overlays. Slot shapes are `action.<name>.pre.md`, `event.<name>.pre.md`, and `event.<name>.post.md`. Each overlay shares its parent catalog file's frontmatter contract so the validator can confirm it targets a real entry.
-
-The catalog README at `~/.radorc/action-events/README.md` and `~/.radorc/action-events/custom/README.md` are the authoritative documentation for the file contracts, slot shapes, and merge behavior. This skill does not duplicate them.
-
-## Cross-cutting invariants
-
-- **Single-source instructions.** `data.prompt` is the only place the orchestrator reads per-action instructions. No routing tables, no signaling lookups, no inline action recipes live in this skill or in agent files.
-- **No `_started` two-step protocol.** The pipeline does not return an action twice. Step-node `in_progress` transitions are written optimistically on the engine response that returns the action; the orchestrator simply executes the work and signals the completion event.
-- **Optimistic in-progress transitions.** When the engine returns a step-level action, it has already marked the corresponding step node `in_progress` on the same writeState. Agents never simulate this transition.
-- **`completion_event === null` ⇒ terminal action.** Display the message in `data.prompt` and exit the loop. Currently `display_halted` and `display_complete`.
-
 ## Pipeline Event Loop
 
 The Orchestrator operates as an event-driven controller:
@@ -54,7 +37,7 @@ The Orchestrator operates as an event-driven controller:
 1. **Determine the event to signal.** On a fresh session, signal `start`. After every action, signal the `data.completion_event` from the previous envelope (using the `Signal:` line in `data.prompt` for flag names).
 2. **Invoke the CLI** using the canonical form below.
 3. **Parse the JSON envelope** from stdout.
-4. **Execute `data.prompt`.** Use `data.context` for inputs. Do not consult this skill for per-action steps — the prompt is authoritative.
+4. **Execute `data.prompt`.** Use `data.context` for inputs.
 5. **Signal `data.completion_event`** when the action completes (or terminate the loop if it is `null`).
 6. Go to step 2.
 
@@ -100,8 +83,6 @@ Only these actions pause execution for human input or stop the loop. All other a
 | `gate_phase` | Pause — wait for human approval |
 | `ask_gate_mode` | Pause — wait for operator gate mode selection |
 
-The catalog file for each pause-point action carries the human-facing prompt language. The orchestrator reads that prose from `data.prompt`, not from this table.
-
 ## Corrective Mediation
 
 When the pipeline returns `data.action` of `spawn_code_reviewer` and the reviewer returns a raw `verdict: changes_requested`, the orchestrator enters an in-session mediation flow **before** signaling `code_review_completed`. The full mediation procedure — per-finding judgment, addendum authoring, corrective Task Handoff creation, and budget enforcement — is defined in [`corrective-playbook.md`](corrective-playbook.md). The same flow fires on `phase_review_completed` with raw `verdict: changes_requested`. When the reviewer returns `approved`, the orchestrator signals the completion event with no mediation fields and propagation is normal. When the reviewer returns `rejected`, the orchestrator signals the completion event immediately (no mediation) and the mutation routes the rejected verdict into a clean pipeline halt. The orchestrator never flips an `approved` verdict to `changes_requested`.
@@ -117,6 +98,7 @@ If the pipeline exits with code 1, the envelope carries error details:
   "error": { "type": "user_error", "message": "Validation failed: V6 — multiple in_progress tasks" }
 }
 ```
+>Use the `rad-log-error` skill to log these errors to a project or pipeline specific error log file.  Remember these and tell the user about issues when they're happening and in a summarized report at the end of the project run.
 
 | Category | Name | Description | Examples | Action |
 |----------|------|-------------|----------|--------|
@@ -149,7 +131,7 @@ On context compaction or agent restart, the Orchestrator has no runtime memory t
 
 When the action in `data.prompt` instructs the orchestrator to spawn an agent, provide:
 
-1. **Clear task description** — what the agent should do, taken from `data.prompt` and the agent-specific manifests referenced therein.
+1. **Clear task description** — what the agent should do, taken from `data.prompt` and the agent-specific manifests referenced therein.  Don't read nor restate the task document.  The agent only needs to know where to find it so it can read it.
 2. **File paths** — exact paths to input documents the agent needs to read, drawn from `data.context`.
 3. **Project context** — project name, current phase/task numbers from `data.context`.
 4. **Output expectations** — where to save the output document (derive from project naming conventions in `document-conventions.md`).

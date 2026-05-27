@@ -41,49 +41,6 @@ The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It
 
 **Phase-scope sentinel form.** When the orchestrator mediates a `phase_review` and the effective outcome is `changes_requested`, the authored corrective Task Handoff substitutes the `PHASE` token for the `T{NN}-{TITLE}` segment: `{NAME}-TASK-P{NN}-PHASE-C{N}.md`. The token signals that the corrective applies to phase-scope exit-criteria or cross-task integration — not a single task. The same sentinel carries through to the corresponding task-level code review filename: `{NAME}-CODE-REVIEW-P{NN}-PHASE-C{N}.md`. The corresponding state entry lives under `phaseIter.corrective_tasks[]`, not `taskIter.corrective_tasks[]`.
 
-## Action / Event Catalog Files
-
-Per-action and per-event instruction files that the pipeline composer assembles into `data.prompt` at envelope-build time. These are not pipeline-produced documents — they ship in `runtime-config/action-events/` and are deployed to `~/.radorc/action-events/` at install time. Project-level overlays live in `~/.radorc/action-events/custom/` and extend the shipped catalog without modifying it.
-
-### Filename patterns
-
-| Slot | Subdirectory | Filename pattern | Example |
-|---|---|---|---|
-| Action (shipped) | `~/.radorc/action-events/` | `action.<name>.md` | `action.execute_task.md` |
-| Event (shipped) | `~/.radorc/action-events/` | `event.<name>.md` | `event.task_completed.md` |
-| Action pre-overlay (custom) | `~/.radorc/action-events/custom/` | `action.<name>.pre.md` | `action.execute_task.pre.md` |
-| Event pre-overlay (custom) | `~/.radorc/action-events/custom/` | `event.<name>.pre.md` | `event.task_completed.pre.md` |
-| Event post-overlay (custom) | `~/.radorc/action-events/custom/` | `event.<name>.post.md` | `event.task_completed.post.md` |
-
-`<name>` is the snake_case identifier that uniquely identifies the entry within its kind. The slot shape (`.pre.md` vs `.post.md`) determines where the overlay body is injected relative to the shipped body when the composer renders the prompt.
-
-### Frontmatter contract
-
-All four slot shapes share `kind`, `name`, `title`, and `description`. Action and event files add slot-specific fields.
-
-| Field | Type | Valid Values | Used In |
-|---|---|---|---|
-| kind | string | `"action"` \| `"event"` | All catalog files (must match the filename prefix) |
-| name | string | snake_case identifier matching `<name>` in the filename | All catalog files |
-| title | string | Short human-readable title | All catalog files |
-| description | string | One-line summary of what the action does or what the event signals | All catalog files |
-| category | string | `"agent-spawn"` \| `"gate"` \| `"terminal"` \| `"source-control"` | Action files only |
-| completion_event | string \| null | Event name (matches an `event.<name>.md`) or `null` for terminal actions | Action files only |
-| signal_payload | object | Map of flag-name → flag definition; `{}` when the event takes no flags | Event files only |
-
-### Composition behavior
-
-The composer assembles `data.prompt` in this order:
-
-1. `custom/action.<name>.pre.md` body (if present) — injected under `## Before doing this action`.
-2. Shipped `action.<name>.md` body — no heading; this is the action's main instructions.
-3. When `completion_event` is non-null:
-   - `custom/event.<completion_event>.pre.md` body (if present) — under `## Before signaling`.
-   - Shipped `event.<completion_event>.md` body plus a derived `Signal: <event> [--<flag> <value>]` line — under `## When complete`.
-   - `custom/event.<completion_event>.post.md` body (if present) — under `## After signaling`.
-
-The composer cold-reads catalog and overlay files on every signal — no service restart is needed for catalog edits to take effect. Custom overlays must reference a real catalog entry by `kind` + `name`; orphaned overlays are rejected at validation time.
-
 ## Frontmatter Field Reference
 
 | Field | Type | Valid Values | Used In |
@@ -128,11 +85,3 @@ The composer cold-reads catalog and overlay files on every signal — no service
 - Zero-padded numbers use `{NN}` only inside filename patterns (shorthand for a two-digit number); in frontmatter fields, use the explicit name (e.g., `{PHASE-NUMBER}`)
 - The `{TASK-ID}` compound token (e.g., `T01-AUTH`) is a named exception — it is a composite of task number and title slug, not a general placeholder
 - `{ISO-DATE}` means ISO 8601 date-time string (e.g., `2026-03-22T00:00:00.000Z`)
-
-## Maintenance Note
-
-Changes to filename patterns in this file must be propagated to other locations to maintain consistency:
-
-1. **Per-action / per-event catalog bodies** under `runtime-config/action-events/` — when a filename pattern appears in an action's spawn-prompt prose, update the catalog body so the composed `data.prompt` stays accurate.
-2. **Individual SKILL.md save paths** in each producing skill's output contract.
-3. **`docs/project-structure.md`** — project folder tree and naming conventions table.

@@ -6,7 +6,7 @@ Orchestrator-only mediation guide. Load this document at the start of every corr
 
 ## Tiered Conformance Model
 
-Iter 12 introduced a per-requirement audit table at every review scope with scope-aware status semantics. Before reading any finding, understand what the reviewer's status enum actually means at the scope you are mediating — the same row shape carries different implications at task, phase, and final scope.
+Before reading any finding, understand what the reviewer's status enum actually means at the scope you are mediating — the same row shape carries different implications at task, phase, and final scope.
 
 ### Scope-aware status enum
 
@@ -14,7 +14,7 @@ Iter 12 introduced a per-requirement audit table at every review scope with scop
 |-------|-------------|---------|
 | Task (`code_review_completed`) | `on-track \| drift \| regression` | The reviewer audited each FR/NFR/AD/DD tag inlined in the Task Handoff. On-track = the task's slice is correct; drift = the task's slice deviates from the handoff's contract; regression = the task broke something that previously worked. |
 | Phase (`phase_review_completed`) | `on-track \| drift \| regression` | The reviewer audited each FR/NFR/AD/DD tag from the Phase Plan's `**Requirements:**` line against the cumulative phase diff. On-track = the phase's cumulative slice is correct; drift = cumulative deviation (typically cross-task contract drift); regression = phase broke something that previously worked. |
-| Final (`final_review_completed`) | `met \| missing` | The reviewer audited every FR/NFR/AD/DD tag in the Requirements doc against the cumulative project diff. Strict — the project either delivers the requirement or it does not. Final-review corrective cycles are not wired in iter-12; mediation does not fire on this event. |
+| Final (`final_review_completed`) | `met \| missing` | The reviewer audited every FR/NFR/AD/DD tag in the Requirements doc against the cumulative project diff. Strict — the project either delivers the requirement or it does not. |
 
 ### What on-track means at task and phase scope
 
@@ -69,7 +69,7 @@ When all drift and regression findings are actioned but on-track rows are also p
 
 ## When the Orchestrator Engages
 
-Mediation fires **only** on a raw `verdict: changes_requested` from the reviewer. The full decision tree:
+Mediation fires **only** on a verdict from the reviewer. The full decision tree:
 
 | Raw Verdict | Orchestrator Action |
 |-------------|---------------------|
@@ -350,9 +350,3 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline sign
 ```
 
 The pipeline reads the review doc's frontmatter — specifically `effective_outcome` and `corrective_handoff_path` — to determine whether to birth a corrective task entry or advance the pipeline normally.
-
----
-
-## Context Hygiene
-
-If mediation context grows heavy — multi-round corrective cycle, large review doc, long addendum chain — **STOP** and ask the user to `/clear` before continuing the next mediation round. Continuing with a saturated context increases the risk of judgment errors on findings.
