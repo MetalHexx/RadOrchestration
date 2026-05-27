@@ -60,11 +60,6 @@ function validateCustomSlot(
   }
 }
 
-function readCustomBodyIfExists(filePath: string): string | null {
-  if (!fs.existsSync(filePath)) return null;
-  return fs.readFileSync(filePath, 'utf8');
-}
-
 function makeCustomReader(overlay: Record<string, string> | undefined) {
   return (filePath: string, overlayKey: string): string | null => {
     if (overlay && Object.prototype.hasOwnProperty.call(overlay, overlayKey)) {

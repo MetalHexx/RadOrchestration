@@ -35,3 +35,14 @@ test('CatalogSidebar pins the search Input at the top (FR-6, DD-4)', () => {
   assert.match(src, /Input/);
   assert.match(src, /searchQuery|setSearchQuery|onChange/);
 });
+
+test('CatalogSidebar surfaces loading state from useCatalog', () => {
+  assert.match(src, /\bloading\b/, 'source should destructure loading from useCatalog');
+  assert.match(src, /Loading catalog…/, 'source should render "Loading catalog…" placeholder');
+});
+
+test('CatalogSidebar surfaces error state from useCatalog', () => {
+  assert.match(src, /\berror\b/, 'source should destructure error from useCatalog');
+  assert.match(src, /Failed to load catalog\./, 'source should render "Failed to load catalog." message');
+  assert.match(src, /text-destructive/, 'source should use text-destructive styling for error state');
+});

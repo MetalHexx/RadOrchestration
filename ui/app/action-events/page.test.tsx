@@ -15,9 +15,8 @@ test('dynamic [kind]/[name] segment exists (AD-9, FR-7)', () => {
   assert.ok(existsSync(join(__dirname, '[kind]', '[name]', 'page.tsx')));
 });
 
-test('ActionEventsPage wires useDirtyCards and renders UnsavedChangesDialog (FR-22)', () => {
+test('ActionEventsPage does not include unused unsaved-changes guard on landing page', () => {
   const src = readFileSync(join(__dirname, 'page.tsx'), 'utf-8');
-  assert.match(src, /useDirtyCards/, 'page.tsx should import useDirtyCards');
-  assert.match(src, /UnsavedChangesDialog/, 'page.tsx should import UnsavedChangesDialog');
-  assert.match(src, /<UnsavedChangesDialog/, 'page.tsx should render <UnsavedChangesDialog');
+  assert.doesNotMatch(src, /useDirtyCards/, 'landing page.tsx should not import useDirtyCards');
+  assert.doesNotMatch(src, /UnsavedChangesDialog/, 'landing page.tsx should not import UnsavedChangesDialog');
 });

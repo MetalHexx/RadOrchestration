@@ -20,7 +20,7 @@ interface Props {
 }
 
 export function CatalogSidebar({ selectedKind, selectedName, onNavigateAttempt }: Props) {
-  const { entries } = useCatalog();
+  const { entries, loading, error } = useCatalog();
   const [searchQuery, setSearchQuery] = useState("");
   const groups = groupCatalog(entries, searchQuery);
 
@@ -64,6 +64,16 @@ export function CatalogSidebar({ selectedKind, selectedName, onNavigateAttempt }
         </SidebarGroup>
       </SidebarHeader>
       <SidebarContent>
+        {error && (
+          <div className="px-4 py-2 text-sm text-destructive">
+            Failed to load catalog. {error.message}
+          </div>
+        )}
+        {loading && entries.length === 0 && (
+          <div className="px-4 py-2 text-sm text-muted-foreground">
+            Loading catalog…
+          </div>
+        )}
         {CATEGORY_ORDER.map((cat) => {
           const list = groups.actions[cat];
           if (list.length === 0) return null;
