@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { CatalogSidebar } from "@/components/action-events/catalog-sidebar";
 import { PairView } from "@/components/action-events/pair-view";
+import { InstructionDrawer, type DrawerMode } from "@/components/action-events/instruction-drawer";
 import { useDirtyCards } from "@/hooks/use-dirty-cards";
 import { UnsavedChangesDialog } from "@/components/action-events/unsaved-changes-dialog";
 
@@ -13,6 +14,8 @@ export default function ActionEventsPairPage() {
   const router = useRouter();
   const { anyDirty } = useDirtyCards();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<DrawerMode>(null);
+  const kind = params.kind as "action" | "event";
 
   return (
     <SidebarProvider>
@@ -28,7 +31,12 @@ export default function ActionEventsPairPage() {
         }}
       />
       <SidebarInset>
-        <PairView kind={params.kind as "action" | "event"} name={params.name} />
+        <PairView
+          kind={kind} name={params.name}
+          onOpenPreview={(overlay) => setDrawer({ type: "preview", kind, name: params.name, overlay })}
+          onOpenHelp={() => setDrawer({ type: "help" })}
+        />
+        <InstructionDrawer mode={drawer} onClose={() => setDrawer(null)} />
       </SidebarInset>
       <UnsavedChangesDialog
         open={pendingHref !== null}
