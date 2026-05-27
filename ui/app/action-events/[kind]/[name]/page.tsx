@@ -33,7 +33,7 @@ export default function ActionEventsPairPage() {
       <SidebarInset>
         <PairView
           kind={kind} name={params.name}
-          onOpenPreview={(overlay) => setDrawer({ type: "preview", kind, name: params.name, overlay })}
+          onOpenPreview={(overlay, completionEvent) => setDrawer({ type: "preview", kind, name: params.name, overlay, completion_event: completionEvent })}
           onOpenHelp={() => setDrawer({ type: "help" })}
         />
         <InstructionDrawer mode={drawer} onClose={() => setDrawer(null)} />

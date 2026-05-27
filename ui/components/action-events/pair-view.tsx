@@ -13,7 +13,7 @@ interface ShippedPayload { body: string; title: string; description?: string; ca
 interface Props {
   kind: "action" | "event";
   name: string;
-  onOpenPreview?: (overlay: Record<string, string>) => void;
+  onOpenPreview?: (overlay: Record<string, string>, completionEvent: string | null) => void;
   onOpenHelp?: () => void;
 }
 
@@ -78,7 +78,7 @@ export function PairView({ kind, name, onOpenPreview, onOpenHelp }: Props) {
           <p className="italic text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => onOpenPreview?.({ ...overlayRef.current })}>Preview</Button>
+          <Button variant="outline" onClick={() => onOpenPreview?.({ ...overlayRef.current }, completion)}>Preview</Button>
           <Button variant="ghost" size="icon" aria-label="Help" onClick={() => onOpenHelp?.()}>?</Button>
         </div>
       </div>

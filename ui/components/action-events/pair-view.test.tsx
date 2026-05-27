@@ -47,3 +47,10 @@ test('PairView wires Preview and Help buttons in header right cluster (FR-11, DD
 test('PairView refreshes catalog after persist (FR-21, AD-8)', () => {
   assert.match(src, /refresh/);
 });
+
+test('PairView onOpenPreview receives (overlay, completionEvent) — completion_event threaded through preview seam (FR-24)', () => {
+  // 1. The onOpenPreview prop signature must contain a second parameter (completionEvent or completion_event)
+  assert.match(src, /onOpenPreview\?\s*:\s*\(overlay\s*:\s*Record<string,\s*string>,\s*completionEvent\s*:\s*string\s*\|\s*null\)\s*=>\s*void/);
+  // 2. The call site that invokes onOpenPreview must pass two arguments
+  assert.match(src, /onOpenPreview\?\.\(\s*\{[^}]*\}\s*,\s*\w+\s*\)/);
+});
