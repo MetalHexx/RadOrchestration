@@ -2,7 +2,7 @@
 
 Canonical reference for all pipeline-produced document naming, placement, and frontmatter values.
 
-Covers all documents produced during pipeline execution. Planning documents (Master Plan, Requirements, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Review).
+Covers all documents produced during pipeline execution. Planning documents (Master Plan, Requirements, Brainstorming) and execution documents (Phase Plan, Task Handoff, Code Review, Phase Review). Also covers the action / event catalog files that drive the composer at envelope-build time.
 
 ## Filename Patterns & Placement
 
@@ -40,6 +40,49 @@ When a producing skill re-authors a document during a corrective cycle, append t
 The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It does NOT apply to Phase Reviews — under Iter 11's single-pass clause, a phase iteration runs `phase_review` exactly once; its corrective cycle is carried entirely by task-level re-reviews of the phase-sentinel Task Handoff (see "Phase-scope sentinel form" below). For Task Handoffs, the corrective handoff is authored by the orchestrator during mediation — not by a coder or planner. Each producing skill's workflow cross-references this section for the shared pattern.
 
 **Phase-scope sentinel form.** When the orchestrator mediates a `phase_review` and the effective outcome is `changes_requested`, the authored corrective Task Handoff substitutes the `PHASE` token for the `T{NN}-{TITLE}` segment: `{NAME}-TASK-P{NN}-PHASE-C{N}.md`. The token signals that the corrective applies to phase-scope exit-criteria or cross-task integration — not a single task. The same sentinel carries through to the corresponding task-level code review filename: `{NAME}-CODE-REVIEW-P{NN}-PHASE-C{N}.md`. The corresponding state entry lives under `phaseIter.corrective_tasks[]`, not `taskIter.corrective_tasks[]`.
+
+## Action / Event Catalog Files
+
+Per-action and per-event instruction files that the pipeline composer assembles into `data.prompt` at envelope-build time. These are not pipeline-produced documents — they ship in `runtime-config/action-events/` and are deployed to `~/.radorc/action-events/` at install time. Project-level overlays live in `~/.radorc/action-events/custom/` and extend the shipped catalog without modifying it.
+
+### Filename patterns
+
+| Slot | Subdirectory | Filename pattern | Example |
+|---|---|---|---|
+| Action (shipped) | `~/.radorc/action-events/` | `action.<name>.md` | `action.execute_task.md` |
+| Event (shipped) | `~/.radorc/action-events/` | `event.<name>.md` | `event.task_completed.md` |
+| Action pre-overlay (custom) | `~/.radorc/action-events/custom/` | `action.<name>.pre.md` | `action.execute_task.pre.md` |
+| Event pre-overlay (custom) | `~/.radorc/action-events/custom/` | `event.<name>.pre.md` | `event.task_completed.pre.md` |
+| Event post-overlay (custom) | `~/.radorc/action-events/custom/` | `event.<name>.post.md` | `event.task_completed.post.md` |
+
+`<name>` is the snake_case identifier that uniquely identifies the entry within its kind. The slot shape (`.pre.md` vs `.post.md`) determines where the overlay body is injected relative to the shipped body when the composer renders the prompt.
+
+### Frontmatter contract
+
+All four slot shapes share `kind`, `name`, `title`, and `description`. Action and event files add slot-specific fields.
+
+| Field | Type | Valid Values | Used In |
+|---|---|---|---|
+| kind | string | `"action"` \| `"event"` | All catalog files (must match the filename prefix) |
+| name | string | snake_case identifier matching `<name>` in the filename | All catalog files |
+| title | string | Short human-readable title | All catalog files |
+| description | string | One-line summary of what the action does or what the event signals | All catalog files |
+| category | string | `"agent-spawn"` \| `"gate"` \| `"terminal"` \| `"source-control"` | Action files only |
+| completion_event | string \| null | Event name (matches an `event.<name>.md`) or `null` for terminal actions | Action files only |
+| signal_payload | object | Map of flag-name → flag definition; `{}` when the event takes no flags | Event files only |
+
+### Composition behavior
+
+The composer assembles `data.prompt` in this order:
+
+1. `custom/action.<name>.pre.md` body (if present) — injected under `## Before doing this action`.
+2. Shipped `action.<name>.md` body — no heading; this is the action's main instructions.
+3. When `completion_event` is non-null:
+   - `custom/event.<completion_event>.pre.md` body (if present) — under `## Before signaling`.
+   - Shipped `event.<completion_event>.md` body plus a derived `Signal: <event> [--<flag> <value>]` line — under `## When complete`.
+   - `custom/event.<completion_event>.post.md` body (if present) — under `## After signaling`.
+
+The composer cold-reads catalog and overlay files on every signal — no service restart is needed for catalog edits to take effect. Custom overlays must reference a real catalog entry by `kind` + `name`; orphaned overlays are rejected at validation time.
 
 ## Frontmatter Field Reference
 
@@ -88,8 +131,8 @@ The `-C{N}` suffix rule applies to Task Handoffs and task-level Code Reviews. It
 
 ## Maintenance Note
 
-Changes to filename patterns in this file must be propagated to three other locations to maintain consistency:
+Changes to filename patterns in this file must be propagated to other locations to maintain consistency:
 
-1. **Action routing tables** in `orchestrator.agent.md` and `pipeline-guide.md`
-2. **Individual SKILL.md save paths** in each producing skill's output contract
-3. **`docs/project-structure.md`** project folder tree and naming conventions table
+1. **Per-action / per-event catalog bodies** under `runtime-config/action-events/` — when a filename pattern appears in an action's spawn-prompt prose, update the catalog body so the composed `data.prompt` stays accurate.
+2. **Individual SKILL.md save paths** in each producing skill's output contract.
+3. **`docs/project-structure.md`** — project folder tree and naming conventions table.
