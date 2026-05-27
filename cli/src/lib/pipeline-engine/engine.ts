@@ -98,25 +98,6 @@ function attachPromptIfActionResolved(
   return { action: next.action, context: { ...next.context, prompt, completion_event } };
 }
 
-// ── optimisticallyMarkStepInProgress ─────────────────────────────────────────
-//
-// Marks a top-level step node in_progress on the same writeState as the action
-// return so the UI sees the transition immediately (FR-10). Container-node
-// transitions remain walker-driven (AD-2). The nodePath must be a key in
-// state.graph.nodes; nested iteration nodes (phase_loop[0].task_loop[1].foo)
-// are intentionally skipped via the `if (!node) return` guard. No new fields
-// are introduced — only the existing `status` field is updated (FR-12).
-
-function optimisticallyMarkStepInProgress(state: PipelineState, nodePath: string | null): void {
-  if (!nodePath) return;
-  const node = state.graph.nodes[nodePath];
-  if (!node) return;
-  if (node.kind && node.kind !== 'step') return; // containers stay walker-driven (AD-2).
-  if (node.status === 'not_started') {
-    node.status = 'in_progress';
-  }
-}
-
 // ── scaffoldState ─────────────────────────────────────────────────────────────
 
 function scaffoldState(
@@ -264,7 +245,6 @@ export function processEvent(
           };
         }
 
-        optimisticallyMarkStepInProgress(scaffolded, nextAction?.action ?? null);
         io.writeState(projectDir, scaffolded);
 
         const enrichedContext = nextAction
@@ -295,7 +275,6 @@ export function processEvent(
           };
         }
 
-        optimisticallyMarkStepInProgress(state, walkerResult?.action ?? null);
         io.writeState(projectDir, state);
 
         const enrichedContext = walkerResult
@@ -371,7 +350,6 @@ export function processEvent(
         };
       }
 
-      optimisticallyMarkStepInProgress(mutatedState, mutatedState.graph.current_node_path);
       io.writeState(projectDir, mutatedState);
 
       const enrichedContext = walkerResult
@@ -466,10 +444,7 @@ export function processEvent(
     mutatedState.graph.current_node_path = resolveNodeStatePath(entry.templatePath, context);
 
     // Per FR-11, all routed events now fall through to the walker; the
-    // former `entry.eventPhase === 'started'` short-circuit is gone. Step
-    // nodes get their `in_progress` transition from the optimistic write
-    // below (FR-10), so the walker's re-emit branch produces the same
-    // next-action envelope without a dedicated started-phase path.
+    // former `entry.eventPhase === 'started'` short-circuit is gone.
     let nextAction;
     {
       const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
@@ -486,7 +461,6 @@ export function processEvent(
         };
       }
 
-      optimisticallyMarkStepInProgress(mutatedState, mutatedState.graph.current_node_path);
       io.writeState(projectDir, mutatedState);
 
       if (walkerResult) {
