@@ -22,6 +22,20 @@ export function seedCatalog(root: string): void {
   );
 }
 
+export function seedComposeFixture(): string {
+  const root = makeTempRoot();
+  fs.mkdirSync(path.join(root, 'custom'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'action.foo.md'),
+    '---\nkind: action\nname: foo\ntitle: Foo\ndescription: Foo action.\ncategory: agent-spawn\ncompletion_event: kickoff\n---\n\nfoo body\n',
+  );
+  fs.writeFileSync(
+    path.join(root, 'event.kickoff.md'),
+    '---\nkind: event\nname: kickoff\ntitle: Kickoff\ndescription: A kickoff event.\nsignal_payload: {}\n---\n\nkickoff body\n',
+  );
+  return root;
+}
+
 export function makeFakeCtx(): any {
   // Handlers used in these tests don't touch ctx.
   return {};
