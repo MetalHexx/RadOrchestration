@@ -25,6 +25,7 @@ export type PipelineSignalEnvelope =
         context: Record<string, unknown>;
         prompt?: string;
         completion_event?: string | null;
+        has_custom_instructions?: boolean;
       };
     }
   | { ok: false; data: { event: string; field?: string }; error: { type: 'user_error'; message: string } };
@@ -56,9 +57,13 @@ export async function pipelineSignal(input: PipelineSignalInput): Promise<Pipeli
     context: Record<string, unknown>;
     prompt?: string;
     completion_event?: string | null;
+    has_custom_instructions?: boolean;
   } = { action: result.action, context: result.context };
   if (result.prompt !== undefined) data.prompt = result.prompt;
   if (result.completion_event !== undefined) data.completion_event = result.completion_event;
+  if (result.has_custom_instructions !== undefined) {
+    data.has_custom_instructions = result.has_custom_instructions;
+  }
   return { ok: true, data };
 }
 

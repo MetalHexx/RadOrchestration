@@ -45,7 +45,7 @@ describe('radorch pipeline signal (FR-1, FR-2)', () => {
     expect(env.ok).toBe(true);
     // Per FR-7, success envelopes carry prompt and completion_event alongside
     // action and context (top-level on data, not nested inside context).
-    expect(Object.keys(env.data).sort()).toEqual(['action', 'completion_event', 'context', 'prompt']);
+    expect(Object.keys(env.data).sort()).toEqual(['action', 'completion_event', 'context', 'has_custom_instructions', 'prompt']);
   });
 
   it('emits ok:false with data.event and error.type=user_error on an unknown event', async () => {
