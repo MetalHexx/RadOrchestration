@@ -8,7 +8,7 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
-import { composeActionPrompt, HEADING_AFTER_SIGNALING } from './composer.js';
+import { composeActionPrompt } from './composer.js';
 import { parseActionEventFile } from './action-event-loader.js';
 import { userDataPaths } from '../paths.js';
 import type {
@@ -140,15 +140,17 @@ export function attachPromptIfActionResolved(
     // No catalog file → skip composer; preserve existing envelope shape.
     return { action: next.action, context: next.context };
   }
-  let prompt = composeActionPrompt({
+  const composed = composeActionPrompt({
     actionName: next.action,
     completionEvent: completion_event,
     catalogRoot: resolveActionEventsRoot(),
   });
+  let prompt = composed.prompt;
   if (isOrphanEvent(firingEvent)) {
     const orphanPost = readOrphanPostContent(firingEvent);
     if (orphanPost !== null) {
-      prompt = `${HEADING_AFTER_SIGNALING}\n\n${orphanPost}\n\n${prompt}`;
+      // TODO(P01-T02): rewrite this orphan-prepend to use composer functions with startStep.
+      prompt = `${orphanPost}\n\n${prompt}`;
     }
   }
   return { action: next.action, context: next.context, prompt, completion_event };

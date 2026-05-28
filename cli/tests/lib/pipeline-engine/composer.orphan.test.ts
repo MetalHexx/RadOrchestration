@@ -30,11 +30,11 @@ test('composeOrphanEventPrompt renders only event-context sections (AD-3, FR-32)
   fs.writeFileSync(path.join(root, 'custom', 'event.lonely.pre.md'), 'ORPHAN PRE\n');
   fs.writeFileSync(path.join(root, 'custom', 'event.lonely.post.md'), 'ORPHAN POST\n');
   const out = composeOrphanEventPrompt({ eventName: 'lonely', catalogRoot: root });
-  expect(out).toMatch(/ORPHAN PRE/);
-  expect(out).toMatch(/Lonely body\./);
-  expect(out).toMatch(/Signal: lonely --reason <value>/);
-  expect(out).toMatch(/ORPHAN POST/);
-  expect(out).not.toMatch(/^## Before doing this action/m);
+  expect(out.prompt).toMatch(/ORPHAN PRE/);
+  expect(out.prompt).toMatch(/Lonely body\./);
+  expect(out.prompt).toMatch(/Signal: lonely --reason <value>/);
+  expect(out.prompt).toMatch(/ORPHAN POST/);
+  expect(out.prompt).not.toMatch(/^## Before doing this action/m);
 });
 
 test('composeOrphanEventPrompt honors overlay (AD-3)', () => {
@@ -44,5 +44,5 @@ test('composeOrphanEventPrompt honors overlay (AD-3)', () => {
     catalogRoot: root,
     overlay: { 'event.lonely.post': 'OVERRIDE POST' },
   });
-  expect(out).toMatch(/OVERRIDE POST/);
+  expect(out.prompt).toMatch(/OVERRIDE POST/);
 });

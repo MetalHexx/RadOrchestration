@@ -24,8 +24,8 @@ describe('composeActionPrompt — overlay', () => {
     fs.writeFileSync(path.join(root, 'custom', 'action.exec.pre.md'), 'DISK PRE\n');
     const a = composeActionPrompt({ actionName: 'exec', completionEvent: 'done', catalogRoot: root });
     const b = composeActionPrompt({ actionName: 'exec', completionEvent: 'done', catalogRoot: root, overlay: undefined } as any);
-    expect(a).toBe(b);
-    expect(a).toMatch(/DISK PRE/);
+    expect(a.prompt).toBe(b.prompt);
+    expect(a.prompt).toMatch(/DISK PRE/);
   });
 
   it('overlay value supersedes on-disk custom (AD-3)', () => {
@@ -37,8 +37,8 @@ describe('composeActionPrompt — overlay', () => {
       catalogRoot: root,
       overlay: { 'action.exec.pre': 'OVERLAY PRE' },
     } as any);
-    expect(out).toMatch(/OVERLAY PRE/);
-    expect(out).not.toMatch(/DISK PRE/);
+    expect(out.prompt).toMatch(/OVERLAY PRE/);
+    expect(out.prompt).not.toMatch(/DISK PRE/);
   });
 
   it('overlay populates a slot with no on-disk file (AD-3)', () => {
@@ -49,7 +49,7 @@ describe('composeActionPrompt — overlay', () => {
       catalogRoot: root,
       overlay: { 'event.done.post': 'OVERLAY POST' },
     } as any);
-    expect(out).toMatch(/OVERLAY POST/);
+    expect(out.prompt).toMatch(/OVERLAY POST/);
   });
 
   it('empty-string overlay value suppresses the slot (AD-3)', () => {
@@ -61,6 +61,6 @@ describe('composeActionPrompt — overlay', () => {
       catalogRoot: root,
       overlay: { 'event.done.pre': '' },
     } as any);
-    expect(out).not.toMatch(/DISK EVT PRE/);
+    expect(out.prompt).not.toMatch(/DISK EVT PRE/);
   });
 });

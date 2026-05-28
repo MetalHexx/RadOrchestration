@@ -7,22 +7,16 @@ export interface ComposeInput {
   actionName: string;
   completionEvent: string | null;
   catalogRoot: string;
-  /** Optional in-memory overlay keyed by `<kind>.<name>.<slot>` (slot ∈ `pre` | `post`).
-   *  A present key supersedes the on-disk custom file; an empty-string value suppresses the slot.
-   *  When undefined the behavior is byte-identical to omitting the field (NFR-9).
-   */
   overlay?: Record<string, string>;
+  /** Starting step number. Defaults to 1. The engine's orphan-prepend path
+   *  uses startStep: 2 so the prepended orphan-post can occupy Step 1. */
+  startStep?: number;
 }
 
-// Fixed heading strings (DD-6).
-const H_ACTION_PRE  = '## Before doing this action';
-const H_EVENT_PRE   = '## Before signaling';
-const H_WHEN_DONE   = '## When complete';
-const H_EVENT_POST  = '## After signaling';
-
-// Exported for engine.ts to reuse when prepending orphan-event-post content
-// to the next action's composed prompt after an orphan signal resolves.
-export const HEADING_AFTER_SIGNALING = H_EVENT_POST;
+export interface ComposeResult {
+  prompt: string;
+  has_custom_instructions: boolean;
+}
 
 function readBodyIfExists(filePath: string, filename: string, kind: 'action' | 'event'): string | null {
   if (!fs.existsSync(filePath)) return null;
@@ -44,10 +38,6 @@ function readEvent(filePath: string, filename: string): { body: string; fm: Even
   return { body: parsed.body, fm: parsed.frontmatter as EventFrontmatter };
 }
 
-/**
- * Validates that when a custom slot file exists for the current envelope,
- * the referenced catalog file also exists (AD-7: scoped to envelope only).
- */
 function validateCustomSlot(
   customFile: string,
   catalogFile: string,
@@ -83,80 +73,70 @@ export function deriveSignalLine(eventName: string, fm: EventFrontmatter): strin
 }
 
 function trimBody(s: string): string {
-  // Strip leading and trailing blank lines while preserving inner whitespace.
   return s.replace(/^\s*\n+/, '').replace(/\n+\s*$/, '');
 }
 
-function appendSection(out: string[], heading: string | null, body: string | null): void {
-  if (!body) return;
+// The new admission helper: returns the admitted body or null. The Step
+// heading is assigned by the caller based on a running counter so empty
+// slots collapse without consuming a number (FR-1, AD-1).
+// Whitespace-only content (including lone spaces without newlines) is treated
+// as absent so has_custom_instructions is not set for blank overlays.
+function admit(body: string | null): string | null {
+  if (!body) return null;
   const trimmed = trimBody(body);
-  if (!trimmed) return;
-  if (heading) out.push(heading);
-  out.push(trimmed);
+  return trimmed.trim() ? trimmed : null;
 }
 
-export function composeActionPrompt(input: ComposeInput): string {
-  const { actionName, completionEvent, catalogRoot } = input;
-  const customRoot = path.join(catalogRoot, 'custom');
-  const sections: string[] = [];
-  const readCustom = makeCustomReader(input.overlay);
+interface Section { body: string; isOverlay: boolean }
 
-  // Validate: action-pre custom implies action catalog must exist (AD-7).
+function emit(sections: Section[], startStep: number): { prompt: string; has_custom_instructions: boolean } {
+  const lines: string[] = [];
+  let step = startStep;
+  let hadOverlay = false;
+  for (const s of sections) {
+    lines.push(`## Step ${step}`);
+    lines.push(s.body);
+    if (s.isOverlay) hadOverlay = true;
+    step += 1;
+  }
+  return { prompt: lines.join('\n\n'), has_custom_instructions: hadOverlay };
+}
+
+export function composeActionPrompt(input: ComposeInput): ComposeResult {
+  const { actionName, completionEvent, catalogRoot } = input;
+  const startStep = input.startStep ?? 1;
+  const customRoot = path.join(catalogRoot, 'custom');
+  const readCustom = makeCustomReader(input.overlay);
+  const sections: Section[] = [];
+
   const actionCustomPre = path.join(customRoot, `action.${actionName}.pre.md`);
   const actionCatalog = path.join(catalogRoot, `action.${actionName}.md`);
-  validateCustomSlot(
-    actionCustomPre,
-    actionCatalog,
-    `custom/action.${actionName}.pre.md`,
-    `action.${actionName}.md`,
-    'action',
-    catalogRoot,
-  );
+  validateCustomSlot(actionCustomPre, actionCatalog,
+    `custom/action.${actionName}.pre.md`, `action.${actionName}.md`, 'action', catalogRoot);
 
-  // Slot 1: custom action pre
-  appendSection(
-    sections,
-    H_ACTION_PRE,
-    readCustom(actionCustomPre, `action.${actionName}.pre`),
-  );
+  const actionPre = admit(readCustom(actionCustomPre, `action.${actionName}.pre`));
+  if (actionPre !== null) sections.push({ body: actionPre, isOverlay: true });
 
-  // Main body (no heading — DD-7).
   const actionBody = readBodyIfExists(actionCatalog, `action.${actionName}.md`, 'action');
   if (actionBody === null) {
     throw new Error(
       `Composer validation: expected catalog file 'action.${actionName}.md' under '${catalogRoot}'.`,
     );
   }
-  appendSection(sections, null, actionBody);
+  const actionBodyAdmitted = admit(actionBody);
+  if (actionBodyAdmitted !== null) sections.push({ body: actionBodyAdmitted, isOverlay: false });
 
-  // Event-driven sections only when completionEvent is non-null.
   if (completionEvent !== null) {
-    // Validate: event-pre custom implies event catalog must exist (AD-7).
     const eventCustomPre = path.join(customRoot, `event.${completionEvent}.pre.md`);
     const eventCatalog = path.join(catalogRoot, `event.${completionEvent}.md`);
     const eventCustomPost = path.join(customRoot, `event.${completionEvent}.post.md`);
-    validateCustomSlot(
-      eventCustomPre,
-      eventCatalog,
-      `custom/event.${completionEvent}.pre.md`,
-      `event.${completionEvent}.md`,
-      'event',
-      catalogRoot,
-    );
-    validateCustomSlot(
-      eventCustomPost,
-      eventCatalog,
-      `custom/event.${completionEvent}.post.md`,
-      `event.${completionEvent}.md`,
-      'event',
-      catalogRoot,
-    );
+    validateCustomSlot(eventCustomPre, eventCatalog,
+      `custom/event.${completionEvent}.pre.md`, `event.${completionEvent}.md`, 'event', catalogRoot);
+    validateCustomSlot(eventCustomPost, eventCatalog,
+      `custom/event.${completionEvent}.post.md`, `event.${completionEvent}.md`, 'event', catalogRoot);
 
-    appendSection(
-      sections,
-      H_EVENT_PRE,
-      readCustom(eventCustomPre, `event.${completionEvent}.pre`),
-    );
+    const eventPre = admit(readCustom(eventCustomPre, `event.${completionEvent}.pre`));
+    if (eventPre !== null) sections.push({ body: eventPre, isOverlay: true });
 
     const evt = readEvent(eventCatalog, `event.${completionEvent}.md`);
     if (!evt) {
@@ -165,48 +145,52 @@ export function composeActionPrompt(input: ComposeInput): string {
       );
     }
     const whenCompleteBody = trimBody(evt.body) + '\n\n' + deriveSignalLine(completionEvent, evt.fm);
-    appendSection(sections, H_WHEN_DONE, whenCompleteBody);
+    const whenAdmitted = admit(whenCompleteBody);
+    if (whenAdmitted !== null) sections.push({ body: whenAdmitted, isOverlay: false });
 
-    appendSection(
-      sections,
-      H_EVENT_POST,
-      readCustom(eventCustomPost, `event.${completionEvent}.post`),
-    );
+    const eventPost = admit(readCustom(eventCustomPost, `event.${completionEvent}.post`));
+    if (eventPost !== null) sections.push({ body: eventPost, isOverlay: true });
   }
 
-  // DD-3: no leading blank, no double blank between sections. Join with one blank line.
-  return sections.join('\n\n');
+  return emit(sections, startStep);
 }
 
 export interface OrphanComposeInput {
   eventName: string;
   catalogRoot: string;
   overlay?: Record<string, string>;
+  startStep?: number;
 }
 
-export function composeOrphanEventPrompt(input: OrphanComposeInput): string {
+export function composeOrphanEventPrompt(input: OrphanComposeInput): ComposeResult {
   const { eventName, catalogRoot, overlay } = input;
+  const startStep = input.startStep ?? 1;
   const customRoot = path.join(catalogRoot, 'custom');
   const readCustom = makeCustomReader(overlay);
-  const sections: string[] = [];
+  const sections: Section[] = [];
 
   const eventCatalog = path.join(catalogRoot, `event.${eventName}.md`);
   const eventCustomPre = path.join(customRoot, `event.${eventName}.pre.md`);
   const eventCustomPost = path.join(customRoot, `event.${eventName}.post.md`);
 
-  validateCustomSlot(eventCustomPre, eventCatalog, `custom/event.${eventName}.pre.md`, `event.${eventName}.md`, 'event', catalogRoot);
-  validateCustomSlot(eventCustomPost, eventCatalog, `custom/event.${eventName}.post.md`, `event.${eventName}.md`, 'event', catalogRoot);
+  validateCustomSlot(eventCustomPre, eventCatalog,
+    `custom/event.${eventName}.pre.md`, `event.${eventName}.md`, 'event', catalogRoot);
+  validateCustomSlot(eventCustomPost, eventCatalog,
+    `custom/event.${eventName}.post.md`, `event.${eventName}.md`, 'event', catalogRoot);
 
-  appendSection(sections, H_EVENT_PRE, readCustom(eventCustomPre, `event.${eventName}.pre`));
+  const eventPre = admit(readCustom(eventCustomPre, `event.${eventName}.pre`));
+  if (eventPre !== null) sections.push({ body: eventPre, isOverlay: true });
 
   const evt = readEvent(eventCatalog, `event.${eventName}.md`);
   if (!evt) {
     throw new Error(`Composer validation: expected catalog file 'event.${eventName}.md' under '${catalogRoot}'.`);
   }
   const whenCompleteBody = trimBody(evt.body) + '\n\n' + deriveSignalLine(eventName, evt.fm);
-  appendSection(sections, H_WHEN_DONE, whenCompleteBody);
+  const whenAdmitted = admit(whenCompleteBody);
+  if (whenAdmitted !== null) sections.push({ body: whenAdmitted, isOverlay: false });
 
-  appendSection(sections, H_EVENT_POST, readCustom(eventCustomPost, `event.${eventName}.post`));
+  const eventPost = admit(readCustom(eventCustomPost, `event.${eventName}.post`));
+  if (eventPost !== null) sections.push({ body: eventPost, isOverlay: true });
 
-  return sections.join('\n\n');
+  return emit(sections, startStep);
 }

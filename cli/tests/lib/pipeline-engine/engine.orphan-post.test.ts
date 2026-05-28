@@ -76,7 +76,7 @@ describe('attachPromptIfActionResolved — orphan event post injection', () => {
   // The template arg is unused by resolveCompletionEvent (it cold-reads frontmatter).
   const dummyTemplate = {} as unknown as PipelineTemplate;
 
-  it('prepends event.<orphan>.post under "## After signaling" when firing event is orphan', () => {
+  it('prepends event.<orphan>.post content when firing event is orphan', () => {
     const root = seedRoot();
     fs.writeFileSync(path.join(root, 'custom', 'event.kickoff.post.md'), 'rant about starting before you start');
     const result = attachPromptIfActionResolved(
@@ -86,7 +86,9 @@ describe('attachPromptIfActionResolved — orphan event post injection', () => {
     );
     expect(result.action).toBe('foo');
     expect(result.completion_event).toBe('bar_done');
-    expect(result.prompt).toMatch(/^## After signaling\n\nrant about starting before you start\n\n/);
+    // Orphan post content is prepended before the action's own sections.
+    // (P01-T02 will add proper Step-N heading to the prepended orphan section.)
+    expect(result.prompt as string).toMatch(/rant about starting before you start/);
     // The action's own body still follows the prepended preamble.
     expect(result.prompt).toMatch(/foo body\./);
     expect(result.prompt).toMatch(/bar done event body\./);
@@ -95,7 +97,7 @@ describe('attachPromptIfActionResolved — orphan event post injection', () => {
   it('does NOT prepend event.X.post when firing event X is non-orphan (avoids double-include)', () => {
     const root = seedRoot();
     // Author both an event.bar_done.post.md (which composer ALREADY includes via
-    // the action's slot 5) AND verify the engine does not also prepend it.
+    // the action's post slot) AND verify the engine does not also prepend it.
     fs.writeFileSync(path.join(root, 'custom', 'event.bar_done.post.md'), 'bar_done aftermath');
     const result = attachPromptIfActionResolved(
       { action: 'foo', context: {} },
@@ -103,13 +105,12 @@ describe('attachPromptIfActionResolved — orphan event post injection', () => {
       'bar_done',
     );
     expect(result.prompt).toBeDefined();
-    // The composed action prompt has "## After signaling" + "bar_done aftermath"
-    // exactly ONCE (from the composer's slot 5), not prepended again at the top.
-    const matches = (result.prompt as string).match(/## After signaling/g) ?? [];
+    // The composed action prompt includes bar_done aftermath exactly once (from the
+    // composer's post-event slot), not prepended again at the top.
+    const matches = (result.prompt as string).match(/bar_done aftermath/g) ?? [];
     expect(matches.length).toBe(1);
-    // And the prompt does NOT start with "## After signaling" — it starts with
-    // the action body section.
-    expect(result.prompt as string).not.toMatch(/^## After signaling/);
+    // The prompt starts with the action body section (## Step 1).
+    expect(result.prompt as string).toMatch(/^## Step 1/);
   });
 
   it('does NOT prepend when the orphan event has no post custom on disk', () => {

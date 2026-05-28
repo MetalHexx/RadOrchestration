@@ -20,20 +20,20 @@ export interface ComposeInputs {
 
 export function runCompose(input: ComposeInputs): ComposeResult {
   if (input.kind === 'action') {
-    const prompt = composeActionPrompt({
+    const result = composeActionPrompt({
       actionName: input.name,
       completionEvent: input.completionEvent,
       catalogRoot: input.catalogRoot,
       overlay: input.overlay,
     });
-    return { prompt };
+    return { prompt: result.prompt };
   }
-  const prompt = composeOrphanEventPrompt({
+  const result = composeOrphanEventPrompt({
     eventName: input.name,
     catalogRoot: input.catalogRoot,
     overlay: input.overlay,
   });
-  return { prompt };
+  return { prompt: result.prompt };
 }
 
 function readOptionalStdinJson(): Record<string, unknown> {

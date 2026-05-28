@@ -190,12 +190,12 @@ describe('code_review prompt composition — custom slots (FR-5, FR-9, AD-7, NFR
     expect(data.action, 'next action after task_completed').toBe('spawn_code_reviewer');
     expect(data.completion_event).toBe('code_review_completed');
     const prompt = data.prompt as string;
-    // Heading present and immediately followed by the custom body (DD-6).
-    expect(prompt).toContain('## Before signaling');
+    // Custom body is admitted under a Step-N heading (Step-N numbering replaced fixed headings).
     expect(prompt).toContain(customBody);
-    const headingIdx = prompt.indexOf('## Before signaling');
+    // The custom event-pre body must appear after the action body (Step 1).
+    const actionBodyIdx = prompt.indexOf('## Step 1');
     const bodyIdx = prompt.indexOf(customBody);
-    expect(bodyIdx, 'custom body should appear AFTER "## Before signaling" heading').toBeGreaterThan(headingIdx);
+    expect(bodyIdx, 'custom body should appear after the action body section').toBeGreaterThan(actionBodyIdx);
   });
 
   it('unrelated custom file is INERT — only the consumed completion event is validated (AD-7)', async () => {
