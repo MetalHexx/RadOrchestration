@@ -24,7 +24,6 @@ export function PairView({ kind, name, onOpenPreview, onOpenHelp }: Props) {
   const [shippedAction, setShippedAction] = useState<ShippedPayload | null>(null);
   const [shippedEvent, setShippedEvent] = useState<ShippedPayload | null>(null);
   const overlayRef = useRef<Record<string, string>>({});
-  const card4Ref = useRef<HTMLDivElement | null>(null);
 
   const completion = entry?.kind === "action" ? entry.completion_event ?? null : null;
   const subject = entry ? { kind: entry.kind, name: entry.name, completion_event: completion, is_orphan: entry.is_orphan } : null;
@@ -91,23 +90,22 @@ export function PairView({ kind, name, onOpenPreview, onOpenHelp }: Props) {
 
   function renderSlot(role: SlotRole) {
     const label = slotLabelFor(role);
-    const parentName = kind === "action" ? name : null;
     switch (role) {
       case "custom-action-pre":
         return <EditableSlotCard key={role} slotLabel={label} slotKey={actionPreKey}
-          placeholder={`Custom instructions to prepend before this action runs. Save creates custom/action.${parentName}.pre.md.`}
+          placeholder="Custom instructions to prepend before this action runs."
           onDirtyChange={setDirty} onPersistComplete={handleActionPersistComplete} onContentChange={handleContentChange} />;
       case "shipped-action":
-        return shippedAction ? <div key={role}><ShippedCard slotLabel={label} data={{ kind: "action", name, ...shippedAction }} onJumpToCompletionEvent={() => card4Ref.current?.scrollIntoView({ behavior: "smooth" })} /></div> : null;
+        return shippedAction ? <ShippedCard key={role} slotLabel={label} data={{ kind: "action", name, ...shippedAction }} /> : null;
       case "custom-event-pre":
         return <EditableSlotCard key={role} slotLabel={label} slotKey={eventPreKey}
-          placeholder={`Custom instructions to prepend before signaling. Save creates custom/event.${evName}.pre.md.`}
+          placeholder="Custom instructions to prepend before signaling."
           onDirtyChange={setDirty} onPersistComplete={handleEventPersistComplete} onContentChange={handleContentChange} />;
       case "shipped-event":
-        return shippedEvent ? <div key={role} ref={card4Ref}><ShippedCard slotLabel={label} data={{ kind: "event", name: kind === "event" ? name : completion!, ...shippedEvent }} /></div> : null;
+        return shippedEvent ? <ShippedCard key={role} slotLabel={label} data={{ kind: "event", name: kind === "event" ? name : completion!, ...shippedEvent }} /> : null;
       case "custom-event-post":
         return <EditableSlotCard key={role} slotLabel={label} slotKey={eventPostKey}
-          placeholder={`Custom instructions to append after signaling. Save creates custom/event.${evName}.post.md.`}
+          placeholder="Custom instructions to append after signaling."
           onDirtyChange={setDirty} onPersistComplete={handleEventPersistComplete} onContentChange={handleContentChange} />;
     }
   }

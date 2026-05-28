@@ -25,10 +25,10 @@ export function applicableSlotsFor(subject: PairSubject): PairSlot[] {
 }
 export function slotLabelFor(role: SlotRole): string {
   switch (role) {
-    case "custom-action-pre": return "1. Before doing this action — custom";
-    case "shipped-action":    return "2. Action — shipped · read-only";
-    case "custom-event-pre":  return "3. Before signaling — custom";
-    case "shipped-event":     return "4. When complete — shipped · read-only";
-    case "custom-event-post": return "5. After signaling — custom";
+    case "custom-action-pre": return "1. Before doing this action";
+    case "shipped-action":    return "2. Action";
+    case "custom-event-pre":  return "3. Before signaling";
+    case "shipped-event":     return "4. When complete";
+    case "custom-event-post": return "5. After signaling";
   }
 }

@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -65,4 +65,43 @@ test('PairView onOpenPreview receives (overlay, completionEvent) — completion_
   assert.match(src, /onOpenPreview\?\s*:\s*\(overlay\s*:\s*Record<string,\s*string>,\s*completionEvent\s*:\s*string\s*\|\s*null\)\s*=>\s*void/);
   // 2. The call site that invokes onOpenPreview must pass two arguments
   assert.match(src, /onOpenPreview\?\.\(\s*\{[^}]*\}\s*,\s*\w+\s*\)/);
+});
+
+describe('PairView — visual cleanup (FR-10..FR-16)', () => {
+  test('slot labels render without — custom or — shipped · read-only suffixes (FR-10)', () => {
+    // slotLabelFor must not append the old decorative suffixes
+    assert.doesNotMatch(slotLabelFor('custom-action-pre'), /—\s*custom/i);
+    assert.doesNotMatch(slotLabelFor('shipped-action'), /—\s*shipped/i);
+    assert.doesNotMatch(slotLabelFor('custom-event-pre'), /—\s*custom/i);
+    assert.doesNotMatch(slotLabelFor('shipped-event'), /—\s*shipped/i);
+    assert.doesNotMatch(slotLabelFor('custom-event-post'), /—\s*custom/i);
+    // Exact clean labels
+    assert.strictEqual(slotLabelFor('custom-action-pre'), '1. Before doing this action');
+    assert.strictEqual(slotLabelFor('shipped-action'), '2. Action');
+    assert.strictEqual(slotLabelFor('custom-event-pre'), '3. Before signaling');
+    assert.strictEqual(slotLabelFor('shipped-event'), '4. When complete');
+    assert.strictEqual(slotLabelFor('custom-event-post'), '5. After signaling');
+  });
+
+  test('PairView removes card4Ref and onJumpToCompletionEvent wiring (FR-12, DD-9, DD-10)', () => {
+    assert.doesNotMatch(src, /card4Ref/);
+    assert.doesNotMatch(src, /onJumpToCompletionEvent/);
+  });
+
+  test('PairView shipped-event slot renders without wrapping div ref (DD-9)', () => {
+    // The old code had: <div key={role} ref={card4Ref}>
+    // After cleanup it renders ShippedCard directly (no ref wrapper div)
+    assert.doesNotMatch(src, /ref=\{card4Ref\}/);
+  });
+
+  test('editable-card placeholders are slimmed — no Save creates custom/ directive (FR-16)', () => {
+    assert.doesNotMatch(src, /Save creates custom\//);
+  });
+
+  test('page-level header arrow remains (DD-9) but shipped-action slot has no onJumpToCompletionEvent prop', () => {
+    // The header still uses → for non-terminal actions
+    assert.match(src, /→/);
+    // But the prop is removed from the ShippedCard call
+    assert.doesNotMatch(src, /onJumpToCompletionEvent/);
+  });
 });
