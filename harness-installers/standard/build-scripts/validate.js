@@ -10,7 +10,6 @@ export const REQUIRED_PER_HARNESS = [
   'templates/low.yml',
   'skills/rad-orchestration/scripts/radorch.mjs',
   'action-events/README.md',
-  'action-events/custom/README.md',
 ];
 
 const SIZE_LIMIT = Math.round(50 * 1024 * 1024 * 1.1);

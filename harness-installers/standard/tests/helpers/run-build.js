@@ -52,14 +52,13 @@ function stageFixture(root) {
     fs.writeFileSync(path.join(rcDir, `templates/${tier}.yml`), `name: ${tier}\n`);
   }
   // action-events/ — shipped README + a representative action and event file +
-  // custom/ with a shipped README and a synthetic user file that must NOT be
-  // copied into the bundle (FR-20).
+  // an empty custom/ slot with a synthetic user file that must NOT be copied
+  // into the bundle (FR-20).
   const aeDir = path.join(rcDir, 'action-events');
   fs.mkdirSync(path.join(aeDir, 'custom'), { recursive: true });
   fs.writeFileSync(path.join(aeDir, 'README.md'), '# action-events\n');
   fs.writeFileSync(path.join(aeDir, 'action.spawn_coder.md'), '# spawn_coder\n');
   fs.writeFileSync(path.join(aeDir, 'event.task_completed.md'), '# task_completed\n');
-  fs.writeFileSync(path.join(aeDir, 'custom/README.md'), '# custom slot\n');
   fs.writeFileSync(path.join(aeDir, 'custom/action.user_added.pre.md'), '# user-authored — must not ship\n');
 
   // cli/ — esbuild needs a real entry to bundle.

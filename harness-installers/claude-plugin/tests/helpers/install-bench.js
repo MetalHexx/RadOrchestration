@@ -31,8 +31,8 @@ export async function withTempHome(fn) {
 }
 
 /** Synthetic plugin payload: package.json + sentinel + manifest catalog +
- *  _install-source tree (templates + action-events with shipped custom/README.md +
- *  a synthetic ui.tgz that runInstall expects). */
+ *  _install-source tree (templates + action-events with no custom/ entries) +
+ *  a synthetic ui.tgz that runInstall expects. */
 export function stagePluginRoot(pluginRoot) {
   // package.json + sentinel — required by runInstall.
   fs.mkdirSync(path.join(pluginRoot, 'skills/rad-orchestration/scripts'), { recursive: true });

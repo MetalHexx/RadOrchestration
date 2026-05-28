@@ -20,12 +20,11 @@ function makeUpstream() {
   fs.mkdirSync(join(root, 'runtime-config/templates'), { recursive: true });
   fs.writeFileSync(join(root, 'runtime-config/orchestration.yml'), 'pipeline: {}\n');
   fs.writeFileSync(join(root, 'runtime-config/templates/medium.yml'), 'name: medium\n');
-  // runtime-config/action-events/ — shipped catalog + custom/ slot (FR-1, FR-19, FR-20).
+  // runtime-config/action-events/ — shipped catalog + empty custom/ slot (FR-1, FR-19, FR-20).
   fs.mkdirSync(join(root, 'runtime-config/action-events/custom'), { recursive: true });
   fs.writeFileSync(join(root, 'runtime-config/action-events/README.md'), '# action-events\n');
   fs.writeFileSync(join(root, 'runtime-config/action-events/action.spawn_coder.md'), '# spawn_coder\n');
   fs.writeFileSync(join(root, 'runtime-config/action-events/event.task_completed.md'), '# task_completed\n');
-  fs.writeFileSync(join(root, 'runtime-config/action-events/custom/README.md'), '# custom slot\n');
   // cli/ source synthetic
   fs.mkdirSync(join(root, 'cli/src/bin'), { recursive: true });
   fs.writeFileSync(join(root, 'cli/src/bin/radorch.ts'), 'console.log("radorch");\n');

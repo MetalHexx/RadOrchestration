@@ -12,10 +12,8 @@ function expand(destPath, paths) {
  *
  *  FR-20: any entry marked `ownership: "user-config"` is seeded on first
  *  install only — if the destination already exists, the copy is skipped so
- *  user-edited content is preserved. Symmetric to the user-config
- *  preservation pattern used by the other plugin installers. The canonical
- *  `action-events/custom/README.md` is the second user-config entry (the
- *  first is `orchestration.yml`). */
+ *  user-edited content is preserved. `orchestration.yml` is the canonical
+ *  user-config entry. */
 export function installManifestFiles(manifest, pluginRoot, opts = {}) {
   const paths = userDataPaths(opts);
   // Resolved-relative containment: works across mixed separators (manifest paths

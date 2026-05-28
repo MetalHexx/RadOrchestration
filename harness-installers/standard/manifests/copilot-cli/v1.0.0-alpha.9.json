@@ -10,7 +10,7 @@
     {
       "bundlePath": "action-events/README.md",
       "destinationPath": "${RAD_HOME}/action-events/README.md",
-      "sha256": "762fb78e7f10fe8e2647308602a4ee839ca0cb2f3b21ea0e2127995fd3b37657"
+      "sha256": "626a5be8676612fdcadd014e0555781b4d96261029acfa662a480e2318dcff90"
     },
     {
       "bundlePath": "action-events/action.ask_gate_mode.md",
@@ -91,11 +91,6 @@
       "bundlePath": "action-events/action.spawn_requirements.md",
       "destinationPath": "${RAD_HOME}/action-events/action.spawn_requirements.md",
       "sha256": "21f6677b65dc583c9ca458189d8be2123b614b96a7e7a2e771884798ae4f3cd5"
-    },
-    {
-      "bundlePath": "action-events/custom/README.md",
-      "destinationPath": "${RAD_HOME}/action-events/custom/README.md",
-      "sha256": "156e48e1bbcbf1f425ee982e3e77f395cfe39f4940d3217cdfd7ad2e002a5bc5"
     },
     {
       "bundlePath": "action-events/event.code_review_completed.md",
@@ -415,7 +410,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "94c461fbe1886f1f08315633ecadef3e1fd3d75db5631e098bdd9969f65f4242"
+      "sha256": "c43d6dca8cac24067ce4a9b7ee5ba2f01195616e6a0da58117b35265b1331cab"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",

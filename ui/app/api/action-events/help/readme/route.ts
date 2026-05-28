@@ -6,7 +6,7 @@ import { resolveCatalogRoot } from '@/lib/action-events-fs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const fp = path.join(resolveCatalogRoot(), 'custom', 'README.md');
+  const fp = path.join(resolveCatalogRoot(), 'README.md');
   if (!fs.existsSync(fp)) return NextResponse.json({ error: 'README not found' }, { status: 404 });
   try {
     const content = fs.readFileSync(fp, 'utf8');

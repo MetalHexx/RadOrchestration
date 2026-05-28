@@ -16,7 +16,7 @@ interface Props { mode: DrawerMode; onClose: () => void; }
 
 function subtitleFor(mode: DrawerMode): string {
   if (!mode) return "";
-  if (mode.type === "help") return "Live custom/README.md from your installed catalog.";
+  if (mode.type === "help") return "";
   if (mode.kind === "event" && mode.is_orphan === true) {
     return "Runtime shape: this orphan event's post-overlay is prepended above the next action's composed prompt.";
   }

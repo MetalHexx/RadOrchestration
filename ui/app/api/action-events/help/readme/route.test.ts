@@ -9,8 +9,8 @@ const origHomedir: () => string = os.homedir;
 function seedRoot(content: string | null): string {
   const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-help-home-'));
   const root = path.join(fakeHome, '.radorc', 'action-events');
-  fs.mkdirSync(path.join(root, 'custom'), { recursive: true });
-  if (content !== null) fs.writeFileSync(path.join(root, 'custom', 'README.md'), content);
+  fs.mkdirSync(root, { recursive: true });
+  if (content !== null) fs.writeFileSync(path.join(root, 'README.md'), content);
   (os as unknown as { homedir: () => string }).homedir = () => fakeHome;
   return root;
 }
