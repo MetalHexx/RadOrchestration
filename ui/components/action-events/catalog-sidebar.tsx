@@ -6,7 +6,7 @@ import {
   SidebarGroupContent, SidebarMenu, SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { CustomizedBadge } from "@/components/badges";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useCatalog, groupCatalog, type ActionCategory } from "@/hooks/use-catalog";
 
@@ -42,16 +42,16 @@ export function CatalogSidebar({ selectedKind, selectedName, onNavigateAttempt }
                 className={`flex w-full items-center justify-between rounded px-2 py-1 text-sm ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}`}
               >
                 <span className="font-mono">{e.name}</span>
-                {e.applicable_slot_count > 0 && (
+                {e.populated_slot_count > 0 && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {e.populated_slot_count}/{e.applicable_slot_count}
-                        </Badge>
+                        <span className="ml-2">
+                          <CustomizedBadge />
+                        </span>
                       }
                     />
-                    <TooltipContent>{`${e.populated_slot_count} of ${e.applicable_slot_count} custom instruction slots populated`}</TooltipContent>
+                    <TooltipContent>This entry has custom overlay instructions.</TooltipContent>
                   </Tooltip>
                 )}
               </Link>
