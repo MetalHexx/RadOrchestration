@@ -35,6 +35,9 @@ There is one exception to the document reading rule:  for corrective mediation. 
   - This is your default mode of operation.  
   - It is the source of truth for project state and your next move.
   - Always come back to the script after getting steered by the user or after mediating a correction.
+- Some pipeline results may have a `data.has_custom_instructions` field.
+  - If true, this means the prompt includes custom instructions that might be out of the ordinary
+  - Make sure you follow these instructions carefully, as they may override the normal flow of the pipeline or require special handling.
   - Use the `rad-log-error` skill if you run into any issues that you think are system errors or bugs.  
     - Mention errors at the end of the run so the user is aware.
 - Don't read every single doc (except the review reports!).  

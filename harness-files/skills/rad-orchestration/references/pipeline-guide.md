@@ -15,6 +15,7 @@ Every successful `radorch pipeline signal` call returns a JSON envelope of this 
     "action": "<action-name>",          // next operation; null when the pipeline has nothing more to do
     "completion_event": "<event-name>", // event to signal when the action completes; null for terminal actions
     "prompt": "<composed instructions>",// sole instruction source for this action
+    "has_custom_instructions": true,    // indicates if the prompt includes custom instructions
     "context": { /* action-specific payload */ }
   }
 }
@@ -64,6 +65,13 @@ Always invoke from the workspace root. The `--config` flag overrides the default
 ### First Call
 
 Signal `--event start --project-dir <path>` for new projects, for continuing a project, and for recovery after context compaction. The `start` event is always safe — the pipeline loads `state.json`, skips mutation, and resolves the next action from the current state.
+
+### Action / Event Signal Results
+When signaling an event, the pipeline will return a result with a `data.prompt` property that includes your next set of instructions.
+- Always follow these instructions carefully, as they are your roadmap for what to do next.
+- Some results may include a `data.has_custom_instructions` field. If true, 
+  - This means the prompt includes custom instructions that might be out of the ordinary. 
+  - Make sure you follow these instructions carefully, as they may override the normal flow of the pipeline or require special handling.
 
 ### Loop Termination
 
