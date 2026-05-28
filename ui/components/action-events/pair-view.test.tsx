@@ -105,3 +105,21 @@ describe('PairView — visual cleanup (FR-10..FR-16)', () => {
     assert.doesNotMatch(src, /onJumpToCompletionEvent/);
   });
 });
+
+describe('PairView — is_orphan threading for Preview drawer (FR-18, FR-23, AD-3)', () => {
+  test('subject object carries is_orphan from entry (FR-18, AD-3)', () => {
+    // PairView must read is_orphan from the catalog entry and include it in the
+    // subject object so that applicableSlotsFor and the Preview callback can consume it.
+    assert.match(src, /is_orphan.*entry\.is_orphan|entry\.is_orphan.*is_orphan/s,
+      'subject construction must include is_orphan from entry');
+    assert.match(src, /is_orphan:\s*entry\.is_orphan/, 'subject must set is_orphan: entry.is_orphan');
+  });
+
+  test('DrawerMode type admits is_orphan on the preview branch (FR-18)', () => {
+    // The DrawerMode type in instruction-drawer.tsx must include is_orphan?: boolean
+    // on the preview branch so onOpenPreview callers can pass it.
+    const drawerSrc = readFileSync(join(__dirname, 'instruction-drawer.tsx'), 'utf-8');
+    assert.match(drawerSrc, /is_orphan\s*\??\s*:\s*boolean/,
+      'DrawerMode preview branch must declare is_orphan?: boolean');
+  });
+});
