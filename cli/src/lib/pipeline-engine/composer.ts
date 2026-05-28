@@ -155,6 +155,39 @@ export function composeActionPrompt(input: ComposeInput): ComposeResult {
   return emit(sections, startStep);
 }
 
+export interface OrphanRuntimeShapeInput {
+  eventName: string;
+  catalogRoot: string;
+  overlay?: Record<string, string>;
+}
+
+const NEXT_ACTION_PLACEHOLDER = `← the next action's prompt is composed here at runtime`;
+
+/**
+ * Emits the runtime shape that the engine's orphan-prepend path delivers
+ * — the orphan-post overlay rendered under ## Step 1, followed by a
+ * placeholder line. Used by both the engine (FR-3) and the CLI compose
+ * command's runtime-orphan mode (FR-19, FR-20) so preview and runtime
+ * emit identical bytes.
+ */
+export function composeOrphanRuntimeShape(input: OrphanRuntimeShapeInput): ComposeResult {
+  const { eventName, catalogRoot, overlay } = input;
+  const customRoot = path.join(catalogRoot, 'custom');
+  const readCustom = makeCustomReader(overlay);
+  const eventCustomPost = path.join(customRoot, `event.${eventName}.post.md`);
+  const post = admit(readCustom(eventCustomPost, `event.${eventName}.post`));
+  if (post !== null) {
+    return {
+      prompt: `## Step 1\n\n${post}\n\n${NEXT_ACTION_PLACEHOLDER}`,
+      has_custom_instructions: true,
+    };
+  }
+  return {
+    prompt: `(no overlay content)\n\n${NEXT_ACTION_PLACEHOLDER}`,
+    has_custom_instructions: false,
+  };
+}
+
 export interface OrphanComposeInput {
   eventName: string;
   catalogRoot: string;

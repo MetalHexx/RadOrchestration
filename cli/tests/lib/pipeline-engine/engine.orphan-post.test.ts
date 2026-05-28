@@ -8,6 +8,7 @@ import {
   attachPromptIfActionResolved,
   __setActionEventsRootForTests,
 } from '../../../src/lib/pipeline-engine/engine.js';
+import { composeOrphanRuntimeShape } from '../../../src/lib/pipeline-engine/composer.js';
 import type { PipelineTemplate } from '../../../src/lib/pipeline-engine/types.js';
 
 const cleanups: Array<() => void> = [];
@@ -72,27 +73,78 @@ describe('readOrphanPostContent', () => {
   });
 });
 
-describe('attachPromptIfActionResolved — orphan event post injection', () => {
-  // The template arg is unused by resolveCompletionEvent (it cold-reads frontmatter).
+describe('composeOrphanRuntimeShape — preview/runtime parity', () => {
+  it('emits ## Step 1 with the orphan-post content and a labeled next-action placeholder', () => {
+    const root = seedRoot();
+    fs.writeFileSync(path.join(root, 'custom', 'event.kickoff.post.md'), 'rant before next');
+    const result = composeOrphanRuntimeShape({ eventName: 'kickoff', catalogRoot: root });
+    expect(result.prompt).toBe(
+      '## Step 1\n\nrant before next\n\n← the next action\'s prompt is composed here at runtime'
+    );
+    expect(result.has_custom_instructions).toBe(true);
+  });
+
+  it('renders the no-overlay-content placeholder when the orphan-post is absent or whitespace-only', () => {
+    const root = seedRoot();
+    const result = composeOrphanRuntimeShape({ eventName: 'kickoff', catalogRoot: root });
+    expect(result.prompt).toBe(
+      '(no overlay content)\n\n← the next action\'s prompt is composed here at runtime'
+    );
+    expect(result.has_custom_instructions).toBe(false);
+  });
+});
+
+describe('attachPromptIfActionResolved — Step-N renumbering and envelope flag', () => {
   const dummyTemplate = {} as unknown as PipelineTemplate;
 
-  it('prepends event.<orphan>.post content when firing event is orphan', () => {
+  it('prepends orphan-post as ## Step 1 and renumbers downstream sections starting at ## Step 2', () => {
     const root = seedRoot();
-    fs.writeFileSync(path.join(root, 'custom', 'event.kickoff.post.md'), 'rant about starting before you start');
+    fs.writeFileSync(path.join(root, 'custom', 'event.kickoff.post.md'), 'pre-next instructions');
     const result = attachPromptIfActionResolved(
       { action: 'foo', context: {} },
       dummyTemplate,
       'kickoff',
     );
-    expect(result.action).toBe('foo');
-    expect(result.completion_event).toBe('bar_done');
-    // Orphan post content is prepended before the action's own sections.
-    // (P01-T02 will add proper Step-N heading to the prepended orphan section.)
-    expect(result.prompt as string).toMatch(/rant about starting before you start/);
-    // The action's own body still follows the prepended preamble.
-    expect(result.prompt).toMatch(/foo body\./);
-    expect(result.prompt).toMatch(/bar done event body\./);
+    expect(result.prompt).toMatch(/^## Step 1\n\npre-next instructions\n\n## Step 2\n\nfoo body\./);
+    expect(result.prompt).toMatch(/## Step 3\n\n[\s\S]*Signal: bar_done/);
+    expect(result.has_custom_instructions).toBe(true);
   });
+
+  it('does not prepend or claim custom when the orphan-post file is absent', () => {
+    seedRoot();
+    const result = attachPromptIfActionResolved(
+      { action: 'foo', context: {} },
+      dummyTemplate,
+      'kickoff',
+    );
+    expect(result.prompt as string).toMatch(/^## Step 1\n\nfoo body\./);
+    expect(result.has_custom_instructions).toBe(false);
+  });
+
+  it('sets has_custom_instructions=true when the composer admits overlay content even without orphan-prepend', () => {
+    const root = seedRoot();
+    fs.writeFileSync(path.join(root, 'custom', 'action.foo.pre.md'), 'pre-action prose');
+    const result = attachPromptIfActionResolved(
+      { action: 'foo', context: {} },
+      dummyTemplate,
+      'bar_done', // non-orphan
+    );
+    expect(result.has_custom_instructions).toBe(true);
+  });
+
+  it('sets has_custom_instructions=false when only shipped catalog content composed', () => {
+    seedRoot();
+    const result = attachPromptIfActionResolved(
+      { action: 'foo', context: {} },
+      dummyTemplate,
+      'bar_done',
+    );
+    expect(result.has_custom_instructions).toBe(false);
+  });
+});
+
+describe('attachPromptIfActionResolved — non-orphan event double-include guard', () => {
+  const dummyTemplate = {} as unknown as PipelineTemplate;
 
   it('does NOT prepend event.X.post when firing event X is non-orphan (avoids double-include)', () => {
     const root = seedRoot();

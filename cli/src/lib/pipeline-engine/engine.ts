@@ -8,7 +8,7 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
-import { composeActionPrompt } from './composer.js';
+import { composeActionPrompt, composeOrphanRuntimeShape } from './composer.js';
 import { parseActionEventFile } from './action-event-loader.js';
 import { userDataPaths } from '../paths.js';
 import type {
@@ -137,23 +137,48 @@ export function attachPromptIfActionResolved(
   if (!next) return { action: null, context: {} };
   const completion_event = resolveCompletionEvent(next.action, template);
   if (completion_event === undefined) {
-    // No catalog file → skip composer; preserve existing envelope shape.
     return { action: next.action, context: next.context };
   }
-  const composed = composeActionPrompt({
-    actionName: next.action,
-    completionEvent: completion_event,
-    catalogRoot: resolveActionEventsRoot(),
-  });
-  let prompt = composed.prompt;
+  const catalogRoot = resolveActionEventsRoot();
+  let prompt: string;
+  let has_custom_instructions: boolean;
   if (isOrphanEvent(firingEvent)) {
     const orphanPost = readOrphanPostContent(firingEvent);
     if (orphanPost !== null) {
-      // TODO(P01-T02): rewrite this orphan-prepend to use composer functions with startStep.
-      prompt = `${orphanPost}\n\n${prompt}`;
+      // Step 1 = orphan-post; downstream action sections renumber from Step 2 (FR-3, AD-5).
+      const downstream = composeActionPrompt({
+        actionName: next.action,
+        completionEvent: completion_event,
+        catalogRoot,
+        startStep: 2,
+      });
+      prompt = `## Step 1\n\n${orphanPost}\n\n${downstream.prompt}`;
+      has_custom_instructions = true; // orphan-post admitted, regardless of downstream overlay
+    } else {
+      const composed = composeActionPrompt({
+        actionName: next.action,
+        completionEvent: completion_event,
+        catalogRoot,
+      });
+      prompt = composed.prompt;
+      has_custom_instructions = composed.has_custom_instructions;
     }
+  } else {
+    const composed = composeActionPrompt({
+      actionName: next.action,
+      completionEvent: completion_event,
+      catalogRoot,
+    });
+    prompt = composed.prompt;
+    has_custom_instructions = composed.has_custom_instructions;
   }
-  return { action: next.action, context: next.context, prompt, completion_event };
+  return {
+    action: next.action,
+    context: next.context,
+    prompt,
+    completion_event,
+    has_custom_instructions,
+  };
 }
 
 // ── scaffoldState ─────────────────────────────────────────────────────────────
