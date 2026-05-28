@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import {
   attachPromptIfActionResolved,
   __setActionEventsRootForTests,
 } from '../../../src/lib/pipeline-engine/engine.js';
+import * as composerModule from '../../../src/lib/pipeline-engine/composer.js';
 import { composeOrphanRuntimeShape } from '../../../src/lib/pipeline-engine/composer.js';
 import type { PipelineTemplate } from '../../../src/lib/pipeline-engine/types.js';
 
@@ -180,5 +181,27 @@ describe('attachPromptIfActionResolved — non-orphan event double-include guard
     seedRoot();
     const result = attachPromptIfActionResolved(null, dummyTemplate, 'kickoff');
     expect(result).toEqual({ action: null, context: {} });
+  });
+});
+
+describe('attachPromptIfActionResolved — calls composeOrphanRuntimeShape via spy', () => {
+  const dummyTemplate = {} as unknown as PipelineTemplate;
+
+  it('calls composeOrphanRuntimeShape at least once and preserves byte parity for orphan-prepend path', () => {
+    const root = seedRoot();
+    fs.writeFileSync(path.join(root, 'custom', 'event.kickoff.post.md'), 'pre-next instructions');
+
+    const spy = vi.spyOn(composerModule, 'composeOrphanRuntimeShape');
+
+    const result = attachPromptIfActionResolved(
+      { action: 'foo', context: {} },
+      dummyTemplate,
+      'kickoff',
+    );
+
+    expect(spy.mock.calls.length).toBeGreaterThanOrEqual(1);
+    expect(result.prompt).toMatch(/^## Step 1\n\npre-next instructions\n\n## Step 2\n\nfoo body\./);
+
+    spy.mockRestore();
   });
 });

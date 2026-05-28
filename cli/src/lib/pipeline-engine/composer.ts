@@ -161,7 +161,7 @@ export interface OrphanRuntimeShapeInput {
   overlay?: Record<string, string>;
 }
 
-const NEXT_ACTION_PLACEHOLDER = `← the next action's prompt is composed here at runtime`;
+export const NEXT_ACTION_PLACEHOLDER = `← the next action's prompt is composed here at runtime`;
 
 /**
  * Emits the runtime shape that the engine's orphan-prepend path delivers

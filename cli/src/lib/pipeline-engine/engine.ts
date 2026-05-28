@@ -8,7 +8,7 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
-import { composeActionPrompt, composeOrphanRuntimeShape } from './composer.js';
+import { composeActionPrompt, composeOrphanRuntimeShape, NEXT_ACTION_PLACEHOLDER } from './composer.js';
 import { parseActionEventFile } from './action-event-loader.js';
 import { userDataPaths } from '../paths.js';
 import type {
@@ -123,11 +123,12 @@ export function readOrphanPostContent(eventName: string): string | null {
  * downstream consumers that do not depend on the composed prompt continue
  * to operate (catalog population proceeds independently of pipeline routing).
  *
- * When `firingEvent` is an orphan event AND its post custom file exists,
- * prepends the post content under "## After signaling" to the composed prompt.
- * This is the only place orphan events get a place to fire — for non-orphan
- * events, event.X.post is already placed in the bracketing action's prompt
- * by the composer's normal flow.
+ * When the firing event is an orphan event with a non-empty custom-post
+ * overlay, the orphan-post body is prepended under `## Step 1` via
+ * `composeOrphanRuntimeShape`, and the downstream action's composed sections
+ * renumber from `## Step 2` via `composeActionPrompt({ startStep: 2 })`.
+ * The success envelope's `has_custom_instructions` flag reflects whether the
+ * orphan-post overlay (or any downstream overlay) contributed content.
  */
 export function attachPromptIfActionResolved(
   next: { action: string; context: Record<string, unknown> } | null,
@@ -143,16 +144,16 @@ export function attachPromptIfActionResolved(
   let prompt: string;
   let has_custom_instructions: boolean;
   if (isOrphanEvent(firingEvent)) {
-    const orphanPost = readOrphanPostContent(firingEvent);
-    if (orphanPost !== null) {
-      // Step 1 = orphan-post; downstream action sections renumber from Step 2 (FR-3, AD-5).
+    const orphanShape = composeOrphanRuntimeShape({ eventName: firingEvent, catalogRoot });
+    if (orphanShape.has_custom_instructions) {
+      // Step 1 = orphan-post; downstream action sections renumber from Step 2.
       const downstream = composeActionPrompt({
         actionName: next.action,
         completionEvent: completion_event,
         catalogRoot,
         startStep: 2,
       });
-      prompt = `## Step 1\n\n${orphanPost}\n\n${downstream.prompt}`;
+      prompt = orphanShape.prompt.replace(NEXT_ACTION_PLACEHOLDER, downstream.prompt);
       has_custom_instructions = true; // orphan-post admitted, regardless of downstream overlay
     } else {
       const composed = composeActionPrompt({
