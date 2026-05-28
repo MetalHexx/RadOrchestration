@@ -51,6 +51,6 @@ export function useCatalog() {
   return { entries, error, loading, refresh, refreshEntry };
 }
 
-export function findEntry(entries: import("@/lib/action-events-fs").CatalogEntry[], kind: "action" | "event", name: string) {
+export function findEntry(entries: CatalogEntry[], kind: "action" | "event", name: string) {
   return entries.find((e) => e.kind === kind && e.name === name) ?? null;
 }

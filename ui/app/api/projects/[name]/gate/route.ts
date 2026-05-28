@@ -13,7 +13,9 @@ const PROJECT_NAME_PATTERN = /^[A-Z0-9][A-Z0-9._-]*$/;
 /**
  * Thin Promise wrapper around child_process.execFile that defers to
  * child_process.execFile at call time (not at import time), so that
- * node:test mock.method stubs can intercept it.
+ * node:test mock.method stubs can intercept it. Node's execFile callback
+ * passes stdout/stderr as the 2nd and 3rd positional args (strings, when
+ * an encoding is set) — not as fields on a single result object.
  */
 function execFileP(
   file: string,
@@ -21,16 +23,18 @@ function execFileP(
   opts: { encoding: 'utf-8' }
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    child_process.execFile(file, args, opts, (err, result) => {
+    child_process.execFile(file, args, opts, (err, stdout, stderr) => {
+      const out = String(stdout ?? '');
+      const errOut = String(stderr ?? '');
       if (err) {
         const execErr = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
         const enriched = Object.assign(err, {
-          stdout: execErr.stdout ?? (result as unknown as { stdout?: string })?.stdout ?? '',
-          stderr: execErr.stderr ?? (result as unknown as { stderr?: string })?.stderr ?? '',
+          stdout: out || execErr.stdout || '',
+          stderr: errOut || execErr.stderr || '',
         });
         reject(enriched);
       } else {
-        resolve(result as unknown as { stdout: string; stderr: string });
+        resolve({ stdout: out, stderr: errOut });
       }
     });
   });

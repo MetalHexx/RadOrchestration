@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (err) return NextResponse.json({ error: err }, { status: 400 });
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
-  const content = (body as any)?.content;
+  const content = (body as { content?: unknown })?.content;
   if (typeof content !== 'string') return NextResponse.json({ error: 'Missing field: content' }, { status: 400 });
   if (/^---\s*\r?\n/.test(content)) {
     return NextResponse.json({ error: 'Custom files must not contain YAML frontmatter' }, { status: 400 });

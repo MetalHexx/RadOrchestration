@@ -3,7 +3,12 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { listCatalogEntries, readShippedEntry } from './action-events-fs';
+import {
+  listCatalogEntries,
+  readShippedEntry,
+  parseActionEventFile,
+  deriveSignalLine,
+} from './action-events-fs';
 
 function seedRoot(): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-fs-'));
@@ -33,7 +38,7 @@ test('listCatalogEntries returns parseable entries with slot counts and signal_l
   assert.strictEqual(evt.signal_line, 'Signal: x_done --status <value>');
   const orphan = entries.find((e) => e.kind === 'event' && e.name === 'orphan_evt')!;
   assert.strictEqual(orphan.signal_line, 'Signal: orphan_evt');
-  assert.ok(!entries.some((e) => (e as any).name === 'malformed'), 'malformed entry skipped');
+  assert.ok(!entries.some((e) => (e as { name: string }).name === 'malformed'), 'malformed entry skipped');
 });
 
 test('readShippedEntry returns body and frontmatter for a known action (FR-27)', () => {
@@ -54,13 +59,34 @@ test('readShippedEntry returns null for missing entry (FR-27)', () => {
 test('listCatalogEntries marks unreferenced events as is_orphan: true and referenced events as is_orphan: false (FR-3)', () => {
   const root = seedRoot();
   const entries = listCatalogEntries(root);
-  // x_done is referenced by spawn_x's completion_event → not an orphan
   const referenced = entries.find((e) => e.kind === 'event' && e.name === 'x_done')!;
   assert.strictEqual(referenced.is_orphan, false);
-  // orphan_evt is not referenced by any action → is an orphan
   const orphan = entries.find((e) => e.kind === 'event' && e.name === 'orphan_evt')!;
   assert.strictEqual(orphan.is_orphan, true);
-  // action entries are never orphans
   const action = entries.find((e) => e.kind === 'action' && e.name === 'spawn_x')!;
   assert.strictEqual(action.is_orphan, false);
+});
+
+test('listCatalogEntries reports 1 applicable slot for orphan events — the post slot only', () => {
+  const root = seedRoot();
+  // The orphan pre file must NOT count (the slot is hidden — no editor surface).
+  fs.writeFileSync(path.join(root, 'custom', 'event.orphan_evt.pre.md'), 'should not surface in editor\n');
+  // The orphan post file SHOULD count (this is the slot the editor exposes and
+  // the engine wires into the next action's prompt when the orphan event fires).
+  fs.writeFileSync(path.join(root, 'custom', 'event.orphan_evt.post.md'), 'fires after orphan signal\n');
+  const entries = listCatalogEntries(root);
+  const orphan = entries.find((e) => e.kind === 'event' && e.name === 'orphan_evt')!;
+  assert.strictEqual(orphan.applicable_slot_count, 1);
+  assert.strictEqual(orphan.populated_slot_count, 1);
+  // Non-orphan events keep their 2-slot envelope.
+  const referenced = entries.find((e) => e.kind === 'event' && e.name === 'x_done')!;
+  assert.strictEqual(referenced.applicable_slot_count, 2);
+});
+
+test('parseActionEventFile rejects mismatched filename/kind (NFR-6)', () => {
+  assert.throws(() => parseActionEventFile('---\nkind: event\nname: x\ntitle: x\ndescription: x\nsignal_payload: {}\n---\n', 'action.x.md'), /disagrees with filename kind/);
+});
+
+test('deriveSignalLine returns bare signal when no payload (NFR-3)', () => {
+  assert.strictEqual(deriveSignalLine('foo', { kind: 'event', name: 'foo', title: 't', description: 'd', signal_payload: {} }), 'Signal: foo');
 });

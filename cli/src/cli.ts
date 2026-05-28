@@ -191,6 +191,22 @@ export function buildProgram(version: string): Command {
       await runCommand(approveFinalCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
+  // Action-events `compose` lazy-loads so the pipeline-engine import chain
+  // (parseActionEventFile, composer, etc.) only fires when this subcommand
+  // actually runs. The catalog/shipped/custom UI surfaces are served in-process
+  // by the dashboard's API routes and do not need CLI subcommands of their own.
+  const actionEvents = program.command('action-events').description('Action/event catalog operations');
+  actionEvents
+    .command('compose')
+    .description('Compose an action or orphan-event prompt (reads optional {overlay} from stdin)')
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const { composeCommand } = await import('./commands/action-events/compose.js');
+      const argv = process.argv.slice(4);
+      await runCommand(composeCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
   program.addHelpText(
     'after',
     "\nTip: use 'radorch where <name>' to resolve any radorch path (projects, registry, config, ...). 'radorch where' with no arg lists them all.",

@@ -20,7 +20,7 @@ test('GET /api/action-events/catalog returns entries shaped by listCatalogEntrie
     const body = await res.json();
     assert.strictEqual(res.status, 200);
     assert.ok(Array.isArray(body.entries));
-    assert.ok(body.entries.find((e: any) => e.name === 'lonely'));
+    assert.ok(body.entries.find((e: { name: string }) => e.name === 'lonely'));
   } finally {
     (os as unknown as { homedir: () => string }).homedir = origHomedir;
   }

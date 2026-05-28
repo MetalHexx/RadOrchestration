@@ -27,7 +27,7 @@ export function PairView({ kind, name, onOpenPreview, onOpenHelp }: Props) {
   const card4Ref = useRef<HTMLDivElement | null>(null);
 
   const completion = entry?.kind === "action" ? entry.completion_event ?? null : null;
-  const subject = entry ? { kind: entry.kind, name: entry.name, completion_event: completion } : null;
+  const subject = entry ? { kind: entry.kind, name: entry.name, completion_event: completion, is_orphan: entry.is_orphan } : null;
   const slots = subject ? applicableSlotsFor(subject) : [];
 
   useEffect(() => {

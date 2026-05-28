@@ -20,6 +20,10 @@ const H_EVENT_PRE   = '## Before signaling';
 const H_WHEN_DONE   = '## When complete';
 const H_EVENT_POST  = '## After signaling';
 
+// Exported for engine.ts to reuse when prepending orphan-event-post content
+// to the next action's composed prompt after an orphan signal resolves.
+export const HEADING_AFTER_SIGNALING = H_EVENT_POST;
+
 function readBodyIfExists(filePath: string, filename: string, kind: 'action' | 'event'): string | null {
   if (!fs.existsSync(filePath)) return null;
   const text = fs.readFileSync(filePath, 'utf8');

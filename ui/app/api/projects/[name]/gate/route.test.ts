@@ -54,11 +54,12 @@ function stubExecFile(stdout: string, exitCode = 0): { calls: Array<{ file: stri
   const calls: Array<{ file: string; args: string[] }> = [];
   mock.method(child_process, 'execFile', (file: string, args: string[], _opts: unknown, cb: (...cbArgs: unknown[]) => void) => {
     calls.push({ file, args });
-    if (exitCode === 0) cb(null, { stdout, stderr: '' });
+    // Node's execFile callback is (error, stdout, stderr) — three positional args.
+    if (exitCode === 0) cb(null, stdout, '');
     else {
       const err: NodeJS.ErrnoException & { stdout?: string; stderr?: string } = new Error('nonzero');
       err.stdout = stdout; err.stderr = '';
-      cb(err);
+      cb(err, stdout, '');
     }
     return { } as never;
   });

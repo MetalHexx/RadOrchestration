@@ -33,21 +33,30 @@ export function CatalogSidebar({ selectedKind, selectedName, onNavigateAttempt }
     return (
       <SidebarMenuItem key={`${hrefKind}-${e.name}`}>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Link href={href} aria-current={isActive ? "page" : undefined}
-              onClick={handleClick}
-              className={`flex w-full items-center justify-between rounded px-2 py-1 text-sm ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}`}>
-              <span className="font-mono">{e.name}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {e.populated_slot_count}/{e.applicable_slot_count}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>{`${e.populated_slot_count} of ${e.applicable_slot_count} custom instruction slots populated`}</TooltipContent>
-              </Tooltip>
-            </Link>
-          </TooltipTrigger>
+          <TooltipTrigger
+            render={
+              <Link
+                href={href}
+                aria-current={isActive ? "page" : undefined}
+                onClick={handleClick}
+                className={`flex w-full items-center justify-between rounded px-2 py-1 text-sm ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}`}
+              >
+                <span className="font-mono">{e.name}</span>
+                {e.applicable_slot_count > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {e.populated_slot_count}/{e.applicable_slot_count}
+                        </Badge>
+                      }
+                    />
+                    <TooltipContent>{`${e.populated_slot_count} of ${e.applicable_slot_count} custom instruction slots populated`}</TooltipContent>
+                  </Tooltip>
+                )}
+              </Link>
+            }
+          />
           <TooltipContent>{e.description}</TooltipContent>
         </Tooltip>
       </SidebarMenuItem>
@@ -66,7 +75,7 @@ export function CatalogSidebar({ selectedKind, selectedName, onNavigateAttempt }
       <SidebarContent>
         {error && (
           <div className="px-4 py-2 text-sm text-destructive">
-            Failed to load catalog. {error.message}
+            Failed to load catalog. {error}
           </div>
         )}
         {loading && entries.length === 0 && (

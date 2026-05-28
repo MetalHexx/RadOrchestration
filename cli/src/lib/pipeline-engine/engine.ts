@@ -8,7 +8,7 @@ import { getMutation } from './mutations.js';
 import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
-import { composeActionPrompt } from './composer.js';
+import { composeActionPrompt, HEADING_AFTER_SIGNALING } from './composer.js';
 import { parseActionEventFile } from './action-event-loader.js';
 import { userDataPaths } from '../paths.js';
 import type {
@@ -76,6 +76,42 @@ function resolveCompletionEvent(
 }
 
 /**
+ * Returns true iff `eventName` is an orphan event — no action in the catalog
+ * declares it as its `completion_event`. Used by `attachPromptIfActionResolved`
+ * to decide whether to prepend the firing event's post content to the next
+ * action's composed prompt. For non-orphan events the existing composer flow
+ * already places event.X.post in the bracketing action's prompt, so the
+ * prepend would be redundant.
+ */
+export function isOrphanEvent(eventName: string): boolean {
+  const root = resolveActionEventsRoot();
+  if (!fs.existsSync(root)) return true;
+  const actionFiles = fs.readdirSync(root).filter((f) => /^action\..+\.md$/.test(f));
+  for (const filename of actionFiles) {
+    try {
+      const parsed = parseActionEventFile(fs.readFileSync(path.join(root, filename), 'utf8'), filename);
+      if (parsed.kind !== 'action') continue;
+      const fm = parsed.frontmatter as { kind: 'action'; completion_event: string | null };
+      if (fm.completion_event === eventName) return false;
+    } catch {
+      // Malformed catalog file — skip; same forgiveness as listCatalogEntries.
+    }
+  }
+  return true;
+}
+
+/**
+ * Reads `<catalogRoot>/custom/event.<eventName>.post.md`. Returns the trimmed
+ * body if the file exists and is non-empty after trim; null otherwise.
+ */
+export function readOrphanPostContent(eventName: string): string | null {
+  const fp = path.join(resolveActionEventsRoot(), 'custom', `event.${eventName}.post.md`);
+  if (!fs.existsSync(fp)) return null;
+  const raw = fs.readFileSync(fp, 'utf8').trim();
+  return raw.length > 0 ? raw : null;
+}
+
+/**
  * Attach `prompt` (composed catalog text) and `completion_event` (resolved
  * event name) to the engine's success envelope. Per FR-7 these fields live
  * inside `data` alongside `action` and `context` — they are NOT nested
@@ -86,10 +122,17 @@ function resolveCompletionEvent(
  * on disk; the envelope still surfaces `action` and the enriched context so
  * downstream consumers that do not depend on the composed prompt continue
  * to operate (catalog population proceeds independently of pipeline routing).
+ *
+ * When `firingEvent` is an orphan event AND its post custom file exists,
+ * prepends the post content under "## After signaling" to the composed prompt.
+ * This is the only place orphan events get a place to fire — for non-orphan
+ * events, event.X.post is already placed in the bracketing action's prompt
+ * by the composer's normal flow.
  */
-function attachPromptIfActionResolved(
+export function attachPromptIfActionResolved(
   next: { action: string; context: Record<string, unknown> } | null,
   template: PipelineTemplate,
+  firingEvent: string,
 ): PipelineResult {
   if (!next) return { action: null, context: {} };
   const completion_event = resolveCompletionEvent(next.action, template);
@@ -97,11 +140,17 @@ function attachPromptIfActionResolved(
     // No catalog file → skip composer; preserve existing envelope shape.
     return { action: next.action, context: next.context };
   }
-  const prompt = composeActionPrompt({
+  let prompt = composeActionPrompt({
     actionName: next.action,
     completionEvent: completion_event,
     catalogRoot: resolveActionEventsRoot(),
   });
+  if (isOrphanEvent(firingEvent)) {
+    const orphanPost = readOrphanPostContent(firingEvent);
+    if (orphanPost !== null) {
+      prompt = `${HEADING_AFTER_SIGNALING}\n\n${orphanPost}\n\n${prompt}`;
+    }
+  }
   return { action: next.action, context: next.context, prompt, completion_event };
 }
 
@@ -267,6 +316,7 @@ export function processEvent(
         return attachPromptIfActionResolved(
           nextAction ? { action: nextAction.action, context: enrichedContext } : null,
           template,
+          event,
         );
       } else {
         const walkerResult = walkDAG(state, template, config, wrappedReadDocument);
@@ -296,6 +346,7 @@ export function processEvent(
         return attachPromptIfActionResolved(
           walkerResult ? { action: walkerResult.action, context: enrichedContext } : null,
           template,
+          event,
         );
       }
     }
@@ -372,6 +423,7 @@ export function processEvent(
       return attachPromptIfActionResolved(
         walkerResult ? { action: walkerResult.action, context: enrichedContext } : null,
         template,
+        event,
       );
     }
 
@@ -486,7 +538,7 @@ export function processEvent(
       }
     }
 
-    return attachPromptIfActionResolved(nextAction ?? null, template);
+    return attachPromptIfActionResolved(nextAction ?? null, template, event);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return {
