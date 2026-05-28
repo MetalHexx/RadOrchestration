@@ -8,6 +8,7 @@ import { PairView } from "@/components/action-events/pair-view";
 import { InstructionDrawer, type DrawerMode } from "@/components/action-events/instruction-drawer";
 import { useDirtyCards } from "@/hooks/use-dirty-cards";
 import { UnsavedChangesDialog } from "@/components/action-events/unsaved-changes-dialog";
+import { useCatalog, findEntry } from "@/hooks/use-catalog";
 
 export default function ActionEventsPairPage() {
   const params = useParams<{ kind: string; name: string }>();
@@ -16,6 +17,7 @@ export default function ActionEventsPairPage() {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerMode>(null);
   const kind = params.kind as "action" | "event";
+  const { entries } = useCatalog();
 
   return (
     <SidebarProvider>
@@ -33,7 +35,10 @@ export default function ActionEventsPairPage() {
       <SidebarInset>
         <PairView
           kind={kind} name={params.name}
-          onOpenPreview={(overlay, completionEvent) => setDrawer({ type: "preview", kind, name: params.name, overlay, completion_event: completionEvent })}
+          onOpenPreview={(overlay, completionEvent) => {
+            const entry = findEntry(entries, kind, params.name);
+            setDrawer({ type: "preview", kind, name: params.name, overlay, completion_event: completionEvent, is_orphan: entry?.is_orphan === true });
+          }}
           onOpenHelp={() => setDrawer({ type: "help" })}
         />
         <InstructionDrawer mode={drawer} onClose={() => setDrawer(null)} />
