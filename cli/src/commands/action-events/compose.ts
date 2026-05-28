@@ -7,6 +7,7 @@ import {
   composeOrphanEventPrompt,
   composeOrphanRuntimeShape,
 } from '../../lib/pipeline-engine/composer.js';
+import type { ComposeResult } from '../../lib/pipeline-engine/composer.js';
 import { userDataPaths } from '../../lib/paths.js';
 import { validateKind, validateName } from './validators.js';
 
@@ -20,10 +21,7 @@ interface Flags {
 
 export type ComposeMode = 'standalone' | 'runtime-orphan';
 
-export interface ComposeResult {
-  prompt: string;
-  has_custom_instructions: boolean;
-}
+export type { ComposeResult } from '../../lib/pipeline-engine/composer.js';
 
 export interface ComposeInputs {
   catalogRoot: string;
