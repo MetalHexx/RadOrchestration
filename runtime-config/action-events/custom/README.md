@@ -1,69 +1,79 @@
-# action-events/custom — the operator overlay
+# Custom Action / Event Prompts
 
-Drop files here to extend the shipped action/event catalog without modifying the versioned entries one folder up. The composer cold-reads custom files on every envelope build, so edits take effect on the next pipeline event — no service restart is needed.
+`~/.radorc/action-events/` holds the prompts the pipeline composes for each tick — one shipped catalog file per action or event, plus a `custom/` overlay folder where you teach the orchestrator project-specific behavior. The composer cold-reads overlay files on every envelope build, so edits take effect on the next pipeline event without restarting any service.
 
-## 1. What customs do
+## How customs layer onto shipped prompts
 
-Each custom file is a slot of pure instruction prose the orchestrator concatenates with the shipped catalog body at envelope-build time. Customs let you teach your local agents project-specific behavior (notify Slack, open a Jira ticket, re-index docs, run a pre-flight check) without forking the shipped catalog. The shipped catalog stays portable; your customs travel with your machine.
+Each tick the composer assembles a single prompt envelope for the current action. It glues together up to five sections in this order: a *before-action* overlay you provide, the shipped action body, a *before-signaling* overlay you provide, the shipped event body (with the signal line the orchestrator must emit), and an *after-signaling* overlay you provide. Three of those five sections are overlay slots — the others are the shipped catalog one folder up.
 
-## 2. The three slots
+The three overlay slot files are:
 
-Three slot shapes are recognized, fired in the exact order below:
-
-1. **`action.<name>.pre.md`** — prepended before the shipped action body. Use it to tell the agent what to do *before* it performs the action (set up, fetch context, pre-flight check).
-2. **`event.<name>.pre.md`** — prepended before the shipped event body. Use it for instructions the agent should follow *immediately before signaling completion* (validate, double-check the receipt).
-3. **`event.<name>.post.md`** — appended after the shipped event body. Use it for *side-effects after the signal* (notify, log, index, save memory).
+1. `action.<name>.pre.md` — runs *before* the shipped action body. Use it for setup, context fetch, or pre-flight checks.
+2. `event.<name>.pre.md` — runs *before* signaling completion. Use it for last-mile validation.
+3. `event.<name>.post.md` — runs *after* signaling completion. Use it for side-effects: notify, log, index, save memory.
 
 Terminal actions (whose frontmatter sets `completion_event: null`) have only slot 1; they emit no event.
 
-## 3. Filename convention is the contract
+## The composed envelope: `## Step N` numbering
 
-The filename `custom/<kind>.<name>.<slot>.md` is the entire identity contract — kind, parent name, and slot are encoded in the filename. **Custom files contain no frontmatter.** The composer (and the write endpoint behind the Instruction Editor UI) rejects any custom payload that begins with a `---` fence — slot files are markdown body only.
+Every section the composer admits to the envelope is wrapped under a uniform `## Step N` heading, numbered sequentially from 1 within each envelope. The shipped action body and shipped event body receive numbers too — no section is heading-less. Empty overlay slots collapse silently: the next admitted section gets the next number. The orchestrator's rule is then trivially "execute steps top to bottom, in numeric order; every step is authoritative."
+
+Whitespace-only overlay files are treated as empty; they neither contribute a section nor consume a step number.
+
+## Signaling that custom content is present
+
+The pipeline success envelope's `data` block carries a boolean field `has_custom_instructions`. It is `true` iff at least one overlay slot contributed admitted content to the current envelope (or, in the orphan-event prepend case below, when the firing event's post overlay was prepended). It is `false` when only shipped catalog content was composed. The flag is the orchestrator's load-bearing primitive — when `has_custom_instructions === true`, your overlay prose is in the envelope and must be followed verbatim.
+
+## Orphan events: post-overlays prepend to the next action
+
+Most events are "completion events" — they belong to a single action and fire when that action finishes. Their `event.<name>.post.md` overlay is placed inside the bracketing action's envelope (Step 5 above).
+
+A small number of events are *orphan* events — no action in the catalog claims them as its `completion_event`. They are signaled out-of-band (by you, by an ad-hoc agent decision, or by an external hook). When an orphan event fires, its `event.<name>.post.md` overlay is *prepended* to the **next** action's envelope under `## Step 1`. The next action's own sections renumber to start at `## Step 2`. This is the only place orphan-event post overlays get to run; the Instruction Editor's Preview drawer shows you exactly this shape when you preview an orphan event.
+
+## Filename convention is the contract
+
+The filename `custom/<kind>.<name>.<slot>.md` is the entire identity contract — kind (`action` | `event`), parent name, and slot (`pre` | `post`) are encoded in the filename. **Custom files contain no frontmatter.** The composer (and the write endpoint behind the Instruction Editor UI) rejects any custom payload that begins with a `---` fence — slot files are markdown body only.
 
 The `<name>` segment must match an existing `action.<name>.md` or `event.<name>.md` in the parent catalog folder; renaming a catalog entry intentionally breaks the overlay so authors notice rather than silently orphaning customizations.
 
-## 4. What changes vs. what doesn't
+## Authoring guidance
 
-Customs change the **prose** the agent sees. Customs do **not** change the pipeline graph, signal payload contracts, or which events fire — those are catalog-level concerns. If you need a new action or event, edit the shipped catalog (`action.<name>.md` or `event.<name>.md`), not this folder.
+Write in plain instruction prose. Keep slots single-purpose: one Slack notification, one Jira ticket, one validation check. The composer concatenates literally — there is no templating, no variable interpolation. If you need branching, write it as natural English ("If the PR is a draft, skip the Slack post; otherwise…"). Aim for fewer than 200 words per slot — the orchestrator reads every word and longer prose dilutes the instruction.
 
-## 5. Use-case gallery
+## Recipe gallery
 
-Five copyable starter recipes. Each one is a one-line intent + the target filename + an instruction-voice body. Drop the body into a new file at the indicated path and save.
+Copyable starter recipes. Each one is a one-line intent plus the target filename plus an instruction-voice body. Drop the body into a new file at the indicated path and save.
 
-### 5.1 Slack notification on PR creation
+### Slack notification on PR creation
 File: `event.pr_created.post.md`
 ```
 After signaling pr_created, POST a message to the team Slack webhook at $SLACK_WEBHOOK_URL with the PR title and URL. Use a single-line summary; do not include the diff.
 ```
 
-### 5.2 Jira ticket on phase review
+### Jira ticket on phase review
 File: `action.spawn_phase_reviewer.pre.md`
 ```
 Before spawning the phase reviewer, create a Jira ticket in project ENG titled "Phase review: <project>/<phase>" and link it back to this run's project directory. Place the ticket key in the review handoff so the reviewer can attach findings.
 ```
 
-### 5.3 Doc re-index on task completion
+### Doc re-index on task completion
 File: `event.task_completed.post.md`
 ```
 After signaling task_completed, run `npm run docs:reindex` to regenerate the local doc search index. If the command exits non-zero, log a warning but do not fail the task — index drift is recoverable.
 ```
 
-### 5.4 Memory save on plan approval
-File: `event.plan_approved.post.md`
+### Memory save on project complete
+File: `event.project_complete.post.md`
 ```
-After signaling plan_approved, append a one-paragraph summary of the approved plan to ~/.radorc/memory/approved-plans.md. Include project name, date, total phases, and a one-sentence purpose.
-```
-
-### 5.5 Pre-flight check before task execution
-File: `action.execute_task.pre.md`
-```
-Before executing the task, confirm: (1) the working tree has no uncommitted changes outside the project directory, (2) `npm test` passes on the current branch, (3) the task's referenced files all exist. Abort with a clear error if any check fails.
+After signaling project_complete, append a one-paragraph retrospective to `~/.radorc/memory/projects.md` summarizing what worked and what surprised you. Keep it under 120 words.
 ```
 
-## 6. Authoring guidance
+### Pre-flight check before spawning a coder
+File: `action.spawn_coder.pre.md`
+```
+Before spawning the coder, verify the working tree is clean (`git status --porcelain` is empty) and the current branch matches the project's expected branch. If either check fails, halt with a clear message describing the mismatch.
+```
 
-Write slot bodies in **instruction voice** — tell the agent what to *do*, not what the action *is*. The shipped catalog already describes the action; your custom should add the project-specific behavior you want layered on top. Keep recipes short (typically 1–6 lines); long prose dilutes signal.
+## Where customs live on disk
 
-## 7. Where customs live on disk
-
-During development the canonical source is `runtime-config/action-events/custom/` in this repository. After install, the same files live at `~/.radorc/action-events/custom/`. The install pipeline copies new and updated entries on every install/upgrade run; uninstalled customs persist across upgrades.
+On install, the harness copies this folder to `~/.radorc/action-events/custom/` (creating the directory if needed). The shipped catalog one folder up (`~/.radorc/action-events/`) is upgraded in place on every install/upgrade tick; your `custom/` overlay is left untouched. Edits to overlay files on disk take effect on the next pipeline event — the composer reads them cold every tick.
