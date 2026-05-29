@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { CatalogEntry } from "@/lib/action-events-fs";
 
 export type ActionCategory = "agent-spawn" | "gate" | "terminal" | "source-control";
@@ -29,11 +29,27 @@ export function applyEntryDelta(entries: CatalogEntry[], kind: string, name: str
   return entries.map((e) => e.kind === kind && e.name === name ? { ...e, populated_slot_count: populatedSlotCount } : e);
 }
 
-export function useCatalog() {
+interface CatalogState {
+  entries: CatalogEntry[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  refreshEntry: (kind: string, name: string, populatedSlotCount: number) => void;
+}
+
+const CatalogContext = createContext<CatalogState | null>(null);
+
+// One store per provider instance so the sidebar badge, pair-view persist callback,
+// and page-level entry lookups all observe the same entries[]. Without this, each
+// useCatalog() call owned its own useState and refreshEntry only mutated the
+// caller's copy — leaving the sidebar's CustomizedBadge stale after Save/Delete
+// (FR-21, AD-8: "Badge updates immediately after save or delete").
+export function CatalogProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<CatalogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const refresh = async () => {
+
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/action-events/catalog");
@@ -43,12 +59,25 @@ export function useCatalog() {
       setError(null);
     } catch (e) { setError(e instanceof Error ? e.message : "Failed"); }
     finally { setLoading(false); }
-  };
-  const refreshEntry = (kind: string, name: string, populatedSlotCount: number): void => {
+  }, []);
+
+  const refreshEntry = useCallback((kind: string, name: string, populatedSlotCount: number): void => {
     setEntries((prev) => applyEntryDelta(prev, kind, name, populatedSlotCount));
-  };
-  useEffect(() => { void refresh(); }, []);
-  return { entries, error, loading, refresh, refreshEntry };
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  return (
+    <CatalogContext.Provider value={{ entries, loading, error, refresh, refreshEntry }}>
+      {children}
+    </CatalogContext.Provider>
+  );
+}
+
+export function useCatalog(): CatalogState {
+  const ctx = useContext(CatalogContext);
+  if (!ctx) throw new Error("useCatalog must be used inside <CatalogProvider>");
+  return ctx;
 }
 
 export function findEntry(entries: CatalogEntry[], kind: "action" | "event", name: string) {

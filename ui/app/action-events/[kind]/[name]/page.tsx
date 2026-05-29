@@ -6,11 +6,21 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { CatalogSidebar } from "@/components/action-events/catalog-sidebar";
 import { PairView } from "@/components/action-events/pair-view";
 import { InstructionDrawer, type DrawerMode } from "@/components/action-events/instruction-drawer";
-import { useDirtyCards } from "@/hooks/use-dirty-cards";
+import { DirtyCardsProvider, useDirtyCards } from "@/hooks/use-dirty-cards";
 import { UnsavedChangesDialog } from "@/components/action-events/unsaved-changes-dialog";
 import { useCatalog, findEntry } from "@/hooks/use-catalog";
 
 export default function ActionEventsPairPage() {
+  // Wrap the page in <DirtyCardsProvider> so the navigation guard below and the
+  // <EditableSlotCard>s reached through <PairView> share one reducer (FR-22).
+  return (
+    <DirtyCardsProvider>
+      <PairPageContent />
+    </DirtyCardsProvider>
+  );
+}
+
+function PairPageContent() {
   const params = useParams<{ kind: string; name: string }>();
   const router = useRouter();
   const { anyDirty } = useDirtyCards();
