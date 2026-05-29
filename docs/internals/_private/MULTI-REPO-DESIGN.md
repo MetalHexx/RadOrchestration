@@ -10,8 +10,8 @@
 |---|---|
 | **Install** | One per machine, rooted at `~/.radorc/`. Holds the runtime, configuration, registry, projects, and worktrees. |
 | **Repo** | A first-class registry entry. Has a name, remote URL, default branch, and description. Local path (per-machine) lives separately in `repo-registry.local.yml`. |
-| **Workspace** | A named, optional grouping of repos used at brainstorming time as input shorthand and preserved as provenance metadata on requirements / master plan. **Not a runtime entity** — once a project is created, it carries a frozen list of repos, not a workspace reference. No mid-flight workspace expansion exists. |
-| **Project** | A unit of orchestration work. Lives at `~/.radorc/projects/<NAME>/` regardless of which repo(s) it touches. Targets a list of repos directly (the list may have been seeded from a workspace, recorded as `workspace:` provenance on requirements + master plan). |
+| **Repo-Group** | A named, optional grouping of repos used at brainstorming time as input shorthand and preserved as provenance metadata on requirements / master plan. **Not a runtime entity** — once a project is created, it carries a frozen list of repos, not a repo-group reference. No mid-flight repo-group expansion exists. |
+| **Project** | A unit of orchestration work. Lives at `~/.radorc/projects/<NAME>/` regardless of which repo(s) it touches. Targets a list of repos directly (the list may have been seeded from a repo-group, recorded as `repo-group:` provenance on requirements + master plan). |
 | **Worktree** | A managed git worktree of a registered repo, created at `source_control_init` time at `~/.radorc/worktrees/<worktree_name>/<REPO>/`. `worktree_name` is a required value on each project (defaults to the project's own name). Projects can share a `worktree_name` to operate on the same on-disk structure — e.g., a follow-up project running against an earlier project's branches. Always derived by convention; never stored as a path in state. |
 | **Phase** | A grouping of tasks within a Master Plan, identified `P01`, `P02`, etc. Groups work by natural seam (layer boundary, independently deliverable slice). Tasks within a phase share execution ordering and review scope but are individually executed. Mixed-repo phases are supported — phase frontmatter `repos:` is the union of its tasks' target repos. |
 | **Task** | A unit of code change inside a project, executed by the coder agent from a self-contained handoff. Names the target repo(s) explicitly via `**Target repos:**` plus per-repo `**Files for <repo>:**` subsections. |
@@ -31,18 +31,97 @@ The registry splits identity from per-machine paths:
 
 | File | Versioned? | Purpose |
 |---|---|---|
-| `repo-registry.yml` | Yes | Team identity — repos and workspaces with names, remote URLs, default branches, descriptions, workspace memberships |
+| `repo-registry.yml` | Yes | Team identity — repos and repo-groups with names, remote URLs, default branches, descriptions, repo-group memberships |
 | `repo-registry.local.yml` | No (gitignored) | Per-machine path bindings — maps registered repo names to local source-clone paths |
 
 The `.local.yml` suffix carries the "don't commit; per-machine override" semantic via the well-established `.env.local` convention.
 
+#### `repo-registry.yml` shape
+
+```yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Team repo registry.
+# Source of truth for repo IDENTITIES (name, remote, default branch, description)
+# and REPO-GROUPS (named bundles of repos used for project scoping).
+#
+# Versioned — commit changes here so everyone on the team sees them.
+# Per-machine source-clone paths live in repo-registry.local.yml (gitignored).
+# ─────────────────────────────────────────────────────────────────────────────
+
+repos:
+  backend:
+    remote: git@github.com:acme/backend.git
+    default_branch: main
+    description: >
+      REST API, async worker queue, and Postgres + Redis layer for the
+      customer-facing product. Owns auth, billing, and event ingestion.
+
+  frontend:
+    remote: git@github.com:acme/frontend.git
+    default_branch: main
+    description: >
+      User-facing React app: customer dashboard, marketing site, and the
+      embedded customer-portal iframe. Consumes backend's REST API.
+
+  infra:
+    remote: git@github.com:acme/infra.git
+    default_branch: main
+    description: >
+      Terraform modules, GitHub Actions workflows, and deploy scripts.
+      Crosses backend + frontend; changes here trigger staged rollouts.
+
+repo-groups:
+  acme-stack:
+    description: >
+      The full customer-facing product stack — backend API + frontend app.
+      Use this when scoping a project that touches both layers (e.g. a new
+      end-to-end feature).
+    members: [backend, frontend]
+
+  acme-with-infra:
+    description: >
+      All three repos. Use for projects that need coordinated deploy or
+      infra changes alongside app code.
+    members: [backend, frontend, infra]
+```
+
+**Shape notes:**
+
+- Map-keyed (not array-of-objects). The registry files are static identity catalogs read by lookup-by-name; the array-of-objects convention used elsewhere in the system is for pipeline data flow specifically.
+- Multi-line `description:` fields use YAML's `>` folded scalar — line-breaks become spaces, so agents and humans both see clean prose without `\n`-noise in output.
+- `default_branch` is snake_case (matches existing state.json field conventions); `repo-groups:` top-level key uses the kebab-case form per the vocabulary.
+
+#### `repo-registry.local.yml` shape
+
+```yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-machine source-clone paths.
+# Anchors each registered repo (from repo-registry.yml) to its local clone
+# on THIS machine. Gitignored — never commit.
+#
+# Populate with `radorch repo add <path>` (registers + binds in one step)
+# or `radorch repo bind <name> <path>` (anchors an already-registered repo).
+# ─────────────────────────────────────────────────────────────────────────────
+
+repos:
+  backend:  C:\dev\acme\backend
+  frontend: C:\dev\acme\frontend
+  infra:    C:\dev\acme\infra
+```
+
+**Shape notes:**
+
+- Just `name: path` pairs. Nothing else has per-machine variance, so nothing else belongs here.
+- No `repo-groups:` section — groupings have no per-machine state.
+- The top-of-file comment names the two CLI commands that maintain it, so a developer opening the file sees how to populate or update entries immediately.
+
 ### `cli/src/lib/repo-registry/` module
 
-A new lib module (sibling to `cli/src/lib/pipeline-engine/`) owns registry operations: reading `repo-registry.yml` + `repo-registry.local.yml`, name → source-path resolution, workspace operations.
+A new lib module (sibling to `cli/src/lib/pipeline-engine/`) owns registry operations: reading `repo-registry.yml` + `repo-registry.local.yml`, name → source-path resolution, repo-group operations.
 
 **Consumed by:**
 
-- All `radorch repo` / `workspace` / `worktree` subcommands (obvious)
+- All `radorch repo` / `repo-group` / `worktree` subcommands (obvious)
 - `radorch source-control init` — worktree creation needs the source clone path
 - `radorch git commit` / `git pr` — per-repo remote URL lookup
 - `radorch pipeline signal` — **validation only** (checking that event payloads referencing repo names match the registry; not for path resolution)
@@ -57,21 +136,22 @@ Multi-repo introduces a new CLI subcommand surface on `radorch`. The `/rad-repo`
 
 | Command | Purpose |
 |---|---|
-| `radorch repo add <path>` | Register a repo. Infers name, remote, default branch from the git directory at path; prompts for ambiguous fields. |
+| `radorch repo add <path>` | Register a new repo. Infers name, remote, default branch from the git directory at path; writes both `repo-registry.yml` (identity) and `repo-registry.local.yml` (path). Prompts for ambiguous fields. |
+| `radorch repo bind <name> <path>` | Anchor an already-registered repo to a local source-clone path on this machine. Touches `repo-registry.local.yml` only. Used when the repo identity exists (e.g., from a cloned `repo-registry.yml`) but the local path hasn't been set on this machine. |
 | `radorch repo list` | List registered repos. |
 | `radorch repo show <name>` | Show details for one repo (including local source-clone path on this machine). |
 | `radorch repo remove <name>` | Unregister. Blocks when an active project targets the repo unless `--force` is passed. |
 | `radorch repo edit <name>` | Modify description / remote / default branch. |
 
-**Workspace management:**
+**Repo-Group management:**
 
 | Command | Purpose |
 |---|---|
-| `radorch workspace create <name> <repo1> <repo2> ...` | Group repos into a workspace. |
-| `radorch workspace list` | List workspaces with members. |
-| `radorch workspace show <name>` | Details. |
-| `radorch workspace add <ws> <repo>` / `workspace remove <ws> <repo>` | Add / remove member repos. |
-| `radorch workspace delete <name>` | Delete the workspace. Does not unregister member repos. |
+| `radorch repo-group create <name> <repo1> <repo2> ...` | Group repos into a repo-group. |
+| `radorch repo-group list` | List repo-groups with members. |
+| `radorch repo-group show <name>` | Details. |
+| `radorch repo-group add <group> <repo>` / `repo-group remove <group> <repo>` | Add / remove member repos. |
+| `radorch repo-group delete <name>` | Delete the repo-group. Does not unregister member repos. |
 
 **Worktree management:**
 
@@ -91,10 +171,6 @@ Worktree **creation** is implicit — it happens during `radorch source-control 
 | `radorch git commit --task-id <id>` | Fan-out per-repo commits using agent-supplied messages | Source-Control Fan-Out |
 | `radorch git pr --project <name>` | Fan-out per-repo PRs with two-pass linked-PR creation | Source-Control Fan-Out |
 
-**Cross-machine bind (deferred):**
-
-For a developer who pulls a teammate's shared project from `~/.radorc/projects/<NAME>/` and needs to wire their local source clones into `registry.local.yml` to make the project runnable. Working name: `radorch repo bind --project <name>`. Specifics deferred.
-
 **Two implementation-time questions, deferred:**
 
 - Exact semantics of `radorch repo remove --force` (warn-and-proceed vs. additional confirmation prompt)
@@ -102,19 +178,19 @@ For a developer who pulls a teammate's shared project from `~/.radorc/projects/<
 
 ### `/rad-repo` skill (NEW)
 
-Registration and management are exposed through a single user-facing skill, **`/rad-repo`**, which covers both repos and workspaces. The skill dispatches to underlying CLI commands; the CLI itself is not surfaced for direct user use today.
+Registration and management are exposed through a single user-facing skill, **`/rad-repo`**, which covers both repos and repo-groups. The skill dispatches to underlying CLI commands; the CLI itself is not surfaced for direct user use today.
 
 **Behavior:**
 
 - Infer-hard, one-confirmation pattern. When a user runs `/rad-repo add C:\REPO-FOLDER`, the skill reads git remote, default branch, and last-segment name from the path; surfaces the inferred values as a proposed registration; asks only on ambiguity. Single confirmation step, then write.
 - Interview only when needed — the skill can prompt for missing fields (e.g., no git remote) but does not run a multi-step wizard for common cases.
-- The skill teaches the agent about the concepts (repo, workspace, registry files, common operations) and lets natural intent route to the right CLI command. `/rad-repo` with no args surfaces a help-style entry point; `/rad-repo my-frontend` could disambiguate (show / edit / remove).
+- The skill teaches the agent about the concepts (repo, repo-group, registry files, common operations) and lets natural intent route to the right CLI command. `/rad-repo` with no args surfaces a help-style entry point; `/rad-repo my-frontend` could disambiguate (show / edit / remove).
 
 Detailed skill instructions are out of scope for this design.
 
 ### Ambient awareness
 
-Every supported AI harness fires a **session-start hook** that injects the registered repos and workspaces directly into the agent's context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined workspaces:
+Every supported AI harness fires a **session-start hook** that injects the registered repos and repo-groups directly into the agent's context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined repo-groups:
 
 ```
 ## radorc — Repo Registry
@@ -125,10 +201,10 @@ Repos:
 - backend  — git@github.com:acme/backend.git  — main — C:\dev\acme\backend
   "REST API, worker queue, Postgres + Redis."
 
-Workspaces:
+Repo-Groups:
 - acme-stack = [frontend, backend]
 
-Use the `/rad-repo` skill to add, edit, remove, or otherwise manage repos and workspaces.
+Use the `/rad-repo` skill to add, edit, remove, or otherwise manage repos and repo-groups.
 ```
 
 The trailing instruction line is contractual — every emitted hook payload ends with the same `/rad-repo` pointer so any agent reading the block knows where to go for management operations without having to discover the skill some other way.
@@ -182,7 +258,7 @@ The `BRAINSTORMING.md` template gains a new section:
 ## Repo Targets (proposed)
 
 **Repos involved**: `backend`, `frontend`
-**Workspace** (if applicable): `acme-stack`
+**Repo-Group** (if applicable): `acme-stack`
 **Rationale**: New `/checkout` endpoint lands in `backend`; `frontend` needs the
 typed client and UI integration.
 
@@ -204,11 +280,11 @@ Uniform `repos:` key across all four docs; semantics differ by doc:
 ```yaml
 # REQUIREMENTS frontmatter (non-authoritative)
 repos: [backend, frontend]
-workspace: acme-stack   # optional, provenance only
+repo-group: acme-stack   # optional, provenance only
 
 # MASTER PLAN frontmatter (AUTHORITATIVE — the seal)
 repos: [backend, frontend]
-workspace: acme-stack   # optional, provenance only
+repo-group: acme-stack   # optional, provenance only
 
 # Exploded PHASE frontmatter (derived: union of phase's tasks' repos)
 repos: [backend, frontend]
@@ -538,7 +614,7 @@ All agent markdown files (`harness-files/agents/*.md` — orchestrator, planner,
 ### `/rad-create-plans` (requirements + master-plan workflows)
 
 - Requirements frontmatter gains optional `repos:` (non-authoritative restate).
-- Master Plan frontmatter gains `repos:` (sealed, authoritative) and optional `workspace:` provenance.
+- Master Plan frontmatter gains `repos:` (sealed, authoritative) and optional `repo-group:` provenance.
 - Master Plan body authoring rules: every task carries `**Target repos:**` plus per-repo `**Files for <repo>:**` subsections. Uniform shape — no special casing.
 
 ### `/rad-execute`
@@ -574,16 +650,33 @@ All agent markdown files (`harness-files/agents/*.md` — orchestrator, planner,
 
 ---
 
-## Future Iterations
+## Iteration Sequence
 
-The following topics were intentionally not revisited in this brainstorming pass and are out of scope for this design. They are recorded here so a future pass can pick them up without starting from a blank page.
+This design is too large to ship as one project. Practical delivery order, super high level — each iteration is a discrete future brainstorming + planning project. Each builds on the prior; ordering is forced by dependency.
+
+1. **Registry foundation** — `repo-registry.yml` + `.local.yml` files, `cli/src/lib/repo-registry/` lib module, `radorch repo` / `radorch repo-group` CLI subcommands (including `bind`), minimal `/rad-repo` skill, session-start hook for ambient awareness. Ships standalone — no project integration yet. Unlocks everything else.
+
+2. **Multi-repo planning artifacts** — `/rad-brainstorm` updates + `Repo Targets` section on BRAINSTORMING.md + Requirements / Master Plan frontmatter + per-task `**Target repos:**` + per-repo `**Files for <repo>:**` + explosion-script strict parse + `TaskIterationEntry.repos` state mutation. Users can author multi-repo plans (execution wires up in later iterations).
+
+3. **Worktree + source-control init** — `radorch worktree` CLI, `worktree_name` field, managed-worktree lifecycle, `radorch source-control init` reframed as a real CLI doing the work + state mutation directly. After this, multi-repo projects can be initialized end-to-end on disk.
+
+4. **Pipeline + coder + reviewer** — `context-enrichment.ts` produces per-action `repos` arrays, catalog `.md` bodies updated, coder consumes per-repo `**Files for <repo>:**` + `repos[N].path`, reviewer iterates per-repo SHAs per scope (task / phase / final). End-to-end execution works minus commit/PR fan-out.
+
+5. **Source-control fan-out** — per-repo commit messages (conventional commits, LLM-crafted), `radorch git commit` per-repo iteration, per-repo PR descriptions, `radorch git pr` two-pass linked-PR creation. Closes the loop to full multi-repo end-to-end.
+
+Topics in **Future Iterations** below are not assigned to specific iterations — they're open questions that fall *outside* this design entirely, to be picked up when needed.
+
+---
+
+## Other Considerations or Future Iterations
+
+The following topics were intentionally not revisited in this brainstorming pass and should be considered for each iteration as appropriate or saved for a future follow-up project. Some are multi-repo specific, some are general improvements that apply regardless of repo count.
 
 | Topic | What's needed |
 |---|---|
-| `/rad-repo` skill scope | Detailed skill instructions: registry CRUD, workspace mgmt, worktree assist, bind flows |
-| CLI subcommand surface | `radorch repo` / `workspace` / `worktree` subcommand design; underlies the skill |
+| `/rad-repo` skill scope | Detailed skill instructions: registry CRUD, repo-group mgmt, worktree assist, bind flows |
+| CLI subcommand surface | `radorch repo` / `repo-group` / `worktree` subcommand design; underlies the skill |
 | Migration policy | v5 → v6 migration tooling, or v6 is new-projects-only and v5 finishes on v5 engine |
-| Cross-machine bind flow | When another developer pulls a project, how `radorch repo bind` (or similar) resolves their `registry.local.yml` entries quickly |
 | `met / missing` final-review cross-repo | A requirement is `met` only when satisfied wherever owed — requires deciding how requirements get tagged with owed repos |
 | Multi-repo skill discovery | Today's `## Repository Skills Available` block is single-repo by construction; need a multi-repo equivalent (union catalog vs. per-repo grouping) |
 | Project-repos discovery script | Parallel to skill-discovery: orchestrator surfaces a `## Project Repos Available` block to the planner |
