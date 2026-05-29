@@ -1,30 +1,6 @@
 # Multi-Repo Design
 
-**Status:** Deferred. This doc captures the multi-repo direction. Earlier brainstorming bundled this with global-install work; the install-refactor work has now split off into its own track and is no longer cross-linked here. Multi-repo work is parked until picked up as its own iteration; the lock-ins below describe the direction agreed during earlier brainstorming.
-
----
-
-## Problem space
-
-Today rad-orchestration projects target a single repo. Users with multi-repo applications (frontend / backend / infra) can't drive coordinated work from one project; each repo is its own project, each commit happens in isolation, cross-repo coupling has no expression in the model.
-
-The multi-repo design closes that gap. Repos become first-class registry entries; named **workspaces** group repos that ship together; tasks declare their target repos explicitly; the pipeline tracks per-repo branch, PR, and commit state inside one project's state.json.
-
----
-
-## Goals & non-goals
-
-### Goals
-
-1. Decouple project storage from any single repo.
-2. Make "which repo is this task editing?" explicit and contractual (carried in the handoff).
-3. Support projects that target multiple repos under one workspace, with deterministic per-repo execution.
-4. Preserve single-repo project ergonomics — multi-repo is opt-in, not a tax.
-
-### Non-goals
-
-- Supporting source control providers other than GitHub. (`source_control.provider` is reserved-only and being dropped.)
-- A configurable project naming convention. Project names are SCREAMING-CASE, hardcoded.
+**Status:** In flight. This document captures the multi-repo direction as reframed in a fresh brainstorming pass on 2026-05-27/29. The work itself remains deferred until picked up as discrete projects. Sections below describe direction agreed during this brainstorming pass; specific topics not yet revisited are flagged in **Future Iterations**.
 
 ---
 
@@ -32,233 +8,596 @@ The multi-repo design closes that gap. Repos become first-class registry entries
 
 | Term | Definition |
 |---|---|
-| **Install** | One per machine, rooted at `~/.radorc/`. Holds the runtime, config, registry, projects, and worktrees. |
-| **Repo** | A first-class registry entry. Has a name, local path, default branch, and remote URL. The single source of truth for repo identity. |
-| **Workspace** | A named, optional grouping of repos (e.g., `my-app-stack` = `[frontend, backend, infra]`). No defaults block, no primary. Exists only for project targeting, UI grouping, and validation. |
-| **Project** | A unit of orchestration work. Lives at `~/.radorc/projects/<NAME>/` regardless of which repo(s) it touches. Targets either a single repo or a workspace. |
-| **Worktree** | A git worktree of a registered repo, created transiently for one project's lifetime at `~/.radorc/worktrees/<PROJECT>/<REPO>/`. |
-| **Task** | A unit of code change inside a project, executed by the Coder agent from a self-contained handoff. Names the target repo(s) explicitly. |
+| **Install** | One per machine, rooted at `~/.radorc/`. Holds the runtime, configuration, registry, projects, and worktrees. |
+| **Repo** | A first-class registry entry. Has a name, remote URL, default branch, and description. Local path (per-machine) lives separately in `repo-registry.local.yml`. |
+| **Workspace** | A named, optional grouping of repos used at brainstorming time as input shorthand and preserved as provenance metadata on requirements / master plan. **Not a runtime entity** — once a project is created, it carries a frozen list of repos, not a workspace reference. No mid-flight workspace expansion exists. |
+| **Project** | A unit of orchestration work. Lives at `~/.radorc/projects/<NAME>/` regardless of which repo(s) it touches. Targets a list of repos directly (the list may have been seeded from a workspace, recorded as `workspace:` provenance on requirements + master plan). |
+| **Worktree** | A managed git worktree of a registered repo, created at `source_control_init` time at `~/.radorc/worktrees/<worktree_name>/<REPO>/`. `worktree_name` is a required value on each project (defaults to the project's own name). Projects can share a `worktree_name` to operate on the same on-disk structure — e.g., a follow-up project running against an earlier project's branches. Always derived by convention; never stored as a path in state. |
+| **Phase** | A grouping of tasks within a Master Plan, identified `P01`, `P02`, etc. Groups work by natural seam (layer boundary, independently deliverable slice). Tasks within a phase share execution ordering and review scope but are individually executed. Mixed-repo phases are supported — phase frontmatter `repos:` is the union of its tasks' target repos. |
+| **Task** | A unit of code change inside a project, executed by the coder agent from a self-contained handoff. Names the target repo(s) explicitly via `**Target repos:**` plus per-repo `**Files for <repo>:**` subsections. |
+| **Registry** | The two-file model that identifies a team's repos. `repo-registry.yml` (team-portable, versioned) carries identity; `repo-registry.local.yml` (per-machine, gitignored) carries local-clone paths. |
 
-A project at `~/.radorc/projects/BUILD-FOO/` targets `workspace: my-app-stack`. Its tasks specify `repos: ["backend"]` (always a plural array of registry keys; multi-repo tasks carry more than one). The Coder gets the worktree path resolved from `~/.radorc/worktrees/BUILD-FOO/backend/`. The source-control agent commits/PRs against that worktree's git remote.
+A project at `~/.radorc/projects/BUILD-FOO/` carries `repos: [backend, frontend]` in its master plan frontmatter (the sealed authoritative source). Its tasks specify `**Target repos:** backend` (always plural-form, even when one name). Worktrees materialize at `~/.radorc/worktrees/BUILD-FOO/backend/` etc. when the project initializes source control. Agents always operate inside worktrees, never in the source clones.
 
 ---
 
-## Registry and preferences — the four-file model
+## The Repo Registry
 
-The repo registry and the user preferences each split across two files: one team-portable (versioned), one per-machine (gitignored). Identity-of-repos lives in the versioned file; local filesystem bindings live in the per-machine file. They merge at read time.
+This section covers everything in the registry domain: the data files, the lib module that owns them, the CLI commands that read/write them, the user-facing skill that fronts them, and the ambient-awareness mechanism that makes agents aware of registered repos by default.
+
+### The two-file model
+
+The registry splits identity from per-machine paths:
 
 | File | Versioned? | Purpose |
 |---|---|---|
-| `repo-registry.yml` | yes | Team identity — repos + workspaces with names, remotes, default branches, descriptions, workspace memberships |
-| `repo-registry.local.yml` | no (gitignored) | Per-machine path bindings — `repos:` and `workspaces.<name>.root:` mapping registered names to local filesystem paths |
-| `preferences.yml` | yes | Team-shared preference defaults — `auto_commit`, `auto_pr`, `human_gates.execution_mode`, `default_template`, `limits.*` |
-| `preferences.local.yml` | no (gitignored) | Per-developer preference overrides; deep-merges over team file at read time |
+| `repo-registry.yml` | Yes | Team identity — repos and workspaces with names, remote URLs, default branches, descriptions, workspace memberships |
+| `repo-registry.local.yml` | No (gitignored) | Per-machine path bindings — maps registered repo names to local source-clone paths |
 
-The `.local.yml` suffix carries the "don't commit; deep-merges over the team file" semantic via the well-established `.env.local` convention.
+The `.local.yml` suffix carries the "don't commit; per-machine override" semantic via the well-established `.env.local` convention.
 
-**Workspace root: per-machine path with strong-but-not-strict convention.**
+### `cli/src/lib/repo-registry/` module
 
-- `repo-registry.local.yml` (per-machine) holds the optional `root:` for each workspace; `repo-registry.yml` does not.
-- `radorch workspace create A B C` infers `root` as the common parent of the given repo paths if one exists; user can override with `--root`.
-- `radorch workspace add <ws> <repo>` warns when the new repo isn't a child of the workspace's root ("typical for shared repos; proceed?") but does not reject. Convention nudges users toward strict layout; the warning is the discipline.
-- Sessions for workspace projects launch at the workspace root. Single-repo projects launch at the repo's local path.
+A new lib module (sibling to `cli/src/lib/pipeline-engine/`) owns registry operations: reading `repo-registry.yml` + `repo-registry.local.yml`, name → source-path resolution, workspace operations.
 
-**Pipeline-as-path-resolver.** The engine pre-resolves all paths into `result.context.working_directories` per Wave 3. The engine enumerates the project's repos via `state.project.target` (the `{kind, name}` discriminator) plus the live `repo-registry.yml` (resolves workspace targets to their current member list; single-repo targets resolve to themselves). No frozen "snapshot" field on `state.json` — registry edits flow through to the next engine call, and projects see live registry state on each spawn. The pipeline is the deterministic resolver each spawn.
+**Consumed by:**
 
-**Two-moment path-resolution flow.** (Worth being explicit since the local-bound path and the worktree path are different things.)
-1. **At worktree creation** — `radorch worktree create <project> <repo>` reads `repo-registry.local.yml` to find the source repo's local path on this machine, then runs `git worktree add ~/.radorc/worktrees/<project>/<repo>/ <branch>` from that source.
-2. **At engine runtime, every spawn** — engine derives `working_directories[repo]` purely from `~/.radorc/worktrees/<project>/<repo>/` by convention, with no file reads.
+- All `radorch repo` / `workspace` / `worktree` subcommands (obvious)
+- `radorch source-control init` — worktree creation needs the source clone path
+- `radorch git commit` / `git pr` — per-repo remote URL lookup
+- `radorch pipeline signal` — **validation only** (checking that event payloads referencing repo names match the registry; not for path resolution)
 
-The `.local.yml` path is the *source* git location; the worktree path is the project's *workspace* git location. Worktree creation is the only moment the bridge is needed.
+The pipeline engine itself does **not** consume this module at enrichment time — paths are convention-derived (see **Pipeline Data Flow** below).
 
-Subagents (coder, reviewer, source-control) receive paths via the spawn prompt and never call out to resolve them. Zero extra tool calls per spawn for path resolution.
+### CLI command surface
 
----
+Multi-repo introduces a new CLI subcommand surface on `radorch`. The `/rad-repo` skill is the primary user-facing entry point, but the commands are usable in their own right and are leveraged by pipeline operations that need registry data. High-level shape only — exact flags and argument grammars are out of scope here.
 
-## Wave 3 lock-ins — state schema v6 (multi-repo)
+**Repo registry CRUD:**
 
-The schema bumps to `orchestration-state-v6`. Migration via explicit `radorch migrate` command, mirroring the existing v5 migration precedent (pure data transform + CLI scanner with `--dry-run`). Pipeline errors clearly on v5 input with a "run `radorch migrate`" hint. No auto-migration on read — predictable, auditable, dry-runnable.
+| Command | Purpose |
+|---|---|
+| `radorch repo add <path>` | Register a repo. Infers name, remote, default branch from the git directory at path; prompts for ambiguous fields. |
+| `radorch repo list` | List registered repos. |
+| `radorch repo show <name>` | Show details for one repo (including local source-clone path on this machine). |
+| `radorch repo remove <name>` | Unregister. Blocks when an active project targets the repo unless `--force` is passed. |
+| `radorch repo edit <name>` | Modify description / remote / default branch. |
 
-### Multi-repo data model
+**Workspace management:**
 
-- **Primarily single-repo per task; multi-repo permitted for tightly-coupled work.** Each task targets one or more repos via the handoff's `repos: string[]` field — always an array, single-repo tasks have a one-element array. Default planner guidance is one repo per task. Multi-repo tasks are reserved for cases where coupling makes splitting artificial (e.g., introducing a new API contract that requires both the route and its typed client at the same time). Phase-scope corrective handoffs that need cross-repo fixes are also multi-repo tasks — no special-casing.
-- **`pipeline.source_control` becomes a map keyed by repo name** — `by_repo: { frontend: {...}, backend: {...} }`. Each per-repo entry holds branch, base_branch, remote_url, compare_url, pr_url. Shared `auto_commit` and `auto_pr` stay at the parent level inside `pipeline.source_control` — siblings to `by_repo`, NOT inside `state.config`. The DAG template's `state_ref: pipeline.source_control.auto_commit` lookup requires this exact path, so the placement is contractual, not a stylistic choice. Direct lookup by registry name; adding a repo mid-flight is an upsert.
-- **Worktree path is derived, not stored.** Computed at read time from `~/.radorc/worktrees/<PROJECT>/<REPO>/`. Eliminates the absolute-path-portability problem in state entirely. If we ever need custom worktree locations, an optional override field can be added later.
-- **`state.project.target` is discriminated by kind** — `{ kind: 'workspace' | 'repo', name: string }`. Single-repo project: `{ kind: 'repo', name: 'frontend' }`. Workspace project: `{ kind: 'workspace', name: 'my-app-stack' }`.
+| Command | Purpose |
+|---|---|
+| `radorch workspace create <name> <repo1> <repo2> ...` | Group repos into a workspace. |
+| `radorch workspace list` | List workspaces with members. |
+| `radorch workspace show <name>` | Details. |
+| `radorch workspace add <ws> <repo>` / `workspace remove <ws> <repo>` | Add / remove member repos. |
+| `radorch workspace delete <name>` | Delete the workspace. Does not unregister member repos. |
 
-### Type-system rigor
+**Worktree management:**
 
-- **`IterationEntry` splits into two types.** `PhaseIterationEntry` (no repo field) for the phase loop; `TaskIterationEntry` (required `repos: string[]`, minLength 1) for the task loop. Compiler enforces the invariant that task iterations always carry at least one repo. Real refactor cost in `mutations.ts`, the JSON schema (gains a `oneOf` discriminator), and migration code — but v6 is the cheapest moment to pay it.
-- **`CorrectiveTaskEntry` carries `repos: string[]` explicitly**, not inherited from its parent task. Consistent with `TaskIterationEntry`; zero indirection at read time. Task-scope correctives copy parent's `repos` array verbatim. Phase-scope correctives may have a different `repos` array — the orchestrator chooses based on findings.
-- **Each `repos` entry is a string referencing a registry entry** (e.g., `"frontend"`). Validated at consumption time by `radorch` lookups against `repo-registry.yml`. No richer shape in state.
-- **`commit_hashes: { [repo]: string | null }` replaces v5's single `commit_hash`.** Map shape regardless of repo count. Single-repo task: one entry. Multi-repo task: one entry per repo. Each entry is independently nullable until that repo's commit completes.
+| Command | Purpose |
+|---|---|
+| `radorch worktree list <project>` | List a project's worktrees. |
+| `radorch worktree remove <project>` | Destroy all of a project's worktrees. |
+| `radorch worktree remove <project> --repo <name>` | Destroy a single repo's worktree (e.g., to recover from corruption). |
 
-### Event evolution
+Worktree **creation** is implicit — it happens during `radorch source-control init`. No direct `radorch worktree create` command.
 
-- **`source_control_init` becomes per-repo at the engine level.** Each call upserts one entry into `pipeline.source_control.by_repo`. Failure is isolated per repo — frontend init can fail while backend succeeds.
-- **A CLI convenience wrapper** — e.g., `radorch project init-source-control` — iterates the project's target repos and fires the per-repo events. Skills call ONE high-level command; the loop lives in the CLI.
+**Source-control flow** (covered in detail in the sections noted; listed here for surface completeness):
 
-### Spawn-prompt pre-resolution
+| Command | Purpose | Section |
+|---|---|---|
+| `radorch source-control init --project <name>` | Create worktrees + populate state per repo | Worktree Lifecycle + Source-Control Init |
+| `radorch git commit --task-id <id>` | Fan-out per-repo commits using agent-supplied messages | Source-Control Fan-Out |
+| `radorch git pr --project <name>` | Fan-out per-repo PRs with two-pass linked-PR creation | Source-Control Fan-Out |
 
-The engine pre-resolves path arithmetic and diff scoping before handing the agent its spawn prompt. Agents read pre-resolved fields and act on them directly — no path math, no SHA derivation, no section-name-to-repo lookups for file edits.
+**Cross-machine bind (deferred):**
 
-- **`working_directories: { [repo]: path }`** in `result.context` for repo-scoped actions (`execute_task`, `spawn_code_reviewer`, `spawn_phase_reviewer`, `spawn_final_reviewer`, `invoke_source_control_commit`, `invoke_source_control_pr`). Always a map regardless of repo count. Each path computed from `~/.radorc/worktrees/<PROJECT>/<REPO>/`. Agents use this as cwd when running build/test commands per repo.
-- **`file_operations`** in `result.context` for `execute_task`. Engine parses the handoff's per-repo `**Files for <repo>:**` subsections, joins each relative path with the matching `working_directories[<repo>]`, emits entries like `{ repo: 'frontend', op: 'create', path: '/abs/path/.../src/profile.tsx' }`. Coder edits files at the absolute paths directly.
-- **`diff_plan`** in `result.context` for review actions. Shape varies by scope: task review → `{ [repo]: { head_sha } }`; phase review → `{ [repo]: { first_sha, head_sha } }`; final review → `{ [repo]: { base_sha, head_sha } }`. SHAs are independently nullable per repo (null when no commit was made for that repo). Reviewer iterates the map and runs `git diff` in each repo's worktree.
-- **Orchestrator propagates pre-resolved fields verbatim** from `result.context` to the spawn prompt. No agent-side derivation; pure relay.
+For a developer who pulls a teammate's shared project from `~/.radorc/projects/<NAME>/` and needs to wire their local source clones into `registry.local.yml` to make the project runnable. Working name: `radorch repo bind --project <name>`. Specifics deferred.
 
----
+**Two implementation-time questions, deferred:**
 
-## Wave 4 lock-ins — task handoff contract change
+- Exact semantics of `radorch repo remove --force` (warn-and-proceed vs. additional confirmation prompt)
+- Whether `radorch worktree remove --repo <name>` updates `state.pipeline.source_control.repos` to mark the entry as orphaned, or just deletes the worktree directory without state changes
 
-### Handoff frontmatter
+### `/rad-repo` skill (NEW)
 
-- **Handoff carries `repos: string[]` (array of registry-name strings) only.** Always a plural array — single-repo tasks have a one-element array. Not `working_directories:`. The absolute paths are engine-computed and propagated via spawn prompt (Wave 3) — inlining them in the handoff would break portability when projects move between machines.
+Registration and management are exposed through a single user-facing skill, **`/rad-repo`**, which covers both repos and workspaces. The skill dispatches to underlying CLI commands; the CLI itself is not surfaced for direct user use today.
 
-### Master plan format and explosion script
+**Behavior:**
 
-- **Repo assignment is per-task and always plural.** Each task carries `**Target repos:** <comma-list>` — always plural form, even for single-repo tasks (`**Target repos:** frontend`). Phase has no `Target repos` field — phases stay repo-agnostic, mixed-repo phases are supported, and small multi-repo projects don't pay phase-ceremony multiplication.
-- **File Targets are grouped per-repo via `**Files for <repo>:**` subsections, always.** Replaces today's flat `**Files:**` list — uniform structure regardless of repo count. Single-repo tasks have one `**Files for <repo>:**` heading; multi-repo tasks have N. No format-shape switch when a task crosses 1.
-- **Single-repo projects: planner can omit `**Target repos:**`.** When `state.project.target.kind === 'repo'`, the explosion script auto-fills `repos: ["<target-name>"]` on every emitted handoff. The per-repo `**Files for <repo>:**` heading is still required — it identifies the working directory for the task's files.
-- **Multi-repo parse error.** Explosion script throws ParseError when `state.project.target.kind === 'workspace'` and a task is missing `**Target repos:**`. Caught at planning time, not at execution time.
-- **Multi-repo validation is layered.** Explosion script validates each repo in `**Target repos:**` against the project's available repos (workspace member list or single-repo target). Engine validates each `TaskIterationEntry.repos` element against the registry at iteration construction. Source-control agent fails fast at runtime if any worktree path doesn't exist. Each layer catches a different class of error.
+- Infer-hard, one-confirmation pattern. When a user runs `/rad-repo add C:\REPO-FOLDER`, the skill reads git remote, default branch, and last-segment name from the path; surfaces the inferred values as a proposed registration; asks only on ambiguity. Single confirmation step, then write.
+- Interview only when needed — the skill can prompt for missing fields (e.g., no git remote) but does not run a multi-step wizard for common cases.
+- The skill teaches the agent about the concepts (repo, workspace, registry files, common operations) and lets natural intent route to the right CLI command. `/rad-repo` with no args surfaces a help-style entry point; `/rad-repo my-frontend` could disambiguate (show / edit / remove).
 
-### Project-repos discovery (orchestrator → planner)
+Detailed skill instructions are out of scope for this design.
 
-- **Mirror the skills-discovery pattern.** Orchestrator runs a project-repos manifest script before spawning the planner for both `spawn_requirements` and `spawn_master_plan`, parallel to today's `list-repo-skills.mjs` flow.
-- **Output inlined under contractual heading `## Project Repos Available`.** Heading string is exact-match. Empty array → heading omitted entirely (single-repo escape hatch, same convention as the skills manifest).
-- **Script reads `state.project.target`**, resolves to relevant repos via `repo-registry.yml`, outputs JSON array of `{ name, remote, description? }`. Single-repo projects produce `[]`; workspace projects produce the full member list with descriptions.
-- **Registry gains optional `description:` per repo entry** so the planner has enough context to assign tasks intelligently without grepping every repo.
+### Ambient awareness
 
-### Corrective handoffs
+Every supported AI harness fires a **session-start hook** that injects the registered repos and workspaces directly into the agent's context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined workspaces:
 
-- **Task-scope correctives mechanically inherit `repos`** from the parent task's handoff frontmatter (copy the array verbatim). Not LLM judgment — the corrective necessarily targets the same repos as the task it's correcting.
-- **Phase-scope correctives have orchestrator-determined `repos`.** The orchestrator authors a phase-scope corrective handoff after phase-review mediation; it picks `repos` based on which repos the actioned findings need to land in. Documented in the addendum's Finding Dispositions reason column (e.g., "F-1 → action (drift) — fix lands in `frontend` per file path `frontend/src/api-client.ts`"; "F-2 → action — fix coordinated across `frontend` and `backend`").
-- **Cross-repo phase-scope findings naturally resolve as multi-repo correctives.** An earlier concern about "phase-scope finding spans repos in unfixable ways" disappears — multi-repo task support absorbs it. The orchestrator authors one phase-scope corrective with `repos: [frontend, backend]` when the fix genuinely needs both.
+```
+## radorc — Repo Registry
 
-### Cross-repo task ordering
+Repos:
+- frontend — git@github.com:acme/frontend.git — main — C:\dev\acme\frontend
+  "User-facing React app, customer dashboard, marketing site."
+- backend  — git@github.com:acme/backend.git  — main — C:\dev\acme\backend
+  "REST API, worker queue, Postgres + Redis."
 
-- **Existing `**Execution order:**` semantics still apply.** A task in `frontend` depending on a task in `backend` uses the same `T01 → T02` syntax already in the master plan format. Repo identity doesn't change dependency ordering — the engine respects the declared order regardless of which repo each task touches.
+Workspaces:
+- acme-stack = [frontend, backend]
 
-### Task code review under multi-repo
+Use the `/rad-repo` skill to add, edit, remove, or otherwise manage repos and workspaces.
+```
 
-- **One reviewer spawn per task, multi-repo aware via per-repo diff plan.** Engine emits `diff_plan: { [repo]: { head_sha: string | null } }` in `result.context` for `spawn_code_reviewer`. Reviewer iterates per repo, runs `git diff` (or `git show <head_sha>`) in each repo's worktree, audits findings, writes ONE combined review doc. Single review cycle per task; the reviewer can reason about cross-repo coupling — critical for tasks where the whole point is coordinated changes.
-- **Findings imply repo via `File:Line` references.** A finding's repo is derivable from the absolute path the reviewer cites (since the engine handed it absolute paths via `file_operations` and `working_directories`). Audit table rows naturally span repos when the task does.
-- **Null head_sha is per-repo.** When `auto_commit: never` or no commit happened for a particular repo, that repo's `head_sha` is null independently. Reviewer falls back to `git diff HEAD` + untracked files in that repo's worktree.
+The trailing instruction line is contractual — every emitted hook payload ends with the same `/rad-repo` pointer so any agent reading the block knows where to go for management operations without having to discover the skill some other way.
 
-### Phase review under multi-repo
+**Per-harness wrapping** is handled by the existing install-adapters layer:
 
-- **Same pattern, scoped to the phase's cumulative range.** Engine groups `TaskIterationEntry.commit_hashes` and `CorrectiveTaskEntry.commit_hashes` values by repo across the phase's tasks to produce `diff_plan: { [repo]: { first_sha, head_sha } }`. Reviewer iterates per repo, runs `git diff <first_sha>~1..<head_sha>` in each worktree, writes ONE combined phase review doc. Cross-repo cumulative drift surfaces naturally because the reviewer sees all repos.
+| Harness | Mechanism |
+|---|---|
+| Claude Code | `SessionStart` hook, `additionalContext` output |
+| Codex CLI | `sessionStart` hook, `additionalContext` JSON |
+| Copilot VS Code | `.github/hooks/*.json`, `hookSpecificOutput.additionalContext` |
+| Copilot CLI | `sessionStart` hook with JSON `additionalContext` (v1.0.11+) |
+| Cursor | Falls back to static `AGENTS.md` content (hook API unreliable today) |
+| OpenCode | Falls back to static `AGENTS.md` content (no session-start hook) |
 
-### Final review under multi-repo
-
-- **One final reviewer spawn per project, per-repo diff plan.** Engine walks every `TaskIterationEntry.commit_hashes` and `CorrectiveTaskEntry.commit_hashes` across the entire project, groups by repo, computes per-repo `base_sha` (first chronological commit) and `head_sha` (last commit). Emits `diff_plan: { [repo]: { base_sha, head_sha } }`. Reviewer iterates per repo, audits each FR/NFR/AD/DD requirement against the union of changes across all repos, writes ONE combined final review doc.
-- **`met | missing` status spans all repos.** A requirement is `met` only when satisfied wherever it's owed — across every repo a task targeting that requirement touched. `met` in `frontend` but `missing` in `backend` resolves to `missing` overall.
-- **Single final-approval gate, regardless of repo count.** One review doc, one human approval. PR fan-out (Wave 6 — `radorch git pr` iterates internally over `pipeline.source_control.by_repo`) handles the per-repo step inside a single CLI invocation; final approval doesn't multiply.
-
----
-
-## Wave 6 lock-ins — DAG and multi-repo execution
-
-The v2 templates stay structurally close to v1. No new node kinds, no DAG-level iteration over repos. Multi-repo fan-out for commits and PRs lives inside the CLI commands the existing nodes invoke — the agent / orchestrator dispatch surface stays single-shot per task and per project.
-
-### DAG structure changes for multi-repo
-
-- **`commit_gate` keeps a single `commit` step in its true branch.** The step's action is `invoke_source_control_commit`, fired once per task regardless of repo count. The source-control agent runs `radorch git commit --project X --task-id Y` (no `--repo` flag); the CLI iterates internally over the task's `repos` array, runs git commit in each repo's worktree, returns aggregated JSON.
-- **`pr_gate` keeps a single `final_pr` step in its true branch.** Same shape — one `invoke_source_control_pr` action at project end. Agent runs `radorch git pr --project X`; CLI iterates over `pipeline.source_control.by_repo`, opens one PR per repo, returns aggregated JSON.
-- **`commit_gate` and `pr_gate` themselves stay project-level conditionals** — `auto_commit` and `auto_pr` are project-level config. They fire once.
-- **No `for_each_repo` DAG node kind** — explicitly NOT introduced. Multi-repo iteration is mechanical work; the CLI is the right home for it. Avoids spawning N source-control agents for an N-repo task (one spawn, one CLI call, internal loop).
-- **Review steps (`code_review`, `phase_review`, `final_review`) stay as single-step nodes.** Multi-repo awareness handled by engine pre-resolution of `diff_plan` in `result.context`. One review spawn per task / phase / project regardless of repo count.
-
-### Result aggregation and event payloads
-
-- **Source-control agent's `## Commit Result` block carries a per-repo results map** when the task has multiple repos:
-  ```json
-  { "results": { "frontend": { "committed": true, "commitHash": "abc", "pushed": true },
-                 "backend":  { "committed": true, "commitHash": "def", "pushed": true } } }
-  ```
-  For single-repo tasks the map has one entry. Orchestrator extracts the map and signals `commit_completed` with an aggregated `--commit-hashes-json` payload (replacing today's per-repo `--commit-hash`/`--pushed` flags). Engine writes per-repo hashes into `TaskIterationEntry.commit_hashes`.
-- **`## PR Result` block uses the same per-repo map shape** — entries per repo with `pr_created`, `pr_url`, `pr_number`, `pr_existed`, `error`. Orchestrator signals `pr_created` with an aggregated `--pr-urls-json` payload; engine writes per-repo URLs into `pipeline.source_control.by_repo[<repo>].pr_url`.
-
-### Per-repo commit messages
-
-- **Source-control agent crafts per-repo commit message bodies via LLM narrative.** Header is mechanical (`{prefix}({taskId}): {title}` — same across repos for a given task); body is per-repo, written by the agent from each repo's slice of `file_operations` + the handoff's `**Files for <repo>:**` intent text. Different code per repo → different commit body per repo.
-- **Single agent spawn per task.** Spawn prompt carries structural inputs for all the task's repos: file_operations grouped by repo, intent text per repo, repo list, working_directories. Agent crafts all per-repo messages in one pass, then issues ONE CLI call: `radorch git commit --project X --task-id Y --messages-json '{...}'`.
-- **CLI iterates per repo using the agent-supplied messages.** No fallback message generation in the CLI — if the agent didn't supply a message for a repo in the task's `repos` array, the CLI errors. Forces the agent to take ownership of the narrative.
-- **Single-repo tasks** still go through the same shape — agent supplies one message in the map, CLI commits one repo. Uniform code path.
-
-### Per-repo PR descriptions
-
-- **Source-control agent crafts per-repo PR description bodies via LLM narrative.** Spawn prompt carries project planning summary (from master plan + brainstorming if present), per-repo file changes (cumulative across the project), final review verdict summary, and the list of repos with their roles in the project. Agent writes a digestible PR description per repo — shared project context + per-repo specifics — at a level appropriate for human PR review (NOT the dense audit shape of the final review doc).
-
-- **Default PR description template** the agent fills in per repo:
-  ```markdown
-  # {Project Name}: {What this PR delivers in <repo>}
-
-  ## Summary
-  {2–3 sentence per-repo summary of what this PR contributes to the project.}
-
-  ## Project Context
-  {1-2 sentence intent of the broader project, drawn from master plan.}
-
-  ## What changed in this repo
-  - {file change with brief intent}
-  - …
-
-  ## Linked PRs
-  {placeholder; filled in pass 2 by CLI}
-
-  ## Testing
-  {test results / acceptance criteria status}
-
-  ## Full audit
-  Final review: {link to project's final review doc}
-  ```
-
-- **Single agent spawn per project at PR time.** Agent crafts all per-repo descriptions, hands them to the CLI as a JSON map: `radorch git pr --project X --descriptions-json '{"frontend":"...","backend":"..."}'`.
-- **PR description is a separate artifact from the final review doc.** Final review remains the dense audit (audit table, findings, evidence) — kept as the project record. PR description is the human-review-friendly summary, generated fresh at PR time.
-
-### Linked PRs (two-pass creation)
-
-GitHub doesn't have a true cross-repo PR linking feature, but cross-references in PR bodies are auto-rendered as clickable links with status badges. The CLI handles this via two-pass creation:
-
-- **Pass 1**: For each repo, CLI runs `gh pr create` with the agent-supplied description body (containing a placeholder where the Linked PRs section will go). Captures each PR's URL.
-- **Pass 2**: CLI collects all PR URLs from pass 1. For each repo's PR, calls `gh pr edit --body <updated>` substituting the placeholder with the actual sibling PR URLs.
-- **Failure recovery**: if pass 1 succeeds but pass 2 fails for some repo's update, the PRs still exist with the placeholder text intact. User can re-run `radorch git pr` (idempotent — detects existing PRs and re-runs only pass 2) to retry the link-update.
-- **No tracking issue for v1.** Cross-references in PR bodies are sufficient for typical workflows. Tracking-issue creation is parked as potential future work if real demand surfaces.
-
-### Failure handling and recovery
-
-- **Per-repo commits are independent.** Commit failure (commit didn't happen) → engine treats as task failure; pipeline halts with a clear message naming the failed repo. Push failure (commit succeeded, push didn't) → state records `pushed: false` for that repo; pipeline continues. Same as today's single-repo behavior, just per-repo'd.
-- **Idempotent re-run of `radorch git commit`** skips repos that already committed for this task; retries the rest.
-- **PR creation partial failure**: pass-1 partial failure leaves some PRs created; idempotent re-run skips existing and retries missing. Pass-2 partial failure leaves placeholder text in some PRs; re-run retries pass-2 only. Pass-2 idempotence detection is an implementation detail — either placeholder-text grep (cheap, fragile) or a small state-tracking field per PR in `pipeline.source_control.by_repo[<repo>]` (more robust).
-- **Final review doc shape stays unchanged under v6.** It remains the dense audit artifact (audit table, findings, evidence, exit criteria) — intentionally thorough, the project's official record. PR descriptions are a separate, more digestible artifact crafted by the source-control agent at PR time.
-- **Source-control agent model bumps from `haiku` to `sonnet`** given its expanded narrative-crafting role (commit message bodies + PR descriptions).
-
-### Mid-flight workspace expansion — halt with clear message
-
-- **Detect at `/rad-execute` invocation start.** The skill compares the project's target workspace's current member list (from `repo-registry.yml`) against the project's operational repo set (`pipeline.source_control.by_repo` keys). If the workspace has gained repos the project doesn't know about, `/rad-execute` halts before signaling any pipeline event.
-- **Halt is explicit and actionable.** Halt message: *"Workspace `<NAME>` has gained the repo(s) `<NEW_REPOS>` since this project's master plan was approved. The new repo(s) will not be incorporated mid-flight. Either start a new project to include them, or run a follow-up project iteration after this one completes to reconcile."*
-- **No automatic incorporation.** The project's master plan and task assignments are locked at planning time; the system never retroactively expands scope. Preserves planner authority, avoids surprise expansions.
-- **Resumption requires user choice.** User either: (a) abandons the project and starts a new one with the expanded workspace, or (b) accepts the halt as a non-fatal detection and explicitly reverts (e.g., removes the new repo from the workspace temporarily) — the system itself does not auto-resolve.
+The content emitted is harness-agnostic; only the installation differs per adapter.
 
 ---
 
-## Open questions (multi-repo specific)
+## Project ↔ Repo Binding
 
-These were parked during earlier brainstorming and remain unresolved:
+Repos enter the system at brainstorming time as a **proposed working set**. The binding is refined through planning and sealed at master plan time. This section covers the full authoring path: brainstorming → planning → frontmatter shapes → exploded handoffs.
 
-1. **v5 → v6 migration: how single-repo v5 projects map their existing `pipeline.source_control` into v6's `by_repo` map.** What name keys the single entry? Options: infer from registry by matching `remote_url`; prompt the user during migration; use a sentinel name. Affects the migration tool's design.
-2. **`gh` auth scope per-host.** Multi-repo doesn't account for repos targeting different GitHub hosts (github.com vs. enterprise). Per-host `gh auth status` checks need explicit handling.
-3. **Cross-machine registry paths.** The local-bindings file stores per-machine absolute paths. The four-file model resolves the versioning question (identity in `repo-registry.yml`, paths in `.local.yml`) but cross-machine onboarding (dev2 picking up dev1's project) still needs a one-command bind flow.
-4. **`prompt-tests/` rework under multi-repo.** Operator-committed baselines may need re-baselining once multi-repo state shapes flow through.
-5. **Workspace-expansion detection placement.** The lock-in says detect at `/rad-execute` invocation start. Alternative: engine-side check at every spawn. Trade-off between fast-fail and orchestration overhead.
-6. **Multi-repo skill discovery.** SCRIPT-FOLD-3 folds the existing skill-catalog scan into `radorch skill list --repo-root <p>` — single-repo by construction, one root in, one catalog out. Workspace projects need a parallel evolution: either a union catalog with a `repo` field per entry for provenance, or per-repo catalogs the planner sees grouped. The pipeline's planner-spawn enrichment also needs to evolve in parallel — the contractual `## Repository Skills Available` block today is one section; a multi-repo project may want one section per repo, or one unified section with provenance, depending on which shape the planner reasons about more cleanly. The single-repo escape hatch (omit heading entirely when the catalog is empty) should generalize so workspace projects with no custom skills anywhere also emit nothing. Decide when multi-repo is picked up; the CLI flag may evolve from `--repo-root` to `--repos <comma-list>` or similar.
+### Authority chain
+
+```
+BRAINSTORMING.md         proposed (working hypothesis)
+    ↓ /rad-plan reads
+REQUIREMENTS.md          non-authoritative restate (planner may refine)
+    ↓ feeds
+MASTER-PLAN.md           SEALED in frontmatter (authoritative)
+    ↓ explosion derives
+PHASE doc frontmatter    union of tasks' repos (derived)
+TASK handoff frontmatter per-task slice (from **Target repos:** parse)
+    ↓ explosion writes
+state.json TaskIterationEntry.repos (runtime cache, derived)
+```
+
+### Brainstorming flow updates
+
+The `/rad-brainstorm` skill is multi-repo aware. Behavior:
+
+1. Problem-space exploration first — no repos forced.
+2. Agent surfaces repo context **adaptively** when domain hints land in conversation (e.g., user mentions "the checkout flow" → "sounds like `backend` plus `frontend` — confirm?").
+3. At convergence, agent explicitly confirms the working repo set before writing.
+4. **No `BRAINSTORMING.md` ships without a `## Repo Targets` section.**
+
+The `BRAINSTORMING.md` template gains a new section:
+
+```markdown
+## Repo Targets (proposed)
+
+**Repos involved**: `backend`, `frontend`
+**Workspace** (if applicable): `acme-stack`
+**Rationale**: New `/checkout` endpoint lands in `backend`; `frontend` needs the
+typed client and UI integration.
+
+*Note: planner may refine this set during requirements / master-plan work based
+on what surfaces in scoping.*
+```
+
+The `(proposed)` qualifier in the heading signals the working-hypothesis intent.
+
+### Document mutability
+
+- `BRAINSTORMING.md` is **immutable post-conversation**. Historical proposal preserved.
+- Requirements and Master Plan supersede; the master plan frontmatter is the single source of truth at runtime.
+
+### Frontmatter shapes
+
+Uniform `repos:` key across all four docs; semantics differ by doc:
+
+```yaml
+# REQUIREMENTS frontmatter (non-authoritative)
+repos: [backend, frontend]
+workspace: acme-stack   # optional, provenance only
+
+# MASTER PLAN frontmatter (AUTHORITATIVE — the seal)
+repos: [backend, frontend]
+workspace: acme-stack   # optional, provenance only
+
+# Exploded PHASE frontmatter (derived: union of phase's tasks' repos)
+repos: [backend, frontend]
+
+# Exploded TASK frontmatter (derived: per-task from **Target repos:** parse)
+repos: [backend]
+```
+
+### Per-task body shape
+
+Every task block in the master plan carries `**Target repos:**` plus one `**Files for <repo>:**` subsection per repo. Uniform shape — no special casing for single-repo:
+
+```markdown
+### P01-T01: Add /checkout endpoint
+**Task type:** code
+**Requirements:** FR-1, AD-2
+**Target repos:** backend, frontend
+**Files for backend:**
+- Create: `src/routes/checkout.ts`
+- Test: `tests/checkout.test.ts`
+**Files for frontend:**
+- Create: `src/api/checkout-client.ts`
+
+- [ ] **Step 1: Write the failing test (FR-1)** …
+```
+
+Single-repo tasks still use `**Files for <repo>:**` (one subsection). No flat `**Files:**` shape; no auto-fill ergonomics.
+
+### Explosion script
+
+The existing `cli/src/lib/explode-master-plan.ts` gains:
+
+- A `targetRepos: string[]` field on `ParsedTask`, populated by `extractTargetRepos(body)` mirroring today's `extractRequirementTags`. Regex: `/\*\*Target repos:\*\*\s*([^\n]+)/`.
+- **Strict** parse — throws `ParseError` if `**Target repos:**` is missing on any task. Consistent with the uniform-shape lock; catches malformed plans at explosion time, not during execution.
+- Phase frontmatter `repos:` computed as the union of its tasks' `targetRepos`.
+- Task handoff frontmatter `repos:` propagated from `targetRepos`.
+- `state.json` `TaskIterationEntry` gains a `repos` array (see **Pipeline Data Flow** below).
+
+The `**Files for <repo>:**` subsections need no new parsing — they're opaque body text copied verbatim into the exploded handoff. Downstream agents parse the per-repo grouping when they read the handoff.
+
+---
+
+## Worktree Lifecycle + Source-Control Init
+
+This section covers the operational setup layer: how worktrees come into being for a project and the source-control init flow that creates them.
+
+### Worktree management
+
+Worktrees are **managed by radorc** (not user-maintained convention-only).
+
+| Aspect | Decision |
+|---|---|
+| Location | `~/.radorc/worktrees/<worktree_name>/<REPO>/` — `worktree_name` defaults to the project name. Default behavior gives each project its own worktree per repo (enables parallel projects touching the same source repo without conflict). Two projects can intentionally share a `worktree_name` to operate on the same worktree structure (e.g., follow-up work). |
+| Creation | At `source_control_init` time, per repo in the project's `repos:` set. CLI runs `git worktree add` from the source clone path (looked up via `registry.local.yml`). |
+| Branch | Working branch derived from the `worktree_name` (pattern e.g. `radorch/<WORKTREE-SLUG>`), uniform across all of the project's repos. User can override per project (deferred detail). |
+| Destruction | Manual via CLI (`radorch worktree remove <project>` or similar). Pipeline never auto-destroys. `/rad-repo` skill is trained to assist users with the operation. |
+| `~/.radorc/` portability | `worktrees/` is always gitignored in the outer `~/.radorc/` repo. Each git-worktree has a `.git` *file* (pointer), not a `.git/` directory, so nesting is technically clean; gitignore makes the outer repo skip the whole subtree. |
+
+### Gitignore policy for `~/.radorc/`
+
+For users who source-control their `~/.radorc/` for personal config sync:
+
+```
+action-events/*
+!action-events/custom/
+logs/
+runtime/
+templates/
+ui/
+install.json
+orchestration.yml
+repo-registry.local.yml
+worktrees/
+```
+
+**Source-controlled:** `action-events/custom/`, `projects/`, `repo-registry.yml`.
+**Per-machine / shipped / ephemeral:** everything in the gitignore.
+
+### Source-Control Init reframing
+
+Today, `source_control_init` is essentially a state-setter event masquerading as work: the orchestrator gathers field values manually (via `radorch project context` + user prompts) and signals them through to the pipeline, which writes them into `state.pipeline.source_control`. No real work happens during signaling — the worktree is assumed to already exist.
+
+Multi-repo reframes this around the same pattern as the rest of the design: **a real CLI command does the work, and updates state directly as a side effect** — matching the precedent set by `explode_master_plan` (which mutates state.json directly via `writeState`, with no event-payload round-trip).
+
+### New init flow
+
+| Aspect | Decision |
+|---|---|
+| Timing | Fires before pipeline execution begins (same as today) |
+| Trigger | `/rad-execute` skill calls `radorch source-control init --project X` directly. No source-control agent spawn — init is mechanical (worktree creation + state derivation), no LLM work needed. |
+| What the CLI does | Reads project's `repos:` from master plan frontmatter and the resolved `worktree_name` (project name by default, or a name the launch skill set when the user opted to reuse another project's worktrees). For each repo: looks up source clone path from `registry.local.yml`, runs `git worktree add ~/.radorc/worktrees/<worktree_name>/<REPO>/ <branch>` if the worktree doesn't already exist, derives branch / base_branch / remote_url. If the worktree already exists (reuse case), skips creation and adopts the existing branch state. |
+| State mutation | CLI updates `state.pipeline.source_control.repos` array **directly** (no separate event signal). Matches the `explode_master_plan` pattern. |
+| Per-repo failure | Isolated in the result array — frontend init failure doesn't block backend. Entries indicate per-repo success/failure; user re-runs to retry the failed ones. **Idempotent** — already-initialized repos are no-ops. |
+| `auto_commit` / `auto_pr` | Top-level (project-scoped). Gathered by `/rad-execute` skill, possibly via user prompt when config is `"ask"`. Same as today. |
+| Branch naming | Derived from the `worktree_name` (which itself defaults to the project name), uniform across all repos. Exact pattern (e.g., `radorch/<WORKTREE-SLUG>`) deferred to a small follow-up. |
+| Worktree reuse | The launch skill (`/rad-execute` or `/rad-execute-parallel`) scans for existing worktrees whose repo set overlaps the new project's `repos:` and prompts the user *"reuse `PROJECT-1`'s worktrees, or create a new one?"* If reuse: `worktree_name` is set to the target project's name; init skips `git worktree add` and adopts the existing branch state. If fresh: `worktree_name` = the project's own name. The follow-up case is the developer's responsibility to use intentionally — there is no formal parent-child tracking in state, and `radorch worktree remove` does not know about aliased dependents. |
+
+---
+
+## Pipeline Data Flow
+
+This section covers the runtime data flow: state.json shape, how the engine resolves paths at enrichment time, and the per-action JSON shapes that flow into spawn prompts. `state.json` is **source-controlled** alongside the rest of `~/.radorc/projects/`. It must remain **path-free** so it ports cleanly between developers whose source clones live in different places on disk.
+
+### Data flow overview
+
+```
+At explosion time:
+  master plan → exploded phase + task docs (with frontmatter)
+              → state.json runtime cache (repos array, derived)
+
+At source_control_init (one time per project per repo):
+  registry.local.yml → source clone path
+  git worktree add ~/.radorc/worktrees/<worktree_name>/<REPO>/   (skipped if already exists for reuse case)
+  state.pipeline.source_control populated via direct CLI mutation
+  (worktree_name defaults to project name; set by launch skill when user opts to reuse)
+
+At enrichment time (every spawn):
+  state.json + convention math → worktree paths
+  (no registry lookup needed — paths derived from worktree_name + repo names)
+```
+
+### `state.json` shape additions
+
+`TaskIterationEntry` collapses the old `commit_hash` (single) and Wave-2's separate `repos: [name, …]` into one consistent array:
+
+```json
+{
+  "index": 0,
+  "status": "in_progress",
+  "doc_path": "tasks/PROJECT-TASK-P01-T01-SLUG.md",
+  "repos": [
+    { "name": "backend",  "commit_hash": "abc..." },
+    { "name": "frontend", "commit_hash": null }
+  ]
+}
+```
+
+`pipeline.source_control` gets the same array treatment. The resolved `auto_commit` / `auto_pr` values live at the top level (project-scoped, not per-repo) and carry the canonical `"always"` | `"never"` vocabulary the runtime accepts (per `mutations.ts` lines 1125–1137; aliases `"yes"` / `"no"` are also accepted at signal time). `worktree_name` is a required top-level value (defaults to the project's own name) and is the sole source of truth for resolving worktree paths at enrichment time:
+
+```json
+"pipeline": {
+  "source_control": {
+    "auto_commit": "always",
+    "auto_pr": "always",
+    "worktree_name": "BUILD-FOO",
+    "repos": [
+      { "name": "backend",
+        "branch": "radorch/build-foo", "base_branch": "main",
+        "remote_url": "git@github.com:acme/backend.git",
+        "compare_url": null, "pr_url": null },
+      { "name": "frontend",
+        "branch": "radorch/build-foo", "base_branch": "main",
+        "remote_url": "git@github.com:acme/frontend.git",
+        "compare_url": null, "pr_url": null }
+    ]
+  }
+}
+```
+
+**Top-level state.json shape today** (for context — multi-repo doesn't change this skeleton, only the contents of `pipeline.source_control` and `TaskIterationEntry`):
+
+```
+$schema: "orchestration-state-v5"
+project: { ... }
+config:  { gate_mode, limits, source_control: { auto_commit, auto_pr, ... } }   ← initial defaults from orchestration.yml
+pipeline: { source_control: { ... resolved runtime values ... } }              ← what the runtime actually uses
+graph:   { nodes: { ... } }
+```
+
+`state.config.source_control` holds the **initial defaults** read from `orchestration.yml` at project creation; `state.pipeline.source_control` holds the **resolved runtime values** that the engine consults during execution. The two are distinct concerns — `state.config` is read-once-at-init, `state.pipeline.source_control` is the operational mirror that grows per-repo arrays under multi-repo. This document's shape changes apply to `state.pipeline.source_control`; `state.config` shape is untouched by multi-repo.
+
+### Path resolution
+
+The pipeline engine **never reads `registry.local.yml` at enrichment time** for path resolution. Worktree paths are derived purely from convention:
+
+```
+path = ~/.radorc/worktrees/<worktree_name>/<REPO>/
+```
+
+`worktree_name` lives on `state.pipeline.source_control` (required, defaults to project name); the task entry's `repos[].name` provides the repo names. Convention concatenation yields the path. No file I/O, no registry call, no caching layer.
+
+The registry is consulted **once per project per repo at `source_control_init` time** — to know where the source clone lives, as input to `git worktree add`. After that the worktree path is stable and convention-derived.
+
+Implication: if the user moves a source clone (e.g., `C:\dev\acme\backend` → `D:\code\backend`), in-flight projects keep running — only the next `source_control_init` cares about the source location.
+
+### Per-action enrichment shape
+
+Every multi-repo-aware action's `data.context` carries per-repo data as a **single `repos` array of objects**. One canonical shape across all actions; entries gain action-specific fields. This is the same convention used everywhere — state.json, agent outputs, result envelopes.
+
+#### `execute_task`
+
+```json
+{
+  "phase_id": "P01",
+  "task_id": "P01-T01",
+  "handoff_doc": "tasks/PROJECT-TASK-P01-T01-SLUG.md",
+  "repos": [
+    { "name": "backend",  "path": "C:\\Users\\Metal\\.radorc\\worktrees\\BUILD-FOO\\backend" },
+    { "name": "frontend", "path": "C:\\Users\\Metal\\.radorc\\worktrees\\BUILD-FOO\\frontend" }
+  ]
+}
+```
+
+The coder agent reads the handoff's `**Files for <repo>:**` subsections, joins relative paths with the matching entry's `path`, runs each repo's commands from that repo's `path`.
+
+#### `spawn_code_reviewer`
+
+```json
+{
+  "phase_id": "P01",
+  "task_id": "P01-T01",
+  "repos": [
+    { "name": "backend",  "path": "...", "head_sha": "abc123" },
+    { "name": "frontend", "path": "...", "head_sha": "def456" }
+  ]
+}
+```
+
+`head_sha` is null per-repo when no commit was made for that repo (e.g., `auto_commit: never` or no changes for that repo). Reviewer iterates the array, runs `git diff` (or `git show <head_sha>`) in each repo's worktree, writes ONE combined review doc. Cross-repo coupling reviewable as one diff.
+
+#### `spawn_phase_reviewer`
+
+```json
+{
+  "phase_id": "P01",
+  "repos": [
+    { "name": "backend",  "path": "...", "first_sha": "abc", "head_sha": "xyz" },
+    { "name": "frontend", "path": "...", "first_sha": "def", "head_sha": "uvw" }
+  ]
+}
+```
+
+Per-repo cumulative range for the phase. Reviewer runs `git diff <first_sha>~1..<head_sha>` in each repo.
+
+#### `spawn_final_reviewer`
+
+```json
+{
+  "repos": [
+    { "name": "backend",  "path": "...", "base_sha": "abc", "head_sha": "xyz" },
+    { "name": "frontend", "path": "...", "base_sha": "def", "head_sha": "uvw" }
+  ]
+}
+```
+
+Project-wide cumulative range per repo. ONE combined review doc; one final-approval gate regardless of repo count.
+
+#### `invoke_source_control_commit`
+
+```json
+{
+  "phase_id": "P01",
+  "task_id": "P01-T01",
+  "repos": [
+    { "name": "backend",  "path": "...", "branch": "radorch/build-foo", "base_branch": "main" },
+    { "name": "frontend", "path": "...", "branch": "radorch/build-foo", "base_branch": "main" }
+  ]
+}
+```
+
+#### `invoke_source_control_pr`
+
+```json
+{
+  "repos": [
+    { "name": "backend",  "path": "...", "branch": "...", "base_branch": "main",
+      "remote_url": "git@github.com:acme/backend.git" },
+    { "name": "frontend", "path": "...", "branch": "...", "base_branch": "main",
+      "remote_url": "git@github.com:acme/frontend.git" }
+  ]
+}
+```
+
+### Catalog bodies
+
+Each `action.X.md` catalog file in `runtime-config/action-events/` tells the orchestrator (in prose) how to inline the `repos` array into the subagent's spawn prompt. The orchestrator stays mechanical — all per-action logic lives in the catalog bodies + `context-enrichment.ts`.
+
+---
+
+## Source-Control Fan-Out
+
+The DAG stays structurally close to v1 — no `for_each_repo` node kind, commit/PR gates stay project-level, fan-out happens **inside the CLI commands** that the existing nodes invoke. One agent spawn per task (for commits) or per project (for PRs), regardless of repo count.
+
+### Commit fan-out
+
+- **One source-control agent spawn per task**, regardless of repo count.
+- Agent crafts **per-repo commit messages in a single LLM pass** — output is an array of `{ name, message }`. Each repo gets a unique message tailored to its slice of file changes. Format is **conventional commits** (e.g., `feat(P01-T01): add /checkout endpoint`).
+- **Header is mechanical** (`{prefix}({taskId}): {title}`, derived from frontmatter); **body is per-repo, LLM-crafted.**
+- **One CLI call per task** — CLI iterates the array internally and commits each repo's worktree with its specific message.
+- **Result envelope** carries per-repo outcomes as a `repos` array of objects: `{ name, committed, commitHash, pushed }`.
+- **Single-repo tasks use the same contract** — one-entry array, uniform code path. No conditional shape.
+- **Source-control agent stays haiku** — conventional commits are formulaic enough that haiku is fine; no model bump.
+- **Per-repo failure isolated.** Commit failure for one repo halts the pipeline naming the failed repo; push failure marks `pushed: false` for that repo and continues.
+
+### PR fan-out
+
+- **One source-control agent spawn per project at PR time** — not per repo, not per task.
+- Agent crafts **per-repo PR descriptions** via LLM narrative — PRs are for human reviewers, so the body is richer than commit bodies. Each PR description combines project context with per-repo specifics.
+- **CLI does the per-repo `gh pr create` work.**
+- **Linked PRs via two-pass creation:**
+  - Pass 1: per-repo `gh pr create`, capture each PR URL.
+  - Pass 2: per-repo `gh pr edit --body`, substitute placeholder text in each PR's body with sibling PR URLs so GitHub auto-renders cross-references.
+- **Failure recovery:** idempotent re-run skips already-created PRs and retries the rest. Pass-2 retry-only is supported (detect placeholder text or track per-PR state).
+- **Single-repo projects go through the same flow** — one PR, the "Linked PRs" section is omitted.
+
+### `pipeline.source_control` state shape
+
+See **Pipeline Data Flow** above. Per-repo branch, base_branch, remote_url, compare_url, pr_url all live inside the `repos` array. `auto_commit` / `auto_pr` stay top-level.
+
+---
+
+## Agent + Skill Updates
+
+Multi-repo awareness ripples through several skills and agent definitions. The skill / CLI / registry surfaces themselves are covered in **The Repo Registry**; this section names the *behavioral* changes to skills and agents that consume the multi-repo contracts.
+
+### Every agent's definition
+
+All agent markdown files (`harness-files/agents/*.md` — orchestrator, planner, coder, reviewer, source-control, brainstormer) gain `/rad-repo` in their **Skills** section. Each agent thus inherits repo-awareness as part of its skillset and can answer registry questions or assist with worktree operations when prompted, even outside a structured pipeline action.
+
+### `/rad-brainstorm`
+
+- Surfaces repo context adaptively during the conversation.
+- Confirms working repo set before writing.
+- New `## Repo Targets (proposed)` section in the BRAINSTORMING.md template; no doc ships without it.
+- Detail: see **Project ↔ Repo Binding** above.
+
+### `/rad-create-plans` (requirements + master-plan workflows)
+
+- Requirements frontmatter gains optional `repos:` (non-authoritative restate).
+- Master Plan frontmatter gains `repos:` (sealed, authoritative) and optional `workspace:` provenance.
+- Master Plan body authoring rules: every task carries `**Target repos:**` plus per-repo `**Files for <repo>:**` subsections. Uniform shape — no special casing.
+
+### `/rad-execute`
+
+- Calls `radorch source-control init --project X` directly during pipeline initialization (instead of gathering field values + signaling a state-setter event). CLI does the work, writes state directly, returns result envelope.
+- `auto_commit` / `auto_pr` prompting unchanged (still gathered here, still top-level / project-scoped).
+
+### `/rad-execute-coding-task`
+
+- Coder agent reads `repos:` from the task handoff frontmatter to know which repo(s) it's touching.
+- Reads handoff body's `**Files for <repo>:**` subsections; joins relative paths with the matching `repos[N].path` from the spawn-prompt context.
+- Runs each repo's commands (`npm test`, build, etc.) from that repo's worktree path, not the project root.
+
+### `/rad-code-review` (task / phase / final modes)
+
+- Reviewer iterates the spawn-prompt's `repos` array, runs `git diff` in each repo's worktree per the per-repo SHA fields (`head_sha` for task review; `first_sha` + `head_sha` for phase; `base_sha` + `head_sha` for final).
+- Writes ONE combined review doc per scope; findings imply repo via `File:Line` references (the engine handed the reviewer absolute paths via `repos[N].path`).
+- Final review: a requirement is `met` only when satisfied wherever owed across all repos — exact mechanic deferred.
+
+### `/rad-source-control`
+
+- Commit mode: agent reads the spawn-prompt's `repos` array, crafts per-repo commit messages in one LLM pass, returns an array of `{ name, message }`. CLI iterates per repo.
+- PR mode: agent crafts per-repo PR descriptions in one LLM pass, returns an array of `{ name, description }`. CLI iterates per repo, then runs the two-pass linked-PR creation.
+
+### `/rad-execute-parallel`
+
+- Already creates a single-repo worktree for parallel execution. Will need extension for multi-repo projects — creating N worktrees (one per registered repo in the project) at the parallel branch. Specifics deferred.
+
+### Orchestrator agent (`harness-files/agents/orchestrator.md`)
+
+- Spawn-manifest loading unchanged in structure — `repository_skills_block` continues to flow as today.
+- Multi-repo enrichment fields land in `data.context` as the `repos` array; orchestrator inlines them into spawn prompts per the catalog `.md` body instructions. No new routing logic — the orchestrator stays mechanical.
+
+---
+
+## Future Iterations
+
+The following topics were intentionally not revisited in this brainstorming pass and are out of scope for this design. They are recorded here so a future pass can pick them up without starting from a blank page.
+
+| Topic | What's needed |
+|---|---|
+| `/rad-repo` skill scope | Detailed skill instructions: registry CRUD, workspace mgmt, worktree assist, bind flows |
+| CLI subcommand surface | `radorch repo` / `workspace` / `worktree` subcommand design; underlies the skill |
+| Migration policy | v5 → v6 migration tooling, or v6 is new-projects-only and v5 finishes on v5 engine |
+| Cross-machine bind flow | When another developer pulls a project, how `radorch repo bind` (or similar) resolves their `registry.local.yml` entries quickly |
+| `met / missing` final-review cross-repo | A requirement is `met` only when satisfied wherever owed — requires deciding how requirements get tagged with owed repos |
+| Multi-repo skill discovery | Today's `## Repository Skills Available` block is single-repo by construction; need a multi-repo equivalent (union catalog vs. per-repo grouping) |
+| Project-repos discovery script | Parallel to skill-discovery: orchestrator surfaces a `## Project Repos Available` block to the planner |
+| `gh` auth scope per-host | Multi-repo doesn't account for repos targeting different GitHub hosts (github.com vs. enterprise) |
+| `prompt-tests/` rework | Operator-committed baselines may need re-baselining once multi-repo state shapes flow through |
+| Per-repo commit message + PR description templates | The exact spawn-prompt structure for the source-control agent's narrative work |
+| Branch-naming convention | Exact pattern (e.g., `radorch/<PROJECT-SLUG>`) and per-project override mechanism |
+| Worktree-removal CLI command | Specifics of `radorch worktree remove <project>` and its skill-side flow |
+| Worktree custom-location override | Optional override for users who want worktrees outside `~/.radorc/worktrees/` |
+| Failure-recovery details for PR pass-2 | Whether pass-2 idempotence detection uses placeholder-grep (cheap) or per-PR state tracking (robust) |
+| `preferences.yml` / `preferences.local.yml` | Dropped from this design; will be addressed when `orchestration.yml` is split into team-portable + per-developer (separate concern from multi-repo) |
 
 ---
 
 ## Status
 
-This direction is captured for the moment multi-repo work is picked up as its own iteration. Until then, the document is parked. The state.json schema is at v5; no v6 migration tooling exists yet. The registry / workspace files don't ship in `~/.radorc/` today — they're a forward design, not current behavior.
-
-When this work is scheduled, spawn a project brainstorm derived from these lock-ins; do not assume the design is implementation-ready as-is.
+This direction is captured for the moment multi-repo work is picked up. Treat the locks above as direction, not finished specification — implementation will surface decisions this design intentionally leaves open. The **Future Iterations** table lists those open topics for the team to scope when ready.
