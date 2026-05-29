@@ -36,7 +36,3 @@ export function seedComposeFixture(): string {
   return root;
 }
 
-export function makeFakeCtx(): any {
-  // Handlers used in these tests don't touch ctx.
-  return {};
-}

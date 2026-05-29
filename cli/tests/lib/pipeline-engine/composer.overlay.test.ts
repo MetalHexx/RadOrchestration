@@ -23,7 +23,7 @@ describe('composeActionPrompt — overlay', () => {
     const root = seedCatalog();
     fs.writeFileSync(path.join(root, 'custom', 'action.exec.pre.md'), 'DISK PRE\n');
     const a = composeActionPrompt({ actionName: 'exec', completionEvent: 'done', catalogRoot: root });
-    const b = composeActionPrompt({ actionName: 'exec', completionEvent: 'done', catalogRoot: root, overlay: undefined } as any);
+    const b = composeActionPrompt({ actionName: 'exec', completionEvent: 'done', catalogRoot: root, overlay: undefined });
     expect(a.prompt).toBe(b.prompt);
     expect(a.prompt).toMatch(/DISK PRE/);
   });
@@ -36,7 +36,7 @@ describe('composeActionPrompt — overlay', () => {
       completionEvent: 'done',
       catalogRoot: root,
       overlay: { 'action.exec.pre': 'OVERLAY PRE' },
-    } as any);
+    });
     expect(out.prompt).toMatch(/OVERLAY PRE/);
     expect(out.prompt).not.toMatch(/DISK PRE/);
   });
@@ -48,7 +48,7 @@ describe('composeActionPrompt — overlay', () => {
       completionEvent: 'done',
       catalogRoot: root,
       overlay: { 'event.done.post': 'OVERLAY POST' },
-    } as any);
+    });
     expect(out.prompt).toMatch(/OVERLAY POST/);
   });
 
@@ -60,7 +60,7 @@ describe('composeActionPrompt — overlay', () => {
       completionEvent: 'done',
       catalogRoot: root,
       overlay: { 'event.done.pre': '' },
-    } as any);
+    });
     expect(out.prompt).not.toMatch(/DISK EVT PRE/);
   });
 });

@@ -21,7 +21,7 @@ test('deriveSignalLine is exported and renders flagged signal (AD-4, FR-13)', ()
   const line = deriveSignalLine('lonely', {
     kind: 'event', name: 'lonely', title: 'Lonely', description: 'd',
     signal_payload: { reason: { required: true, description: 'why' } },
-  } as any);
+  });
   expect(line).toBe('Signal: lonely --reason <value>');
 });
 
