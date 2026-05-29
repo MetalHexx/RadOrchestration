@@ -258,6 +258,14 @@ async function run() {
     );
   });
 
+  await test('nav links include Instruction Editor between Process Editor and Config (DD-12)', async () => {
+    const shellSource = readFileSync(join(__dirname, 'app-header-shell.tsx'), 'utf-8');
+    const peIdx = shellSource.indexOf('"Process Editor"');
+    const ieIdx = shellSource.indexOf('"Instruction Editor"');
+    assert.ok(peIdx > 0 && ieIdx > peIdx, 'Instruction Editor must appear after Process Editor');
+    assert.match(shellSource, /\{\s*label:\s*"Instruction Editor",\s*href:\s*"\/action-events"\s*\}/);
+  });
+
   if (failed > 0) {
     console.error(`\n${failed} test(s) failed, ${passed} passed`);
     process.exit(1);

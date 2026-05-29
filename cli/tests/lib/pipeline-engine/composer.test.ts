@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { composeActionPrompt } from '../../../src/lib/pipeline-engine/composer.js';
+import { composeActionPrompt, composeOrphanEventPrompt } from '../../../src/lib/pipeline-engine/composer.js';
 
 function makeCatalog(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-'));
@@ -30,10 +30,11 @@ describe('composeActionPrompt — customs', () => {
     const out = composeActionPrompt({
       actionName: 'spawn_planner', completionEvent: 'requirements_completed', catalogRoot: dir,
     });
-    expect(out.indexOf('## Before doing this action')).toBeLessThan(out.indexOf('Main body.'));
-    expect(out.indexOf('Main body.')).toBeLessThan(out.indexOf('## Before signaling'));
-    expect(out.indexOf('## Before signaling')).toBeLessThan(out.indexOf('## When complete'));
-    expect(out.indexOf('## When complete')).toBeLessThan(out.indexOf('## After signaling'));
+    // With Step-N numbering: Step 1 = pre-action, Step 2 = body, Step 3 = pre-event, Step 4 = when-complete, Step 5 = post-event.
+    expect(out.prompt.indexOf('Pre-action custom.')).toBeLessThan(out.prompt.indexOf('Main body.'));
+    expect(out.prompt.indexOf('Main body.')).toBeLessThan(out.prompt.indexOf('Pre-signal custom.'));
+    expect(out.prompt.indexOf('Pre-signal custom.')).toBeLessThan(out.prompt.indexOf('Event body.'));
+    expect(out.prompt.indexOf('Event body.')).toBeLessThan(out.prompt.indexOf('Post-signal custom.'));
   });
 
   it('throws when the envelope consumes an action whose custom pre exists but catalog is missing', () => {
@@ -108,13 +109,12 @@ describe('composeActionPrompt — bare (no customs)', () => {
       catalogRoot: dir,
     });
 
-    expect(out.startsWith('Spawn the planner agent now.')).toBe(true);
-    expect(out).toContain('## When complete');
-    expect(out).toContain('Signal this after the requirements doc lands on disk.');
-    expect(out.trim().endsWith('Signal: requirements_completed --doc-path <value>')).toBe(true);
-    expect(out).not.toContain('## Before doing this action');
-    expect(out).not.toContain('## Before signaling');
-    expect(out).not.toContain('## After signaling');
+    expect(out.prompt.startsWith('## Step 1\n\nSpawn the planner agent now.')).toBe(true);
+    expect(out.prompt).toContain('Signal this after the requirements doc lands on disk.');
+    expect(out.prompt.trim().endsWith('Signal: requirements_completed --doc-path <value>')).toBe(true);
+    expect(out.prompt).not.toContain('## Before doing this action');
+    expect(out.prompt).not.toContain('## Before signaling');
+    expect(out.prompt).not.toContain('## After signaling');
   });
 
   it('emits Signal: <event-name> with no flags when signal_payload is empty', () => {
@@ -141,7 +141,7 @@ describe('composeActionPrompt — bare (no customs)', () => {
       completionEvent: 'gate_approved',
       catalogRoot: dir,
     });
-    expect(out).toMatch(/Signal: gate_approved\s*$/);
+    expect(out.prompt).toMatch(/Signal: gate_approved\s*$/);
   });
 
   it('omits When complete and After signaling for terminal actions', () => {
@@ -160,8 +160,123 @@ describe('composeActionPrompt — bare (no customs)', () => {
       completionEvent: null,
       catalogRoot: dir,
     });
-    expect(out).not.toContain('## When complete');
-    expect(out).not.toContain('## After signaling');
-    expect(out).not.toContain('Signal:');
+    expect(out.prompt).not.toContain('## When complete');
+    expect(out.prompt).not.toContain('## After signaling');
+    expect(out.prompt).not.toContain('Signal:');
+  });
+});
+
+function seedCatalog(): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'composer-step-'));
+  fs.mkdirSync(path.join(root, 'custom'), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, 'action.foo.md'),
+    '---\nkind: action\nname: foo\ntitle: Foo\ndescription: Foo action.\ncategory: agent-spawn\ncompletion_event: bar_done\n---\n\nfoo body.\n',
+  );
+  fs.writeFileSync(
+    path.join(root, 'event.bar_done.md'),
+    '---\nkind: event\nname: bar_done\ntitle: Bar Done\ndescription: Bar done event.\nsignal_payload: {}\n---\n\nbar done body.\n',
+  );
+  fs.writeFileSync(
+    path.join(root, 'event.kickoff.md'),
+    '---\nkind: event\nname: kickoff\ntitle: Kickoff\ndescription: Kickoff event.\nsignal_payload: {}\n---\n\nkickoff body.\n',
+  );
+  return root;
+}
+
+describe('composeActionPrompt — Step-N numbering and has_custom_instructions', () => {
+  it('numbers every admitted section as ## Step N starting at 1, including the shipped action body', () => {
+    const root = seedCatalog(); // helper from existing suite
+    const result = composeActionPrompt({
+      actionName: 'foo',
+      completionEvent: 'bar_done',
+      catalogRoot: root,
+      overlay: {
+        'action.foo.pre':       'pre-action custom',
+        'event.bar_done.pre':   'pre-event custom',
+        'event.bar_done.post':  'post-event custom',
+      },
+    });
+    expect(result.prompt).toMatch(/^## Step 1\n\npre-action custom\n\n## Step 2\n\nfoo body\./);
+    expect(result.prompt).toMatch(/## Step 3\n\npre-event custom\n\n## Step 4\n\n/);
+    expect(result.prompt).toMatch(/## Step 5\n\npost-event custom\s*$/);
+    expect(result.has_custom_instructions).toBe(true);
+  });
+
+  it('collapses empty overlay slots — next admitted section receives the next number', () => {
+    const root = seedCatalog();
+    const result = composeActionPrompt({
+      actionName: 'foo',
+      completionEvent: 'bar_done',
+      catalogRoot: root,
+      overlay: { 'event.bar_done.post': 'only post' },
+    });
+    // No overlay for action.pre or event.pre — they collapse.
+    // Step 1 = shipped action body, Step 2 = shipped event "when complete" block, Step 3 = post overlay.
+    expect(result.prompt).toMatch(/^## Step 1\n\nfoo body\./);
+    expect(result.prompt).toMatch(/## Step 2\n\n[\s\S]*Signal: bar_done/);
+    expect(result.prompt).toMatch(/## Step 3\n\nonly post\s*$/);
+    expect(result.has_custom_instructions).toBe(true);
+  });
+
+  it('returns has_custom_instructions=false when no overlay content is admitted', () => {
+    const root = seedCatalog();
+    const result = composeActionPrompt({
+      actionName: 'foo',
+      completionEvent: 'bar_done',
+      catalogRoot: root,
+    });
+    expect(result.has_custom_instructions).toBe(false);
+    // Shipped body still numbered.
+    expect(result.prompt).toMatch(/^## Step 1\n\nfoo body\./);
+    expect(result.prompt).toMatch(/## Step 2\n\n[\s\S]*Signal: bar_done/);
+  });
+
+  it('treats whitespace-only overlay content as absent for the flag (admission semantics)', () => {
+    const root = seedCatalog();
+    const result = composeActionPrompt({
+      actionName: 'foo',
+      completionEvent: 'bar_done',
+      catalogRoot: root,
+      overlay: { 'action.foo.pre': '   \n\n  ' },
+    });
+    expect(result.has_custom_instructions).toBe(false);
+  });
+
+  it('accepts a startStep input and starts numbering from that integer', () => {
+    const root = seedCatalog();
+    const result = composeActionPrompt({
+      actionName: 'foo',
+      completionEvent: null,
+      catalogRoot: root,
+      startStep: 2,
+    });
+    expect(result.prompt).toMatch(/^## Step 2\n\nfoo body\./);
+  });
+
+  it('terminal action (completionEvent=null) numbers only admitted sections', () => {
+    const root = seedCatalog();
+    const result = composeActionPrompt({
+      actionName: 'foo',
+      completionEvent: null,
+      catalogRoot: root,
+      overlay: { 'action.foo.pre': 'pre' },
+    });
+    expect(result.prompt).toMatch(/^## Step 1\n\npre\n\n## Step 2\n\nfoo body\.\s*$/);
+    expect(result.has_custom_instructions).toBe(true);
+  });
+});
+
+describe('composeOrphanEventPrompt — Step-N numbering and flag', () => {
+  it('numbers admitted sections sequentially from Step 1 and reports has_custom_instructions', () => {
+    const root = seedCatalog();
+    const result = composeOrphanEventPrompt({
+      eventName: 'kickoff',
+      catalogRoot: root,
+      overlay: { 'event.kickoff.post': 'post' },
+    });
+    expect(result.prompt).toMatch(/^## Step 1\n\n[\s\S]*Signal: kickoff/);
+    expect(result.prompt).toMatch(/## Step 2\n\npost\s*$/);
+    expect(result.has_custom_instructions).toBe(true);
   });
 });

@@ -21,6 +21,6 @@ describe('pipeline signal end-to-end via the built bundle', () => {
     const env = JSON.parse(stdout);
     expect(env.ok).toBe(true);
     // Per FR-7, success envelopes carry top-level prompt and completion_event.
-    expect(Object.keys(env.data).sort()).toEqual(['action', 'completion_event', 'context', 'prompt']);
+    expect(Object.keys(env.data).sort()).toEqual(['action', 'completion_event', 'context', 'has_custom_instructions', 'prompt']);
   }, 60_000);
 });

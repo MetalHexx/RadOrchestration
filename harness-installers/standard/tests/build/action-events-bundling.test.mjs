@@ -1,8 +1,8 @@
 // harness-installers/standard/tests/build/action-events-bundling.test.mjs —
 // FR-1, FR-19, FR-20, AD-3, AD-10. Asserts the standard installer build
 // stages `runtime-config/action-events/` into every per-harness `output/<h>/`
-// payload, ships only `custom/README.md` from the canonical `custom/` slot
-// (never user-authored files), and records the action-events files in the
+// payload, ships the canonical `custom/` slot as an empty directory (no
+// user-authored files leak), and records the action-events files in the
 // per-harness manifest with `${RAD_HOME}/action-events/...` destinations.
 
 import { test } from 'node:test';
@@ -21,8 +21,6 @@ test('standard build bundles action-events for every harness', async () => {
       assert.ok(fs.existsSync(aeRoot), `${h}: action-events/ directory present`);
       assert.ok(fs.existsSync(path.join(aeRoot, 'README.md')),
         `${h}: action-events/README.md present`);
-      assert.ok(fs.existsSync(path.join(aeRoot, 'custom', 'README.md')),
-        `${h}: action-events/custom/README.md present`);
       const actionFiles = fs.readdirSync(aeRoot).filter((f) => /^action\..*\.md$/.test(f));
       assert.ok(actionFiles.length > 0, `${h}: at least one shipped action.*.md present`);
       const eventFiles = fs.readdirSync(aeRoot).filter((f) => /^event\..*\.md$/.test(f));
@@ -33,14 +31,15 @@ test('standard build bundles action-events for every harness', async () => {
   }
 });
 
-test('standard build ships only custom/README.md from action-events/custom/ — never user-authored files (FR-20)', async () => {
+test('standard build ships an empty action-events/custom/ — no user-authored files leak (FR-20)', async () => {
   const { outRoot, cleanup } = await runBuild();
   try {
     for (const h of HARNESSES) {
       const customDir = path.join(outRoot, h, 'action-events', 'custom');
+      assert.ok(fs.existsSync(customDir), `${h}: action-events/custom/ directory present`);
       const entries = fs.readdirSync(customDir);
-      assert.deepStrictEqual(entries.sort(), ['README.md'],
-        `${h}: action-events/custom/ contains exactly README.md (no user-authored files leak)`);
+      assert.deepStrictEqual(entries, [],
+        `${h}: action-events/custom/ ships empty (no user-authored files leak)`);
     }
   } finally {
     cleanup();
@@ -61,12 +60,10 @@ test('manifest entries for action-events all destinate under ${RAD_HOME}/action-
           `${h}: ${f.bundlePath} destinationPath uses \${RAD_HOME}/action-events/...`);
       }
       // Defensive: manifest must NOT list any path under action-events/custom/
-      // other than the shipped custom/README.md.
+      // (the slot is user-owned and ships empty).
       for (const f of aeFiles) {
-        if (f.bundlePath.startsWith('action-events/custom/')) {
-          assert.strictEqual(f.bundlePath, 'action-events/custom/README.md',
-            `${h}: manifest must not list user-authored custom payloads (got ${f.bundlePath})`);
-        }
+        assert.ok(!f.bundlePath.startsWith('action-events/custom/'),
+          `${h}: manifest must not list any action-events/custom/ payload (got ${f.bundlePath})`);
       }
     }
   } finally {

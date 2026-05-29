@@ -290,6 +290,7 @@ export interface PipelineResult {
   context: Record<string, unknown>;
   prompt?: string;
   completion_event?: string | null;
+  has_custom_instructions?: boolean;
   error?: { message: string; event: string; field?: string };
 }
 

@@ -9,11 +9,6 @@
 // skipped unconditionally — projects/ is sacred user data. A one-line
 // `[install] skipping projects/ entry '<bundlePath>'` log is emitted per skip.
 //
-// FR-20: the canonical `action-events/custom/README.md` is seeded only on
-// first install — if the file already exists (user has edited it, or the
-// directory was hand-created), the copy is skipped so the user's content is
-// preserved. Symmetrical to orchestration.yml's user-config preservation.
-//
 // NFR-6: after copying skills/rad-orchestration/scripts/radorch.mjs, chmod
 // 0o755 on POSIX (try/catch — silent no-op on Windows).
 
@@ -35,25 +30,11 @@ export function installManifestFiles(manifest, bundleRoot, harness, opts = {}) {
   let copiedCount = 0;
   let skippedCount = 0;
 
-  // FR-20: action-events/custom/README.md is seeded on first install only.
-  // Resolve once outside the loop for the equality check below.
-  const customReadmeAbs = expandDestinationTokens(
-    '${RAD_HOME}/action-events/custom/README.md',
-    harness,
-  );
-
   for (const entry of manifest.files) {
     const target = expandDestinationTokens(entry.destinationPath, harness);
 
     if (target.startsWith(projectsRoot)) {
       console.warn(`[install] skipping projects/ entry '${entry.bundlePath}'`);
-      skippedCount++;
-      continue;
-    }
-
-    // FR-20: never overwrite a user-edited custom/README.md. The seed copy
-    // runs only when the file is absent.
-    if (target === customReadmeAbs && fs.existsSync(target)) {
       skippedCount++;
       continue;
     }

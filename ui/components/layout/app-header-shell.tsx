@@ -10,6 +10,7 @@ import type { NavLink } from "./app-header";
 const NAV_LINKS: NavLink[] = [
   { label: "Projects", href: "/projects" },
   { label: "Process Editor", href: "/process-editor" },
+  { label: "Instruction Editor", href: "/action-events" },
 ];
 
 // ─── Props ───────────────────────────────────────────────────────────────────

@@ -5,10 +5,9 @@ import { userDataPaths } from './user-data-paths.js';
 /** Removes every non-user-config entry then prunes empty parent dirs upward,
  *  with ~/.radorc/projects/ always skipped.
  *
- *  FR-20 defensive guard: before any per-entry work, scans the manifest and
- *  throws if any entry targets a path under ${RAD_HOME}/action-events/custom/
- *  other than the canonical custom/README.md. Belt-and-suspenders against
- *  future manifest-shape drift. */
+ *  FR-20 defensive guard: refuses any manifest entry that targets a path under
+ *  ${RAD_HOME}/action-events/custom/. The shipped manifest must never list one;
+ *  if one ever appears, abort before touching disk. */
 export function removeManifestFiles(manifest, opts = {}) {
   const paths = userDataPaths(opts);
   const resolvedRoot = path.resolve(paths.root);
@@ -16,15 +15,12 @@ export function removeManifestFiles(manifest, opts = {}) {
 
   // FR-20 defensive guard.
   const customSegment = `${path.sep}action-events${path.sep}custom${path.sep}`;
-  const allowedCustomAbs = path.resolve(
-    path.join(resolvedRoot, 'action-events', 'custom', 'README.md'),
-  );
   for (const entry of manifest.files ?? []) {
     const dest = path.resolve(entry.destinationPath.replaceAll('${RAD_HOME}', paths.root));
-    if (dest.includes(customSegment) && dest !== allowedCustomAbs) {
+    if (dest.includes(customSegment)) {
       throw new Error(
         `uninstall safety: manifest entry '${entry.sourcePath ?? entry.destinationPath}' targets an ` +
-        `action-events/custom/ payload. Only the shipped custom/README.md may be listed. Refusing to proceed.`,
+        `action-events/custom/ payload. Refusing to proceed.`,
       );
     }
   }

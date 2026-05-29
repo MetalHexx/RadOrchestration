@@ -30,7 +30,6 @@ function makeValidDist(root, canonicalAgentsDir, agents = ['orchestrator', 'code
     }
     fs.writeFileSync(path.join(hOut, 'skills/rad-orchestration/scripts/radorch.mjs'), '// radorch\n');
     fs.writeFileSync(path.join(hOut, 'action-events/README.md'), '# action-events\n');
-    fs.writeFileSync(path.join(hOut, 'action-events/custom/README.md'), '# custom slot\n');
     // Canonical agents (gate 2). Per-harness filename suffix matches the adapter:
     // claude emits `<name>.md`, copilot variants emit `<name>.agent.md`.
     fs.mkdirSync(path.join(hOut, 'agents'), { recursive: true });

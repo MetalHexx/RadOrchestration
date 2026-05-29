@@ -79,15 +79,13 @@ export async function runBuild(opts) {
 
   // action-events staging (FR-1, FR-19, AD-3, AD-10). Source:
   // runtime-config/action-events/ → output/_install-source/action-events/.
-  // The filter ships ONLY the canonical `custom/README.md` from `custom/` —
-  // never user-authored files inside the slot (FR-20).
+  // The `custom/` directory ships as an empty folder — never user-authored
+  // files inside the slot (FR-20).
   await step('copy-action-events', () => {
     const customSep = `${path.sep}custom${path.sep}`;
-    const customReadme = `${path.sep}custom${path.sep}README.md`;
     const filter = (src) => {
       if (!src.includes(customSep)) return true;
-      if (src.endsWith(`${path.sep}custom`)) return true;
-      return src.endsWith(customReadme);
+      return src.endsWith(`${path.sep}custom`);
     };
     fs.cpSync(
       path.join(root, 'runtime-config/action-events'),
