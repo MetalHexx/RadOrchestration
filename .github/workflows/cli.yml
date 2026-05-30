@@ -34,7 +34,7 @@ jobs:
       # deps must be installed for `tsc --noEmit` to type-resolve them.
       - name: Install repo-registry deps (cli typecheck includes lib sources)
         working-directory: lib/repo-registry
-        run: npm ci
+        run: npm install
 
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit
