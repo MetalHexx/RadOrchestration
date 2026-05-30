@@ -66,6 +66,10 @@ The heading string `## Plan Size Limits` is contractual — no alternative phras
   script-block invocation, envelope parse shape, error handling, spawning subagents
   protocol, and status reporting convention. Read `pipeline-guide.md` for the
   complete operational reference.
+- **`rad-repo`**: Conversational front for repo and repo-group management — routes to
+  the `radorch repo` / `repo-group` CLI for registering, binding, listing, editing,
+  and removing repos and groups. Point users at any subcommand's `--help` for the
+  full flag listing.
 
 ## Success-Envelope Handling
 

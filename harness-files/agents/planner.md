@@ -20,6 +20,10 @@ workflow based on the orchestrator action:
 ## Skills
 - **`rad-create-plans`**: Your primary workflow — load this first for Requirements and Master Plans
 - **`rad-log-error`**: Used to log pipeline failures and other recoverable errors during planning
+- **`rad-repo`**: Conversational front for repo and repo-group management — routes to
+  the `radorch repo` / `repo-group` CLI for registering, binding, listing, editing,
+  and removing repos and groups. Point users at any subcommand's `--help` for the
+  full flag listing.
 
 ## Spawn Prompt Conventions
 
