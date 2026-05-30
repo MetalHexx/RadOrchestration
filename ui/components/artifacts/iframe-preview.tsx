@@ -41,7 +41,10 @@ export function IframePreview({
     <iframe
       src={src}
       title={title ?? fileName}
-      sandbox=""
+      // allow-same-origin (without allow-scripts) so the injected scrollbar CSS is
+      // honored — an opaque-origin iframe ignores scrollbar styling. Scripts stay
+      // disabled, so these static artifacts still can't run JS / read app storage.
+      sandbox="allow-same-origin"
       loading={eager ? "eager" : "lazy"}
       referrerPolicy="no-referrer"
       className={cn("border-0 bg-white", className)}
@@ -89,7 +92,10 @@ export function StageIframe({ projectName, fileName }: { projectName: string; fi
         key={fileName}
         src={src}
         title={fileName}
-        sandbox=""
+        // allow-same-origin (without allow-scripts) so the injected scrollbar CSS is
+        // honored — an opaque-origin iframe ignores scrollbar styling. Scripts stay
+        // disabled, so these static artifacts still can't run JS / read app storage.
+        sandbox="allow-same-origin"
         loading="eager"
         referrerPolicy="no-referrer"
         className="border-0 bg-white"

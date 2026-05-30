@@ -74,8 +74,9 @@ test('chrome=scroll injects styled webkit scrollbar before </head> (Part B)', as
       const res = await GET(req('DEMO', 'DEMO-PAGE.html', 'scroll'), { params: { name: 'DEMO' } });
       assert.equal(res.status, 200);
       const body = await res.text();
-      // Sandboxed iframes ignore standard scrollbar-color, so the thin/dark look
-      // is delivered via the ::-webkit-scrollbar pseudo-elements (Chromium harness).
+      // Standard scrollbar props (honored once the iframe is allow-same-origin),
+      // mirrored by ::-webkit-scrollbar as a fallback; both carry the app thumb color.
+      assert.ok(body.includes('scrollbar-width:thin'), 'thin scrollbar injected');
       assert.ok(body.includes('::-webkit-scrollbar-thumb'), 'webkit thumb styled');
       assert.ok(body.includes('oklch(0.55 0 0 / 0.5)'), 'app thumb color injected');
       assert.ok(body.indexOf('<style>') < body.indexOf('</head>'), 'style injected before </head>');

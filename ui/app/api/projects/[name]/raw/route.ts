@@ -7,12 +7,11 @@ import { readDocument } from '@/lib/fs-reader';
 
 function scrollbarStyle(chrome: string | null): string {
   if (chrome === 'scroll') {
-    // The stage iframe is sandboxed (opaque origin); Chromium there ignores the
-    // standard `scrollbar-color`, and setting `scrollbar-width`/`-color` would
-    // suppress the ::-webkit-scrollbar rules. So style the webkit pseudo-elements
-    // directly (the harness is Chromium) to get the app's thin/dark scrollbar.
-    // `!important` lets it win over any scrollbar styling the artifact defines.
-    return '<style>::-webkit-scrollbar{width:10px !important;height:10px !important;}::-webkit-scrollbar-track{background:transparent !important;}::-webkit-scrollbar-thumb{background-color:oklch(0.55 0 0 / 0.5) !important;border-radius:9999px !important;}::-webkit-scrollbar-thumb:hover{background-color:oklch(0.75 0 0 / 0.8) !important;}::-webkit-scrollbar-corner{background:transparent !important;}</style>';
+    // Paired with sandbox="allow-same-origin" on the iframe so the standard
+    // scrollbar-width/-color render (an opaque-origin iframe ignores scrollbar
+    // styling entirely). Mirrors the app's globals.css thin/dark scrollbar;
+    // !important wins over any styling the artifact sets; webkit rules are a fallback.
+    return '<style>html,body{scrollbar-width:thin !important;scrollbar-color:oklch(0.55 0 0 / 0.5) transparent !important;}*{scrollbar-width:thin;scrollbar-color:oklch(0.55 0 0 / 0.5) transparent;}::-webkit-scrollbar{width:10px;height:10px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background-color:oklch(0.55 0 0 / 0.5);border-radius:9999px;}::-webkit-scrollbar-thumb:hover{background-color:oklch(0.75 0 0 / 0.8);}::-webkit-scrollbar-corner{background:transparent;}</style>';
   }
   if (chrome === 'hide') {
     return '<style>::-webkit-scrollbar{display:none !important;}html,body{scrollbar-width:none !important;-ms-overflow-style:none !important;}*{scrollbar-width:none;-ms-overflow-style:none;}</style>';
