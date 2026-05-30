@@ -142,6 +142,27 @@ async function run() {
     await rm(cacheDir, { recursive: true });
   });
 
+  await test('returns root *.html files alongside .md (FR-22)', async () => {
+    await writeFile(path.join(tmpDir, 'DEMO-BRAINSTORM.html'), '<html></html>');
+    await writeFile(path.join(tmpDir, 'DEMO-WIREFRAME-LAUNCH-SCREEN.html'), '<html></html>');
+    const files = await listProjectFiles(tmpDir);
+    assert.ok(files.includes('DEMO-BRAINSTORM.html'), 'should include root brainstorm html');
+    assert.ok(files.includes('DEMO-WIREFRAME-LAUNCH-SCREEN.html'), 'should include root wireframe html');
+  });
+
+  await test('still returns .md files after html extension (AD-3)', async () => {
+    const files = await listProjectFiles(tmpDir);
+    assert.ok(files.includes('PRD.md'), 'md walk preserved');
+    assert.ok(files.includes('tasks/TASK-P01-T01.md'), 'subdir md walk preserved');
+  });
+
+  await test('skips html inside ignored directories (AD-3)', async () => {
+    await mkdir(path.join(tmpDir, 'node_modules', 'pkg'), { recursive: true });
+    await writeFile(path.join(tmpDir, 'node_modules', 'pkg', 'index.html'), '<html></html>');
+    const files = await listProjectFiles(tmpDir);
+    assert.ok(!files.some((f) => f.includes('node_modules')), 'node_modules html excluded');
+  });
+
   // Cleanup
   await rm(tmpDir, { recursive: true });
 

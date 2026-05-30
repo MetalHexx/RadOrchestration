@@ -268,7 +268,7 @@ export async function listProjectFiles(projectDir: string): Promise<string[]> {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(fullPath);
-      } else if (entry.name.endsWith('.md')) {
+      } else if (entry.name.endsWith('.md') || entry.name.endsWith('.html')) {
         files.push(path.relative(projectDir, fullPath).replace(/\\/g, '/'));
       }
     }
