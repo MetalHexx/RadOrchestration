@@ -14,7 +14,7 @@ import { useProjectArtifacts, deleteArtifact } from "@/hooks/use-project-artifac
 import { DocumentDrawer } from "@/components/documents";
 import { ConfirmApprovalDialog } from "@/components/dashboard";
 import { ConfigEditorPanel } from "@/components/config";
-import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, BrainstormingSection, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
@@ -207,6 +207,12 @@ export default function ProjectsPage() {
                 />
               </div>
               <div className="px-6 py-4">
+                <BrainstormingSection
+                  projectName={selected.name}
+                  artifacts={artifacts}
+                  onOpen={(index) => openArtifactModal(index)}
+                  onDelete={(a) => setPendingDelete(a)}
+                />
                 <DAGTimeline
                   nodes={v5State.graph.nodes}
                   currentNodePath={v5State.graph.current_node_path}
