@@ -20,6 +20,8 @@ import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
+import { ArtifactViewerModal } from "@/components/artifacts";
+import { useArtifactModal, markdownPathForActive } from "@/hooks/use-artifact-modal";
 
 export default function ProjectsPage() {
   const {
@@ -76,13 +78,34 @@ export default function ProjectsPage() {
   const [pendingDelete, setPendingDelete] = useState<import("@/lib/artifact-model").Artifact | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [fileRefetch, setFileRefetch] = useState(0);
-  const [_modalIndex, setModalIndex] = useState<number | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
 
   const artifacts = useProjectArtifacts(selectedProject, fileList);
 
-  function openArtifactModal(index: number) {
-    setModalIndex(index);
-  }
+  const modal = useArtifactModal(-1, () => artifacts.length);
+  const openArtifactModal = modal.openAt;
+
+  useEffect(() => {
+    const mdPath = markdownPathForActive(artifacts, modal.index);
+    if (!modal.open || !mdPath || !selectedProject) {
+      setModalMarkdown(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/projects/${encodeURIComponent(selectedProject)}/document?path=${encodeURIComponent(mdPath)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch markdown");
+        return res.json();
+      })
+      .then((data: { content: string }) => {
+        if (!cancelled) setModalMarkdown(data.content);
+      })
+      .catch(() => {
+        if (!cancelled) setModalMarkdown('');
+      });
+    return () => { cancelled = true; };
+  }, [modal.open, modal.index, artifacts, selectedProject]);
 
   const v5Derivations = useMemo(() => {
     if (!v5State) {
@@ -265,6 +288,21 @@ export default function ProjectsPage() {
         onNavigate={navigateTo}
       />
 
+      {modal.open && artifacts[modal.index] && (
+        <ArtifactViewerModal
+          projectName={selectedProject!}
+          artifacts={artifacts}
+          activeIndex={modal.index}
+          markdownContent={modalMarkdown}
+          onClose={modal.close}
+          onPrev={modal.goPrev}
+          onNext={modal.goNext}
+          onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
+          isFullScreen={isFullScreen}
+          onToggleFullScreen={() => setIsFullScreen((v) => !v)}
+        />
+      )}
+
       <ConfirmApprovalDialog
         open={pendingDelete !== null}
         onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
@@ -278,6 +316,7 @@ export default function ProjectsPage() {
           await deleteArtifact(selectedProject, pendingDelete.fileName);
           setDeletePending(false);
           setPendingDelete(null);
+          modal.onDeleted();
           setFileRefetch((n) => n + 1);
         }}
       />

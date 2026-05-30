@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { Artifact } from "@/lib/artifact-model";
+
+export function markdownPathForActive(artifacts: Artifact[], index: number): string | null {
+  const a = artifacts[index];
+  return a && a.isMarkdown ? a.fileName : null;
+}
 
 export function nextIndex(current: number, length: number): number {
   if (length <= 0) return -1;
