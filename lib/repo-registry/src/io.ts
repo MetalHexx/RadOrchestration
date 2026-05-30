@@ -8,7 +8,11 @@ const LOCAL = 'repo-registry.local.yml';
 
 function readYaml<T>(file: string, fallback: T): T {
   if (!fs.existsSync(file)) return fallback;
-  return (yaml.load(fs.readFileSync(file, 'utf8')) as T) ?? fallback;
+  try {
+    return (yaml.load(fs.readFileSync(file, 'utf8')) as T) ?? fallback;
+  } catch (cause) {
+    throw new Error(`failed to parse ${file}: ${cause}`);
+  }
 }
 
 function atomicWrite(file: string, text: string): void {

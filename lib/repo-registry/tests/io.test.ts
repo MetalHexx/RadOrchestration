@@ -43,4 +43,9 @@ describe('repo-registry io', () => {
     const gi = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
     expect(gi.match(/^repo-registry\.local\.yml$/gm)?.length).toBe(1);
   });
+
+  it('readRegistry throws a meaningful error when repo-registry.yml contains malformed YAML', () => {
+    fs.writeFileSync(path.join(root, 'repo-registry.yml'), ':\ninvalid: [yaml', 'utf8');
+    expect(() => readRegistry({ root })).toThrow(/failed to parse/i);
+  });
 });

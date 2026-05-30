@@ -35,4 +35,12 @@ describe('repo + group mutations', () => {
     deleteGroup({ root, name: 'grp' });
     expect(readRegistry({ root }).repos.svc).toBeTruthy();
   });
+
+  it('addRepo throws when name is not a valid slug', () => {
+    expect(() => addRepo({ root, name: 'My Repo!', identity: { remote: 'g', default_branch: 'main', description: '' }, localPath: '/c/myrepo' })).toThrow(/not a valid slug/i);
+  });
+
+  it('createGroup throws when name is not a valid slug', () => {
+    expect(() => createGroup({ root, name: 'My Group!', members: [] })).toThrow(/not a valid slug/i);
+  });
 });

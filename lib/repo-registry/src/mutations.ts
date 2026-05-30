@@ -1,6 +1,6 @@
 import type { RepoIdentity, RepoGroup } from './types.js';
 import { readRegistry, writeIdentity, writeLocal } from './io.js';
-import { assertUniqueName } from './validate.js';
+import { isSlug, assertUniqueName } from './validate.js';
 
 export interface AddRepoOpts { root: string; name: string; identity: RepoIdentity; localPath: string }
 export interface RemoveRepoOpts { root: string; name: string }
@@ -9,6 +9,7 @@ export interface GroupMemberOpts { root: string; group: string; repo: string }
 export interface DeleteGroupOpts { root: string; name: string }
 
 export function addRepo({ root, name, identity, localPath }: AddRepoOpts): void {
+  if (!isSlug(name)) throw new Error(`name '${name}' is not a valid slug`);
   const reg = readRegistry({ root });
   assertUniqueName(reg, name);
   reg.repos[name] = identity;
@@ -29,6 +30,7 @@ export function removeRepo({ root, name }: RemoveRepoOpts): void {
 }
 
 export function createGroup({ root, name, members, description = '' }: CreateGroupOpts): void {
+  if (!isSlug(name)) throw new Error(`name '${name}' is not a valid slug`);
   const reg = readRegistry({ root });
   assertUniqueName(reg, name);
   const group: RepoGroup = { description, members: [...members] };
