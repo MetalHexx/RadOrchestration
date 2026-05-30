@@ -26,6 +26,7 @@ import { loadBundledManifest } from './catalog.js';
 import { removeManifestFiles } from './remove-files.js';
 import { expandDestinationTokens } from './expand-tokens.js';
 import { loadRegistry, writeInstallJson } from './install-json.js';
+import { removePreambleHook } from './claude-hook-settings.js';
 
 /**
  * @typedef {Object} UninstallResult
@@ -38,17 +39,20 @@ import { loadRegistry, writeInstallJson } from './install-json.js';
 /**
  * Uninstall a single harness.
  *
- * @param {{ bundleRoot: string, harness: string }} opts
- *   bundleRoot — the per-harness payload root inside the unpacked tarball
- *                (e.g. .../node_modules/rad-orchestration/output/copilot-vscode/).
- *                Used only to look up the bundled manifest for the version
- *                the user has installed; no files are read from it for
- *                removal.
- *   harness    — install-key of the harness to remove (claude | copilot-vscode
- *                | copilot-cli).
+ * @param {{ bundleRoot: string, harness: string, settingsPath?: string }} opts
+ *   bundleRoot   — the per-harness payload root inside the unpacked tarball
+ *                  (e.g. .../node_modules/rad-orchestration/output/copilot-vscode/).
+ *                  Used only to look up the bundled manifest for the version
+ *                  the user has installed; no files are read from it for
+ *                  removal.
+ *   harness      — install-key of the harness to remove (claude | copilot-vscode
+ *                  | copilot-cli).
+ *   settingsPath — absolute path to Claude's settings.json (FR-18, AD-10).
+ *                  When absent and harness === 'claude', defaults to
+ *                  ~/.claude/settings.json. Not used for Copilot harnesses.
  * @returns {Promise<UninstallResult>}
  */
-export async function uninstallHarness({ bundleRoot, harness }) {
+export async function uninstallHarness({ bundleRoot, harness, settingsPath }) {
   const paths = userDataPaths();
   const registry = loadRegistry(paths.installJson);
   const entry = registry.harnesses?.[harness];
@@ -82,6 +86,14 @@ export async function uninstallHarness({ bundleRoot, harness }) {
   }
 
   const { removedCount, prunedDirs } = removeManifestFiles(manifest, harness);
+
+  // Preamble hook removal (FR-18, AD-9): remove the marked SessionStart entry
+  // from Claude's settings.json. Copilot shims are removed by removeManifestFiles above.
+  if (harness === 'claude') {
+    const resolvedSettingsPath =
+      settingsPath ?? path.join(harnessRoot('claude'), 'settings.json');
+    removePreambleHook({ settingsPath: resolvedSettingsPath });
+  }
 
   // Drop the registry entry; keep the install.json file itself.
   delete registry.harnesses[harness];
