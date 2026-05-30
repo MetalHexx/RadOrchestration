@@ -135,6 +135,9 @@ export async function runBuild(opts) {
   await step('emit-hook-bundle', () => emitHookBundle({
     source: path.join(installerDir, 'hooks'),
     target: path.join(out, 'hooks'),
+    // session-preamble.mjs is single-source (AD-8): staged from the shared
+    // hooks dir, not the plugin's own hooks/ tree.
+    sharedHooksDir: path.join(greenfield, 'harness-installers/shared/hooks'),
   }));
 
   // FR-3 / AD-10: NO agent-namespacing transform. expand-tokens runs the

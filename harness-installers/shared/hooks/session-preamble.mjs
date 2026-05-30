@@ -4,8 +4,10 @@
 // the harness session-start hook contract.
 //
 // Resolves radorch.mjs two ways (AD-10):
-//   1. Plugin delivery: ${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs
+//   1. Plugin delivery: ${CLAUDE_PLUGIN_ROOT|COPILOT_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs
 //   2. Standard delivery: ~/.claude/skills/rad-orchestration/scripts/radorch.mjs
+// Copilot CLI launches the hook with COPILOT_PLUGIN_ROOT set (not
+// CLAUDE_PLUGIN_ROOT), so both env vars are honored (FR-16).
 //
 // On ok:true  → additionalContext carries data.preamble (FR-16, FR-17)
 // On ok:false, non-zero status, or unparseable stdout → clear notice that
@@ -19,8 +21,10 @@ import path from 'node:path';
 
 const NOTICE_PREFIX = 'rad-orchestration ambient awareness did not load';
 
-function resolveRadorch() {
-  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+export function resolveRadorch() {
+  // CLAUDE_PLUGIN_ROOT (Claude / Copilot-VSCode harnesses) or COPILOT_PLUGIN_ROOT
+  // (Copilot CLI harness) — both place radorch.mjs under the same plugin layout.
+  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT ?? process.env.COPILOT_PLUGIN_ROOT;
   if (pluginRoot) {
     return path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
   }

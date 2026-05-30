@@ -26,9 +26,9 @@ Invokes `runner` (default: `npm run build-standalone` inside `source`) to produc
 
 **`emitHookBundle(opts)` — `emit-hook-bundle.js`**
 
-`opts: { source: string, target: string, libRoot?: string }`
+`opts: { source: string, target: string, sharedHooksDir?: string, libRoot?: string }`
 
-Bundles `${source}/bootstrap.mjs` (with `lib/install/*` inlined by esbuild) to `${target}/bootstrap.mjs`. Copies `drift-check.mjs`, `hooks.json`, and `AGENTS.md` from `source` to `target` verbatim if they exist. `libRoot` defaults to `${source}/../lib` and is the esbuild module resolution root for the inlined dependencies.
+Bundles `${source}/bootstrap.mjs` (with `lib/install/*` inlined by esbuild) to `${target}/bootstrap.mjs`. Copies `drift-check.mjs`, `hooks.json`, `launcher.cjs`, and `AGENTS.md` from `source` to `target` verbatim if they exist. The single-source `session-preamble.mjs` shim (AD-8) is staged from `sharedHooksDir` when provided — not the plugin `source` tree — falling back to `source` when the option is absent. `libRoot` defaults to `${source}/../lib` and is the esbuild module resolution root for the inlined dependencies.
 
 ## Installer-blindness contract
 
@@ -49,5 +49,5 @@ All such values are supplied by the caller.
 ## Rules for making updates
 
 - Changing `TEXT_EXTS` in `expand-tokens.js` requires the same change in `harness-adapters/engine/index.js` to keep token-processing scope in sync.
-- `emitHookBundle`'s verbatim-copy list (`['drift-check.mjs', 'hooks.json', 'AGENTS.md']`) must match what `hooks/` actually ships; update here when adding new verbatim hook files.
+- `emitHookBundle`'s per-plugin verbatim-copy list (`['drift-check.mjs', 'hooks.json', 'launcher.cjs', 'AGENTS.md']`) must match what each plugin's `hooks/` actually ships; update here when adding new verbatim hook files. `session-preamble.mjs` is staged separately from `sharedHooksDir` (AD-8 single-source) and is not in this list.
 - Tests in `__tests__/` cover each helper; run them after any signature or behavior change.
