@@ -8,9 +8,11 @@ import { useConfigEditor } from "@/hooks/use-config-editor";
 import { useConfigClickContext } from "@/hooks/use-config-click-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
-import { MainDashboard, NotStartedPaneV5 } from "@/components/layout";
+import { MainDashboard, LaunchScreen } from "@/components/layout";
 import { useStartAction } from "@/hooks/use-start-action";
+import { useProjectArtifacts, deleteArtifact } from "@/hooks/use-project-artifacts";
 import { DocumentDrawer } from "@/components/documents";
+import { ConfirmApprovalDialog } from "@/components/dashboard";
 import { ConfigEditorPanel } from "@/components/config";
 import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { SSEStatusBanner } from "@/components/badges";
@@ -71,6 +73,17 @@ export default function ProjectsPage() {
 
   const startAction = useStartAction(selectedProject);
 
+  const [pendingDelete, setPendingDelete] = useState<import("@/lib/artifact-model").Artifact | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [fileRefetch, setFileRefetch] = useState(0);
+  const [_modalIndex, setModalIndex] = useState<number | null>(null);
+
+  const artifacts = useProjectArtifacts(selectedProject, fileList);
+
+  function openArtifactModal(index: number) {
+    setModalIndex(index);
+  }
+
   const v5Derivations = useMemo(() => {
     if (!v5State) {
       return { graphStatus: undefined, gateMode: undefined, currentPhaseName: null, progress: null, repoBaseUrl: null, phaseLoopStatus: undefined };
@@ -115,7 +128,7 @@ export default function ProjectsPage() {
         if (!cancelled) setFileList([]);
       });
     return () => { cancelled = true; };
-  }, [selectedProject]);
+  }, [selectedProject, fileRefetch]);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-background">
@@ -214,10 +227,11 @@ export default function ProjectsPage() {
               onDocClick={openDocument}
             />
           ) : selected && selected.tier === 'not_initialized' && !v5State && !v4State && !selected.hasMalformedState ? (
-            <NotStartedPaneV5
+            <LaunchScreen
               projectName={selected.name}
-              brainstormingDoc={selected.brainstormingDoc ?? null}
-              onViewBrainstorming={openDocument}
+              artifacts={artifacts}
+              onOpenArtifact={(index) => openArtifactModal(index)}
+              onDeleteArtifact={(a) => setPendingDelete(a)}
               onStartPlanning={() => startAction.start('start-planning')}
               onStartBrainstorming={() => startAction.start('start-brainstorming')}
               pendingAction={startAction.pendingAction}
@@ -243,6 +257,23 @@ export default function ProjectsPage() {
         scrollAreaRef={scrollAreaRef}
         docs={orderedDocs}
         onNavigate={navigateTo}
+      />
+
+      <ConfirmApprovalDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        title="Delete Artifact"
+        documentName={pendingDelete?.fileName ?? ''}
+        description="This will permanently remove"
+        isPending={deletePending}
+        onConfirm={async () => {
+          if (!pendingDelete || !selectedProject) return;
+          setDeletePending(true);
+          await deleteArtifact(selectedProject, pendingDelete.fileName);
+          setDeletePending(false);
+          setPendingDelete(null);
+          setFileRefetch((n) => n + 1);
+        }}
       />
 
       <ConfigEditorPanel editor={configEditor} />

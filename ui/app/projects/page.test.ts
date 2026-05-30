@@ -15,8 +15,8 @@ async function run() {
   );
 
   assert.ok(
-    /NotStartedPaneV5/.test(src),
-    'page.tsx imports/uses NotStartedPaneV5',
+    /LaunchScreen/.test(src),
+    'page.tsx imports/uses LaunchScreen (replaced NotStartedPaneV5 in P03-T03)',
   );
   assert.ok(
     /useStartAction/.test(src),
@@ -31,7 +31,7 @@ async function run() {
     'empty-selection placeholder still present for the unselected case (FR-10)',
   );
 
-  console.log('✓ page.tsx wires NotStartedPaneV5 for selected Not-Started projects');
+  console.log('✓ page.tsx wires LaunchScreen for selected Not-Started projects');
   console.log('\nAll /projects page structural tests passed');
 }
 
