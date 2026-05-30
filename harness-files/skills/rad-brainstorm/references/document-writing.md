@@ -28,6 +28,10 @@ This is a **goals document**, not a design document or implementation plan. Capt
 
 **Actionable summary**: The Summary section is the single most important paragraph. It should be clear enough that someone unfamiliar with the conversation could understand what this project is about and begin planning from it. This is the primary handoff to downstream processes.
 
+## Link Generated Visuals
+
+If the session produced any visuals or wireframes (`{PROJECT}-BRAINSTORM.html`, `{PROJECT}-WIREFRAME-{SLUG}.html`, or other artifacts in the project root), link them from the **Visual Artifacts** section using relative paths. They're the richest record of the brainstorm — don't leave them stranded as loose files.
+
 ## Living Document
 
 The BRAINSTORMING.md is mutable throughout the conversation:
@@ -49,6 +53,7 @@ Before considering the document final, verify:
 - [ ] Open questions are asked before the brainstorming doc is finalized
 - [ ] Summary paragraph is self-contained and unambiguous
 - [ ] Related projects are linked (if applicable — see `project-memory.md`)
+- [ ] Generated visuals / wireframes are linked in **Visual Artifacts** (if any were produced)
 - [ ] Series context is included (if applicable — see `project-series.md`)
 
 ## Flexibility

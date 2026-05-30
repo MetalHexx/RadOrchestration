@@ -1,6 +1,6 @@
 ---
 name: rad-brainstorm
-description: 'Brainstorm and refine project goals through collaborative ideation. Use when exploring problem spaces, validating concepts, building consensus on what to build, or creating the initial project goals document.'
+description: 'Brainstorm and refine project goals through collaborative ideation. Use when exploring problem spaces, validating concepts, generating UI mockups, building consensus on what to build, creating the project goals and visuals.  Trigger when the user talks about brainstorming, goal-setting, idea generation, or early-stage project definition.  You can also trigger this skill if they want to generate a mockup, wireframe or beautiful html project summary.'
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -37,6 +37,21 @@ If the user references past work, related projects, or a known domain, consider 
 ## Related Docs
 If the user offers documentation that could help with planning, offer to link it to the "Related Projects" section of the BRAINSTORMING.md.  This could include design docs, images, architecture diagrams, product requirement documents, or any other relevant materials.  The goal is to create a rich context for the project that planners can refer to when they start working on it.
 
+## Making It Visual
+A brainstorm doesn't have to be words on a page.  When the user wants to *see* their thinking — a visual summary of the goals, a diagram, or a polished recap of the session — offer to generate one.  This produces a self-contained HTML companion to the brainstorm.  Follow [make-it-visual.md](./references/make-it-visual.md), which writes `{PROJECT}-BRAINSTORM.html` to the project root.
+
+## Generating Mockups & Wireframes
+If the project has a UI, UX, or any visual surface, offer to mock it up.  A wireframe makes an abstract idea concrete and often surfaces details the user hadn't considered yet — exactly the kind of thinking this skill exists to provoke.  Follow [generate-mockup.md](./references/generate-mockup.md), which writes `{PROJECT}-WIREFRAME-{SLUG}.html` (one file per screen — a project may have several) to the project root.
+
+## Delegate Visual Generation to a Subagent
+Always hand visual generation off to a subagent rather than producing it inline — it keeps the brainstorming thread focused and lets the visual work happen in its own context.  Choose the mode deliberately:
+- **Forked subagent (default).** Fork the current context so the subagent inherits the full brainstorming conversation.  Use this when the visual should faithfully reflect what you've aligned on — visualizing the locked goals, or the UI you just agreed on.
+- **Fresh subagent.** Spawn a regular subagent with only a short brief when you want an independent, fresh interpretation — a different take on the same idea, or a divergent design to compare against.  This is a cheap way to put two options in front of the user.
+
+## Keep the Doc and Visuals in Lockstep
+BRAINSTORMING.md and any visuals or wireframes must always stay in lockstep — both should reflect the current reality of the aligned goals at every moment.  When goals change, update both in the same pass; never let the doc or a visual drift out of date relative to what's been agreed.
+- A stale visual is worse than no visual — it misrepresents the consensus you've built.
+
 ## Routing Table
 
 | Concern | Reference Document |
@@ -45,12 +60,15 @@ If the user offers documentation that could help with planning, offer to link it
 | Writing the document | [references/document-writing.md](./references/document-writing.md) |
 | Finding related projects | [references/project-memory.md](./references/project-memory.md) |
 | Splitting large projects | [references/project-series.md](./references/project-series.md) |
+| Visual summaries / diagrams | [references/make-it-visual.md](./references/make-it-visual.md) |
+| UI mockups / wireframes | [references/generate-mockup.md](./references/generate-mockup.md) |
 
 ## Loading Instructions
 
 1. **Always read**: `collaboration.md` and `document-writing.md` — these are your core workflow.
 2. **Read when relevant**: `project-memory.md` — when the conversation references past work, related projects, or a known domain.
 3. **Read when relevant**: `project-series.md` — when the idea feels too large for a single project, or the user mentions phases, stages, or incremental delivery.
+4. **Read when relevant**: `make-it-visual.md` / `generate-mockup.md` — when the user wants a visual summary, diagram, mockup, or wireframe. Hand the generation to a subagent (see *Delegate Visual Generation to a Subagent*).
 
 ## Inputs
 

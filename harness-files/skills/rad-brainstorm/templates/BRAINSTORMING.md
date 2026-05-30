@@ -15,6 +15,16 @@ created: "{ISO-DATE}"
 
 - [{RELATED-PROJECT}](../{RELATED-PROJECT}/{RELATED-PROJECT}-REQUIREMENTS.md) — {one-line: what it established or why it's relevant}
 
+## Visual Artifacts
+
+<!--
+  Optional. Include when visuals or wireframes were generated this session.
+  Link every HTML artifact in the project root with a relative path. Remove if none.
+-->
+
+- [{Title}](./{PROJECT-NAME}-BRAINSTORM.html) — visual summary of the brainstorm
+- [{Title}](./{PROJECT-NAME}-WIREFRAME-{SLUG}.html) — {what this wireframe shows}
+
 ## Series Context
 
 <!--
