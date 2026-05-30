@@ -80,10 +80,14 @@ export function repoAdd({ root, repoPath, exec }: RepoAddOptions): RepoAddResult
     throw new UserError('no remote configured for this repository');
   }
 
+  let chosenRemoteName: string;
   let chosenRemoteUrl: string;
   if (remoteMap.size === 1) {
-    chosenRemoteUrl = remoteMap.values().next().value as string;
+    const entry = remoteMap.entries().next().value as [string, string];
+    chosenRemoteName = entry[0];
+    chosenRemoteUrl = entry[1];
   } else if (remoteMap.has('origin')) {
+    chosenRemoteName = 'origin';
     chosenRemoteUrl = remoteMap.get('origin') as string;
   } else {
     throw new UserError('more than one remote found and none is named "origin" — cannot infer remote');
@@ -91,11 +95,11 @@ export function repoAdd({ root, repoPath, exec }: RepoAddOptions): RepoAddResult
 
   const normalizedRemote = normalizeRemote(chosenRemoteUrl);
 
-  // Derive default branch
+  // Derive default branch using the selected remote's HEAD
   let defaultBranch = 'main';
   try {
-    const symref = actualExec('git', ['symbolic-ref', 'refs/remotes/origin/HEAD']);
-    const match = symref.trim().match(/refs\/remotes\/origin\/(.+)$/);
+    const symref = actualExec('git', ['symbolic-ref', `refs/remotes/${chosenRemoteName}/HEAD`]);
+    const match = symref.trim().match(new RegExp(`refs/remotes/${chosenRemoteName}/(.+)$`));
     if (match) defaultBranch = match[1];
   } catch {
     // fall back to 'main'

@@ -2,7 +2,7 @@
 
 ## What a repo is
 
-A **repo** is a git repository recorded in the orchestration system under a short lowercase-kebab slug (e.g. `my-app`, `shared-lib`). The registry stores the team-portable parts of its identity: remote URL, default branch, and an optional human-readable description. The slug is derived automatically from the last path segment of the directory when you register with `repo add`, or you can supply one explicitly.
+A **repo** is a git repository recorded in the orchestration system under a short lowercase-kebab slug (e.g. `my-app`, `shared-lib`). The registry stores the team-portable parts of its identity: remote URL, default branch, and an optional human-readable description. The slug is derived automatically from the last path segment of the directory when you register with `repo add`.
 
 Slugs are unique across both repos and repo-groups — you cannot have a repo and a repo-group sharing the same name.
 
@@ -36,4 +36,4 @@ This writes the local path for that slug into `repo-registry.local.yml` without 
 
 Every slug — whether it names a repo or a repo-group — must be unique within the registry. The constraint spans both namespaces: a slug already used for a repo cannot be reused for a group, and vice versa. The `repo add` and `repo-group create` commands enforce this and return an error if the chosen name is already taken.
 
-Slugs follow lowercase-kebab convention (`a-z`, `0-9`, hyphens; no uppercase, no underscores, no slashes). The `repo add` command derives the slug automatically from the directory name using that rule, but you can supply an explicit slug at registration time. Once registered, the slug is fixed and cannot be changed — `repo edit` cannot modify it. To change a slug, you must remove and re-add the repo.
+Slugs follow lowercase-kebab convention (`a-z`, `0-9`, hyphens; no uppercase, no underscores, no slashes). The `repo add` command derives the slug automatically from the directory name using that rule. Once registered, the slug is fixed and cannot be changed — `repo edit` cannot modify it. To change a slug, you must remove the repo and re-add it from the new directory.

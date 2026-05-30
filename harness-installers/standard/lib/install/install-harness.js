@@ -179,7 +179,7 @@ function doFreshInstall({
   // hooks/session-preamble.mjs resolved to its install-time absolute location.
   if (opts.harness === 'claude') {
     const shimPath = path.join(harnessRoot('claude'), 'hooks', 'session-preamble.mjs');
-    mergePreambleHook({ settingsPath, hookCommand: `node ${shimPath}` });
+    mergePreambleHook({ settingsPath, hookCommand: `node "${shimPath}"` });
   }
 
   // Folder mutex + cross-channel emission, best-effort (NFR-4).
@@ -223,7 +223,7 @@ function doUpgrade({
   // the marker is already present from a prior install.
   if (opts.harness === 'claude') {
     const shimPath = path.join(harnessRoot('claude'), 'hooks', 'session-preamble.mjs');
-    mergePreambleHook({ settingsPath, hookCommand: `node ${shimPath}` });
+    mergePreambleHook({ settingsPath, hookCommand: `node "${shimPath}"` });
   }
 
   emitPostInstallNotices({ registry, installKey, stderr });

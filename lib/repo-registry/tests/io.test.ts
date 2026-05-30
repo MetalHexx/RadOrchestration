@@ -48,4 +48,12 @@ describe('repo-registry io', () => {
     fs.writeFileSync(path.join(root, 'repo-registry.yml'), ':\ninvalid: [yaml', 'utf8');
     expect(() => readRegistry({ root })).toThrow(/failed to parse/i);
   });
+
+  it('writeIdentity succeeds and creates directory when root does not yet exist', () => {
+    const nestedRoot = path.join(root, 'deep', 'nested', 'radorc');
+    expect(fs.existsSync(nestedRoot)).toBe(false);
+    writeIdentity({ root: nestedRoot, repos: { 'new-repo': { remote: 'https://github.com/o/r', default_branch: 'main', description: 'test' } }, repoGroups: {} });
+    expect(fs.existsSync(nestedRoot)).toBe(true);
+    expect(fs.existsSync(path.join(nestedRoot, 'repo-registry.yml'))).toBe(true);
+  });
 });

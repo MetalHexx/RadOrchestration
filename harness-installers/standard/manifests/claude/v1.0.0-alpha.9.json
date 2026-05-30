@@ -245,7 +245,7 @@
     {
       "bundlePath": "hooks/session-preamble.mjs",
       "destinationPath": "${HARNESS_ROOT}/hooks/session-preamble.mjs",
-      "sha256": "a0f6f8025948656f2dc876185e7f7b2b08374daa4c3f2a8c5c0439697ed41bb4"
+      "sha256": "961b679c2aa1e84e1e58770af3320eac2df0354563fa34e81aa5daa4efff2e65"
     },
     {
       "bundlePath": "skills/rad-approve-plan/SKILL.md",
@@ -430,7 +430,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "bd720bf0c74d6820c38861b3945753bd8816ec3646b26f9afe9246f0a8502f46"
+      "sha256": "9c0c7aebfef581428f762c974cc67cada07d088efe9c5d2cdfc003cdeb533068"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
@@ -470,7 +470,7 @@
     {
       "bundlePath": "skills/rad-repo/references/registration-model.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/registration-model.md",
-      "sha256": "5edd85a76aac69813521d9b1716391444ccd91c3f1e80364ed1d7ed7813e66d5"
+      "sha256": "08512442d5174a4b0f7a47aa1a3a1444f1c69d739e18519c489ae44b03c8ad24"
     },
     {
       "bundlePath": "skills/rad-run-tests/SKILL.md",

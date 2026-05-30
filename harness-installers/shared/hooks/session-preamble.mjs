@@ -5,7 +5,8 @@
 //
 // Resolves radorch.mjs two ways (AD-10):
 //   1. Plugin delivery: ${CLAUDE_PLUGIN_ROOT|COPILOT_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs
-//   2. Standard delivery: ~/.claude/skills/rad-orchestration/scripts/radorch.mjs
+//   2. Standard delivery: <harnessRoot>/skills/rad-orchestration/scripts/radorch.mjs
+//      where <harnessRoot> is derived from this hook file's own location (../../ from hooks/).
 // Copilot CLI launches the hook with COPILOT_PLUGIN_ROOT set (not
 // CLAUDE_PLUGIN_ROOT), so both env vars are honored (FR-16).
 //
@@ -16,7 +17,7 @@
 // Authored once here; consumed by both plugin and standard delivery (AD-8).
 
 import { spawnSync } from 'node:child_process';
-import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const NOTICE_PREFIX = 'rad-orchestration ambient awareness did not load';
@@ -28,8 +29,12 @@ export function resolveRadorch() {
   if (pluginRoot) {
     return path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
   }
-  // Standard-install manifest destination: ~/.claude/skills/rad-orchestration/scripts/radorch.mjs
-  return path.join(os.homedir(), '.claude', 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
+  // Standard-install: hook ships at <harnessRoot>/hooks/session-preamble.mjs.
+  // Derive <harnessRoot> from this file's own location (two levels up) so the
+  // same hook works under any harness root (e.g. ~/.copilot or ~/.claude).
+  const hookDir = path.dirname(fileURLToPath(import.meta.url));
+  const harnessRoot = path.resolve(hookDir, '..', '..');
+  return path.join(harnessRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
 }
 
 function defaultRun() {

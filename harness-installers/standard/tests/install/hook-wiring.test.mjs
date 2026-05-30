@@ -352,3 +352,116 @@ test('build stages session-preamble.mjs into output/<harness>/hooks/ for all har
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Test 4: verify hook command quotes the shim path (handles paths with spaces)
+// ---------------------------------------------------------------------------
+
+test('install claude: generated hook command quotes the shim path to handle spaces (fresh-install)', async () => {
+  const tmp = mkTmp('std-hw-cl-quote-fresh-');
+  const restoreHome = withHome(path.join(tmp, 'home with spaces'));
+  try {
+    const home = path.join(tmp, 'home with spaces');
+    const bundle = path.join(tmp, 'bundle');
+    buildBundle(bundle, { version: '1.0.0' });
+
+    const settingsDir = path.join(home, '.claude');
+    fs.mkdirSync(settingsDir, { recursive: true });
+    const settingsPath = path.join(settingsDir, 'settings.json');
+    fs.writeFileSync(settingsPath, JSON.stringify({}, null, 2));
+
+    const result = await installHarness({
+      bundleRoot: bundle,
+      harness: 'claude',
+      settingsPath,
+    });
+    assert.strictEqual(result.action, 'fresh-install');
+
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const MARKER = 'rad-orc-preamble';
+    const markedEntry = settings.hooks.SessionStart.find(
+      (e) => Array.isArray(e.hooks) && e.hooks.some((h) => typeof h.command === 'string' && h.command.includes(MARKER)),
+    );
+    assert.ok(markedEntry, 'marked entry found');
+
+    const markedHookCmd = markedEntry.hooks.find((h) => h.command.includes(MARKER)).command;
+
+    // Verify that the path is quoted in the command.
+    // The command should be like: node "/path/with spaces/to/session-preamble.mjs" # rad-orc-preamble
+    assert.ok(
+      markedHookCmd.includes('node "'),
+      `hook command should start with 'node "' to quote the path, got: ${markedHookCmd}`,
+    );
+    assert.ok(
+      markedHookCmd.includes('" #'),
+      `hook command should have closing quote before comment, got: ${markedHookCmd}`,
+    );
+  } finally {
+    restoreHome();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('upgrade claude: generated hook command quotes the shim path to handle spaces (upgrade)', async () => {
+  const tmp = mkTmp('std-hw-cl-quote-upgrade-');
+  const restoreHome = withHome(path.join(tmp, 'home with spaces'));
+  try {
+    const home = path.join(tmp, 'home with spaces');
+    const bundle = path.join(tmp, 'bundle');
+    buildBundle(bundle, { version: '1.0.1', priorVersion: '1.0.0' });
+
+    // Seed prior install
+    const claudeRoot = path.join(home, '.claude');
+    fs.mkdirSync(path.join(claudeRoot, 'agents'), { recursive: true });
+    fs.writeFileSync(path.join(claudeRoot, 'agents/orchestrator.md'), '# old\n');
+    fs.mkdirSync(path.join(claudeRoot, 'skills/rad-orchestration/scripts'), { recursive: true });
+    fs.writeFileSync(path.join(claudeRoot, 'skills/rad-orchestration/scripts/radorch.mjs'), '# old\n');
+
+    fs.mkdirSync(path.join(home, '.radorc'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.radorc/install.json'),
+      JSON.stringify({
+        harnesses: {
+          claude: {
+            version: '1.0.0',
+            channel: 'standard',
+            installed_at: '2024-01-01T00:00:00.000Z',
+            last_writer_version: '1.0.0',
+          },
+        },
+      }, null, 2),
+    );
+
+    const settingsPath = path.join(claudeRoot, 'settings.json');
+    fs.writeFileSync(settingsPath, JSON.stringify({}, null, 2));
+
+    const result = await installHarness({
+      bundleRoot: bundle,
+      harness: 'claude',
+      settingsPath,
+    });
+    assert.strictEqual(result.action, 'upgrade-complete');
+
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const MARKER = 'rad-orc-preamble';
+    const markedEntry = settings.hooks.SessionStart.find(
+      (e) => Array.isArray(e.hooks) && e.hooks.some((h) => typeof h.command === 'string' && h.command.includes(MARKER)),
+    );
+    assert.ok(markedEntry, 'marked entry found on upgrade');
+
+    const markedHookCmd = markedEntry.hooks.find((h) => h.command.includes(MARKER)).command;
+
+    // Verify that the path is quoted in the command.
+    assert.ok(
+      markedHookCmd.includes('node "'),
+      `upgrade: hook command should start with 'node "' to quote the path, got: ${markedHookCmd}`,
+    );
+    assert.ok(
+      markedHookCmd.includes('" #'),
+      `upgrade: hook command should have closing quote before comment, got: ${markedHookCmd}`,
+    );
+  } finally {
+    restoreHome();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

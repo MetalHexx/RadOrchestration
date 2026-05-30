@@ -50,6 +50,19 @@ describe('repo add', () => {
     repoAdd({ root, repoPath: '/src/web-app', exec: execOk() });
     expect(() => repoAdd({ root, repoPath: '/other/web-app', exec: execOk() })).toThrow(/already exists/i);
   });
+  it('uses the default branch from a sole remote named something other than origin', () => {
+    const exec = vi.fn((_file: string, args: string[]) => {
+      if (args[0] === 'rev-parse') return '.git';
+      if (args.includes('remote') && args.includes('-v'))
+        return 'upstream\thttps://github.com/o/lib.git (fetch)\nupstream\thttps://github.com/o/lib.git (push)';
+      if (args[0] === 'symbolic-ref' && args[1] === 'refs/remotes/upstream/HEAD')
+        return 'refs/remotes/upstream/develop\n';
+      return '';
+    });
+    const r = repoAdd({ root, repoPath: '/src/lib', exec });
+    expect(r.remote).toBe('https://github.com/o/lib');
+    expect(r.default_branch).toBe('develop');
+  });
 });
 
 describe('repo add — cwd (FR-4)', () => {

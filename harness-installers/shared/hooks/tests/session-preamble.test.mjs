@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildHookOutput, resolveRadorch } from '../session-preamble.mjs';
 
 test('wraps the preamble in additionalContext on ok envelope', () => {
@@ -49,6 +50,34 @@ test('resolveRadorch still roots under CLAUDE_PLUGIN_ROOT when it is set (no reg
     const resolved = resolveRadorch();
     const expected = path.join('tmp', 'claude-root', 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
     assert.strictEqual(resolved, expected);
+  } finally {
+    if (prevClaude === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
+    else process.env.CLAUDE_PLUGIN_ROOT = prevClaude;
+    if (prevCopilot === undefined) delete process.env.COPILOT_PLUGIN_ROOT;
+    else process.env.COPILOT_PLUGIN_ROOT = prevCopilot;
+  }
+});
+
+test('resolveRadorch no-env fallback resolves relative to hook file location, not a hardcoded ~/.claude root', () => {
+  const prevClaude = process.env.CLAUDE_PLUGIN_ROOT;
+  const prevCopilot = process.env.COPILOT_PLUGIN_ROOT;
+  try {
+    delete process.env.CLAUDE_PLUGIN_ROOT;
+    delete process.env.COPILOT_PLUGIN_ROOT;
+    const resolved = resolveRadorch();
+    // The hook lives at <harnessRoot>/hooks/session-preamble.mjs.
+    // Derive the expected path from this test file's location:
+    // this test is at <harnessRoot>/hooks/tests/session-preamble.test.mjs
+    // so hookDir is one level up from here.
+    const hookDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+    const expectedHarnessRoot = path.resolve(hookDir, '..', '..');
+    const expected = path.join(expectedHarnessRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
+    assert.strictEqual(resolved, expected);
+    // Must NOT contain a hardcoded ~/.claude segment
+    assert.ok(
+      !resolved.includes(path.join('.claude', 'skills')),
+      `Expected path to not contain a hardcoded .claude root but got: ${resolved}`,
+    );
   } finally {
     if (prevClaude === undefined) delete process.env.CLAUDE_PLUGIN_ROOT;
     else process.env.CLAUDE_PLUGIN_ROOT = prevClaude;

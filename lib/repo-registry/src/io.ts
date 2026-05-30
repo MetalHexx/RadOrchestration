@@ -17,6 +17,7 @@ function readYaml<T>(file: string, fallback: T): T {
 
 function atomicWrite(file: string, text: string): void {
   const tmp = file + '.tmp';
+  fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(tmp, text, 'utf8');
   fs.renameSync(tmp, file);
 }

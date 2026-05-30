@@ -9,7 +9,7 @@
 //
 // Exports:
 //   - mergePreambleHook({ settingsPath, hookCommand })
-//       Reads settings.json (treating a missing file as {}), ensures
+//       Reads settings.json (treating a missing file as {}; throws on malformed), ensures
 //       hooks.SessionStart is an array, and inserts a single SessionStart
 //       entry whose command carries the "rad-orc-preamble" marker.  Idempotent:
 //       skips when a marked entry already exists.  Preserves every other key.
@@ -28,18 +28,31 @@ const MARKER = 'rad-orc-preamble';
 
 /**
  * Read settings.json at `settingsPath`.  Returns `{}` when the file is
- * missing, unreadable, or malformed JSON.
+ * missing (lazy creation is safe).  Throws when the file exists but cannot be
+ * read or parsed — preserving the user's file rather than silently overwriting
+ * it with a default.
  *
  * @param {string} settingsPath
  * @returns {object}
+ * @throws {Error} when the file exists but is unreadable or contains malformed JSON
  */
 function readSettings(settingsPath) {
+  if (!fs.existsSync(settingsPath)) return {};
+  let text;
   try {
-    if (!fs.existsSync(settingsPath)) return {};
-    const text = fs.readFileSync(settingsPath, 'utf8');
+    text = fs.readFileSync(settingsPath, 'utf8');
+  } catch (err) {
+    throw new Error(
+      `Cannot read settings file "${settingsPath}": ${err.message}`,
+    );
+  }
+  try {
     return JSON.parse(text);
-  } catch {
-    return {};
+  } catch (err) {
+    throw new Error(
+      `Cannot parse settings file "${settingsPath}" as JSON: ${err.message}. ` +
+        'Fix or remove the file before re-running.',
+    );
   }
 }
 
@@ -101,7 +114,7 @@ function buildMarkedEntry(hookCommand) {
 /**
  * Merge the preamble hook into Claude's settings.json (FR-18, AD-9, AD-10).
  *
- * - Reads the file at `settingsPath` (treats missing as `{}`).
+ * - Reads the file at `settingsPath` (treats missing as `{}`; throws on malformed).
  * - Ensures `hooks.SessionStart` is an array.
  * - Inserts a single marked entry when none exists (idempotent).
  * - Preserves every other key and every other SessionStart entry.
@@ -133,7 +146,7 @@ export function mergePreambleHook({ settingsPath, hookCommand }) {
  * Remove the marked preamble hook entry from Claude's settings.json (FR-18,
  * AD-9).
  *
- * - Reads the file at `settingsPath`.  No-ops when the file is absent.
+ * - Reads the file at `settingsPath`.  No-ops when the file is absent; throws on malformed.
  * - Filters out exactly the marked entry from `hooks.SessionStart`.
  * - Leaves all other SessionStart entries and all other settings untouched.
  * - Writes atomically via tmp+rename (NFR-2).
