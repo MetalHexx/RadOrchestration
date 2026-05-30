@@ -9,6 +9,7 @@ import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktre
 import { planExplodeCommand } from './commands/plan/index.js';
 import { skillListCommand } from './commands/skill/index.js';
 import { pipelineSignalCommand } from './commands/pipeline/index.js';
+import { groupCreateCommand, groupAddCommand, groupRemoveCommand, groupDeleteCommand, groupListCommand, groupShowCommand } from './commands/repo-group/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 
 export function buildProgram(version: string): Command {
@@ -145,6 +146,68 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(repoRemoveCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const repoGroup = program.command('repo-group').description('Repo-group registry operations');
+  repoGroup
+    .command('create')
+    .description(groupCreateCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupCreateCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repoGroup
+    .command('add')
+    .description(groupAddCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupAddCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repoGroup
+    .command('remove')
+    .description(groupRemoveCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupRemoveCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repoGroup
+    .command('delete')
+    .description(groupDeleteCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupDeleteCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repoGroup
+    .command('list')
+    .description(groupListCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repoGroup
+    .command('show')
+    .description(groupShowCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const project = program.command('project').description('Project state read operations');
