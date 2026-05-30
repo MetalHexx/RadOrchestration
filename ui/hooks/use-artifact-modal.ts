@@ -25,6 +25,13 @@ export function indexAfterDelete(current: number, length: number): number {
   return Math.min(current, newLength - 1);
 }
 
+export function modalKeyAction(key: string): 'prev' | 'next' | 'close' | null {
+  if (key === 'ArrowLeft') return 'prev';
+  if (key === 'ArrowRight') return 'next';
+  if (key === 'Escape') return 'close';
+  return null;
+}
+
 export function useArtifactModal(initialIndex: number, getLength: () => number) {
   const [index, setIndex] = useState(initialIndex);
   const [open, setOpen] = useState(initialIndex >= 0);

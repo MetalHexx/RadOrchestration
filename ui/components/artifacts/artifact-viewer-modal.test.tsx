@@ -53,3 +53,13 @@ test('applies the full-screen layout class when isFullScreen is true (FR-17)', (
   const html = render({ ...base, activeIndex: 2, isFullScreen: true });
   assert.ok(html.includes('inset-0'), 'full-screen occupies the whole screen');
 });
+
+test('renders a label caption for every filmstrip cell (DD-8)', () => {
+  const html = render({ ...base, activeIndex: 0 });
+  assert.ok(html.includes('Brainstorm Visual'), 'filmstrip shows label for second artifact');
+  assert.ok(html.includes('Wireframe'), 'filmstrip shows label for third artifact');
+  // All three labels must appear; with activeIndex=0, 'Brainstorm' is in the header badge
+  // AND must appear as a filmstrip caption too
+  const brainstormCount = (html.match(/Brainstorm/g) ?? []).length;
+  assert.ok(brainstormCount >= 2, 'Brainstorm label appears in both header and filmstrip');
+});

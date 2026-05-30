@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
 import { IframePreview } from "./iframe-preview";
 import { cn } from "@/lib/utils";
+import { modalKeyAction } from "@/hooks/use-artifact-modal";
 import type { Artifact } from "@/lib/artifact-model";
 
 export interface ArtifactViewerModalProps {
@@ -27,10 +28,18 @@ export function ArtifactViewerModal({
   onClose, onPrev, onNext, onRequestDelete, isFullScreen, onToggleFullScreen,
 }: ArtifactViewerModalProps) {
   const active = artifacts[activeIndex];
-  const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowLeft') { e.preventDefault(); onPrev(); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); onNext(); }
-    else if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const action = modalKeyAction(e.key);
+      if (action === null) return;
+      e.preventDefault();
+      if (action === 'prev') onPrev();
+      else if (action === 'next') onNext();
+      else if (action === 'close') onClose();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onPrev, onNext, onClose]);
 
   if (!active) return null;
@@ -41,8 +50,6 @@ export function ArtifactViewerModal({
       role="dialog"
       aria-modal="true"
       aria-label={`${friendly} — ${active.fileName}`}
-      tabIndex={-1}
-      onKeyDown={handleKeyDown}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -109,19 +116,22 @@ export function ArtifactViewerModal({
                 i === activeIndex ? "border-2 ring-2 ring-ring border-ring" : "border-border",
               )}
             >
-              {artifact.isMarkdown ? (
-                <div className="flex h-full w-full items-center justify-center bg-background">
+              <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden bg-background">
+                {artifact.isMarkdown ? (
                   <FileText className="size-5 text-muted-foreground" aria-hidden="true" />
-                </div>
-              ) : (
-                <IframePreview
-                  projectName={projectName}
-                  fileName={artifact.fileName}
-                  scale={0.12}
-                  interactive={false}
-                  className="h-full w-full"
-                />
-              )}
+                ) : (
+                  <IframePreview
+                    projectName={projectName}
+                    fileName={artifact.fileName}
+                    scale={0.12}
+                    interactive={false}
+                    className="h-full w-full"
+                  />
+                )}
+              </div>
+              <span className="w-full truncate px-1 text-center text-[9px] leading-tight text-muted-foreground">
+                {artifact.label}
+              </span>
             </div>
           ))}
         </footer>

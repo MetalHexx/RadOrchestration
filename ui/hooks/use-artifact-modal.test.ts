@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nextIndex, prevIndex, indexAfterDelete } from './use-artifact-modal';
+import { nextIndex, prevIndex, indexAfterDelete, modalKeyAction } from './use-artifact-modal';
 
 test('nextIndex advances and loops past the end (FR-14)', () => {
   assert.equal(nextIndex(0, 3), 1);
@@ -24,4 +24,20 @@ test('indexAfterDelete clamps when the last item in the list is removed (FR-19)'
 
 test('indexAfterDelete returns -1 when the only item is removed so the modal closes (FR-19)', () => {
   assert.equal(indexAfterDelete(0, 1), -1);
+});
+
+test('modalKeyAction returns prev for ArrowLeft (FR-14, FR-15)', () => {
+  assert.equal(modalKeyAction('ArrowLeft'), 'prev');
+});
+
+test('modalKeyAction returns next for ArrowRight (FR-14, FR-15)', () => {
+  assert.equal(modalKeyAction('ArrowRight'), 'next');
+});
+
+test('modalKeyAction returns close for Escape (FR-14, FR-15)', () => {
+  assert.equal(modalKeyAction('Escape'), 'close');
+});
+
+test('modalKeyAction returns null for any other key (FR-14, FR-15)', () => {
+  assert.equal(modalKeyAction('a'), null);
 });
