@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { addRepo } from '../../../../lib/repo-registry/src/mutations.js';
+import { addRepo } from '../../../../lib/repo-registry/src/index.js';
 import type { CommandContext } from '../../framework/context.js';
 
 type Exec = (file: string, args: string[]) => string;
@@ -20,8 +20,9 @@ export interface RepoAddResult {
   default_branch: string;
 }
 
-function defaultExec(file: string, args: string[]): string {
-  return execFileSync(file, args, { encoding: 'utf8' }) as unknown as string;
+function makeDefaultExec(cwd: string): Exec {
+  return (file: string, args: string[]): string =>
+    execFileSync(file, args, { encoding: 'utf8', cwd }) as unknown as string;
 }
 
 function slugify(segment: string): string {
@@ -42,10 +43,11 @@ function normalizeRemote(raw: string): string {
   return r;
 }
 
-export function repoAdd({ root, repoPath, exec = defaultExec }: RepoAddOptions): RepoAddResult {
+export function repoAdd({ root, repoPath, exec }: RepoAddOptions): RepoAddResult {
+  const actualExec = exec ?? makeDefaultExec(repoPath);
   // Confirm the path is a git repository
   try {
-    exec('git', ['rev-parse', '--git-dir']);
+    actualExec('git', ['rev-parse', '--git-dir']);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new UserError(`path is not a git repository: ${msg}`);
@@ -54,7 +56,7 @@ export function repoAdd({ root, repoPath, exec = defaultExec }: RepoAddOptions):
   // Read remotes
   let remotesOutput: string;
   try {
-    remotesOutput = exec('git', ['remote', '-v']);
+    remotesOutput = actualExec('git', ['remote', '-v']);
   } catch {
     remotesOutput = '';
   }
@@ -92,7 +94,7 @@ export function repoAdd({ root, repoPath, exec = defaultExec }: RepoAddOptions):
   // Derive default branch
   let defaultBranch = 'main';
   try {
-    const symref = exec('git', ['symbolic-ref', 'refs/remotes/origin/HEAD']);
+    const symref = actualExec('git', ['symbolic-ref', 'refs/remotes/origin/HEAD']);
     const match = symref.trim().match(/refs\/remotes\/origin\/(.+)$/);
     if (match) defaultBranch = match[1];
   } catch {

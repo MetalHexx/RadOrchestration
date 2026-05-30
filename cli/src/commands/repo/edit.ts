@@ -45,9 +45,9 @@ export const repoEditCommand = defineCommand({
     name: { description: 'Registered repo name to edit', required: true },
   },
   flags: {
-    description: { description: 'New description for the repo' },
-    remote: { description: 'New remote URL for the repo' },
-    'default-branch': { description: 'New default branch for the repo' },
+    description: { description: 'New description for the repo', type: 'string' },
+    remote: { description: 'New remote URL for the repo', type: 'string' },
+    'default-branch': { description: 'New default branch for the repo', type: 'string' },
   },
   handler: async ({ args, flags }: { args: Args; flags: Flags; ctx: CommandContext }) => {
     const name = args.name;

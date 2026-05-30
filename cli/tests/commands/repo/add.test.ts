@@ -2,12 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { vi } from 'vitest';
 import { repoAdd } from '../../../src/commands/repo/add.js';
 
 let root: string;
-beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'add-')); });
-afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+let tempRepos: string[] = [];
+beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'add-')); tempRepos = []; });
+afterEach(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+  for (const d of tempRepos) fs.rmSync(d, { recursive: true, force: true });
+});
 
 function execOk(remote = 'https://github.com/o/web-app.git') {
   return vi.fn((file: string, args: string[]) => {
@@ -44,5 +49,32 @@ describe('repo add', () => {
   it('fails when the inferred name already exists', () => {
     repoAdd({ root, repoPath: '/src/web-app', exec: execOk() });
     expect(() => repoAdd({ root, repoPath: '/other/web-app', exec: execOk() })).toThrow(/already exists/i);
+  });
+});
+
+describe('repo add — cwd (FR-4)', () => {
+  it('infers remote and default_branch from repoPath, not process.cwd()', () => {
+    // Build a real git repo in a temp directory so defaultExec can shell out to git.
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-cwd-'));
+    tempRepos.push(tmp);
+
+    // Init the repo with a known remote URL.
+    // Use -b flag for the initial branch name (compatible across git versions).
+    const gitEnv = { ...process.env, GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@test.com', GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@test.com' };
+    execFileSync('git', ['init', '-b', 'main'], { cwd: tmp, encoding: 'utf8' });
+    execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/test/my-repo.git'], { cwd: tmp, encoding: 'utf8' });
+    execFileSync('git', ['commit', '--allow-empty', '-m', 'init'], { cwd: tmp, encoding: 'utf8', env: gitEnv });
+
+    // Ensure the test's own cwd is NOT the temp repo so a cwd bug is observable.
+    expect(process.cwd()).not.toBe(tmp);
+
+    // Call repoAdd without injecting a mock exec — defaultExec must run inside repoPath.
+    const result = repoAdd({ root, repoPath: tmp });
+
+    // The remote must come from the temp repo, not process.cwd() (which has its own remote).
+    expect(result.remote).toBe('https://github.com/test/my-repo');
+    // Branch falls back to 'main' when symbolic-ref is absent — either value is valid;
+    // what matters is that git ran inside the temp repo, not process.cwd().
+    expect(result.default_branch).toBe('main');
   });
 });
