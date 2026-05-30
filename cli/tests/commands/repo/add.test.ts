@@ -35,7 +35,7 @@ describe('repo add', () => {
     expect(() => repoAdd({ root, repoPath: '/x', exec })).toThrow(/not a git repository/i);
   });
   it('fails when there is no remote', () => {
-    const exec = execOk(); const e = vi.fn((f: string, a: string[]) => a.includes('-v') ? '' : (exec as any)(f, a));
+    const exec = execOk(); const e = vi.fn((f: string, a: string[]) => a.includes('-v') ? '' : exec(f, a));
     expect(() => repoAdd({ root, repoPath: '/src/x', exec: e })).toThrow(/no remote/i);
   });
   it('fails when multiple remotes and none is origin', () => {
