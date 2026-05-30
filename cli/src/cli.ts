@@ -3,7 +3,7 @@ import { runCommand } from './framework/command.js';
 import { doctorCommand } from './commands/doctor/index.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
-import { repoAddCommand, repoBindCommand } from './commands/repo/index.js';
+import { repoAddCommand, repoBindCommand, repoListCommand, repoShowCommand } from './commands/repo/index.js';
 import { projectContextCommand, projectFindCommand } from './commands/project/index.js';
 import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
 import { planExplodeCommand } from './commands/plan/index.js';
@@ -105,6 +105,26 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(repoBindCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repo
+    .command('list')
+    .description(repoListCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(repoListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repo
+    .command('show')
+    .description(repoShowCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(repoShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const project = program.command('project').description('Project state read operations');
