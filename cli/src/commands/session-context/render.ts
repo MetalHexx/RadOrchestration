@@ -1,5 +1,3 @@
-import os from 'node:os';
-import path from 'node:path';
 import { readRegistry, resolveRepoPath } from '../../../../lib/repo-registry/src/index.js';
 
 export interface RenderPreambleOpts { root: string }

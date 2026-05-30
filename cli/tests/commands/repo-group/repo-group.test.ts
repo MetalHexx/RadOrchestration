@@ -25,12 +25,20 @@ describe('repo-group', () => {
   it('create fails when a named member is not registered', () => {
     expect(() => groupCreate({ root, name: 'set', members: ['ghost'] })).toThrow(/not a registered repo/i);
   });
-  it('add and remove act on membership and remove of a non-member is a clear no-op', () => {
+  it('remove throws a UserError when the repo is not registered at all', () => {
+    groupCreate({ root, name: 'set', members: ['a'] });
+    expect(() => groupRemove({ root, group: 'set', repo: 'absent' })).toThrow(/not a registered repo/i);
+  });
+  it('remove of a registered repo that is not a member is a no-op returning removed: false', () => {
+    groupCreate({ root, name: 'set', members: ['a'] });
+    // 'b' is registered (added in beforeEach) but NOT a member of 'set'
+    const r = groupRemove({ root, group: 'set', repo: 'b' });
+    expect(r.removed).toBe(false);
+  });
+  it('add and remove act on membership', () => {
     groupCreate({ root, name: 'set', members: ['a'] });
     groupAdd({ root, group: 'set', repo: 'b' });
     expect(groupShow({ root, name: 'set' }).members).toEqual(['a', 'b']);
-    const r = groupRemove({ root, group: 'set', repo: 'absent' });
-    expect(r.removed).toBe(false);
   });
   it('delete removes the group but not its member repos; list returns groups with members', () => {
     groupCreate({ root, name: 'set', members: ['a', 'b'] });

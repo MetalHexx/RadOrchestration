@@ -44,6 +44,9 @@ export function groupRemove({ root, group, repo }: GroupRemoveOptions): GroupRem
   if (!reg.repoGroups[group]) {
     throw new UserError(`'${group}' is not a registered repo-group`);
   }
+  if (!reg.repos[repo]) {
+    throw new UserError(`'${repo}' is not a registered repo`);
+  }
   const grp = reg.repoGroups[group];
   const isMember = grp.members.includes(repo);
   if (isMember) {
