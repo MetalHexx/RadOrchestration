@@ -22,6 +22,10 @@ interface SpinnerBadgeProps {
    * colored-text-on-fill pill.
    */
   isRejected?: boolean;
+  /** Optional custom icon node; when set (and not spinning), replaces the
+   *  complete/rejected default icon. Additive — omitting it preserves the
+   *  existing check/x/none behavior. */
+  icon?: React.ReactNode;
   /** Accessible label override; defaults to label when omitted */
   ariaLabel?: string;
   /** When true, suppresses visible label text; aria-label is unaffected. Defaults to false. */
@@ -30,7 +34,7 @@ interface SpinnerBadgeProps {
 
 export const SpinnerBadge = React.forwardRef<HTMLSpanElement, SpinnerBadgeProps>(
   function SpinnerBadge(
-    { label, cssVar, isSpinning, isComplete, isRejected, ariaLabel, hideLabel },
+    { label, cssVar, isSpinning, isComplete, isRejected, icon, ariaLabel, hideLabel },
     ref,
   ) {
     return (
@@ -51,6 +55,8 @@ export const SpinnerBadge = React.forwardRef<HTMLSpanElement, SpinnerBadgeProps>
             style={{ color: `var(${cssVar})` }}
             aria-hidden="true"
           />
+        ) : icon ? (
+          icon
         ) : isComplete ? (
           <Check
             size={12}
