@@ -243,6 +243,11 @@
       "sha256": "ccc27102bb57039207f7e06754d5af540c03df7f25d3b4fed22f90449ee7675b"
     },
     {
+      "bundlePath": "hooks/session-preamble.mjs",
+      "destinationPath": "${HARNESS_ROOT}/hooks/session-preamble.mjs",
+      "sha256": "a0f6f8025948656f2dc876185e7f7b2b08374daa4c3f2a8c5c0439697ed41bb4"
+    },
+    {
       "bundlePath": "skills/rad-approve-plan/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-approve-plan/SKILL.md",
       "sha256": "01b0c4ca5978b8db5f162f3588b94fd3aaa633f4bd851d319836e51a1c47908a"
@@ -425,7 +430,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "c43d6dca8cac24067ce4a9b7ee5ba2f01195616e6a0da58117b35265b1331cab"
+      "sha256": "be93dca0f30bed93309c6236887227c57b3c44e9ab108b367cf61315e742eaca"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
