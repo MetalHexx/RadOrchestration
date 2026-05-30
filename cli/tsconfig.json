@@ -17,6 +17,6 @@
     "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "../lib/repo-registry/src/**/*.ts"],
   "exclude": ["dist", "node_modules", "tests"]
 }

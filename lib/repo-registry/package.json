@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
   "description": "Typed two-file read/write registry for repos and repo-groups",
   "scripts": {
     "test": "vitest run",
