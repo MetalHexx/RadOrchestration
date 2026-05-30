@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { deriveArtifacts, type Artifact } from "@/lib/artifact-model";
 
 export async function deleteArtifact(projectName: string, fileName: string): Promise<boolean> {
@@ -15,20 +15,14 @@ export async function deleteArtifact(projectName: string, fileName: string): Pro
   }
 }
 
-export function selectBrainstormingArtifacts(projectName: string, fileList: string[]): Artifact[] {
-  return deriveArtifacts(projectName, fileList, {});
+export function selectBrainstormingArtifacts(projectName: string, fileList: string[], mtimes: Record<string, number> = {}): Artifact[] {
+  return deriveArtifacts(projectName, fileList, mtimes);
 }
 
-export function useProjectArtifacts(projectName: string | null, fileList: string[]): Artifact[] {
+export function useProjectArtifacts(projectName: string | null, fileList: string[], mtimes: Record<string, number> = {}): Artifact[] {
   return useMemo(
-    () => (projectName ? deriveArtifacts(projectName, fileList, {}) : []),
-    [projectName, fileList],
+    () => (projectName ? deriveArtifacts(projectName, fileList, mtimes) : []),
+    [projectName, fileList, mtimes],
   );
 }
 
-export function useDeleteArtifact(projectName: string | null) {
-  return useCallback(
-    async (fileName: string) => (projectName ? deleteArtifact(projectName, fileName) : false),
-    [projectName],
-  );
-}

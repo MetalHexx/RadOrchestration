@@ -250,15 +250,19 @@ const LIST_IGNORED_DIR_NAMES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Recursively list all .md files in a project directory.
- * Returns paths relative to the project directory using forward slashes.
- * Does not follow symlinks. Skips entries containing "..".
+ * Recursively list all .md and .html files in a project directory, collecting
+ * each file's `mtimeMs` from `stat`. Returns paths relative to the project
+ * directory using forward slashes. Does not follow symlinks. Skips entries
+ * containing "..".
  *
  * @param projectDir - Absolute path to the project directory
- * @returns Array of relative file paths (e.g., ["PRD.md", "tasks/TASK-P01-T01.md"])
+ * @returns Object with `files` (relative paths) and `mtimes` (map from relative path to mtimeMs)
  */
-export async function listProjectFiles(projectDir: string): Promise<string[]> {
+export async function listProjectFilesWithMtimes(
+  projectDir: string,
+): Promise<{ files: string[]; mtimes: Record<string, number> }> {
   const files: string[] = [];
+  const mtimes: Record<string, number> = {};
 
   async function walk(dir: string): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -269,11 +273,27 @@ export async function listProjectFiles(projectDir: string): Promise<string[]> {
       if (entry.isDirectory()) {
         await walk(fullPath);
       } else if (entry.name.endsWith('.md') || entry.name.endsWith('.html')) {
-        files.push(path.relative(projectDir, fullPath).replace(/\\/g, '/'));
+        const relPath = path.relative(projectDir, fullPath).replace(/\\/g, '/');
+        const fileStat = await stat(fullPath);
+        files.push(relPath);
+        mtimes[relPath] = fileStat.mtimeMs;
       }
     }
   }
 
   await walk(projectDir);
+  return { files, mtimes };
+}
+
+/**
+ * Recursively list all .md and .html files in a project directory.
+ * Returns paths relative to the project directory using forward slashes.
+ * Does not follow symlinks. Skips entries containing "..".
+ *
+ * @param projectDir - Absolute path to the project directory
+ * @returns Array of relative file paths (e.g., ["PRD.md", "tasks/TASK-P01-T01.md"])
+ */
+export async function listProjectFiles(projectDir: string): Promise<string[]> {
+  const { files } = await listProjectFilesWithMtimes(projectDir);
   return files;
 }

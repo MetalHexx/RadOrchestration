@@ -17,13 +17,12 @@ function iconFor(kind: ArtifactKind): React.ReactNode {
 }
 
 export interface BrainstormingSectionProps {
-  projectName: string;
   artifacts: Artifact[];
   onOpen: (index: number) => void;
   onDelete: (artifact: Artifact) => void;
 }
 
-export function BrainstormingSection({ projectName, artifacts, onOpen, onDelete }: BrainstormingSectionProps) {
+export function BrainstormingSection({ artifacts, onOpen, onDelete }: BrainstormingSectionProps) {
   if (artifacts.length === 0) return null;
   return (
     <div role="group" aria-label="Brainstorming section">

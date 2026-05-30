@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -48,6 +48,7 @@ export default function ProjectsPage() {
   } = useDocumentDrawer({ projectName: selectedProject });
 
   const [fileList, setFileList] = useState<string[]>([]);
+  const [fileMtimes, setFileMtimes] = useState<Record<string, number>>({});
 
   const v5State: ProjectStateV5 | null =
     projectState && isV5State(projectState) ? projectState : null;
@@ -81,10 +82,13 @@ export default function ProjectsPage() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
 
-  const artifacts = useProjectArtifacts(selectedProject, fileList);
+  const artifacts = useProjectArtifacts(selectedProject, fileList, fileMtimes);
 
-  const modal = useArtifactModal(-1, () => artifacts.length);
+  const getArtifactCount = useCallback(() => artifacts.length, [artifacts.length]);
+  const modal = useArtifactModal(-1, getArtifactCount);
   const openArtifactModal = modal.openAt;
+
+  useEffect(() => { if (!modal.open) setIsFullScreen(false); }, [modal.open]);
 
   useEffect(() => {
     const mdPath = markdownPathForActive(artifacts, modal.index);
@@ -136,6 +140,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (!selectedProject) {
       setFileList([]);
+      setFileMtimes({});
       return;
     }
     let cancelled = false;
@@ -144,11 +149,17 @@ export default function ProjectsPage() {
         if (!res.ok) throw new Error("Failed to fetch files");
         return res.json();
       })
-      .then((data: { files: string[] }) => {
-        if (!cancelled) setFileList(data.files);
+      .then((data: { files: string[]; mtimes?: Record<string, number> }) => {
+        if (!cancelled) {
+          setFileList(data.files);
+          setFileMtimes(data.mtimes ?? {});
+        }
       })
       .catch(() => {
-        if (!cancelled) setFileList([]);
+        if (!cancelled) {
+          setFileList([]);
+          setFileMtimes({});
+        }
       });
     return () => { cancelled = true; };
   }, [selectedProject, fileRefetch]);
@@ -231,7 +242,6 @@ export default function ProjectsPage() {
               </div>
               <div className="px-6 py-4">
                 <BrainstormingSection
-                  projectName={selected.name}
                   artifacts={artifacts}
                   onOpen={(index) => openArtifactModal(index)}
                   onDelete={(a) => setPendingDelete(a)}

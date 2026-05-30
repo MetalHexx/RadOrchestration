@@ -52,8 +52,8 @@ test('an empty listing yields an empty artifact list without throwing (NFR-3, FR
 
 test('ignores non-artifact and non-matching files without error (NFR-3, AD-6)', () => {
   const files = ['random.html', 'OTHER-PROJECT-BRAINSTORM.html', 'notes.txt'];
-  // root html that is not the brainstorm-visual and not a wireframe pattern
-  // still surfaces as a generic html artifact but must not throw on title derivation.
+  // Unmatched root HTML files (not the project brainstorm-visual, not a wireframe pattern)
+  // are silently excluded; deriveArtifacts returns an empty list without throwing.
   const arts = deriveArtifacts(PROJECT, files, {});
   assert.ok(Array.isArray(arts));
 });
