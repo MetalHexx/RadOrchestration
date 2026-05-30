@@ -34,7 +34,7 @@ export async function emitHookBundle(opts) {
     outfile: bootstrapOut,
     logLevel: 'warning',
   });
-  for (const verbatim of ['drift-check.mjs', 'hooks.json', 'launcher.cjs', 'AGENTS.md']) {
+  for (const verbatim of ['drift-check.mjs', 'session-preamble.mjs', 'hooks.json', 'launcher.cjs', 'AGENTS.md']) {
     const src = path.join(source, verbatim);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(target, verbatim));
