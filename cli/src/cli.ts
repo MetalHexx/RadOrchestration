@@ -11,6 +11,7 @@ import { skillListCommand } from './commands/skill/index.js';
 import { pipelineSignalCommand } from './commands/pipeline/index.js';
 import { groupCreateCommand, groupAddCommand, groupRemoveCommand, groupDeleteCommand, groupListCommand, groupShowCommand } from './commands/repo-group/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
+import { sessionContextCommand } from './commands/session-context/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -33,6 +34,16 @@ export function buildProgram(version: string): Command {
     .action(async (name?: string) => {
       const code = await runWhere({ name, stdout: process.stdout, stderr: process.stderr, env: process.env });
       process.exit(code);
+    });
+
+  program
+    .command('session-context')
+    .description(sessionContextCommand.description)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(3);
+      await runCommand(sessionContextCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const ui = program.command('ui').description('UI server lifecycle');
