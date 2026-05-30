@@ -435,8 +435,8 @@ describe('meta field round-trip', () => {
     // meta.events should be a JSON-encoded string
     assert.strictEqual(typeof masterPlan.data.meta.events, 'string', 'meta.events should be a string');
     const eventsObj = JSON.parse(masterPlan.data.meta.events);
-    assert.ok(eventsObj.started, 'events.started missing');
-    assert.ok(eventsObj.completed, 'events.completed missing');
+    // master_plan in extra-high.yml emits a single completion event (no `started`).
+    assert.deepStrictEqual(eventsObj, { completed: 'master_plan_completed' }, 'events object should round-trip from meta JSON');
 
     // After round-trip, events should be restored as object in YAML
     const fullMeta = (parseYamlRaw(EXTRA_HIGH_YAML) as any).template;
