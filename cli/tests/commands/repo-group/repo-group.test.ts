@@ -25,6 +25,9 @@ describe('repo-group', () => {
   it('create fails when a named member is not registered', () => {
     expect(() => groupCreate({ root, name: 'set', members: ['ghost'] })).toThrow(/not a registered repo/i);
   });
+  it('throws UserError when group name is not a valid slug', () => {
+    expect(() => groupCreate({ root, name: 'Bad Name', members: ['a'] })).toThrow(/not a valid slug/i);
+  });
   it('remove throws a UserError when the repo is not registered at all', () => {
     groupCreate({ root, name: 'set', members: ['a'] });
     expect(() => groupRemove({ root, group: 'set', repo: 'absent' })).toThrow(/not a registered repo/i);

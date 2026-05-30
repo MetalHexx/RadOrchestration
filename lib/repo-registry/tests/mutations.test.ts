@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { addRepo, removeRepo, createGroup, addGroupMember, removeGroupMember, deleteGroup, readRegistry } from '../src/index.js';
+import { writeIdentity } from '../src/io.js';
 
 let root: string;
 beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'rm-')); });
@@ -42,5 +43,27 @@ describe('repo + group mutations', () => {
 
   it('createGroup throws when name is not a valid slug', () => {
     expect(() => createGroup({ root, name: 'My Group!', members: [] })).toThrow(/not a valid slug/i);
+  });
+
+  it('removing an unbound repo (no local path) does NOT create repo-registry.local.yml', () => {
+    // Add a repo without a local path by writing the identity file directly — the public
+    // API always requires localPath, so we use writeIdentity to simulate the unbound state
+    // described in the lazy-creation contract.
+    writeIdentity({ root, repos: { unbound: { remote: 'g', default_branch: 'main', description: '' } }, repoGroups: {} });
+    // sanity: local file must not exist yet
+    const localFile = `${root}/repo-registry.local.yml`;
+    expect(fs.existsSync(localFile)).toBe(false);
+    removeRepo({ root, name: 'unbound' });
+    expect(fs.existsSync(localFile)).toBe(false);
+  });
+
+  it('removing a bound repo (with local path) still updates repo-registry.local.yml', () => {
+    addRepo({ root, name: 'svc2', identity: { remote: 'g', default_branch: 'main', description: '' }, localPath: '/c/svc2' });
+    const localFile = `${root}/repo-registry.local.yml`;
+    expect(fs.existsSync(localFile)).toBe(true);
+    removeRepo({ root, name: 'svc2' });
+    expect(fs.existsSync(localFile)).toBe(true);
+    const reg = readRegistry({ root });
+    expect(reg.localPaths.svc2).toBeUndefined();
   });
 });

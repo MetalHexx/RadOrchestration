@@ -40,11 +40,11 @@ The `additionalContext` key is the cross-harness context-channel:
 
 The shim resolves the bundled CLI two ways:
 
-1. **Plugin delivery** — `CLAUDE_PLUGIN_ROOT` is set; radorch path:
-   `${CLAUDE_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`
-2. **Standard delivery** — `CLAUDE_PLUGIN_ROOT` is absent; radorch path:
-   `~/.claude/skills/rad-orchestration/scripts/radorch.mjs`
-   (the standard-install manifest destination)
+1. **Plugin delivery** — `CLAUDE_PLUGIN_ROOT` (Claude / Copilot-VSCode) or `COPILOT_PLUGIN_ROOT` (Copilot CLI) is set; radorch path:
+   `${CLAUDE_PLUGIN_ROOT|COPILOT_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`
+2. **Standard delivery** — both env vars are absent; radorch path is derived relative to this hook file's location (harnessRoot = directory one level up from `hooks/`):
+   `<harnessRoot>/skills/rad-orchestration/scripts/radorch.mjs`
+   This allows the same hook to work under any harness root (e.g., `~/.claude/`, `~/.copilot/`).
 
 Any spawn failure resolves to the notice path — the hook never blocks or
 delays session start.
@@ -63,6 +63,7 @@ delays session start.
   import or bundle this shim; they do not re-implement it.
 - Any change to the `buildHookOutput` signature is a breaking change for all
   callers. Locate every import before modifying the signature.
-- Do not reference installer names, harness-specific env vars (other than
-  `CLAUDE_PLUGIN_ROOT` for path resolution), or destination paths that belong
-  to a single installer variant.
+- Do not reference installer names, harness-specific destination paths that belong
+  to a single installer variant, or unsanctioned env vars. The sanctioned harness-specific env vars for plugin path delivery are:
+  - `CLAUDE_PLUGIN_ROOT` (Claude Code / Copilot-VSCode harnesses)
+  - `COPILOT_PLUGIN_ROOT` (Copilot CLI harness)

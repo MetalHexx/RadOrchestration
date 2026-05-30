@@ -50,6 +50,11 @@ describe('repo add', () => {
     repoAdd({ root, repoPath: '/src/web-app', exec: execOk() });
     expect(() => repoAdd({ root, repoPath: '/other/web-app', exec: execOk() })).toThrow(/already exists/i);
   });
+  it('throws UserError when inferred name is not a valid slug', () => {
+    const exec = execOk();
+    // Use a path segment that becomes empty after slugification (only special chars)
+    expect(() => repoAdd({ root, repoPath: '/src/---', exec })).toThrow(/not a valid slug/i);
+  });
   it('uses the default branch from a sole remote named something other than origin', () => {
     const exec = vi.fn((_file: string, args: string[]) => {
       if (args[0] === 'rev-parse') return '.git';

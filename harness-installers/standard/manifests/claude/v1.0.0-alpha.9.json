@@ -245,7 +245,7 @@
     {
       "bundlePath": "hooks/session-preamble.mjs",
       "destinationPath": "${HARNESS_ROOT}/hooks/session-preamble.mjs",
-      "sha256": "961b679c2aa1e84e1e58770af3320eac2df0354563fa34e81aa5daa4efff2e65"
+      "sha256": "1dd6649a136e076dfdf5449120175692adbb7a9673766239e4e386e087101587"
     },
     {
       "bundlePath": "skills/rad-approve-plan/SKILL.md",
@@ -255,12 +255,11 @@
     {
       "bundlePath": "skills/rad-brainstorm/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/SKILL.md",
-      "sha256": "402e5730faa5ee2e8732f25d64aa4308fa9472a9c13d514e3f634f7cba39e49c"
-    },
-    {
-      "bundlePath": "skills/rad-brainstorm/references/architecture-visuals.md",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/architecture-visuals.md",
-      "sha256": "f60490190d955fbb073974fa21b954fa0f857e928b2e45bbb73c4adaccb9b41e"
+<<<<<<< HEAD
+      "sha256": "ad95b686996fbd970926046d64469b3fb4d18a74ac96577b886ff9da0cc43e3a"
+=======
+      "sha256": "02bd3b89cf4906ad031757ec9f3f7483a8064fd08a22b55a3e266a812d8eeee2"
+>>>>>>> dfc1d75c (chore(PR-REVIEW-LOOP-2): Address Copilot PR review (loop 2) + fix failing cli CI typecheck)
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/collaboration.md",
@@ -280,7 +279,11 @@
     {
       "bundlePath": "skills/rad-brainstorm/references/make-it-visual.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/make-it-visual.md",
-      "sha256": "f547dcff1e21caed42324059c70155b63955f493b1ef6a9d6201369a433221fa"
+<<<<<<< HEAD
+      "sha256": "15cad3ad73c2c5442e8a31d65ceb1f40d8a5bb2dcd7eca74b3cca7b60325e6c0"
+=======
+      "sha256": "719b3d24ecd53ea26a90e5d71bc2b05b7dc8a26814616798c502022f4d742008"
+>>>>>>> dfc1d75c (chore(PR-REVIEW-LOOP-2): Address Copilot PR review (loop 2) + fix failing cli CI typecheck)
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/project-memory.md",
@@ -430,7 +433,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "9c0c7aebfef581428f762c974cc67cada07d088efe9c5d2cdfc003cdeb533068"
+      "sha256": "65cf4ca6ee849bd6768ef305c904432c5c3b107d96be553b884bcf1aba360da3"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",

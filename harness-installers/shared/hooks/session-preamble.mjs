@@ -6,7 +6,7 @@
 // Resolves radorch.mjs two ways (AD-10):
 //   1. Plugin delivery: ${CLAUDE_PLUGIN_ROOT|COPILOT_PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs
 //   2. Standard delivery: <harnessRoot>/skills/rad-orchestration/scripts/radorch.mjs
-//      where <harnessRoot> is derived from this hook file's own location (../../ from hooks/).
+//      where <harnessRoot> is derived from this hook file's own location (../ from hooks/).
 // Copilot CLI launches the hook with COPILOT_PLUGIN_ROOT set (not
 // CLAUDE_PLUGIN_ROOT), so both env vars are honored (FR-16).
 //
@@ -30,10 +30,11 @@ export function resolveRadorch() {
     return path.join(pluginRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
   }
   // Standard-install: hook ships at <harnessRoot>/hooks/session-preamble.mjs.
-  // Derive <harnessRoot> from this file's own location (two levels up) so the
-  // same hook works under any harness root (e.g. ~/.copilot or ~/.claude).
+  // Derive <harnessRoot> from this file's own location (one level up from
+  // hooks/) so the same hook works under any harness root (e.g. ~/.copilot or
+  // ~/.claude).
   const hookDir = path.dirname(fileURLToPath(import.meta.url));
-  const harnessRoot = path.resolve(hookDir, '..', '..');
+  const harnessRoot = path.resolve(hookDir, '..');
   return path.join(harnessRoot, 'skills', 'rad-orchestration', 'scripts', 'radorch.mjs');
 }
 
@@ -80,5 +81,32 @@ export function buildHookOutput(opts = {}) {
     return { additionalContext: envelope.data.preamble };
   } catch {
     return { additionalContext: `${NOTICE_PREFIX}.` };
+  }
+}
+
+/**
+ * Serializes the hook output for stdout, mirroring the existing SessionStart
+ * drift-check hook: the raw context text is written straight to stdout, where
+ * the harness injects it as conversation context (the `additionalContext`
+ * channel — see the harness context-channel contract). Returns the exact
+ * string the main-execution block writes.
+ *
+ * @param {{ additionalContext: string }} out
+ * @returns {string}
+ */
+export function emitHookResult(out) {
+  return out?.additionalContext ?? '';
+}
+
+// Main-execution block: only fires when this module is run as the entry point
+// (e.g. `node .../session-preamble.mjs` from the harness SessionStart hook).
+// Soft-failing by contract — it must never throw and never block session start.
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  try {
+    const out = buildHookOutput();
+    const payload = emitHookResult(out);
+    if (payload) process.stdout.write(`${payload}\n`);
+  } catch {
+    /* never throw from the hook entry point */
   }
 }

@@ -20,13 +20,16 @@ export function addRepo({ root, name, identity, localPath }: AddRepoOpts): void 
 
 export function removeRepo({ root, name }: RemoveRepoOpts): void {
   const reg = readRegistry({ root });
+  const hadLocalPath = name in reg.localPaths;
   delete reg.repos[name];
   delete reg.localPaths[name];
   for (const group of Object.values(reg.repoGroups)) {
     group.members = group.members.filter(m => m !== name);
   }
   writeIdentity({ root, repos: reg.repos, repoGroups: reg.repoGroups });
-  writeLocal({ root, localPaths: reg.localPaths });
+  if (hadLocalPath) {
+    writeLocal({ root, localPaths: reg.localPaths });
+  }
 }
 
 export function createGroup({ root, name, members, description = '' }: CreateGroupOpts): void {

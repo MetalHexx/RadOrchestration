@@ -28,7 +28,11 @@ export function groupCreate({ root, name, members, description = '' }: GroupCrea
       throw new UserError(`'${member}' is not a registered repo`);
     }
   }
-  createGroup({ root, name, members, description });
+  try {
+    createGroup({ root, name, members, description });
+  } catch (e) {
+    throw new UserError(e instanceof Error ? e.message : String(e));
+  }
   return { name, members: [...members] };
 }
 
