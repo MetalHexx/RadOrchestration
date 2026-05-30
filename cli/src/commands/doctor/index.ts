@@ -58,7 +58,7 @@ export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<Docto
       iter01Version,
     })),
     ...(await runToolingChecks()),
-    ...(await runRegistryHealthChecks({ root: resolveInstallRoot() })),
+    ...(await runRegistryHealthChecks({ root })),
   ];
   const all_passed = !checks.some((c) => c.status === 'fail');
   return { all_passed, checks };

@@ -36,4 +36,4 @@ This writes the local path for that slug into `repo-registry.local.yml` without 
 
 Every slug — whether it names a repo or a repo-group — must be unique within the registry. The constraint spans both namespaces: a slug already used for a repo cannot be reused for a group, and vice versa. The `repo add` and `repo-group create` commands enforce this and return an error if the chosen name is already taken.
 
-Slugs follow lowercase-kebab convention (`a-z`, `0-9`, hyphens; no uppercase, no underscores, no slashes). The `repo add` command derives the slug automatically from the directory name using that rule; you can override it before or after registration with `repo edit`.
+Slugs follow lowercase-kebab convention (`a-z`, `0-9`, hyphens; no uppercase, no underscores, no slashes). The `repo add` command derives the slug automatically from the directory name using that rule, but you can supply an explicit slug at registration time. Once registered, the slug is fixed and cannot be changed — `repo edit` cannot modify it. To change a slug, you must remove and re-add the repo.
