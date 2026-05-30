@@ -5,6 +5,30 @@ export const dynamic = 'force-dynamic';
 import { resolveDocPath, resolveProjectDir } from '@/lib/path-resolver';
 import { readDocument } from '@/lib/fs-reader';
 
+function scrollbarStyle(chrome: string | null): string {
+  if (chrome === 'scroll') {
+    // The stage iframe is sandboxed (opaque origin); Chromium there ignores the
+    // standard `scrollbar-color`, and setting `scrollbar-width`/`-color` would
+    // suppress the ::-webkit-scrollbar rules. So style the webkit pseudo-elements
+    // directly (the harness is Chromium) to get the app's thin/dark scrollbar.
+    // `!important` lets it win over any scrollbar styling the artifact defines.
+    return '<style>::-webkit-scrollbar{width:10px !important;height:10px !important;}::-webkit-scrollbar-track{background:transparent !important;}::-webkit-scrollbar-thumb{background-color:oklch(0.55 0 0 / 0.5) !important;border-radius:9999px !important;}::-webkit-scrollbar-thumb:hover{background-color:oklch(0.75 0 0 / 0.8) !important;}::-webkit-scrollbar-corner{background:transparent !important;}</style>';
+  }
+  if (chrome === 'hide') {
+    return '<style>::-webkit-scrollbar{display:none !important;}html,body{scrollbar-width:none !important;-ms-overflow-style:none !important;}*{scrollbar-width:none;-ms-overflow-style:none;}</style>';
+  }
+  return '';
+}
+
+function injectStyle(body: string, style: string): string {
+  if (!style) return body;
+  const headClose = /<\/head>/i;
+  if (headClose.test(body)) {
+    return body.replace(headClose, `${style}</head>`);
+  }
+  return style + body;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { name: string } }
@@ -25,7 +49,9 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
     }
     const raw = await readDocument(absPath);
-    return new NextResponse(raw, {
+    const chrome = request.nextUrl.searchParams.get('chrome');
+    const body = injectStyle(raw, scrollbarStyle(chrome));
+    return new NextResponse(body, {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',

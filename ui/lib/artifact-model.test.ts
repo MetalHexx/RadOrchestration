@@ -50,10 +50,35 @@ test('an empty listing yields an empty artifact list without throwing (NFR-3, FR
   assert.deepEqual(deriveArtifacts(PROJECT, [], {}), []);
 });
 
-test('ignores non-artifact and non-matching files without error (NFR-3, AD-6)', () => {
-  const files = ['random.html', 'OTHER-PROJECT-BRAINSTORM.html', 'notes.txt'];
-  // Unmatched root HTML files (not the project brainstorm-visual, not a wireframe pattern)
-  // are silently excluded; deriveArtifacts returns an empty list without throwing.
+test('surfaces ANY root *.html as a generic visual; excludes non-html and non-root (tolerance)', () => {
+  const files = ['random.html', 'OTHER-PROJECT-BRAINSTORM.html', 'notes.txt', 'sub/x.html'];
+  // Under tolerance, every root *.html surfaces as a generic 'html' artifact
+  // (even those that are not the canonical brainstorm-visual or a wireframe).
+  // Non-html files (notes.txt) and non-root html (sub/x.html) stay excluded.
   const arts = deriveArtifacts(PROJECT, files, {});
-  assert.ok(Array.isArray(arts));
+  const names = arts.map((a) => a.fileName).sort();
+  assert.deepEqual(names, ['OTHER-PROJECT-BRAINSTORM.html', 'random.html']);
+  assert.ok(arts.every((a) => a.kind === 'html'));
+  assert.ok(!names.includes('notes.txt'));
+  assert.ok(!names.includes('sub/x.html'));
+});
+
+test('surfaces non-canonical root *.html as generic visuals, ordered by mtime asc (tolerance)', () => {
+  const arts = deriveArtifacts(
+    'DEMO',
+    ['DEMO-BRAINSTORM-VISUAL.html', 'DEMO-MOCKUP.html'],
+    { 'DEMO-BRAINSTORM-VISUAL.html': 100, 'DEMO-MOCKUP.html': 200 },
+  );
+  assert.equal(arts.length, 2);
+  const byName = Object.fromEntries(arts.map((a) => [a.fileName, a]));
+
+  assert.equal(byName['DEMO-BRAINSTORM-VISUAL.html'].kind, 'html');
+  assert.equal(byName['DEMO-BRAINSTORM-VISUAL.html'].label, 'Visual');
+  assert.equal(byName['DEMO-BRAINSTORM-VISUAL.html'].title, 'Brainstorm Visual');
+  assert.equal(byName['DEMO-BRAINSTORM-VISUAL.html'].isMarkdown, false);
+
+  assert.equal(byName['DEMO-MOCKUP.html'].kind, 'html');
+  assert.equal(byName['DEMO-MOCKUP.html'].label, 'Visual');
+  assert.equal(byName['DEMO-MOCKUP.html'].title, 'Mockup');
+  assert.equal(byName['DEMO-MOCKUP.html'].isMarkdown, false);
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Play, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ArtifactTile } from "@/components/artifacts";
 import type { Artifact } from "@/lib/artifact-model";
@@ -37,27 +37,36 @@ export function LaunchScreen({
         </p>
 
         {hasArtifacts && (
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-4">
             {artifacts.map((artifact, index) => (
-              <ArtifactTile
-                key={artifact.fileName}
-                projectName={projectName}
-                artifact={artifact}
-                onOpen={() => onOpenArtifact(index)}
-                onDelete={() => onDeleteArtifact(artifact)}
-              />
+              <div key={artifact.fileName} className="w-full sm:w-64">
+                <ArtifactTile
+                  projectName={projectName}
+                  artifact={artifact}
+                  onOpen={() => onOpenArtifact(index)}
+                  onDelete={() => onDeleteArtifact(artifact)}
+                />
+              </div>
             ))}
           </div>
         )}
 
-        <div className="mt-8 flex items-center justify-center">
+        <div className="mt-8 flex items-center justify-center gap-3">
           {hasArtifacts ? (
-            <Button variant="default" disabled={planningPending}
-              aria-busy={planningPending ? "true" : undefined} onClick={onStartPlanning}>
-              {planningPending
-                ? <><Loader2 className="size-3.5 animate-spin" aria-hidden="true" />Start Planning</>
-                : <><Play className="size-3.5" aria-hidden="true" />Start Planning</>}
-            </Button>
+            <>
+              <Button variant="outline" disabled={brainstormingPending}
+                aria-busy={brainstormingPending ? "true" : undefined} onClick={onStartBrainstorming}>
+                {brainstormingPending
+                  ? <><Loader2 className="size-3.5 animate-spin" aria-hidden="true" />Continue Brainstorming</>
+                  : <><Lightbulb className="size-3.5" aria-hidden="true" />Continue Brainstorming</>}
+              </Button>
+              <Button variant="default" disabled={planningPending}
+                aria-busy={planningPending ? "true" : undefined} onClick={onStartPlanning}>
+                {planningPending
+                  ? <><Loader2 className="size-3.5 animate-spin" aria-hidden="true" />Start Planning</>
+                  : <><Play className="size-3.5" aria-hidden="true" />Start Planning</>}
+              </Button>
+            </>
           ) : (
             <Button variant="default" disabled={brainstormingPending}
               aria-busy={brainstormingPending ? "true" : undefined} onClick={onStartBrainstorming}>

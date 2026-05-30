@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { FileText, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { IframePreview } from "./iframe-preview";
 import type { Artifact } from "@/lib/artifact-model";
 import { cn } from "@/lib/utils";
@@ -21,7 +20,7 @@ export function ArtifactTile({ projectName, artifact, onOpen, onDelete }: Artifa
       type="button"
       onClick={onOpen}
       className={cn(
-        "group relative flex cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card text-left",
+        "group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card text-left",
         "transition-transform hover:-translate-y-0.5 hover:bg-accent/40",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
@@ -42,7 +41,6 @@ export function ArtifactTile({ projectName, artifact, onOpen, onDelete }: Artifa
         )}
       </div>
       <div className="flex flex-col gap-1 p-3">
-        <Badge variant="secondary" className="w-fit">{artifact.label}</Badge>
         <span className="text-sm font-medium text-foreground">{friendly}</span>
         <span className="truncate text-xs text-muted-foreground">{artifact.fileName}</span>
       </div>

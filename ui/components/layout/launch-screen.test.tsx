@@ -30,9 +30,10 @@ test('shows project name header and no status badge (FR-4, DD-3)', () => {
   assert.ok(html.includes('Project'), 'kicker shown');
 });
 
-test('with at least one artifact, primary action is Start Planning (FR-7)', () => {
+test('with at least one artifact, shows Continue Brainstorming and Start Planning (FR-7)', () => {
   const html = render({ ...base, artifacts: [md] });
   assert.ok(html.includes('Start Planning'), 'Start Planning shown');
+  assert.ok(html.includes('Continue Brainstorming'), 'Continue Brainstorming shown when artifacts exist');
   assert.ok(!html.includes('Start Brainstorming'), 'Start Brainstorming hidden when artifacts exist');
   assert.ok(html.includes('DEMO-BRAINSTORMING.md'), 'tile rendered');
 });
@@ -41,6 +42,7 @@ test('with no artifacts, shows empty state and Start Brainstorming only (FR-8, F
   const html = render({ ...base, artifacts: [] });
   assert.ok(html.includes('Start Brainstorming'), 'Start Brainstorming shown in empty state');
   assert.ok(!html.includes('Start Planning'), 'Start Planning hidden in empty state');
+  assert.ok(!html.includes('Continue Brainstorming'), 'Continue Brainstorming hidden in empty state');
   assert.ok(!html.includes('DEMO-BRAINSTORMING.md'), 'no tiles in empty state');
 });
 

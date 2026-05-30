@@ -21,11 +21,11 @@ function render(props: Parameters<typeof ArtifactTile>[0]): string {
 }
 const noop = () => {};
 
-test('renders type badge label, friendly name, and filename (FR-5, DD-2)', () => {
+test('renders friendly name and filename, no type badge (FR-5, DD-2)', () => {
   const html = render({ projectName: 'DEMO', artifact: wireframe, onOpen: noop, onDelete: noop });
-  assert.ok(html.includes('Wireframe'), 'type badge label rendered');
   assert.ok(html.includes('Launch Screen'), 'friendly title rendered');
   assert.ok(html.includes('DEMO-WIREFRAME-LAUNCH-SCREEN.html'), 'filename rendered');
+  assert.ok(!html.includes('Wireframe'), 'type badge label removed');
 });
 
 test('renders a live iframe preview for html artifacts (FR-5)', () => {

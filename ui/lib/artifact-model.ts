@@ -23,6 +23,12 @@ function humanizeSlug(slug: string): string {
     .join(' ');
 }
 
+function stripProjectPrefix(fileName: string, project: string): string {
+  const base = fileName.replace(/\.html$/i, '');
+  const prefix = `${project}-`;
+  return base.startsWith(prefix) ? base.slice(prefix.length) : base;
+}
+
 export function deriveArtifacts(
   project: string,
   files: string[],
@@ -54,6 +60,22 @@ export function deriveArtifacts(
       isMarkdown: false,
     }));
   out.push(...wireframes);
+
+  const captured = new Set(out.map((a) => a.fileName));
+  const otherHtml = root
+    .filter((f) => f.endsWith('.html') && !captured.has(f))
+    .sort((a, b) => (mtimes[a] ?? 0) - (mtimes[b] ?? 0))
+    .map((f) => {
+      const slug = stripProjectPrefix(f, project);
+      return {
+        fileName: f,
+        kind: 'html' as const,
+        label: 'Visual',
+        title: slug ? humanizeSlug(slug) : null,
+        isMarkdown: false,
+      };
+    });
+  out.push(...otherHtml);
 
   return out;
 }

@@ -26,7 +26,7 @@ export function IframePreview({
   title,
   className,
 }: IframePreviewProps) {
-  const src = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}`;
+  const src = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}&chrome=hide`;
   const style: React.CSSProperties = {};
   if (scale !== undefined) {
     style.transform = `scale(${scale})`;
@@ -71,7 +71,7 @@ export function StageIframe({ projectName, fileName }: { projectName: string; fi
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const src = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}`;
+  const src = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}&chrome=scroll`;
   const measured = size.width > 0 && size.height > 0;
   const scale = measured ? computeFitScale(size.width, STAGE_DESIGN_WIDTH) : 1;
   // viewport dims chosen so displayed size === measured container size exactly (no blank band):

@@ -4,7 +4,6 @@ import * as React from "react";
 import { FileText, Image as ImageIcon, LayoutTemplate, Trash2 } from "lucide-react";
 import { NodeStatusBadge } from "./node-status-badge";
 import { SECTION_LABEL_CLASSES, CARD_SHELL_CLASSES } from "./dag-section-group";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Artifact, ArtifactKind } from "@/lib/artifact-model";
 
@@ -12,7 +11,7 @@ const BLUE = "--tier-planning";
 
 function iconFor(kind: ArtifactKind): React.ReactNode {
   if (kind === "markdown") return <FileText size={12} aria-hidden="true" />;
-  if (kind === "visual") return <ImageIcon size={12} aria-hidden="true" />;
+  if (kind === "visual" || kind === "html") return <ImageIcon size={12} aria-hidden="true" />;
   return <LayoutTemplate size={12} aria-hidden="true" />;
 }
 
@@ -51,18 +50,20 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
                   iconOnly
                   icon={iconFor(artifact.kind)}
                 />
-                <span className="text-sm font-medium min-w-0 shrink truncate max-w-[55%]">{friendly}</span>
-                <Badge variant="outline" className="text-xs">{artifact.fileName}</Badge>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Delete artifact"
-                  onClick={(e) => { e.stopPropagation(); onDelete(artifact); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(artifact); } }}
-                  className="ml-auto cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="size-3.5" aria-hidden="true" />
-                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{friendly}</span>
+                <div className="ml-auto flex min-w-0 shrink-0 items-center gap-3">
+                  <span title={artifact.fileName} className="truncate font-mono text-xs text-muted-foreground">{artifact.fileName}</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Delete artifact"
+                    onClick={(e) => { e.stopPropagation(); onDelete(artifact); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(artifact); } }}
+                    className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                  </span>
+                </div>
               </div>
             );
           })}

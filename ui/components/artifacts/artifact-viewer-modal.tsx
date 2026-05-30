@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
 import { IframePreview, StageIframe } from "./iframe-preview";
 import { cn } from "@/lib/utils";
@@ -61,7 +60,6 @@ export function ArtifactViewerModal({
         )}
       >
         <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <Badge variant="secondary">{active.label}</Badge>
           <span className="text-sm font-medium text-foreground">{friendly}</span>
           <span title={active.fileName} className="truncate text-xs text-muted-foreground">{active.fileName}</span>
           <div className="ml-auto flex items-center gap-1">
@@ -137,9 +135,11 @@ export function ArtifactViewerModal({
                   />
                 )}
               </div>
-              <span className="w-full truncate px-1 text-center text-[9px] leading-tight text-muted-foreground">
-                {artifact.label}
-              </span>
+              <div className="flex w-full flex-1 items-center justify-center px-1">
+                <span className="w-full truncate text-center text-[9px] leading-tight text-muted-foreground">
+                  {artifact.title ?? artifact.label}
+                </span>
+              </div>
             </div>
           ))}
         </footer>
