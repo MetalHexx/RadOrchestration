@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import fsP from 'node:fs/promises';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,11 +9,12 @@ import { cmpSemver, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { scanUserLevelHarnesses, type HarnessInstallReport } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
+import { readRegistry } from '../../../../lib/repo-registry/src/index.js';
 
 const pkg = { version: getCliVersion() };
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
-export type CheckCategory = 'Environment' | 'Install' | 'Plugin' | 'Tooling';
+export type CheckCategory = 'Environment' | 'Install' | 'Plugin' | 'Tooling' | 'Registry';
 
 export interface CheckResult {
   category: CheckCategory;
@@ -393,6 +395,47 @@ export async function runPluginChecks(opts: {
       detail: lines.join('\n'),
     });
   }
+  return out;
+}
+
+export async function runRegistryHealthChecks(opts: { root: string }): Promise<CheckResult[]> {
+  const out: CheckResult[] = [];
+  let registry: ReturnType<typeof readRegistry>;
+  try {
+    registry = readRegistry({ root: opts.root });
+  } catch (e) {
+    out.push({
+      category: 'Registry',
+      name: 'registry-readable',
+      status: 'fail',
+      detail: (e as Error).message,
+    });
+    return out;
+  }
+  out.push({ category: 'Registry', name: 'registry-readable', status: 'pass' });
+
+  // unbound-repos: repos without a local path entry
+  const unboundNames = Object.keys(registry.repos).filter(
+    (name) => !(name in registry.localPaths),
+  );
+  out.push({
+    category: 'Registry',
+    name: 'unbound-repos',
+    status: unboundNames.length > 0 ? 'warn' : 'pass',
+    detail: unboundNames.length > 0 ? `repos without local path: ${unboundNames.join(', ')}` : undefined,
+  });
+
+  // missing-local-clones: bound paths that no longer exist on disk
+  const missingNames = Object.entries(registry.localPaths)
+    .filter(([, localPath]) => !fs.existsSync(localPath))
+    .map(([name]) => name);
+  out.push({
+    category: 'Registry',
+    name: 'missing-local-clones',
+    status: missingNames.length > 0 ? 'warn' : 'pass',
+    detail: missingNames.length > 0 ? `missing local clones: ${missingNames.join(', ')}` : undefined,
+  });
+
   return out;
 }
 
