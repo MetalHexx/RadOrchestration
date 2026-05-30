@@ -5,6 +5,10 @@
 // `ui/` resolve from `sharedRoot` instead of `bundleRoot`. (The legacy
 // installer keeps shared assets one level up from per-harness payloads.)
 //
+// AD-11: any entry whose resolved target's basename matches repo-registry.yml
+// or repo-registry.local.yml is refused with a thrown Error — registry files
+// are sacred user data that must survive install, upgrade, and uninstall.
+//
 // AD-13: any entry whose resolved target falls under ~/.radorc/projects/ is
 // skipped unconditionally — projects/ is sacred user data. A one-line
 // `[install] skipping projects/ entry '<bundlePath>'` log is emitted per skip.
@@ -32,6 +36,15 @@ export function installManifestFiles(manifest, bundleRoot, harness, opts = {}) {
 
   for (const entry of manifest.files) {
     const target = expandDestinationTokens(entry.destinationPath, harness);
+
+    // AD-11: registry files are sacred — refuse any manifest entry that would
+    // overwrite repo-registry.yml or repo-registry.local.yml.
+    if (/repo-registry(\.local)?\.yml$/.test(path.basename(target))) {
+      throw new Error(
+        `install safety: manifest entry '${entry.bundlePath}' targets a ` +
+        `registry file. Refusing to proceed.`,
+      );
+    }
 
     if (target.startsWith(projectsRoot)) {
       console.warn(`[install] skipping projects/ entry '${entry.bundlePath}'`);
