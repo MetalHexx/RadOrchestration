@@ -18,7 +18,7 @@ function render(props: Parameters<typeof ArtifactViewerModal>[0]): string {
 }
 const base = {
   projectName: 'DEMO', artifacts: arts, markdownContent: '# Hello',
-  onClose: noop, onPrev: noop, onNext: noop, onRequestDelete: noop,
+  onClose: noop, onPrev: noop, onNext: noop, onSelect: noop, onRequestDelete: noop,
   isFullScreen: false, onToggleFullScreen: noop,
 } as const;
 
@@ -62,4 +62,29 @@ test('renders a label caption for every filmstrip cell (DD-8)', () => {
   // AND must appear as a filmstrip caption too
   const brainstormCount = (html.match(/Brainstorm/g) ?? []).length;
   assert.ok(brainstormCount >= 2, 'Brainstorm label appears in both header and filmstrip');
+});
+
+test('makes every filmstrip cell a keyboard-accessible button (Issue A)', () => {
+  const html = render({ ...base, activeIndex: 0 });
+  const roleButtons = (html.match(/role="button"/g) ?? []).length;
+  assert.ok(roleButtons >= 3, 'at least one role="button" per filmstrip cell');
+  const tabbables = (html.match(/tabindex="0"/g) ?? []).length;
+  assert.ok(tabbables >= 3, 'at least one tabindex="0" per filmstrip cell');
+});
+
+test('marks exactly one filmstrip cell as the current artifact (Issue A)', () => {
+  const html = render({ ...base, activeIndex: 0 });
+  const current = (html.match(/aria-current="true"/g) ?? []).length;
+  assert.equal(current, 1, 'exactly one cell carries aria-current="true"');
+});
+
+test('applies cursor-pointer to clickable controls (Issue A/C)', () => {
+  const html = render({ ...base, activeIndex: 1 });
+  assert.ok(html.includes('cursor-pointer'), 'cursor-pointer present in modal markup');
+});
+
+test('shows a loading spinner while markdown content is unresolved (Extras)', () => {
+  const html = render({ ...base, activeIndex: 0, markdownContent: null });
+  assert.ok(html.includes('role="status"'), 'markdown loading spinner present');
+  assert.ok(html.includes('aria-label="Loading document"'), 'spinner is labelled');
 });

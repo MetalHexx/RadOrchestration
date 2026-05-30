@@ -307,6 +307,7 @@ export default function ProjectsPage() {
           onClose={modal.close}
           onPrev={modal.goPrev}
           onNext={modal.goNext}
+          onSelect={(i) => modal.openAt(i)}
           onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
           isFullScreen={isFullScreen}
           onToggleFullScreen={() => setIsFullScreen((v) => !v)}

@@ -40,7 +40,7 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
                 onClick={() => onOpen(index)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(index); } }}
                 className={cn(
-                  "flex items-center gap-2 py-2 pr-3 pl-3 rounded-md hover:bg-accent/50",
+                  "flex items-center gap-2 py-2 pr-3 pl-3 rounded-md cursor-pointer hover:bg-accent/50",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 )}
               >
@@ -59,7 +59,7 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
                   aria-label="Delete artifact"
                   onClick={(e) => { e.stopPropagation(); onDelete(artifact); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(artifact); } }}
-                  className="ml-auto rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+                  className="ml-auto cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="size-3.5" aria-hidden="true" />
                 </span>

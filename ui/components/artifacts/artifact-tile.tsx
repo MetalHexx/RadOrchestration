@@ -21,7 +21,7 @@ export function ArtifactTile({ projectName, artifact, onOpen, onDelete }: Artifa
       type="button"
       onClick={onOpen}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-md border border-border bg-card text-left",
+        "group relative flex cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card text-left",
         "transition-transform hover:-translate-y-0.5 hover:bg-accent/40",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
@@ -53,7 +53,7 @@ export function ArtifactTile({ projectName, artifact, onOpen, onDelete }: Artifa
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(); } }}
         className={cn(
-          "absolute right-2 top-2 hidden rounded-md bg-background/80 p-1.5 text-muted-foreground",
+          "absolute right-2 top-2 hidden cursor-pointer rounded-md bg-background/80 p-1.5 text-muted-foreground",
           "group-hover:flex hover:text-destructive",
         )}
       >
