@@ -25,3 +25,11 @@ test('a lost socket keeps the existing connection-lost copy (DD-12)', () => {
   } as never));
   assert.ok(/unavailable|stale/i.test(html), 'connection-lost copy retained');
 });
+
+test('degraded banner renders em dash correctly (not literal escape sequence)', () => {
+  const html = renderToStaticMarkup(createElement(SSEStatusBanner, {
+    status: 'connected', degraded: true, onReconnect: () => {},
+  } as never));
+  assert.ok(!html.includes('\\u2014'), 'must not render literal \\u2014 escape text');
+  assert.ok(html.includes('—'), 'renders a real em dash');
+});

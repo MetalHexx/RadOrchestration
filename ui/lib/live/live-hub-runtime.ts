@@ -49,6 +49,10 @@ function build(args: RuntimeArgs) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { buildWatchOptions } = require('./watch-config');
     const usePolling = process.env.CHOKIDAR_USEPOLLING === '1';
+    // Defect 1: capture the outgoing watcher so we can close it once the new one is
+    // wired. Without this, a supervisor restart leaks the previous watcher's fs
+    // handles and add/change/unlink listeners (bounded by maxRestarts).
+    const previous = watcher;
     const w = args.makeWatcher
       ? args.makeWatcher()
       : (chokidarMod.watch(args.projectsRoot, buildWatchOptions(usePolling)) as never);
@@ -59,7 +63,16 @@ function build(args: RuntimeArgs) {
       });
     });
     w.on('error', (err: unknown) => supervisor.reportError(err));
+    // Defect 2: chokidar emits 'ready' after the initial scan, signalling a healthy
+    // (re)start. Reset the supervisor's restart budget so transient errors that each
+    // recover do not accumulate into a permanent degrade over the process lifetime.
+    w.on('ready', () => supervisor.reportHealthy());
     watcher = w;
+    // Defect 1: startWatcher is synchronous, so close the outgoing watcher
+    // fire-and-forget (with error logging). Skipped on the very first start.
+    if (previous) {
+      void previous.close().catch((e) => console.error('[live] watcher close failed:', e));
+    }
   }
 
   // Start the watcher eagerly so the error handler is registered immediately,

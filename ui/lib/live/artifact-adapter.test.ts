@@ -26,3 +26,24 @@ test('classifies add/change/unlink of a project file into a semantic artifact ev
 test('a path that is not under a project directory yields null', () => {
   assert.equal(classifyArtifactEvent({ type: 'change', filePath: '/projects/loose.txt' }, ROOT), null);
 });
+
+test('state.json at project root yields null (high-frequency write, never an artifact)', () => {
+  assert.equal(
+    classifyArtifactEvent({ type: 'change', filePath: '/projects/DEMO/state.json' }, ROOT),
+    null,
+  );
+});
+
+test('nested doc under tasks/ yields null (deriveArtifacts only surfaces root-level files)', () => {
+  assert.equal(
+    classifyArtifactEvent({ type: 'change', filePath: '/projects/DEMO/tasks/FOO.md' }, ROOT),
+    null,
+  );
+});
+
+test('non-.md/.html root file yields null', () => {
+  assert.equal(
+    classifyArtifactEvent({ type: 'change', filePath: '/projects/DEMO/notes.txt' }, ROOT),
+    null,
+  );
+});

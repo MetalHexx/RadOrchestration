@@ -11,6 +11,22 @@ function fakeWatcher() {
   return e;
 }
 
+// A fake watcher that records how many times close() was called, so a test can
+// assert the runtime tears down the outgoing watcher on restart (Defect 1).
+function spyWatcher() {
+  const e = new EventEmitter() as EventEmitter & { close: () => Promise<void>; closeCount: number };
+  e.closeCount = 0;
+  e.close = async () => { e.closeCount += 1; };
+  return e;
+}
+
+// Builds a makeWatcher factory that hands out a fixed sequence of fake watchers,
+// one per (re)start, so a test can drive restarts across distinct instances.
+function watcherSequence(watchers: Array<ReturnType<typeof spyWatcher>>) {
+  let i = 0;
+  return () => watchers[Math.min(i++, watchers.length - 1)] as never;
+}
+
 function manualClock() {
   let pending: Array<() => void> = [];
   return {
@@ -70,6 +86,42 @@ test('supervisor degradation surfaces a live_degraded notification (FR-17, AD-13
   rt.subscribeDegraded((n) => got.push(n));
   w.emit('error', new Error('dead'));
   assert.deepEqual(got, [{ type: 'live_degraded', payload: { degraded: true } }]);
+});
+
+test('a restart closes the outgoing watcher so fs handles do not leak (Defect 1)', () => {
+  __resetLiveRuntimeForTest();
+  const first = spyWatcher();
+  const second = spyWatcher();
+  const rt = getLiveRuntime({
+    projectsRoot: '/p',
+    makeWatcher: watcherSequence([first, second]),
+    coalesceWindowMs: 0,
+    maxRestarts: 1,
+  });
+  // Keep the runtime referenced so it is not flagged unused; no subscription needed
+  // for this lifecycle assertion.
+  void rt;
+  first.emit('error', new Error('transient')); // budget allows one restart
+  assert.equal(first.closeCount, 1, 'the previous watcher is closed exactly once on restart');
+});
+
+test('a healthy ready signal resets the restart budget so transient errors do not degrade (Defect 2)', () => {
+  __resetLiveRuntimeForTest();
+  const first = spyWatcher();
+  const second = spyWatcher();
+  const third = spyWatcher();
+  const rt = getLiveRuntime({
+    projectsRoot: '/p',
+    makeWatcher: watcherSequence([first, second, third]),
+    coalesceWindowMs: 0,
+    maxRestarts: 1,
+  });
+  const degraded: Array<{ type: string }> = [];
+  rt.subscribeDegraded((n) => degraded.push(n));
+  first.emit('error', new Error('transient')); // restart #1 consumes the budget
+  second.emit('ready'); // a healthy (re)start should reset the budget
+  second.emit('error', new Error('transient')); // would degrade if the budget had not reset
+  assert.deepEqual(degraded, [], 'a healthy ready signal reset the budget, so no degrade fired');
 });
 
 test('the /api/events route pins the Node runtime and stays dynamic (AD-12)', () => {

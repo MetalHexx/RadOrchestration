@@ -26,5 +26,14 @@ export function classifyArtifactEvent(
   const segments = rel.split(/[\\/]/).filter(Boolean);
   if (segments.length < 2) return null; // not inside a project directory
   const projectName = segments[0];
+
+  // Align with deriveArtifacts: only root-level .md/.html files are artifacts.
+  // Nested files (segments > 2), non-.md/.html extensions, and the high-frequency
+  // state.json write are never surfaced by deriveArtifacts — skip them here too.
+  if (segments.length > 2) return null;
+  const basename = segments[1];
+  if (basename === 'state.json') return null;
+  if (!basename.endsWith('.md') && !basename.endsWith('.html')) return null;
+
   return { topic: topicForProject(projectName), kind: KIND_MAP[e.type], projectName };
 }

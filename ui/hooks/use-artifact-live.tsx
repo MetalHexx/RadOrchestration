@@ -13,6 +13,10 @@ interface ArtifactLiveValue {
   artifacts: Artifact[];
   unseen: Set<string>;
   activePulse: Set<string>;
+  /** Per-file modification times from the latest snapshot. Monotonic per file, so
+   *  the viewer can reload the open HTML doc on every change — including a repeat
+   *  inside the pulse-settle window the pulse edge alone misses (BUG 2). */
+  mtimes: Record<string, number>;
   degraded: boolean;
   markActive: (fileName: string | null) => void;
 }
@@ -21,6 +25,7 @@ export const defaultArtifactLiveValue: ArtifactLiveValue = {
   artifacts: [],
   unseen: new Set(),
   activePulse: new Set(),
+  mtimes: {},
   degraded: false,
   markActive: () => {},
 };
@@ -119,8 +124,8 @@ export function ArtifactLiveProvider({
   );
 
   const value = React.useMemo<ArtifactLiveValue>(
-    () => ({ artifacts, unseen: live.unseen, activePulse: live.activePulse, degraded, markActive }),
-    [artifacts, live.unseen, live.activePulse, degraded, markActive],
+    () => ({ artifacts, unseen: live.unseen, activePulse: live.activePulse, mtimes, degraded, markActive }),
+    [artifacts, live.unseen, live.activePulse, mtimes, degraded, markActive],
   );
 
   return <ArtifactLiveContext.Provider value={value}>{children}</ArtifactLiveContext.Provider>;

@@ -39,7 +39,7 @@ export function SSEStatusBanner(props: SSEStatusBannerProps): React.ReactElement
           style={{ backgroundColor: 'var(--live)' }}
         />
         <span className="text-sm leading-snug">
-          Live paused \u2014 the file watcher is recovering.
+          {'Live paused \u2014 the file watcher is recovering.'}
         </span>
         <Button
           variant="ghost"

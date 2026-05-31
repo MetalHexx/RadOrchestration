@@ -1,4 +1,4 @@
-import type { WatchOptions } from 'chokidar';
+import type { ChokidarOptions } from 'chokidar';
 
 /** New chosen settle window — distinct from the route's 0.2s stabilityThreshold
  *  and its separate 300ms per-project debounce. */
@@ -10,7 +10,7 @@ export function isIgnoredPath(p: string): boolean {
   return HEAVY_DIR_RE.test(p);
 }
 
-export function buildWatchOptions(usePolling: boolean): WatchOptions & {
+export function buildWatchOptions(usePolling: boolean): ChokidarOptions & {
   awaitWriteFinish: { stabilityThreshold: number; pollInterval: number };
 } {
   return {

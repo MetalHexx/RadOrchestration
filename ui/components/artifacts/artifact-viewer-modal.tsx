@@ -16,6 +16,9 @@ export interface ArtifactViewerModalProps {
   activeIndex: number;
   /** Fetched BRAINSTORMING.md body when the active (or any) md cell needs it. */
   markdownContent: string | null;
+  /** Which file `markdownContent` belongs to — lets the stage withhold a stale
+   *  body from a freshly-navigated md layer until its own fetch resolves (BUG 1). */
+  markdownContentFileName?: string | null;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -25,12 +28,15 @@ export interface ArtifactViewerModalProps {
   onToggleFullScreen: () => void;
   unseen?: Set<string>;
   activePulse?: Set<string>;
+  /** Per-file live mtimes from the store; drives the open HTML doc's in-place
+   *  reload off a monotonic signal so repeated changes still bust the cache (BUG 2). */
+  mtimes?: Record<string, number>;
 }
 
 export function ArtifactViewerModal({
-  projectName, artifacts, activeIndex, markdownContent,
+  projectName, artifacts, activeIndex, markdownContent, markdownContentFileName,
   onClose, onPrev, onNext, onSelect, onRequestDelete, isFullScreen, onToggleFullScreen,
-  unseen, activePulse,
+  unseen, activePulse, mtimes,
 }: ArtifactViewerModalProps) {
   const active = artifacts[activeIndex];
 
@@ -84,7 +90,9 @@ export function ArtifactViewerModal({
             projectName={projectName}
             artifact={active}
             markdownContent={markdownContent}
+            markdownContentFileName={markdownContentFileName ?? undefined}
             activePulse={activePulse?.has(active.fileName) ?? false}
+            liveMtime={mtimes?.[active.fileName] ?? 0}
           />
           <button type="button" aria-label="Previous artifact" onClick={onPrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background/70 p-2 text-foreground hover:bg-background">

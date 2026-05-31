@@ -18,7 +18,8 @@ import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, Brai
 import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
-import type { ProjectState, ProjectStateV5 } from "@/types/state";
+import type { ProjectState, ProjectStateV5, GraphStatus, GateMode, NodeStatus } from "@/types/state";
+import type { SSEConnectionStatus } from "@/types/events";
 import type { ProjectSummary } from "@/types/components";
 import { ArtifactViewerModal } from "@/components/artifacts";
 import { useArtifactModal, markdownPathForActive } from "@/hooks/use-artifact-modal";
@@ -32,22 +33,21 @@ interface ProjectsPageContentProps {
   v5State: ProjectStateV5 | null;
   v4State: ProjectState | null;
   v5Derivations: {
-    graphStatus: string | undefined;
-    gateMode: string | undefined;
+    graphStatus: GraphStatus | undefined;
+    gateMode: GateMode | null | undefined;
     currentPhaseName: string | null;
-    progress: number | null;
+    progress: { completed: number; total: number } | null;
     repoBaseUrl: string | null;
-    phaseLoopStatus: string | undefined;
+    phaseLoopStatus: NodeStatus | undefined;
   };
   followMode: boolean;
   toggleFollowMode: () => void;
   expandedLoopIds: string[];
-  onAccordionChange: (id: string, open: boolean) => void;
-  sseStatus: string;
+  onAccordionChange: (value: string[], eventDetails: { reason: string }) => void;
+  sseStatus: SSEConnectionStatus;
   reconnect: () => void;
   openDocument: (path: string) => void;
   filesLoaded: boolean;
-  pendingDelete: import("@/lib/artifact-model").Artifact | null;
   setPendingDelete: (a: import("@/lib/artifact-model").Artifact | null) => void;
   onActiveFileNameChange: (fileName: string | null) => void;
   registerOnDeleted: (fn: () => void) => void;
@@ -67,7 +67,6 @@ function ProjectsPageContent({
   reconnect,
   openDocument,
   filesLoaded,
-  pendingDelete,
   setPendingDelete,
   onActiveFileNameChange,
   registerOnDeleted,
@@ -85,6 +84,10 @@ function ProjectsPageContent({
 
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
+  // Which file `modalMarkdown` currently holds the body for. Set when a fetch
+  // resolves; null while clearing/loading. Lets the stage withhold a stale body
+  // from a freshly-navigated md layer until its own fetch lands (BUG 1).
+  const [modalMarkdownFileName, setModalMarkdownFileName] = useState<string | null>(null);
 
   // Compute the active file name from the modal state — single choke point.
   const activeFileName = modal.open ? (artifacts[modal.index]?.fileName ?? null) : null;
@@ -102,8 +105,13 @@ function ProjectsPageContent({
     const mdPath = markdownPathForActive(artifacts, modal.index);
     if (!modal.open || !mdPath || !selectedProject) {
       setModalMarkdown(null);
+      setModalMarkdownFileName(null);
       return;
     }
+    // Note: we intentionally leave the prior body/owner in place while the new fetch
+    // is in flight. The stage gates markdown by fileName, so the previously-shown
+    // (front) doc keeps rendering its own content while the incoming layer waits on
+    // its matching fetch — no stale flash, no front spinner during navigation (BUG 1).
     let cancelled = false;
     fetch(`/api/projects/${encodeURIComponent(selectedProject)}/document?path=${encodeURIComponent(mdPath)}`)
       .then((res) => {
@@ -111,10 +119,10 @@ function ProjectsPageContent({
         return res.json();
       })
       .then((data: { content: string }) => {
-        if (!cancelled) setModalMarkdown(data.content);
+        if (!cancelled) { setModalMarkdown(data.content); setModalMarkdownFileName(mdPath); }
       })
       .catch(() => {
-        if (!cancelled) setModalMarkdown('');
+        if (!cancelled) { setModalMarkdown(''); setModalMarkdownFileName(mdPath); }
       });
     return () => { cancelled = true; };
   }, [modal.open, modal.index, artifacts, selectedProject]);
@@ -229,6 +237,7 @@ function ProjectsPageContent({
           artifacts={artifacts}
           activeIndex={modal.index}
           markdownContent={modalMarkdown}
+          markdownContentFileName={modalMarkdownFileName}
           onClose={modal.close}
           onPrev={modal.goPrev}
           onNext={modal.goNext}
@@ -238,6 +247,7 @@ function ProjectsPageContent({
           onToggleFullScreen={() => setIsFullScreen((v) => !v)}
           unseen={live.unseen}
           activePulse={live.activePulse}
+          mtimes={live.mtimes}
         />
       )}
     </>
@@ -271,7 +281,6 @@ export default function ProjectsPage() {
   } = useDocumentDrawer({ projectName: selectedProject });
 
   const [fileList, setFileList] = useState<string[]>([]);
-  const [fileMtimes, setFileMtimes] = useState<Record<string, number>>({});
   const [filesLoaded, setFilesLoaded] = useState(false);
 
   const v5State: ProjectStateV5 | null =
@@ -339,7 +348,6 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (!selectedProject) {
       setFileList([]);
-      setFileMtimes({});
       return;
     }
     let cancelled = false;
@@ -351,14 +359,12 @@ export default function ProjectsPage() {
       .then((data: { files: string[]; mtimes?: Record<string, number> }) => {
         if (!cancelled) {
           setFileList(data.files);
-          setFileMtimes(data.mtimes ?? {});
           setFilesLoaded(true);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setFileList([]);
-          setFileMtimes({});
           // Mark loaded even on failure so the DAG still reveals (brainstorming
           // just stays empty) rather than hanging on the skeleton forever.
           setFilesLoaded(true);
@@ -413,7 +419,6 @@ export default function ProjectsPage() {
                 reconnect={reconnect}
                 openDocument={openDocument}
                 filesLoaded={filesLoaded}
-                pendingDelete={pendingDelete}
                 setPendingDelete={setPendingDelete}
                 onActiveFileNameChange={setActiveFileName}
                 registerOnDeleted={registerOnDeleted}

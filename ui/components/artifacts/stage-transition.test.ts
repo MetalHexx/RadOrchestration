@@ -14,7 +14,7 @@ test('a navigation keeps the outgoing layer visible until the incoming is ready 
 });
 
 test('an in-place update of the same file is not a navigation and preserves scroll (DD-11, FR-2)', () => {
-  let s = initStage('A.md');
+  const s = initStage('A.md');
   const update = applyLiveUpdate(s, 'A.md');
   assert.equal(isNavigation(s, 'A.md'), false, 'same file is an in-place update, not a navigation');
   assert.equal(update.preserveScroll, true, 'markdown in-place update preserves scroll');

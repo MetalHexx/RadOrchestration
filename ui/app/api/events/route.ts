@@ -7,6 +7,7 @@ import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
 import type { ProjectState } from '@/types/state';
 import { getProjectsRoot } from '@/lib/path-resolver';
 import { getLiveRuntime } from '@/lib/live/live-hub-runtime';
+import { wireProjectStateWatcher } from './state-watcher';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,13 +34,6 @@ function createSSEEvent<T extends SSEEventType>(
 
 function formatSSE(event: SSEEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
-
-// ─── Path Helpers ───────────────────────────────────────────────────────────
-
-function extractProjectName(filePath: string, projectsDir: string): string {
-  const relative = path.relative(projectsDir, filePath);
-  return relative.split(path.sep)[0];
 }
 
 // ─── Route Handler ──────────────────────────────────────────────────────────
@@ -99,53 +93,65 @@ export async function GET(request: Request) {
           enqueue(createSSEEvent('connected', { projects: [] }));
         });
 
-      // ── 2. Set up chokidar watcher ─────────────────────────────────
-      const globPattern = path.join(absoluteProjectsDir, '**', 'state.json');
-
-      const watcher = chokidar.watch(globPattern, {
-        usePolling,
-        awaitWriteFinish: {
-          stabilityThreshold: 200,
-          pollInterval: 50,
+      // ── 2. Set up the state.json watcher ───────────────────────────
+      // chokidar v4 removed glob support: a glob string like `**​/state.json`
+      // is treated as a literal path and matches nothing. So we watch the
+      // projects directory recursively and the helper filters to `state.json`
+      // basenames itself (mirrors the v4-correct watcher in lib/live/). The
+      // helper owns the add/change/unlink → event mapping; here we translate
+      // each normalized event into the exact SSE event it always produced.
+      const stateWatcher = wireProjectStateWatcher({
+        projectsDir: absoluteProjectsDir,
+        makeWatcher: (watchPath) => {
+          const w = chokidar.watch(watchPath, {
+            usePolling,
+            awaitWriteFinish: {
+              stabilityThreshold: 200,
+              pollInterval: 50,
+            },
+            // v4-safe `ignored`: a function `(path) => boolean`, not a glob
+            // array. Skips proposed/empty sidecar files and heavy scaffold dirs.
+            ignored: (p: string) =>
+              /state\.json\.(proposed|empty)$/.test(p) ||
+              IGNORED_PROJECT_DIR_RE.test(p),
+            ignoreInitial: true,
+          });
+          // error handler — log OS-level watcher errors (CF-B).
+          // v4 types the error callback as `(err: unknown)`.
+          w.on('error', (error: unknown) => {
+            console.error('[SSE] Chokidar watcher error:', error);
+          });
+          return w;
         },
-        ignored: [/state\.json\.(proposed|empty)$/, IGNORED_PROJECT_DIR_RE],
-        ignoreInitial: true,
-      });
-
-      // change handler — read, parse, emit v4 state directly
-      watcher.on('change', (filePath: string) => {
-        const projectName = extractProjectName(filePath, absoluteProjectsDir);
-        debouncedEmit(projectName, () => {
-          readFile(filePath, 'utf-8')
-            .then((content) => {
-              const state: ProjectState = JSON.parse(content);
-              enqueue(createSSEEvent('state_change', { projectName, state }));
-            })
-            .catch((err) => {
-              console.error(`[SSE] Error reading/parsing ${filePath}:`, err);
-            });
-        });
-      });
-
-      // add handler — new state.json appeared
-      watcher.on('add', (filePath: string) => {
-        const projectName = extractProjectName(filePath, absoluteProjectsDir);
-        debouncedEmit(projectName, () => {
-          enqueue(createSSEEvent('project_added', { projectName }));
-        });
-      });
-
-      // unlink handler — state.json deleted
-      watcher.on('unlink', (filePath: string) => {
-        const projectName = extractProjectName(filePath, absoluteProjectsDir);
-        debouncedEmit(projectName, () => {
-          enqueue(createSSEEvent('project_removed', { projectName }));
-        });
-      });
-
-      // error handler — log OS-level watcher errors (CF-B)
-      watcher.on('error', (error: Error) => {
-        console.error('[SSE] Chokidar watcher error:', error);
+        emit: (event) => {
+          const { projectName, filePath } = event;
+          debouncedEmit(projectName, () => {
+            switch (event.type) {
+              case 'state_change':
+                // read, parse, emit v4 state directly
+                readFile(filePath, 'utf-8')
+                  .then((content) => {
+                    const state: ProjectState = JSON.parse(content);
+                    enqueue(
+                      createSSEEvent('state_change', { projectName, state }),
+                    );
+                  })
+                  .catch((err) => {
+                    console.error(
+                      `[SSE] Error reading/parsing ${filePath}:`,
+                      err,
+                    );
+                  });
+                break;
+              case 'project_added':
+                enqueue(createSSEEvent('project_added', { projectName }));
+                break;
+              case 'project_removed':
+                enqueue(createSSEEvent('project_removed', { projectName }));
+                break;
+            }
+          });
+        },
       });
 
       // ── 3. Set up shallow directory watcher ───────────────────────
@@ -176,7 +182,8 @@ export async function GET(request: Request) {
         });
       });
 
-      dirWatcher.on('error', (error: Error) => {
+      // v4 types the error callback as `(err: unknown)`; match the state watcher.
+      dirWatcher.on('error', (error: unknown) => {
         console.error('[SSE] Chokidar dir watcher error:', error);
       });
 
@@ -206,7 +213,7 @@ export async function GET(request: Request) {
         clearAllDebounceTimers();
         unsubArtifacts();
         unsubDegraded();
-        watcher.close().catch((err) => {
+        stateWatcher.close().catch((err) => {
           console.error('[SSE] Error closing watcher:', err);
         });
         dirWatcher.close().catch((err) => {

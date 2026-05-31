@@ -83,7 +83,7 @@ test('an open HTML document reloads its iframe in place when a live change lands
   const root = createRoot(window.document.getElementById('root')!);
   await act(async () => {
     root.render(createElement(BufferedStage, {
-      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: false,
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: false, liveMtime: 0,
     } as never));
   });
   // innerHTML HTML-encodes & as &amp; — decode to plain text for URL pattern matching.
@@ -92,12 +92,101 @@ test('an open HTML document reloads its iframe in place when a live change lands
   assert.ok(!/[?&]v=\d/.test(before), 'no live-reload cache-bust before any change lands');
   await act(async () => {
     root.render(createElement(BufferedStage, {
-      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: true,
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: true, liveMtime: 1,
     } as never));
   });
-  // Flush any pending state updates triggered by effects (e.g. setLiveRefreshKey from the pulse effect).
+  // Flush any pending state updates triggered by effects (e.g. setLiveRefreshKey from the change effect).
   await act(async () => {});
   const after = decode(window.document.getElementById('root')!.innerHTML);
   assert.ok(/[?&]v=1/.test(after), 'front iframe reloads (cache-bust) when the open HTML doc changes in place');
+  await act(async () => { root.unmount(); });
+});
+
+test('a repeated change to the open HTML doc within the pulse window still advances the cache-bust (BUG 2)', async () => {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>');
+  const { window } = dom;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).window = window;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).document = window.document;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  const { createRoot } = await import('react-dom/client');
+  const { act } = await import('react');
+  const htmlArt = { fileName: 'V.html', kind: 'html' as const, label: 'Visual', title: null, isMarkdown: false };
+  const decode = (html: string) => html.replace(/&amp;/g, '&');
+  const root = createRoot(window.document.getElementById('root')!);
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: false, liveMtime: 0,
+    } as never));
+  });
+  // First on-disk change lands: pulse rises and mtime advances to 1.
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: true, liveMtime: 1,
+    } as never));
+  });
+  await act(async () => {});
+  const afterFirst = decode(window.document.getElementById('root')!.innerHTML);
+  assert.ok(/[?&]v=1/.test(afterFirst), 'first change cache-busts to v=1');
+  // Second on-disk change lands BEFORE the pulse settles — pulse stays true (no new
+  // rising edge), only the mtime advances to 2. The iframe must still reload.
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: true, liveMtime: 2,
+    } as never));
+  });
+  await act(async () => {});
+  const afterSecond = decode(window.document.getElementById('root')!.innerHTML);
+  assert.ok(/[?&]v=2/.test(afterSecond), 'repeated same-window change advances the cache-bust to v=2');
+  assert.ok(!/[?&]v=1\b/.test(afterSecond), 'stale v=1 cache-bust is replaced');
+  await act(async () => { root.unmount(); });
+});
+
+test('navigating md→md does not flash the previous doc as the incoming layer (BUG 1)', async () => {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>');
+  const { window } = dom;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).window = window;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).document = window.document;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  const { createRoot } = await import('react-dom/client');
+  const { act } = await import('react');
+  const A = { fileName: 'A.md', kind: 'markdown' as const, label: 'Doc', title: null, isMarkdown: true };
+  const B = { fileName: 'B.md', kind: 'markdown' as const, label: 'Doc', title: null, isMarkdown: true };
+  const root = createRoot(window.document.getElementById('root')!);
+  // A is open with its matching content.
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: A, markdownContent: '# Alpha', markdownContentFileName: 'A.md', activePulse: false, liveMtime: 0,
+    } as never));
+  });
+  await act(async () => {});
+  const showingA = window.document.getElementById('root')!;
+  assert.ok(/Alpha/.test(showingA.textContent ?? ''), 'A renders with its own content');
+  // Navigate to B, but B's fetch has NOT resolved: markdownContent still holds A's
+  // body and markdownContentFileName still points at A. The incoming B layer must
+  // NOT promote A's stale content as B — it should show its loading spinner.
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: B, markdownContent: '# Alpha', markdownContentFileName: 'A.md', activePulse: false, liveMtime: 0,
+    } as never));
+  });
+  await act(async () => {});
+  const midNav = window.document.getElementById('root')!;
+  assert.ok(/role="status"/i.test(midNav.innerHTML), 'incoming B layer shows a loading spinner, not stale content');
+  assert.ok(!/Beta/.test(midNav.textContent ?? ''), 'B body has not arrived yet');
+  // B's fetch resolves: content and fileName now match B.
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: B, markdownContent: '# Beta', markdownContentFileName: 'B.md', activePulse: false, liveMtime: 0,
+    } as never));
+  });
+  await act(async () => {});
+  const showingB = window.document.getElementById('root')!;
+  assert.ok(/Beta/.test(showingB.textContent ?? ''), 'B renders once its own content arrives');
   await act(async () => { root.unmount(); });
 });
