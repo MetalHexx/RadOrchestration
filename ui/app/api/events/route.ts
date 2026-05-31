@@ -6,6 +6,7 @@ import chokidar from 'chokidar';
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
 import type { ProjectState } from '@/types/state';
 import { getProjectsRoot } from '@/lib/path-resolver';
+import { getLiveRuntime } from '@/lib/live/live-hub-runtime';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -184,13 +185,27 @@ export async function GET(request: Request) {
         enqueue(createSSEEvent('heartbeat', {} as Record<string, never>));
       }, 30_000);
 
-      // ── 5. Cleanup on disconnect ───────────────────────────────────
+      // ── 5. Subscribe to the shared artifact hub (O(1) watcher) ─────
+      // The hub lazily warms a single process-level watcher shared across
+      // all SSE connections. Each connection registers a connection-scoped
+      // all-topics subscriber that fans in every project's artifact topic.
+      const liveRuntime = getLiveRuntime({ projectsRoot: absoluteProjectsDir });
+      const unsubArtifacts = liveRuntime.subscribeAllArtifactTopics((n) =>
+        enqueue(createSSEEvent('artifact_change', n.payload)),
+      );
+      const unsubDegraded = liveRuntime.subscribeDegraded((n) =>
+        enqueue(createSSEEvent('live_degraded', n.payload)),
+      );
+
+      // ── 6. Cleanup on disconnect ───────────────────────────────────
       function cleanup(): void {
         if (closed) return;
         closed = true;
 
         clearInterval(heartbeatInterval);
         clearAllDebounceTimers();
+        unsubArtifacts();
+        unsubDegraded();
         watcher.close().catch((err) => {
           console.error('[SSE] Error closing watcher:', err);
         });
