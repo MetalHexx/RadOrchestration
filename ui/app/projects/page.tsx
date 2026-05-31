@@ -174,6 +174,8 @@ function ProjectsPageContent({
                   artifacts={artifacts}
                   onOpen={(index) => openArtifactModal(index)}
                   onDelete={(a) => setPendingDelete(a)}
+                  unseen={live.unseen}
+                  activePulse={live.activePulse}
                 />
                 <DAGTimeline
                   nodes={v5State.graph.nodes}
@@ -208,6 +210,8 @@ function ProjectsPageContent({
           onStartBrainstorming={() => startAction.start('start-brainstorming')}
           pendingAction={startAction.pendingAction}
           errorMessage={startAction.errorMessage}
+          unseen={live.unseen}
+          activePulse={live.activePulse}
         />
       ) : null}
 
@@ -224,6 +228,8 @@ function ProjectsPageContent({
           onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
           isFullScreen={isFullScreen}
           onToggleFullScreen={() => setIsFullScreen((v) => !v)}
+          unseen={live.unseen}
+          activePulse={live.activePulse}
         />
       )}
     </>

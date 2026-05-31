@@ -15,11 +15,14 @@ export interface LaunchScreenProps {
   onStartBrainstorming: () => void;
   pendingAction: StartActionKind | null;
   errorMessage: string | null;
+  unseen?: Set<string>;
+  activePulse?: Set<string>;
 }
 
 export function LaunchScreen({
   projectName, artifacts, onOpenArtifact, onDeleteArtifact,
   onStartPlanning, onStartBrainstorming, pendingAction, errorMessage,
+  unseen, activePulse,
 }: LaunchScreenProps) {
   const hasArtifacts = artifacts.length > 0;
   const planningPending = pendingAction === "start-planning";
@@ -45,6 +48,8 @@ export function LaunchScreen({
                   artifact={artifact}
                   onOpen={() => onOpenArtifact(index)}
                   onDelete={() => onDeleteArtifact(artifact)}
+                  unseen={unseen?.has(artifact.fileName) ?? false}
+                  activePulse={activePulse?.has(artifact.fileName) ?? false}
                 />
               </div>
             ))}

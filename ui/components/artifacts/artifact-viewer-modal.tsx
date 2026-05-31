@@ -4,6 +4,8 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText } from "lucide-react";
 import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
 import { IframePreview, StageIframe } from "./iframe-preview";
+import { ActivePulse } from "./active-pulse";
+import { ChangeBadge } from "@/components/badges";
 import { cn } from "@/lib/utils";
 import { modalKeyAction } from "@/hooks/use-artifact-modal";
 import type { Artifact } from "@/lib/artifact-model";
@@ -21,11 +23,14 @@ export interface ArtifactViewerModalProps {
   onRequestDelete: () => void;
   isFullScreen: boolean;
   onToggleFullScreen: () => void;
+  unseen?: Set<string>;
+  activePulse?: Set<string>;
 }
 
 export function ArtifactViewerModal({
   projectName, artifacts, activeIndex, markdownContent,
   onClose, onPrev, onNext, onSelect, onRequestDelete, isFullScreen, onToggleFullScreen,
+  unseen, activePulse,
 }: ArtifactViewerModalProps) {
   const active = artifacts[activeIndex];
 
@@ -74,7 +79,7 @@ export function ArtifactViewerModal({
           </div>
         </header>
 
-        <div className="relative flex-1 overflow-hidden bg-muted">
+        <ActivePulse active={activePulse?.has(active.fileName) ?? false} variant="frame" className="relative flex-1 overflow-hidden bg-muted">
           {active.isMarkdown ? (
             <div className="h-full overflow-auto bg-background p-6">
               {markdownContent !== null
@@ -100,12 +105,12 @@ export function ArtifactViewerModal({
             className="absolute bottom-3 right-3 z-10 cursor-pointer rounded-full bg-background/70 p-2 text-muted-foreground hover:bg-background hover:text-destructive">
             <Trash2 className="size-5" aria-hidden="true" />
           </button>
-        </div>
+        </ActivePulse>
 
         <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
           {artifacts.map((artifact, i) => (
+            <ActivePulse key={artifact.fileName} active={activePulse?.has(artifact.fileName) ?? false} variant="frame">
             <div
-              key={artifact.fileName}
               data-filmstrip-cell
               role="button"
               tabIndex={0}
@@ -134,6 +139,11 @@ export function ArtifactViewerModal({
                     className="h-full w-full"
                   />
                 )}
+                {(unseen?.has(artifact.fileName) ?? false) && (
+                  <div className="absolute left-1 top-1 z-10">
+                    <ChangeBadge />
+                  </div>
+                )}
               </div>
               <div className="flex w-full flex-1 items-center justify-center px-1">
                 <span className="w-full truncate text-center text-[9px] leading-tight text-muted-foreground">
@@ -141,6 +151,7 @@ export function ArtifactViewerModal({
                 </span>
               </div>
             </div>
+            </ActivePulse>
           ))}
         </footer>
       </div>
