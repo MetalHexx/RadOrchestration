@@ -302,6 +302,17 @@
   cursor: not-allowed;
 }
 
+@keyframes live-pulse-frame-kf {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 70%, transparent); }
+  100% { box-shadow: 0 0 0 4px transparent; }
+}
+@keyframes live-pulse-row-kf {
+  0% { background-color: color-mix(in srgb, var(--live) 22%, transparent); }
+  100% { background-color: transparent; }
+}
+.live-pulse-frame { animation: live-pulse-frame-kf 0.9s ease-out; border-radius: inherit; }
+.live-pulse-row { animation: live-pulse-row-kf 0.9s ease-out; border-radius: inherit; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse {
     animation: none;
@@ -314,6 +325,10 @@
   .transition-opacity,
   .transition-transform {
     transition-duration: 0.01ms !important;
+  }
+  .live-pulse-frame,
+  .live-pulse-row {
+    animation: none;
   }
 }
 
