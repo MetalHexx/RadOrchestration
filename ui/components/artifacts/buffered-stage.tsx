@@ -4,7 +4,7 @@ import * as React from "react";
 import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
 import { StageIframe } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
-import { initStage, beginNavigate, markIncomingReady } from "./stage-transition";
+import { initStage, beginNavigate, markIncomingReady, applyLiveUpdate } from "./stage-transition";
 import type { Artifact } from "@/lib/artifact-model";
 import { cn } from "@/lib/utils";
 
@@ -44,16 +44,28 @@ export function BufferedStage({
 }) {
   const [stage, setStage] = React.useState(() => initStage(artifact.fileName));
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [liveRefreshKey, setLiveRefreshKey] = React.useState(0);
+  const prevPulseRef = React.useRef(activePulse);
 
   React.useEffect(() => {
     setStage((s) => (s.front.fileName === artifact.fileName ? s : beginNavigate(s, artifact.fileName)));
   }, [artifact.fileName]);
 
+  React.useEffect(() => {
+    // A live change just landed on the open document (pulse rose). For a same-file
+    // update, reload the front iframe in place — preserve scroll, no cross-fade (DD-11).
+    if (activePulse && !prevPulseRef.current) {
+      const plan = applyLiveUpdate(stage, artifact.fileName);
+      if (plan.preserveScroll) setLiveRefreshKey((k) => k + 1);
+    }
+    prevPulseRef.current = activePulse;
+  }, [activePulse, stage, artifact.fileName]);
+
   const onReady = React.useCallback(() => setStage((s) => markIncomingReady(s)), []);
 
   // Per-layer ready signal: only the incoming (back) layer needs to report
   // ready; the visible front layer is already promoted.
-  function renderLayer(fileName: string, visible: boolean, isIncoming: boolean) {
+  function renderLayer(fileName: string, visible: boolean, isIncoming: boolean, reloadKey?: number) {
     const isMd = fileName.endsWith(".md");
     const reportReady = isIncoming ? onReady : undefined;
     return (
@@ -67,8 +79,7 @@ export function BufferedStage({
         {isMd ? (
           <MarkdownLayer content={markdownContent} scrollRef={scrollRef} onReady={reportReady} />
         ) : (
-          // HTML layer reports ready from the iframe's own onLoad.
-          <StageIframe projectName={projectName} fileName={fileName} onLoad={reportReady} />
+          <StageIframe projectName={projectName} fileName={fileName} onLoad={reportReady} reloadKey={reloadKey} />
         )}
       </div>
     );
@@ -79,7 +90,7 @@ export function BufferedStage({
       {/* Dark backstop replaces the white iframe background (DD-8). No onLoad
           here — readiness is reported per layer by each renderer. */}
       <div className="absolute inset-0 bg-background">
-        {renderLayer(stage.front.fileName, true, false)}
+        {renderLayer(stage.front.fileName, true, false, liveRefreshKey)}
         {renderLayer(
           stage.back?.fileName ?? stage.front.fileName,
           stage.back ? stage.crossfading : false,

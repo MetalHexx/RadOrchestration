@@ -6,6 +6,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { BufferedStage, MarkdownLayer } from './buffered-stage';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).React = React;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const MD = { fileName: 'A.md', kind: 'markdown' as const, label: 'Doc', title: null, isMarkdown: true };
 
@@ -64,4 +66,38 @@ test('html iframes stay sandboxed without allow-scripts (NFR-8)', () => {
   } as never));
   assert.ok(/sandbox="allow-same-origin"/.test(html), 'iframe sandboxed, same-origin only');
   assert.ok(!/allow-scripts/.test(html), 'no script execution in the artifact iframe');
+});
+
+test('an open HTML document reloads its iframe in place when a live change lands (FR-1)', async () => {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>');
+  const { window } = dom;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).window = window;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).document = window.document;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  const { createRoot } = await import('react-dom/client');
+  const { act } = await import('react');
+  const htmlArt = { fileName: 'V.html', kind: 'html' as const, label: 'Visual', title: null, isMarkdown: false };
+  const root = createRoot(window.document.getElementById('root')!);
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: false,
+    } as never));
+  });
+  // innerHTML HTML-encodes & as &amp; — decode to plain text for URL pattern matching.
+  const decode = (html: string) => html.replace(/&amp;/g, '&');
+  const before = decode(window.document.getElementById('root')!.innerHTML);
+  assert.ok(!/[?&]v=\d/.test(before), 'no live-reload cache-bust before any change lands');
+  await act(async () => {
+    root.render(createElement(BufferedStage, {
+      projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: true,
+    } as never));
+  });
+  // Flush any pending state updates triggered by effects (e.g. setLiveRefreshKey from the pulse effect).
+  await act(async () => {});
+  const after = decode(window.document.getElementById('root')!.innerHTML);
+  assert.ok(/[?&]v=1/.test(after), 'front iframe reloads (cache-bust) when the open HTML doc changes in place');
+  await act(async () => { root.unmount(); });
 });

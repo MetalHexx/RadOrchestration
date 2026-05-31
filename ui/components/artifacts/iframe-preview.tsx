@@ -62,7 +62,7 @@ export function computeFitScale(containerWidth: number, designWidth: number): nu
   return containerWidth / designWidth;
 }
 
-export function StageIframe({ projectName, fileName, onLoad }: { projectName: string; fileName: string; onLoad?: () => void }) {
+export function StageIframe({ projectName, fileName, onLoad, reloadKey }: { projectName: string; fileName: string; onLoad?: () => void; reloadKey?: number }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [size, setSize] = React.useState({ width: 0, height: 0 });
   React.useEffect(() => {
@@ -74,7 +74,8 @@ export function StageIframe({ projectName, fileName, onLoad }: { projectName: st
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const src = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}&chrome=scroll`;
+  const base = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}&chrome=scroll`;
+  const src = reloadKey ? `${base}&v=${reloadKey}` : base;
   const measured = size.width > 0 && size.height > 0;
   const scale = measured ? computeFitScale(size.width, STAGE_DESIGN_WIDTH) : 1;
   // viewport dims chosen so displayed size === measured container size exactly (no blank band):
