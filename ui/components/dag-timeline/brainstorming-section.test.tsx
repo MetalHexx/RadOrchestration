@@ -35,6 +35,15 @@ test('each row exposes a delete control (FR-11, DD-9)', () => {
   assert.equal(count, 2, 'one delete control per row');
 });
 
+test('open + delete controls are real <button> elements, not nested role="button" spans', () => {
+  const html = render({ artifacts: arts, onOpen: noop, onDelete: noop });
+  // The delete affordance must be a real <button> (no synthetic role="button"
+  // nested inside an interactive row — invalid HTML/ARIA).
+  const deleteButtons = (html.match(/<button[^>]*aria-label="Delete artifact"/g) ?? []).length;
+  assert.equal(deleteButtons, 2, 'delete control is a real <button> per row');
+  assert.ok(!html.includes('role="button"'), 'no synthetic role="button" controls remain');
+});
+
 test('renders nothing when there are no artifacts (FR-9)', () => {
   const html = render({ artifacts: [], onOpen: noop, onDelete: noop });
   assert.equal(html, '');

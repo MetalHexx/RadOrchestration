@@ -33,36 +33,40 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
             return (
               <div
                 key={artifact.fileName}
-                role="button"
-                tabIndex={0}
-                aria-label={`${friendly} — ${artifact.label}`}
-                onClick={() => onOpen(index)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(index); } }}
-                className={cn(
-                  "flex items-center gap-2 py-2 pr-3 pl-3 rounded-md cursor-pointer hover:bg-accent/50",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                )}
+                className="flex items-center gap-2 py-2 pr-3 pl-3 rounded-md hover:bg-accent/50"
               >
-                <NodeStatusBadge
-                  status="completed"
-                  label={artifact.label}
-                  cssVar={BLUE}
-                  iconOnly
-                  icon={iconFor(artifact.kind)}
-                />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{friendly}</span>
-                <div className="ml-auto flex min-w-0 shrink-0 items-center gap-3">
+                {/* Primary "open" control and the delete control are sibling
+                    real <button>s — never nested — so assistive tech targets
+                    each correctly and Space/Enter activate natively (no
+                    page-scroll on Space, no double-fire). */}
+                <button
+                  type="button"
+                  aria-label={`${friendly} — ${artifact.label}`}
+                  onClick={() => onOpen(index)}
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center gap-2 cursor-pointer text-left rounded-md",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  )}
+                >
+                  <NodeStatusBadge
+                    status="completed"
+                    label={artifact.label}
+                    cssVar={BLUE}
+                    iconOnly
+                    icon={iconFor(artifact.kind)}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{friendly}</span>
+                </button>
+                <div className="flex min-w-0 shrink-0 items-center gap-3">
                   <span title={artifact.fileName} className="truncate font-mono text-xs text-muted-foreground">{artifact.fileName}</span>
-                  <span
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
                     aria-label="Delete artifact"
-                    onClick={(e) => { e.stopPropagation(); onDelete(artifact); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(artifact); } }}
-                    className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+                    onClick={() => onDelete(artifact)}
+                    className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
-                  </span>
+                  </button>
                 </div>
               </div>
             );

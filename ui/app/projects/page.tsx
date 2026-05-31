@@ -336,6 +336,8 @@ export default function ProjectsPage() {
         title="Delete Artifact"
         documentName={pendingDelete?.fileName ?? ''}
         description="This will permanently remove"
+        confirmLabel="Delete"
+        pendingLabel="Deleting…"
         isPending={deletePending}
         onConfirm={async () => {
           if (!pendingDelete || !selectedProject) return;

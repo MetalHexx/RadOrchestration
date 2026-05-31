@@ -17,6 +17,14 @@ export async function POST(
   if (pathParam.includes('..')) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
+  // Restrict deletions to root-level artifact files (.md / .html) — the only
+  // files the UI ever surfaces via deriveArtifacts. Without this, a crafted
+  // request could unlink state.json, schemas, or nested files even though they
+  // resolve inside the project dir.
+  const isRootArtifact = !/[\\/]/.test(pathParam) && /\.(md|html)$/i.test(pathParam);
+  if (!isRootArtifact) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+  }
 
   try {
     const projectDir = resolveProjectDir(params.name);

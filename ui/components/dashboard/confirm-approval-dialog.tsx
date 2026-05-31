@@ -25,6 +25,10 @@ interface ConfirmApprovalDialogProps {
   onConfirm: () => void;
   /** Whether the approval API call is currently in flight. */
   isPending: boolean;
+  /** Confirm button label. Defaults to "Confirm Approval". */
+  confirmLabel?: string;
+  /** Confirm button label while the action is in flight. Defaults to "Approving…". */
+  pendingLabel?: string;
 }
 
 export function ConfirmApprovalDialog({
@@ -35,6 +39,8 @@ export function ConfirmApprovalDialog({
   description,
   onConfirm,
   isPending,
+  confirmLabel = "Confirm Approval",
+  pendingLabel = "Approving…",
 }: ConfirmApprovalDialogProps) {
   const guardedOnOpenChange = (value: boolean) => {
     if (!isPending) {
@@ -75,10 +81,10 @@ export function ConfirmApprovalDialog({
                   className="size-3.5 animate-spin"
                   aria-hidden="true"
                 />
-                Approving…
+                {pendingLabel}
               </>
             ) : (
-              "Confirm Approval"
+              confirmLabel
             )}
           </Button>
         </div>
