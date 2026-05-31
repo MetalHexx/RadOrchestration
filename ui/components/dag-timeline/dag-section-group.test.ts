@@ -118,6 +118,13 @@ test("AD-5 CARD_SHELL_CLASSES uses border + rounded + bg-card tokens", () => {
   assert.ok(CARD_SHELL_CLASSES.includes("bg-card"));
 });
 
+test("CARD_SHELL_CLASSES carries no bottom margin so the flex gap is the sole inter-section spacing", () => {
+  // The card must not add its own mb-* — section spacing is owned entirely by
+  // the surrounding `flex flex-col gap-3` container, keeping every section gap
+  // equidistant (no double-gap below the Planning/Completion cards).
+  assert.ok(!CARD_SHELL_CLASSES.includes("mb-3"));
+});
+
 test("isCardSection + CARD_SHELL_CLASSES applies shell classes only to card sections (DD-9, DD-10)", () => {
   assert.strictEqual((isCardSection("Planning") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);
   assert.strictEqual((isCardSection("Completion") ? CARD_SHELL_CLASSES : ""), CARD_SHELL_CLASSES);

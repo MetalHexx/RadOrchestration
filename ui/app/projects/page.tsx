@@ -49,6 +49,7 @@ export default function ProjectsPage() {
 
   const [fileList, setFileList] = useState<string[]>([]);
   const [fileMtimes, setFileMtimes] = useState<Record<string, number>>({});
+  const [filesLoaded, setFilesLoaded] = useState(false);
 
   const v5State: ProjectStateV5 | null =
     projectState && isV5State(projectState) ? projectState : null;
@@ -137,6 +138,11 @@ export default function ProjectsPage() {
     return [];
   }, [v5State, v4State, selectedProject, fileList]);
 
+  // Reset the files-loaded gate on project change ONLY (not on fileRefetch),
+  // so deleting an artifact — which bumps fileRefetch — doesn't flash the
+  // timeline body back to a skeleton.
+  useEffect(() => { setFilesLoaded(false); }, [selectedProject]);
+
   useEffect(() => {
     if (!selectedProject) {
       setFileList([]);
@@ -153,12 +159,16 @@ export default function ProjectsPage() {
         if (!cancelled) {
           setFileList(data.files);
           setFileMtimes(data.mtimes ?? {});
+          setFilesLoaded(true);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setFileList([]);
           setFileMtimes({});
+          // Mark loaded even on failure so the DAG still reveals (brainstorming
+          // just stays empty) rather than hanging on the skeleton forever.
+          setFilesLoaded(true);
         }
       });
     return () => { cancelled = true; };
@@ -240,23 +250,29 @@ export default function ProjectsPage() {
                   onReconnect={reconnect}
                 />
               </div>
-              <div className="px-6 py-4">
-                <BrainstormingSection
-                  artifacts={artifacts}
-                  onOpen={(index) => openArtifactModal(index)}
-                  onDelete={(a) => setPendingDelete(a)}
-                />
-                <DAGTimeline
-                  nodes={v5State.graph.nodes}
-                  currentNodePath={v5State.graph.current_node_path}
-                  onDocClick={openDocument}
-                  expandedLoopIds={expandedLoopIds}
-                  onAccordionChange={onAccordionChange}
-                  repoBaseUrl={v5Derivations.repoBaseUrl}
-                  projectName={selected.name}
-                  phaseLoopStatus={v5Derivations.phaseLoopStatus}
-                  prUrl={v5State.pipeline.source_control?.pr_url ?? null}
-                />
+              <div className="px-6 py-4 flex flex-col gap-3">
+                {filesLoaded ? (
+                  <>
+                    <BrainstormingSection
+                      artifacts={artifacts}
+                      onOpen={(index) => openArtifactModal(index)}
+                      onDelete={(a) => setPendingDelete(a)}
+                    />
+                    <DAGTimeline
+                      nodes={v5State.graph.nodes}
+                      currentNodePath={v5State.graph.current_node_path}
+                      onDocClick={openDocument}
+                      expandedLoopIds={expandedLoopIds}
+                      onAccordionChange={onAccordionChange}
+                      repoBaseUrl={v5Derivations.repoBaseUrl}
+                      projectName={selected.name}
+                      phaseLoopStatus={v5Derivations.phaseLoopStatus}
+                      prUrl={v5State.pipeline.source_control?.pr_url ?? null}
+                    />
+                  </>
+                ) : (
+                  <DAGTimelineSkeleton />
+                )}
               </div>
             </div>
           ) : selected && v4State ? (

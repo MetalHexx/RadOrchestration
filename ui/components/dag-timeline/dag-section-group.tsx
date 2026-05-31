@@ -8,7 +8,7 @@ interface DAGSectionGroupProps {
 }
 
 export const SECTION_LABEL_CLASSES = 'text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1';
-export const CARD_SHELL_CLASSES = 'border border-border rounded-md bg-card mb-3';
+export const CARD_SHELL_CLASSES = 'border border-border rounded-md bg-card';
 
 export function isCardSection(label: string): boolean {
   return label === 'Planning' || label === 'Completion';
