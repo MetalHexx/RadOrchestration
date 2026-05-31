@@ -79,6 +79,7 @@ export default function ProjectsPage() {
 
   const [pendingDelete, setPendingDelete] = useState<import("@/lib/artifact-model").Artifact | null>(null);
   const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [fileRefetch, setFileRefetch] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
@@ -332,21 +333,27 @@ export default function ProjectsPage() {
 
       <ConfirmApprovalDialog
         open={pendingDelete !== null}
-        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        onOpenChange={(o) => { if (!o) { setPendingDelete(null); setDeleteError(null); } }}
         title="Delete Artifact"
         documentName={pendingDelete?.fileName ?? ''}
         description="This will permanently remove"
         confirmLabel="Delete"
         pendingLabel="Deleting…"
         isPending={deletePending}
+        errorMessage={deleteError}
         onConfirm={async () => {
           if (!pendingDelete || !selectedProject) return;
+          setDeleteError(null);
           setDeletePending(true);
-          await deleteArtifact(selectedProject, pendingDelete.fileName);
+          const ok = await deleteArtifact(selectedProject, pendingDelete.fileName);
           setDeletePending(false);
-          setPendingDelete(null);
-          modal.onDeleted();
-          setFileRefetch((n) => n + 1);
+          if (ok) {
+            setPendingDelete(null);
+            modal.onDeleted();
+            setFileRefetch((n) => n + 1);
+          } else {
+            setDeleteError(`Failed to delete ${pendingDelete.fileName}. Please try again.`);
+          }
         }}
       />
 

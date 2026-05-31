@@ -35,6 +35,7 @@ interface ConfirmApprovalDialogInputs {
   isPending: boolean;
   confirmLabel?: string;
   pendingLabel?: string;
+  errorMessage?: string | null;
 }
 
 /**
@@ -51,6 +52,7 @@ function simulateConfirmApprovalDialog({
   isPending,
   confirmLabel = "Confirm Approval",
   pendingLabel = "Approving…",
+  errorMessage,
 }: ConfirmApprovalDialogInputs) {
   // Guarded onOpenChange — blocked when isPending
   const guardedOnOpenChange = (value: boolean) => {
@@ -118,6 +120,11 @@ function simulateConfirmApprovalDialog({
   const footerClassName =
     "mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2";
 
+  // Error element — rendered above button row when errorMessage is truthy
+  const errorElement = errorMessage
+    ? { text: errorMessage, role: "alert" }
+    : null;
+
   return {
     dialogProps,
     titleElement,
@@ -125,6 +132,7 @@ function simulateConfirmApprovalDialog({
     cancelButton,
     confirmButton,
     footerClassName,
+    errorElement,
   };
 }
 
@@ -401,6 +409,49 @@ test("Description ends with proceed prompt", () => {
     result.descriptionElement.irreversibilityWarning,
     "Proceed?"
   );
+});
+
+test('errorMessage renders an alert element with role="alert" and matching text when truthy', () => {
+  const result = simulateConfirmApprovalDialog({
+    open: true,
+    onOpenChange: () => {},
+    title: "Delete Artifact",
+    documentName: "DEMO.html",
+    description: "This will permanently remove",
+    onConfirm: () => {},
+    isPending: false,
+    errorMessage: "Failed to delete DEMO.html. Please try again.",
+  });
+  assert.ok(result.errorElement, "errorElement should be truthy when errorMessage is set");
+  assert.strictEqual(result.errorElement!.role, "alert");
+  assert.strictEqual(result.errorElement!.text, "Failed to delete DEMO.html. Please try again.");
+});
+
+test("errorElement is null when errorMessage is absent", () => {
+  const result = simulateConfirmApprovalDialog({
+    open: true,
+    onOpenChange: () => {},
+    title: "Approve",
+    documentName: "DOC.md",
+    description: "desc",
+    onConfirm: () => {},
+    isPending: false,
+  });
+  assert.strictEqual(result.errorElement, null, "errorElement should be null when errorMessage is not provided");
+});
+
+test("errorElement is null when errorMessage is null", () => {
+  const result = simulateConfirmApprovalDialog({
+    open: true,
+    onOpenChange: () => {},
+    title: "Approve",
+    documentName: "DOC.md",
+    description: "desc",
+    onConfirm: () => {},
+    isPending: false,
+    errorMessage: null,
+  });
+  assert.strictEqual(result.errorElement, null, "errorElement should be null when errorMessage is null");
 });
 
 // ---------- Summary ----------
