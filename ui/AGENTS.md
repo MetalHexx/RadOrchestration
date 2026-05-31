@@ -31,6 +31,17 @@ node --test --import tsx "lib/**/*.test.ts" "lib/**/*.test.mjs" \
 
 This runner resolves `.js` extensions to `.ts` files via bundler-style resolution. **Next's webpack does NOT** — see the cross-package import rule below.
 
+## Feature: brainstorming live visual docs
+
+Surfaces a project's brainstorming artifacts — `*-BRAINSTORMING.md`, `*-BRAINSTORM.html`, and `*-WIREFRAME-*.html` — as live previews on the launch screen, in the DAG view, and in a full-screen modal. How the pieces fit:
+
+- **Model** — `lib/artifact-model.ts#deriveArtifacts` (pure) takes the file list + mtimes and returns **project-root files only**, ordered BRAINSTORMING.md → BRAINSTORM.html → wireframes (by ascending mtime). `hooks/use-project-artifacts.ts` memoizes it (`useProjectArtifacts`) and exposes `deleteArtifact`.
+- **Raw route** — `app/api/projects/[name]/raw/route.ts` serves a root HTML artifact as `text/html` under a strict CSP, with the usual `..` / within-projectDir guards. Opt-in `?chrome=` injects a `<style>` before `</head>`: `scroll` = thin dark app-matching scrollbars (the modal stage), `hide` = no scrollbars (thumbnails); no param = untouched raw bytes.
+- **Preview iframes** — `components/artifacts/iframe-preview.tsx`: `IframePreview` (scaled, non-interactive thumbnail, requests `&chrome=hide`) and `StageIframe` (modal stage, `&chrome=scroll`, `computeFitScale` for scale-to-fit). Both set `sandbox="allow-same-origin"` (NOT `allow-scripts`) — **required** so the injected scrollbar CSS is honored (an opaque-origin `sandbox=""` iframe ignores scrollbar styling), while static artifacts still can't run JS or read app storage.
+- **Surfaces** — launch tiles (`components/layout/launch-screen.tsx`, `components/artifacts/artifact-tile.tsx`), the DAG `BrainstormingSection` (`components/dag-timeline/brainstorming-section.tsx`), and `ArtifactViewerModal` (`components/artifacts/artifact-viewer-modal.tsx` — filmstrip nav + markdown/HTML). Clickable rows/tiles use **sibling** real `<button>`s for open vs. delete — never one interactive element nested inside another (HTML/ARIA validity).
+- **Data flow** — the files API returns `{ files, mtimes }`; `app/projects/page.tsx` threads `fileList`/`fileMtimes` into the model and gates the timeline body on a `filesLoaded` flag so the brainstorming section and the DAG render together (no late pop-in / layout shift).
+- **Delete** — `POST /api/projects/[name]/delete?path=` unlinks one artifact, server-side **allowlisted to root-level `.md`/`.html`** so it can't touch `state.json` / schemas; the confirm dialog surfaces failures instead of silently advancing.
+
 ## Coding standards
 
 - **Server boundary: API routes only.** Browser-side code (`page.tsx`, components, hooks) must never reach for `node:fs`, `child_process`, or any other Node builtin. If you need data from the filesystem or another process, expose it through an `app/api/<thing>/route.ts` handler and fetch it from the client.

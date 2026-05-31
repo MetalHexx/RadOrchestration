@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 import { resolveProjectDir } from '@/lib/path-resolver';
-import { listProjectFiles } from '@/lib/fs-reader';
+import { listProjectFilesWithMtimes } from '@/lib/fs-reader';
 
 export async function GET(
   request: NextRequest,
@@ -11,9 +11,9 @@ export async function GET(
 ) {
   try {
     const projectDir = resolveProjectDir(params.name);
-    const files = await listProjectFiles(projectDir);
+    const { files, mtimes } = await listProjectFilesWithMtimes(projectDir);
 
-    return NextResponse.json({ files }, { status: 200 });
+    return NextResponse.json({ files, mtimes }, { status: 200 });
   } catch (err) {
     const isNotFound =
       err instanceof Error &&

@@ -6,7 +6,7 @@ import assert from 'node:assert';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { listProjectFiles } from './fs-reader';
+import { listProjectFiles, listProjectFilesWithMtimes } from './fs-reader';
 
 let passed = 0;
 let failed = 0;
@@ -140,6 +140,59 @@ async function run() {
     await rm(gitDir, { recursive: true });
     await rm(path.join(tmpDir, '.next'), { recursive: true });
     await rm(cacheDir, { recursive: true });
+  });
+
+  await test('returns root *.html files alongside .md (FR-22)', async () => {
+    await writeFile(path.join(tmpDir, 'DEMO-BRAINSTORM.html'), '<html></html>');
+    await writeFile(path.join(tmpDir, 'DEMO-WIREFRAME-LAUNCH-SCREEN.html'), '<html></html>');
+    const files = await listProjectFiles(tmpDir);
+    assert.ok(files.includes('DEMO-BRAINSTORM.html'), 'should include root brainstorm html');
+    assert.ok(files.includes('DEMO-WIREFRAME-LAUNCH-SCREEN.html'), 'should include root wireframe html');
+  });
+
+  await test('still returns .md files after html extension (AD-3)', async () => {
+    const files = await listProjectFiles(tmpDir);
+    assert.ok(files.includes('PRD.md'), 'md walk preserved');
+    assert.ok(files.includes('tasks/TASK-P01-T01.md'), 'subdir md walk preserved');
+  });
+
+  await test('skips html inside ignored directories (AD-3)', async () => {
+    await mkdir(path.join(tmpDir, 'node_modules', 'pkg'), { recursive: true });
+    await writeFile(path.join(tmpDir, 'node_modules', 'pkg', 'index.html'), '<html></html>');
+    const files = await listProjectFiles(tmpDir);
+    assert.ok(!files.some((f) => f.includes('node_modules')), 'node_modules html excluded');
+  });
+
+  // ─── listProjectFilesWithMtimes tests (FR-2) ────────────────────────────────
+  console.log('\nlistProjectFilesWithMtimes');
+
+  await test('returns files and mtimes with numeric entry for each file (FR-2)', async () => {
+    const { utimes } = await import('node:fs/promises');
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-mtimes-test-'));
+    try {
+      const firstHtml = path.join(dir, 'PROJ-WIREFRAME-FIRST.html');
+      const secondHtml = path.join(dir, 'PROJ-WIREFRAME-SECOND.html');
+      await writeFile(firstHtml, '<html>first</html>');
+      await writeFile(secondHtml, '<html>second</html>');
+      // Set deterministic mtimes: first file older, second file newer
+      const oldTime = new Date('2024-01-01T00:00:00Z');
+      const newTime = new Date('2024-06-01T00:00:00Z');
+      await utimes(firstHtml, oldTime, oldTime);
+      await utimes(secondHtml, newTime, newTime);
+
+      const result = await listProjectFilesWithMtimes(dir);
+
+      assert.ok(result.files.includes('PROJ-WIREFRAME-FIRST.html'), 'files includes first html');
+      assert.ok(result.files.includes('PROJ-WIREFRAME-SECOND.html'), 'files includes second html');
+      assert.ok(typeof result.mtimes['PROJ-WIREFRAME-FIRST.html'] === 'number', 'mtimes has numeric entry for first file');
+      assert.ok(typeof result.mtimes['PROJ-WIREFRAME-SECOND.html'] === 'number', 'mtimes has numeric entry for second file');
+      assert.ok(
+        result.mtimes['PROJ-WIREFRAME-SECOND.html'] > result.mtimes['PROJ-WIREFRAME-FIRST.html'],
+        `later-modified file mtime (${result.mtimes['PROJ-WIREFRAME-SECOND.html']}) must exceed earlier one (${result.mtimes['PROJ-WIREFRAME-FIRST.html']})`
+      );
+    } finally {
+      await rm(dir, { recursive: true });
+    }
   });
 
   // Cleanup

@@ -185,7 +185,9 @@ async function run() {
     assert.ok(headerIdx >= 0, '<ProjectHeader must be present');
     const statusBandIdx = sourceText.indexOf('<div className="flex flex-col">', headerIdx);
     assert.ok(statusBandIdx > headerIdx, 'Status band must appear after <ProjectHeader');
-    const timelineWrapperIdx = sourceText.indexOf('<div className="px-6 py-4">', statusBandIdx);
+    // Prefix match (no trailing `">`) so the wrapper may carry extra layout
+    // classes (e.g. `flex flex-col gap-3`) without breaking this ordering check.
+    const timelineWrapperIdx = sourceText.indexOf('<div className="px-6 py-4', statusBandIdx);
     assert.ok(timelineWrapperIdx > statusBandIdx, 'Timeline wrapper must appear after status band');
   });
 
@@ -238,6 +240,8 @@ async function run() {
       '@/hooks/use-config-editor',
       '@/hooks/use-config-click-context',
       '@/hooks/use-start-action',
+      '@/hooks/use-project-artifacts',
+      '@/hooks/use-artifact-modal',
       '@/components/ui/sidebar',
       '@/components/sidebar',
       '@/components/layout',
@@ -245,6 +249,8 @@ async function run() {
       '@/components/config',
       '@/components/dag-timeline',
       '@/components/badges',
+      '@/components/dashboard',
+      '@/components/artifacts',
       '@/lib/document-ordering',
       '@/types/state',
       '@/types/components',

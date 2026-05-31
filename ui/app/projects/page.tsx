@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -8,16 +8,20 @@ import { useConfigEditor } from "@/hooks/use-config-editor";
 import { useConfigClickContext } from "@/hooks/use-config-click-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
-import { MainDashboard, NotStartedPaneV5 } from "@/components/layout";
+import { MainDashboard, LaunchScreen } from "@/components/layout";
 import { useStartAction } from "@/hooks/use-start-action";
+import { useProjectArtifacts, deleteArtifact } from "@/hooks/use-project-artifacts";
 import { DocumentDrawer } from "@/components/documents";
+import { ConfirmApprovalDialog } from "@/components/dashboard";
 import { ConfigEditorPanel } from "@/components/config";
-import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
+import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, BrainstormingSection, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { SSEStatusBanner } from "@/components/badges";
 import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
 import { isV5State } from "@/types/state";
 import type { ProjectState, ProjectStateV5 } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
+import { ArtifactViewerModal } from "@/components/artifacts";
+import { useArtifactModal, markdownPathForActive } from "@/hooks/use-artifact-modal";
 
 export default function ProjectsPage() {
   const {
@@ -44,6 +48,8 @@ export default function ProjectsPage() {
   } = useDocumentDrawer({ projectName: selectedProject });
 
   const [fileList, setFileList] = useState<string[]>([]);
+  const [fileMtimes, setFileMtimes] = useState<Record<string, number>>({});
+  const [filesLoaded, setFilesLoaded] = useState(false);
 
   const v5State: ProjectStateV5 | null =
     projectState && isV5State(projectState) ? projectState : null;
@@ -71,6 +77,42 @@ export default function ProjectsPage() {
 
   const startAction = useStartAction(selectedProject);
 
+  const [pendingDelete, setPendingDelete] = useState<import("@/lib/artifact-model").Artifact | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [fileRefetch, setFileRefetch] = useState(0);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
+
+  const artifacts = useProjectArtifacts(selectedProject, fileList, fileMtimes);
+
+  const getArtifactCount = useCallback(() => artifacts.length, [artifacts.length]);
+  const modal = useArtifactModal(-1, getArtifactCount);
+  const openArtifactModal = modal.openAt;
+
+  useEffect(() => { if (!modal.open) setIsFullScreen(false); }, [modal.open]);
+
+  useEffect(() => {
+    const mdPath = markdownPathForActive(artifacts, modal.index);
+    if (!modal.open || !mdPath || !selectedProject) {
+      setModalMarkdown(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/projects/${encodeURIComponent(selectedProject)}/document?path=${encodeURIComponent(mdPath)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch markdown");
+        return res.json();
+      })
+      .then((data: { content: string }) => {
+        if (!cancelled) setModalMarkdown(data.content);
+      })
+      .catch(() => {
+        if (!cancelled) setModalMarkdown('');
+      });
+    return () => { cancelled = true; };
+  }, [modal.open, modal.index, artifacts, selectedProject]);
+
   const v5Derivations = useMemo(() => {
     if (!v5State) {
       return { graphStatus: undefined, gateMode: undefined, currentPhaseName: null, progress: null, repoBaseUrl: null, phaseLoopStatus: undefined };
@@ -97,9 +139,15 @@ export default function ProjectsPage() {
     return [];
   }, [v5State, v4State, selectedProject, fileList]);
 
+  // Reset the files-loaded gate on project change ONLY (not on fileRefetch),
+  // so deleting an artifact — which bumps fileRefetch — doesn't flash the
+  // timeline body back to a skeleton.
+  useEffect(() => { setFilesLoaded(false); }, [selectedProject]);
+
   useEffect(() => {
     if (!selectedProject) {
       setFileList([]);
+      setFileMtimes({});
       return;
     }
     let cancelled = false;
@@ -108,14 +156,24 @@ export default function ProjectsPage() {
         if (!res.ok) throw new Error("Failed to fetch files");
         return res.json();
       })
-      .then((data: { files: string[] }) => {
-        if (!cancelled) setFileList(data.files);
+      .then((data: { files: string[]; mtimes?: Record<string, number> }) => {
+        if (!cancelled) {
+          setFileList(data.files);
+          setFileMtimes(data.mtimes ?? {});
+          setFilesLoaded(true);
+        }
       })
       .catch(() => {
-        if (!cancelled) setFileList([]);
+        if (!cancelled) {
+          setFileList([]);
+          setFileMtimes({});
+          // Mark loaded even on failure so the DAG still reveals (brainstorming
+          // just stays empty) rather than hanging on the skeleton forever.
+          setFilesLoaded(true);
+        }
       });
     return () => { cancelled = true; };
-  }, [selectedProject]);
+  }, [selectedProject, fileRefetch]);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-background">
@@ -193,18 +251,29 @@ export default function ProjectsPage() {
                   onReconnect={reconnect}
                 />
               </div>
-              <div className="px-6 py-4">
-                <DAGTimeline
-                  nodes={v5State.graph.nodes}
-                  currentNodePath={v5State.graph.current_node_path}
-                  onDocClick={openDocument}
-                  expandedLoopIds={expandedLoopIds}
-                  onAccordionChange={onAccordionChange}
-                  repoBaseUrl={v5Derivations.repoBaseUrl}
-                  projectName={selected.name}
-                  phaseLoopStatus={v5Derivations.phaseLoopStatus}
-                  prUrl={v5State.pipeline.source_control?.pr_url ?? null}
-                />
+              <div className="px-6 py-4 flex flex-col gap-3">
+                {filesLoaded ? (
+                  <>
+                    <BrainstormingSection
+                      artifacts={artifacts}
+                      onOpen={(index) => openArtifactModal(index)}
+                      onDelete={(a) => setPendingDelete(a)}
+                    />
+                    <DAGTimeline
+                      nodes={v5State.graph.nodes}
+                      currentNodePath={v5State.graph.current_node_path}
+                      onDocClick={openDocument}
+                      expandedLoopIds={expandedLoopIds}
+                      onAccordionChange={onAccordionChange}
+                      repoBaseUrl={v5Derivations.repoBaseUrl}
+                      projectName={selected.name}
+                      phaseLoopStatus={v5Derivations.phaseLoopStatus}
+                      prUrl={v5State.pipeline.source_control?.pr_url ?? null}
+                    />
+                  </>
+                ) : (
+                  <DAGTimelineSkeleton />
+                )}
               </div>
             </div>
           ) : selected && v4State ? (
@@ -214,10 +283,11 @@ export default function ProjectsPage() {
               onDocClick={openDocument}
             />
           ) : selected && selected.tier === 'not_initialized' && !v5State && !v4State && !selected.hasMalformedState ? (
-            <NotStartedPaneV5
+            <LaunchScreen
               projectName={selected.name}
-              brainstormingDoc={selected.brainstormingDoc ?? null}
-              onViewBrainstorming={openDocument}
+              artifacts={artifacts}
+              onOpenArtifact={(index) => openArtifactModal(index)}
+              onDeleteArtifact={(a) => setPendingDelete(a)}
               onStartPlanning={() => startAction.start('start-planning')}
               onStartBrainstorming={() => startAction.start('start-brainstorming')}
               pendingAction={startAction.pendingAction}
@@ -243,6 +313,48 @@ export default function ProjectsPage() {
         scrollAreaRef={scrollAreaRef}
         docs={orderedDocs}
         onNavigate={navigateTo}
+      />
+
+      {modal.open && artifacts[modal.index] && (
+        <ArtifactViewerModal
+          projectName={selectedProject!}
+          artifacts={artifacts}
+          activeIndex={modal.index}
+          markdownContent={modalMarkdown}
+          onClose={modal.close}
+          onPrev={modal.goPrev}
+          onNext={modal.goNext}
+          onSelect={(i) => modal.openAt(i)}
+          onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
+          isFullScreen={isFullScreen}
+          onToggleFullScreen={() => setIsFullScreen((v) => !v)}
+        />
+      )}
+
+      <ConfirmApprovalDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => { if (!o) { setPendingDelete(null); setDeleteError(null); } }}
+        title="Delete Artifact"
+        documentName={pendingDelete?.fileName ?? ''}
+        description="This will permanently remove"
+        confirmLabel="Delete"
+        pendingLabel="Deleting…"
+        isPending={deletePending}
+        errorMessage={deleteError}
+        onConfirm={async () => {
+          if (!pendingDelete || !selectedProject) return;
+          setDeleteError(null);
+          setDeletePending(true);
+          const ok = await deleteArtifact(selectedProject, pendingDelete.fileName);
+          setDeletePending(false);
+          if (ok) {
+            setPendingDelete(null);
+            modal.onDeleted();
+            setFileRefetch((n) => n + 1);
+          } else {
+            setDeleteError(`Failed to delete ${pendingDelete.fileName}. Please try again.`);
+          }
+        }}
       />
 
       <ConfigEditorPanel editor={configEditor} />

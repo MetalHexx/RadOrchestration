@@ -21,7 +21,10 @@ Generates screenshot-ready, self-contained HTML (or SVG) visuals from any source
 
 ## File Mechanics
 
-- **Path**: `~/.radorc/projects/{PROJECT-NAME}/{PROJECT-NAME}-BRAINSTORM.html` — the visual companion to `BRAINSTORMING.md` (one per project).
+- **Path (exact filename)**: `~/.radorc/projects/{PROJECT-NAME}/{PROJECT-NAME}-BRAINSTORM.html` — the visual companion to `BRAINSTORMING.md` (one per project; regenerating overwrites it).
+  - Use this **exact** name — not `-BRAINSTORM-VISUAL.html` or any other suffix.
+  - The dashboard fills its "Brainstorm Visual" slot only from this name; a deviation still shows as a generic visual but won't fill that slot.
+  - It's ok if you use another name for a different document -- we're not limited to brainstorming docs in general.
 - **Folder creation**: Create `~/.radorc/projects/{PROJECT-NAME}/` if it doesn't exist. Do NOT create subfolders (`phases/`, `tasks/`, `reports/`) — the Orchestrator handles that during project initialization.
 - **Project name**: Always `SCREAMING-CASE` (e.g., `MY-NEW-FEATURE`).
 
@@ -323,7 +326,7 @@ Sampled from <url>:
 - [ ] Fixed 1200px width
 - [ ] No JS for primary content
 - [ ] All CSS in `<style>` block
-- [ ] File saved to correct output location with correct naming pattern
+- [ ] Saved as exactly `{PROJECT-NAME}-BRAINSTORM.html` in the project root — no `-VISUAL`/other suffix
 
 ---
 

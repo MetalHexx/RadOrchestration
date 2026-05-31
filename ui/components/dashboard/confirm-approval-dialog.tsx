@@ -25,6 +25,16 @@ interface ConfirmApprovalDialogProps {
   onConfirm: () => void;
   /** Whether the approval API call is currently in flight. */
   isPending: boolean;
+  /** Confirm button label. Defaults to "Confirm Approval". */
+  confirmLabel?: string;
+  /** Confirm button label while the action is in flight. Defaults to "Approving…". */
+  pendingLabel?: string;
+  /**
+   * Optional error message to display above the button row. When truthy, renders
+   * as a destructive-styled accessible alert. When falsy, renders nothing.
+   * Backward-compatible: existing approval-gate usages are unaffected.
+   */
+  errorMessage?: string | null;
 }
 
 export function ConfirmApprovalDialog({
@@ -35,6 +45,9 @@ export function ConfirmApprovalDialog({
   description,
   onConfirm,
   isPending,
+  confirmLabel = "Confirm Approval",
+  pendingLabel = "Approving…",
+  errorMessage,
 }: ConfirmApprovalDialogProps) {
   const guardedOnOpenChange = (value: boolean) => {
     if (!isPending) {
@@ -53,6 +66,9 @@ export function ConfirmApprovalDialog({
           </span>
           . Proceed?
         </DialogDescription>
+        {errorMessage ? (
+          <p className="text-sm text-destructive" role="alert">{errorMessage}</p>
+        ) : null}
         <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <Button
             variant="outline"
@@ -75,10 +91,10 @@ export function ConfirmApprovalDialog({
                   className="size-3.5 animate-spin"
                   aria-hidden="true"
                 />
-                Approving…
+                {pendingLabel}
               </>
             ) : (
-              "Confirm Approval"
+              confirmLabel
             )}
           </Button>
         </div>

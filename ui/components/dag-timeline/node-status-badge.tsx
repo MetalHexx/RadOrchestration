@@ -22,10 +22,17 @@ interface NodeStatusBadgeProps {
   cssVar?: string;
   /** When true, suppresses visible label text on the badge — used by the compact row treatment (DD-1). */
   iconOnly?: boolean;
+  /**
+   * Optional custom icon node (AD-9, DD-5). When supplied, replaces the
+   * default complete/rejected/spinner icon in SpinnerBadge. Forwarded
+   * directly to SpinnerBadge's icon prop. Omitting it preserves existing
+   * check/x/spinner behavior.
+   */
+  icon?: React.ReactNode;
 }
 
 export const NodeStatusBadge = React.forwardRef<HTMLSpanElement, NodeStatusBadgeProps>(
-  function NodeStatusBadge({ status, label, cssVar, iconOnly }, ref) {
+  function NodeStatusBadge({ status, label, cssVar, iconOnly, icon }, ref) {
     const entry = STATUS_MAP[status];
     const resolvedLabel = label ?? entry.defaultLabel;
     const resolvedCssVar = cssVar ?? entry.cssVar;
@@ -37,6 +44,7 @@ export const NodeStatusBadge = React.forwardRef<HTMLSpanElement, NodeStatusBadge
         isSpinning={entry.isSpinning}
         isComplete={entry.isComplete}
         isRejected={entry.isRejected}
+        icon={icon}
         ariaLabel={resolvedLabel}
         hideLabel={iconOnly}
       />
