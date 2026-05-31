@@ -74,11 +74,10 @@ test('chrome=scroll injects styled webkit scrollbar before </head> (Part B)', as
       const res = await GET(req('DEMO', 'DEMO-PAGE.html', 'scroll'), { params: { name: 'DEMO' } });
       assert.equal(res.status, 200);
       const body = await res.text();
-      // Styled via ::-webkit-scrollbar pseudo-elements (honored once the iframe is
-      // allow-same-origin); gives a solid, alpha-respecting thumb in the app color.
-      assert.ok(body.includes('::-webkit-scrollbar-thumb'), 'webkit thumb styled');
-      assert.ok(body.includes('oklch(0.33 0 0)'), 'solid dark thumb color injected');
-      assert.ok(!body.includes('scrollbar-width'), 'no scrollbar-width (would suppress webkit + wash out the thumb)');
+      // Native thin scrollbar (honored once the iframe is allow-same-origin) with a
+      // SOLID scrollbar-color thumb so it doesn't wash out over light artifact content.
+      assert.ok(body.includes('scrollbar-width:thin'), 'native thin scrollbar injected');
+      assert.ok(body.includes('oklch(0.5 0 0) transparent'), 'solid thumb color, transparent track');
       assert.ok(body.indexOf('<style>') < body.indexOf('</head>'), 'style injected before </head>');
     });
   } finally { await rm(tmp, { recursive: true, force: true }); }

@@ -7,13 +7,12 @@ import { readDocument } from '@/lib/fs-reader';
 
 function scrollbarStyle(chrome: string | null): string {
   if (chrome === 'scroll') {
-    // Paired with sandbox="allow-same-origin" on the iframe. Style ONLY the
-    // ::-webkit-scrollbar pseudo-elements (no scrollbar-width/-color, which would
-    // suppress them). Use a SOLID thumb: the app's translucent oklch(0.55/0.5)
-    // washes out over an artifact's lighter content, whereas a solid oklch(0.38)
-    // — the perceived color of the app thumb over its dark bg — reads as the same
-    // thin/dark scrollbar regardless of what's behind it.
-    return '<style>::-webkit-scrollbar{width:10px;height:10px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background-color:oklch(0.33 0 0);border-radius:9999px;}::-webkit-scrollbar-thumb:hover{background-color:oklch(0.48 0 0);}::-webkit-scrollbar-corner{background:transparent;}</style>';
+    // Paired with sandbox="allow-same-origin" so scrollbar styling is honored.
+    // Native thin scrollbar (scrollbar-width: thin) to match the app's other
+    // scrollbars, with a SOLID scrollbar-color thumb — the app's translucent
+    // oklch(0.55/0.5) washes out over an artifact's lighter content, whereas a
+    // solid oklch(0.5) stays a consistent thin bar regardless of background.
+    return '<style>html,body{scrollbar-width:thin !important;scrollbar-color:oklch(0.5 0 0) transparent !important;}</style>';
   }
   if (chrome === 'hide') {
     return '<style>::-webkit-scrollbar{display:none !important;}html,body{scrollbar-width:none !important;-ms-overflow-style:none !important;}*{scrollbar-width:none;-ms-overflow-style:none;}</style>';
