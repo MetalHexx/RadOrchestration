@@ -30,3 +30,11 @@ test('provider is a Context provider with no new state-management dependency (NF
   assert.ok(src.includes('EventSource'), 'owns its own live connection (documented fallback, AD-11)');
   assert.ok(src.includes('fetchArtifactSnapshot'), 'snapshots over REST on connect');
 });
+
+test('the artifact_change path feeds live deltas into the store via snapshot diffing (FR-8, FR-9)', () => {
+  const src = readFileSync(path.join(process.cwd(), 'hooks', 'use-artifact-live.tsx'), 'utf-8');
+  assert.ok(src.includes('diffSnapshots'), 'derives per-file changes by diffing successive snapshots');
+  assert.ok(!/void\s+applyChange/.test(src), 'applyChange is wired, not silenced with void');
+  assert.ok(!/void\s+setMtimes/.test(src), 'setMtimes is wired, not silenced with void');
+  assert.ok(/applyChange\s*\(/.test(src), 'applyChange is actually invoked');
+});

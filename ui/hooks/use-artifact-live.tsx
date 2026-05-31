@@ -3,7 +3,7 @@
 import * as React from "react";
 import { deriveArtifacts, type Artifact } from "@/lib/artifact-model";
 import { emptyLiveState, applyDelta, clearUnseenFor, type LiveState } from "@/lib/live/live-store-model";
-import { fetchArtifactSnapshot, reconcileUnseen } from "@/lib/live/snapshot";
+import { fetchArtifactSnapshot, reconcileUnseen, diffSnapshots } from "@/lib/live/snapshot";
 
 interface ArtifactLiveValue {
   artifacts: Artifact[];
@@ -39,23 +39,47 @@ export function ArtifactLiveProvider({
   const activeRef = React.useRef<string | null>(activeFileName);
   activeRef.current = activeFileName;
 
+  const prevFilesRef = React.useRef<string[] | null>(null);
+  const prevMtimesRef = React.useRef<Record<string, number>>({});
+
+  const applyChange = React.useCallback((fileName: string, kind: 'added' | 'changed' | 'removed') => {
+    setLive((s) => applyDelta(s, { fileName, kind, activeFileName: activeRef.current }));
+  }, []);
+
   const refreshSnapshot = React.useCallback(async (reconcile: boolean) => {
     if (!projectName) return;
     const snap = await fetchArtifactSnapshot(projectName);
     setFiles(snap.files);
+    setMtimes(snap.mtimes);
+
+    // On a live refresh (have a baseline, not a reconnect self-heal), derive which
+    // files changed since the previous snapshot and feed each through the reducer.
+    const prevFiles = prevFilesRef.current;
+    if (!reconcile && prevFiles !== null) {
+      for (const c of diffSnapshots(prevFiles, prevMtimesRef.current, snap.files, snap.mtimes)) {
+        applyChange(c.fileName, c.kind);
+      }
+    }
+    prevFilesRef.current = snap.files;
+    prevMtimesRef.current = snap.mtimes;
+
     if (reconcile) setLive((s) => ({ ...s, unseen: reconcileUnseen(s.unseen, snap.files) }));
-  }, [projectName]);
+  }, [projectName, applyChange]);
 
   React.useEffect(() => {
-    if (!projectName) { setFiles([]); setLive(emptyLiveState()); return; }
+    if (!projectName) {
+      setFiles([]); setLive(emptyLiveState());
+      prevFilesRef.current = null; prevMtimesRef.current = {};
+      return;
+    }
+    prevFilesRef.current = null;
+    prevMtimesRef.current = {};
     let es: EventSource | null = new EventSource("/api/events");
     void refreshSnapshot(false);
     es.addEventListener("artifact_change", (m: MessageEvent) => {
       const ev = JSON.parse(m.data) as { payload: { projectName: string; kind: 'added' | 'changed' | 'removed' } };
       if (ev.payload.projectName !== projectName) return;
-      void refreshSnapshot(false).then(() => {
-        // mtimes refreshed alongside files via a second pull kept minimal here.
-      });
+      void refreshSnapshot(false);
     });
     es.addEventListener("live_degraded", (m: MessageEvent) => {
       const ev = JSON.parse(m.data) as { payload: { degraded: boolean } };
@@ -74,12 +98,6 @@ export function ArtifactLiveProvider({
     () => (projectName ? deriveArtifacts(projectName, files, mtimes) : []),
     [projectName, files, mtimes],
   );
-
-  // Apply a delta to mark unseen against the live active file when a change lands.
-  const applyChange = React.useCallback((fileName: string, kind: 'added' | 'changed' | 'removed') => {
-    setLive((s) => applyDelta(s, { fileName, kind, activeFileName: activeRef.current }));
-  }, []);
-  void applyChange; void setMtimes;
 
   const value = React.useMemo<ArtifactLiveValue>(
     () => ({ artifacts, unseen: live.unseen, activePulse: live.activePulse, degraded, markActive }),
