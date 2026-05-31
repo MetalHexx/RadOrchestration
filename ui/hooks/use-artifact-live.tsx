@@ -2,8 +2,12 @@
 
 import * as React from "react";
 import { deriveArtifacts, type Artifact } from "@/lib/artifact-model";
-import { emptyLiveState, applyDelta, clearUnseenFor, type LiveState } from "@/lib/live/live-store-model";
+import { emptyLiveState, applyDelta, clearUnseenFor, endPulseFor, type LiveState } from "@/lib/live/live-store-model";
 import { fetchArtifactSnapshot, reconcileUnseen, diffSnapshots } from "@/lib/live/snapshot";
+
+// How long a file stays in activePulse after a change lands. Outlasts the 0.9s CSS
+// pulse animation so the visual finishes, then clears so a later change re-pulses.
+const PULSE_SETTLE_MS = 1500;
 
 interface ArtifactLiveValue {
   artifacts: Artifact[];
@@ -41,9 +45,19 @@ export function ArtifactLiveProvider({
 
   const prevFilesRef = React.useRef<string[] | null>(null);
   const prevMtimesRef = React.useRef<Record<string, number>>({});
+  const pulseTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const applyChange = React.useCallback((fileName: string, kind: 'added' | 'changed' | 'removed') => {
     setLive((s) => applyDelta(s, { fileName, kind, activeFileName: activeRef.current }));
+    const timers = pulseTimersRef.current;
+    const existing = timers.get(fileName);
+    if (existing) clearTimeout(existing);
+    if (kind === 'removed') { timers.delete(fileName); return; }
+    const timer = setTimeout(() => {
+      timers.delete(fileName);
+      setLive((s) => endPulseFor(s, fileName));
+    }, PULSE_SETTLE_MS);
+    timers.set(fileName, timer);
   }, []);
 
   const refreshSnapshot = React.useCallback(async (reconcile: boolean) => {
@@ -88,6 +102,11 @@ export function ArtifactLiveProvider({
     es.onerror = () => { void refreshSnapshot(true); };
     return () => { es?.close(); es = null; };
   }, [projectName, refreshSnapshot]);
+
+  React.useEffect(() => {
+    const timers = pulseTimersRef.current;
+    return () => { for (const t of timers.values()) clearTimeout(t); timers.clear(); };
+  }, []);
 
   const markActive = React.useCallback((fileName: string | null) => {
     if (!fileName) return;

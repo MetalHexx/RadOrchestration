@@ -38,3 +38,9 @@ test('the artifact_change path feeds live deltas into the store via snapshot dif
   assert.ok(!/void\s+setMtimes/.test(src), 'setMtimes is wired, not silenced with void');
   assert.ok(/applyChange\s*\(/.test(src), 'applyChange is actually invoked');
 });
+
+test('the active pulse settles via endPulseFor on a timer (FR-6)', () => {
+  const src = readFileSync(path.join(process.cwd(), 'hooks', 'use-artifact-live.tsx'), 'utf-8');
+  assert.ok(src.includes('endPulseFor'), 'imports and uses the pulse-clear reducer');
+  assert.ok(/setTimeout/.test(src), 'schedules a settle timer to clear the pulse');
+});

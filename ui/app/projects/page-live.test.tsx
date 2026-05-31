@@ -19,3 +19,8 @@ test('the unseen clear is wired at the modal active-file choke point (AD-9, FR-9
 test('the provider receives the modal active file name so the open doc shows no badge (DD-5)', () => {
   assert.ok(/activeFileName=/.test(SRC), 'active file name passed to the provider');
 });
+
+test('a confirmed delete corrects the open modal immediately (FR-9, AD-9)', () => {
+  assert.ok(SRC.includes('registerOnDeleted'), 'inner registers its modal delete handler with the outer');
+  assert.ok(SRC.includes('modal.onDeleted'), 'the modal index-correction handler is wired');
+});

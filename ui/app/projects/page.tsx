@@ -50,6 +50,7 @@ interface ProjectsPageContentProps {
   pendingDelete: import("@/lib/artifact-model").Artifact | null;
   setPendingDelete: (a: import("@/lib/artifact-model").Artifact | null) => void;
   onActiveFileNameChange: (fileName: string | null) => void;
+  registerOnDeleted: (fn: () => void) => void;
 }
 
 function ProjectsPageContent({
@@ -69,6 +70,7 @@ function ProjectsPageContent({
   pendingDelete,
   setPendingDelete,
   onActiveFileNameChange,
+  registerOnDeleted,
 }: ProjectsPageContentProps) {
   const live = useArtifactLive();
   const artifacts = live.artifacts;
@@ -76,6 +78,10 @@ function ProjectsPageContent({
   const getArtifactCount = useCallback(() => artifacts.length, [artifacts.length]);
   const modal = useArtifactModal(-1, getArtifactCount);
   const openArtifactModal = modal.openAt;
+
+  React.useEffect(() => {
+    registerOnDeleted(modal.onDeleted);
+  }, [registerOnDeleted, modal.onDeleted]);
 
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
@@ -296,6 +302,8 @@ export default function ProjectsPage() {
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [fileRefetch, setFileRefetch] = useState(0);
+  const handleModalDeletedRef = React.useRef<() => void>(() => {});
+  const registerOnDeleted = useCallback((fn: () => void) => { handleModalDeletedRef.current = fn; }, []);
 
   const v5Derivations = useMemo(() => {
     if (!v5State) {
@@ -408,6 +416,7 @@ export default function ProjectsPage() {
                 pendingDelete={pendingDelete}
                 setPendingDelete={setPendingDelete}
                 onActiveFileNameChange={setActiveFileName}
+                registerOnDeleted={registerOnDeleted}
               />
             </ArtifactLiveProvider>
           ) : (
@@ -450,6 +459,7 @@ export default function ProjectsPage() {
           setDeletePending(false);
           if (ok) {
             setPendingDelete(null);
+            handleModalDeletedRef.current();
             setFileRefetch((n) => n + 1);
           } else {
             setDeleteError(`Failed to delete ${pendingDelete.fileName}. Please try again.`);
