@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText } from "lucide-react";
-import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
-import { IframePreview, StageIframe } from "./iframe-preview";
+import { IframePreview } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
+import { BufferedStage } from "./buffered-stage";
 import { ChangeBadge } from "@/components/badges";
 import { cn } from "@/lib/utils";
 import { modalKeyAction } from "@/hooks/use-artifact-modal";
@@ -79,20 +79,13 @@ export function ArtifactViewerModal({
           </div>
         </header>
 
-        <ActivePulse active={activePulse?.has(active.fileName) ?? false} variant="frame" className="relative flex-1 overflow-hidden bg-muted">
-          {active.isMarkdown ? (
-            <div className="h-full overflow-auto bg-background p-6">
-              {markdownContent !== null
-                ? <MarkdownRenderer content={markdownContent} />
-                : (
-                  <div role="status" aria-label="Loading document" className="flex h-full items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-                  </div>
-                )}
-            </div>
-          ) : (
-            <StageIframe projectName={projectName} fileName={active.fileName} />
-          )}
+        <div className="relative flex-1 overflow-hidden bg-muted">
+          <BufferedStage
+            projectName={projectName}
+            artifact={active}
+            markdownContent={markdownContent}
+            activePulse={activePulse?.has(active.fileName) ?? false}
+          />
           <button type="button" aria-label="Previous artifact" onClick={onPrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background/70 p-2 text-foreground hover:bg-background">
             <ChevronLeft className="size-5" aria-hidden="true" />
@@ -105,7 +98,7 @@ export function ArtifactViewerModal({
             className="absolute bottom-3 right-3 z-10 cursor-pointer rounded-full bg-background/70 p-2 text-muted-foreground hover:bg-background hover:text-destructive">
             <Trash2 className="size-5" aria-hidden="true" />
           </button>
-        </ActivePulse>
+        </div>
 
         <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
           {artifacts.map((artifact, i) => (

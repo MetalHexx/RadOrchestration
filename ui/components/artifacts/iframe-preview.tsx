@@ -62,7 +62,7 @@ export function computeFitScale(containerWidth: number, designWidth: number): nu
   return containerWidth / designWidth;
 }
 
-export function StageIframe({ projectName, fileName }: { projectName: string; fileName: string }) {
+export function StageIframe({ projectName, fileName, onLoad }: { projectName: string; fileName: string; onLoad?: () => void }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [size, setSize] = React.useState({ width: 0, height: 0 });
   React.useEffect(() => {
@@ -100,6 +100,7 @@ export function StageIframe({ projectName, fileName }: { projectName: string; fi
         referrerPolicy="no-referrer"
         className="border-0 bg-white"
         style={style}
+        onLoad={onLoad}
       />
     </div>
   );
