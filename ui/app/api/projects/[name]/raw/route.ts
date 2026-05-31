@@ -9,11 +9,13 @@ function scrollbarStyle(chrome: string | null): string {
   if (chrome === 'scroll') {
     // Paired with sandbox="allow-same-origin" so scrollbar styling is honored.
     // Match the app's scrollbars EXACTLY: native thin width, the app's translucent
-    // thumb (--scrollbar-thumb), and — crucially — the app's near-black background
-    // (--background) as the TRACK rather than transparent. A transparent track let
-    // the artifact's content show through (no black rail, washed-out thumb); a
-    // solid near-black rail gives the thumb the same dark backdrop it has app-wide.
-    return '<style>html,body{scrollbar-width:thin !important;scrollbar-color:oklch(0.55 0 0 / 0.5) oklch(0.145 0 0) !important;}</style>';
+    // thumb (--scrollbar-thumb), and the app's near-black background (--background)
+    // as the TRACK rather than transparent (a transparent track showed the artifact
+    // content through the rail and washed out the thumb).
+    // The leading `html{background}` covers the iframe's white bg, which otherwise
+    // bleeds through the artifact's (transparent) <html> at the scrollbar gutter as
+    // a thin grey line. No !important so an artifact that sets its own bg still wins.
+    return '<style>html{background-color:oklch(0.145 0 0);}html,body{scrollbar-width:thin !important;scrollbar-color:oklch(0.55 0 0 / 0.5) oklch(0.145 0 0) !important;}</style>';
   }
   if (chrome === 'hide') {
     return '<style>::-webkit-scrollbar{display:none !important;}html,body{scrollbar-width:none !important;-ms-overflow-style:none !important;}*{scrollbar-width:none;-ms-overflow-style:none;}</style>';

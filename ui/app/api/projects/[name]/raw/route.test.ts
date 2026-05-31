@@ -78,6 +78,7 @@ test('chrome=scroll injects styled webkit scrollbar before </head> (Part B)', as
       // background as the track (not transparent), so it renders the same app-wide.
       assert.ok(body.includes('scrollbar-width:thin'), 'native thin scrollbar injected');
       assert.ok(body.includes('oklch(0.55 0 0 / 0.5) oklch(0.145 0 0)'), 'app thumb over near-black rail');
+      assert.ok(body.includes('html{background-color:oklch(0.145 0 0)'), 'dark html bg covers iframe white bleed at the gutter');
       assert.ok(body.indexOf('<style>') < body.indexOf('</head>'), 'style injected before </head>');
     });
   } finally { await rm(tmp, { recursive: true, force: true }); }
