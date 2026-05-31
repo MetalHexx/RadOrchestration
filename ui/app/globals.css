@@ -144,6 +144,10 @@
     /* ── Scrollbar Tokens ── */
     --scrollbar-thumb: oklch(0.55 0 0 / 0.45);
     --scrollbar-thumb-hover: oklch(0.45 0 0 / 0.7);
+
+    /* ── Live Indicator Tokens ── */
+    --live: #8a7cff;
+    --live-accent: #c3bbff;
   }
 
   .dark {
@@ -233,6 +237,10 @@
     /* ── Scrollbar Tokens (dark mode) ── */
     --scrollbar-thumb: oklch(0.55 0 0 / 0.5);
     --scrollbar-thumb-hover: oklch(0.75 0 0 / 0.8);
+
+    /* ── Live Indicator Tokens ── */
+    --live: #8a7cff;
+    --live-accent: #c3bbff;
   }
 
   /* ── Focus-visible ring ── */
