@@ -43,3 +43,12 @@ test('exposes a delete control on the tile (FR-6, DD-9)', () => {
   const html = render({ projectName: 'DEMO', artifact: wireframe, onOpen: noop, onDelete: noop });
   assert.ok(html.includes('aria-label="Delete artifact"'), 'delete control present');
 });
+
+test('open + delete controls are real <button> elements, not nested role="button" spans', () => {
+  const html = render({ projectName: 'DEMO', artifact: wireframe, onOpen: noop, onDelete: noop });
+  // The delete affordance must be a real <button> — no synthetic role="button"
+  // nested inside an interactive element (invalid HTML/ARIA).
+  const deleteButtons = (html.match(/<button[^>]*aria-label="Delete artifact"/g) ?? []).length;
+  assert.equal(deleteButtons, 1, 'delete control is a real <button>');
+  assert.ok(!html.includes('role="button"'), 'no synthetic role="button" controls remain');
+});
