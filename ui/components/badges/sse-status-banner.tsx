@@ -6,19 +6,52 @@ import { cn } from '@/lib/utils';
 
 export interface SSEStatusBannerProps {
   status: SSEConnectionStatus;
+  degraded?: boolean;
   onReconnect: () => void;
 }
 
-export function shouldRenderSSEStatus(status: SSEConnectionStatus): boolean {
-  return status !== 'connected';
+export function shouldRenderSSEStatus(status: SSEConnectionStatus, degraded = false): boolean {
+  return status !== 'connected' || degraded;
 }
 
 export function SSEStatusBanner(props: SSEStatusBannerProps): React.ReactElement | null {
-  if (!shouldRenderSSEStatus(props.status)) {
+  const degraded = props.degraded ?? false;
+  if (!shouldRenderSSEStatus(props.status, degraded)) {
     return null;
   }
 
-  const isReconnecting = props.status === 'reconnecting';
+  const isDegraded = props.status === 'connected' && degraded;
+  const isReconnecting = !isDegraded && props.status === 'reconnecting';
+
+  if (isDegraded) {
+    return (
+      <div
+        aria-live="polite"
+        className={cn(
+          'px-6 py-3',
+          'border-l-4',
+          'border-l-[var(--live)] bg-[color-mix(in_srgb,var(--live)_10%,transparent)]',
+          'flex items-center gap-2',
+        )}
+      >
+        <span
+          className="inline-block h-2 w-2 rounded-full animate-pulse"
+          style={{ backgroundColor: 'var(--live)' }}
+        />
+        <span className="text-sm leading-snug">
+          Live paused \u2014 the file watcher is recovering.
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs ml-auto"
+          onClick={props.onReconnect}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div

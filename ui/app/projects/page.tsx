@@ -135,6 +135,7 @@ function ProjectsPageContent({
             />
             <SSEStatusBanner
               status={sseStatus}
+              degraded={live.degraded}
               onReconnect={reconnect}
             />
           </div>
@@ -164,6 +165,7 @@ function ProjectsPageContent({
             />
             <SSEStatusBanner
               status={sseStatus}
+              degraded={live.degraded}
               onReconnect={reconnect}
             />
           </div>
