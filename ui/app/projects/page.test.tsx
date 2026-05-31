@@ -242,6 +242,7 @@ async function run() {
       '@/hooks/use-start-action',
       '@/hooks/use-project-artifacts',
       '@/hooks/use-artifact-modal',
+      '@/hooks/use-artifact-live',
       '@/components/ui/sidebar',
       '@/components/sidebar',
       '@/components/layout',

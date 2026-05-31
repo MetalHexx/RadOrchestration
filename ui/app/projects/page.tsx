@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -10,7 +10,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
 import { MainDashboard, LaunchScreen } from "@/components/layout";
 import { useStartAction } from "@/hooks/use-start-action";
-import { useProjectArtifacts, deleteArtifact } from "@/hooks/use-project-artifacts";
+import { deleteArtifact } from "@/hooks/use-project-artifacts";
 import { DocumentDrawer } from "@/components/documents";
 import { ConfirmApprovalDialog } from "@/components/dashboard";
 import { ConfigEditorPanel } from "@/components/config";
@@ -22,6 +22,215 @@ import type { ProjectState, ProjectStateV5 } from "@/types/state";
 import type { ProjectSummary } from "@/types/components";
 import { ArtifactViewerModal } from "@/components/artifacts";
 import { useArtifactModal, markdownPathForActive } from "@/hooks/use-artifact-modal";
+import { ArtifactLiveProvider, useArtifactLive } from "@/hooks/use-artifact-live";
+
+// ─── Inner component — runs under ArtifactLiveProvider ────────────────────────
+
+interface ProjectsPageContentProps {
+  selectedProject: string | null;
+  selected: ProjectSummary | undefined;
+  v5State: ProjectStateV5 | null;
+  v4State: ProjectState | null;
+  v5Derivations: {
+    graphStatus: string | undefined;
+    gateMode: string | undefined;
+    currentPhaseName: string | null;
+    progress: number | null;
+    repoBaseUrl: string | null;
+    phaseLoopStatus: string | undefined;
+  };
+  followMode: boolean;
+  toggleFollowMode: () => void;
+  expandedLoopIds: string[];
+  onAccordionChange: (id: string, open: boolean) => void;
+  sseStatus: string;
+  reconnect: () => void;
+  openDocument: (path: string) => void;
+  filesLoaded: boolean;
+  pendingDelete: import("@/lib/artifact-model").Artifact | null;
+  setPendingDelete: (a: import("@/lib/artifact-model").Artifact | null) => void;
+  onActiveFileNameChange: (fileName: string | null) => void;
+}
+
+function ProjectsPageContent({
+  selectedProject,
+  selected,
+  v5State,
+  v4State,
+  v5Derivations,
+  followMode,
+  toggleFollowMode,
+  expandedLoopIds,
+  onAccordionChange,
+  sseStatus,
+  reconnect,
+  openDocument,
+  filesLoaded,
+  pendingDelete,
+  setPendingDelete,
+  onActiveFileNameChange,
+}: ProjectsPageContentProps) {
+  const live = useArtifactLive();
+  const artifacts = live.artifacts;
+
+  const getArtifactCount = useCallback(() => artifacts.length, [artifacts.length]);
+  const modal = useArtifactModal(-1, getArtifactCount);
+  const openArtifactModal = modal.openAt;
+
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
+
+  // Compute the active file name from the modal state — single choke point.
+  const activeFileName = modal.open ? (artifacts[modal.index]?.fileName ?? null) : null;
+
+  // Clear the unseen badge for whichever file the user is viewing — the one
+  // authoritative place this fires so every open route and prev/next clears uniformly.
+  React.useEffect(() => {
+    live.markActive(activeFileName);
+    onActiveFileNameChange(activeFileName);
+  }, [activeFileName, live, onActiveFileNameChange]);
+
+  useEffect(() => { if (!modal.open) setIsFullScreen(false); }, [modal.open]);
+
+  useEffect(() => {
+    const mdPath = markdownPathForActive(artifacts, modal.index);
+    if (!modal.open || !mdPath || !selectedProject) {
+      setModalMarkdown(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/projects/${encodeURIComponent(selectedProject)}/document?path=${encodeURIComponent(mdPath)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch markdown");
+        return res.json();
+      })
+      .then((data: { content: string }) => {
+        if (!cancelled) setModalMarkdown(data.content);
+      })
+      .catch(() => {
+        if (!cancelled) setModalMarkdown('');
+      });
+    return () => { cancelled = true; };
+  }, [modal.open, modal.index, artifacts, selectedProject]);
+
+  const startAction = useStartAction(selectedProject);
+
+  return (
+    <>
+      {selected && selected.schemaVersion === 'v5' && !v5State && !v4State ? (
+        <div className="overflow-auto">
+          <ProjectHeader
+            projectName={selected.name}
+            tier={selected.tier}
+            planningStatus={selected.planningStatus}
+            executionStatus={selected.executionStatus}
+            sourceControl={null}
+            followMode={false}
+            onToggleFollowMode={() => {}}
+          />
+          <div className="flex flex-col">
+            <HaltReasonBanner
+              graphStatus={v5Derivations.graphStatus}
+              haltReason={null}
+            />
+            <SSEStatusBanner
+              status={sseStatus}
+              onReconnect={reconnect}
+            />
+          </div>
+          <div className="px-6 py-4">
+            <DAGTimelineSkeleton />
+          </div>
+        </div>
+      ) : selected && v5State ? (
+        <div className="overflow-auto">
+          <ProjectHeader
+            projectName={selected.name}
+            tier={selected.tier}
+            planningStatus={selected.planningStatus}
+            executionStatus={selected.executionStatus}
+            graphStatus={v5Derivations.graphStatus}
+            gateMode={v5Derivations.gateMode}
+            currentPhaseName={v5Derivations.currentPhaseName}
+            progress={v5Derivations.progress}
+            sourceControl={v5State.pipeline.source_control}
+            followMode={followMode}
+            onToggleFollowMode={toggleFollowMode}
+          />
+          <div className="flex flex-col">
+            <HaltReasonBanner
+              graphStatus={v5Derivations.graphStatus}
+              haltReason={v5State.pipeline.halt_reason}
+            />
+            <SSEStatusBanner
+              status={sseStatus}
+              onReconnect={reconnect}
+            />
+          </div>
+          <div className="px-6 py-4 flex flex-col gap-3">
+            {filesLoaded ? (
+              <>
+                <BrainstormingSection
+                  artifacts={artifacts}
+                  onOpen={(index) => openArtifactModal(index)}
+                  onDelete={(a) => setPendingDelete(a)}
+                />
+                <DAGTimeline
+                  nodes={v5State.graph.nodes}
+                  currentNodePath={v5State.graph.current_node_path}
+                  onDocClick={openDocument}
+                  expandedLoopIds={expandedLoopIds}
+                  onAccordionChange={onAccordionChange}
+                  repoBaseUrl={v5Derivations.repoBaseUrl}
+                  projectName={selected.name}
+                  phaseLoopStatus={v5Derivations.phaseLoopStatus}
+                  prUrl={v5State.pipeline.source_control?.pr_url ?? null}
+                />
+              </>
+            ) : (
+              <DAGTimelineSkeleton />
+            )}
+          </div>
+        </div>
+      ) : selected && v4State ? (
+        <MainDashboard
+          projectState={v4State}
+          project={selected}
+          onDocClick={openDocument}
+        />
+      ) : selected && selected.tier === 'not_initialized' && !v5State && !v4State && !selected.hasMalformedState ? (
+        <LaunchScreen
+          projectName={selected.name}
+          artifacts={artifacts}
+          onOpenArtifact={(index) => openArtifactModal(index)}
+          onDeleteArtifact={(a) => setPendingDelete(a)}
+          onStartPlanning={() => startAction.start('start-planning')}
+          onStartBrainstorming={() => startAction.start('start-brainstorming')}
+          pendingAction={startAction.pendingAction}
+          errorMessage={startAction.errorMessage}
+        />
+      ) : null}
+
+      {modal.open && artifacts[modal.index] && (
+        <ArtifactViewerModal
+          projectName={selectedProject!}
+          artifacts={artifacts}
+          activeIndex={modal.index}
+          markdownContent={modalMarkdown}
+          onClose={modal.close}
+          onPrev={modal.goPrev}
+          onNext={modal.goNext}
+          onSelect={(i) => modal.openAt(i)}
+          onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
+          isFullScreen={isFullScreen}
+          onToggleFullScreen={() => setIsFullScreen((v) => !v)}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── Outer component — mounts ArtifactLiveProvider ───────────────────────────
 
 export default function ProjectsPage() {
   const {
@@ -75,43 +284,10 @@ export default function ProjectsPage() {
     [projectState],
   );
 
-  const startAction = useStartAction(selectedProject);
-
   const [pendingDelete, setPendingDelete] = useState<import("@/lib/artifact-model").Artifact | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [fileRefetch, setFileRefetch] = useState(0);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
-
-  const artifacts = useProjectArtifacts(selectedProject, fileList, fileMtimes);
-
-  const getArtifactCount = useCallback(() => artifacts.length, [artifacts.length]);
-  const modal = useArtifactModal(-1, getArtifactCount);
-  const openArtifactModal = modal.openAt;
-
-  useEffect(() => { if (!modal.open) setIsFullScreen(false); }, [modal.open]);
-
-  useEffect(() => {
-    const mdPath = markdownPathForActive(artifacts, modal.index);
-    if (!modal.open || !mdPath || !selectedProject) {
-      setModalMarkdown(null);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/projects/${encodeURIComponent(selectedProject)}/document?path=${encodeURIComponent(mdPath)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch markdown");
-        return res.json();
-      })
-      .then((data: { content: string }) => {
-        if (!cancelled) setModalMarkdown(data.content);
-      })
-      .catch(() => {
-        if (!cancelled) setModalMarkdown('');
-      });
-    return () => { cancelled = true; };
-  }, [modal.open, modal.index, artifacts, selectedProject]);
 
   const v5Derivations = useMemo(() => {
     if (!v5State) {
@@ -175,6 +351,10 @@ export default function ProjectsPage() {
     return () => { cancelled = true; };
   }, [selectedProject, fileRefetch]);
 
+  // Active file name for the provider — derived from modal state inside the
+  // inner component and surfaced here via state so the provider prop stays live.
+  const [activeFileName, setActiveFileName] = useState<string | null>(null);
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-background">
       <SidebarProvider className="min-h-0 flex-1">
@@ -201,98 +381,27 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
-          ) : selected && selected.schemaVersion === 'v5' && !v5State && !v4State ? (
-            <div className="overflow-auto">
-              <ProjectHeader
-                projectName={selected.name}
-                tier={selected.tier}
-                planningStatus={selected.planningStatus}
-                executionStatus={selected.executionStatus}
-                sourceControl={null}
-                followMode={false}
-                onToggleFollowMode={() => {}}
-              />
-              <div className="flex flex-col">
-                <HaltReasonBanner
-                  graphStatus={v5Derivations.graphStatus}
-                  haltReason={null}
-                />
-                <SSEStatusBanner
-                  status={sseStatus}
-                  onReconnect={reconnect}
-                />
-              </div>
-              <div className="px-6 py-4">
-                <DAGTimelineSkeleton />
-              </div>
-            </div>
-          ) : selected && v5State ? (
-            <div className="overflow-auto">
-              <ProjectHeader
-                projectName={selected.name}
-                tier={selected.tier}
-                planningStatus={selected.planningStatus}
-                executionStatus={selected.executionStatus}
-                graphStatus={v5Derivations.graphStatus}
-                gateMode={v5Derivations.gateMode}
-                currentPhaseName={v5Derivations.currentPhaseName}
-                progress={v5Derivations.progress}
-                sourceControl={v5State.pipeline.source_control}
+          ) : selected ? (
+            <ArtifactLiveProvider projectName={selectedProject} activeFileName={activeFileName}>
+              <ProjectsPageContent
+                selectedProject={selectedProject}
+                selected={selected}
+                v5State={v5State}
+                v4State={v4State}
+                v5Derivations={v5Derivations}
                 followMode={followMode}
-                onToggleFollowMode={toggleFollowMode}
+                toggleFollowMode={toggleFollowMode}
+                expandedLoopIds={expandedLoopIds}
+                onAccordionChange={onAccordionChange}
+                sseStatus={sseStatus}
+                reconnect={reconnect}
+                openDocument={openDocument}
+                filesLoaded={filesLoaded}
+                pendingDelete={pendingDelete}
+                setPendingDelete={setPendingDelete}
+                onActiveFileNameChange={setActiveFileName}
               />
-              <div className="flex flex-col">
-                <HaltReasonBanner
-                  graphStatus={v5Derivations.graphStatus}
-                  haltReason={v5State.pipeline.halt_reason}
-                />
-                <SSEStatusBanner
-                  status={sseStatus}
-                  onReconnect={reconnect}
-                />
-              </div>
-              <div className="px-6 py-4 flex flex-col gap-3">
-                {filesLoaded ? (
-                  <>
-                    <BrainstormingSection
-                      artifacts={artifacts}
-                      onOpen={(index) => openArtifactModal(index)}
-                      onDelete={(a) => setPendingDelete(a)}
-                    />
-                    <DAGTimeline
-                      nodes={v5State.graph.nodes}
-                      currentNodePath={v5State.graph.current_node_path}
-                      onDocClick={openDocument}
-                      expandedLoopIds={expandedLoopIds}
-                      onAccordionChange={onAccordionChange}
-                      repoBaseUrl={v5Derivations.repoBaseUrl}
-                      projectName={selected.name}
-                      phaseLoopStatus={v5Derivations.phaseLoopStatus}
-                      prUrl={v5State.pipeline.source_control?.pr_url ?? null}
-                    />
-                  </>
-                ) : (
-                  <DAGTimelineSkeleton />
-                )}
-              </div>
-            </div>
-          ) : selected && v4State ? (
-            <MainDashboard
-              projectState={v4State}
-              project={selected}
-              onDocClick={openDocument}
-            />
-          ) : selected && selected.tier === 'not_initialized' && !v5State && !v4State && !selected.hasMalformedState ? (
-            <LaunchScreen
-              projectName={selected.name}
-              artifacts={artifacts}
-              onOpenArtifact={(index) => openArtifactModal(index)}
-              onDeleteArtifact={(a) => setPendingDelete(a)}
-              onStartPlanning={() => startAction.start('start-planning')}
-              onStartBrainstorming={() => startAction.start('start-brainstorming')}
-              pendingAction={startAction.pendingAction}
-              errorMessage={startAction.errorMessage}
-            />
+            </ArtifactLiveProvider>
           ) : (
             <div className="flex h-full items-center justify-center p-6">
               <p className="text-sm text-muted-foreground">
@@ -315,22 +424,6 @@ export default function ProjectsPage() {
         onNavigate={navigateTo}
       />
 
-      {modal.open && artifacts[modal.index] && (
-        <ArtifactViewerModal
-          projectName={selectedProject!}
-          artifacts={artifacts}
-          activeIndex={modal.index}
-          markdownContent={modalMarkdown}
-          onClose={modal.close}
-          onPrev={modal.goPrev}
-          onNext={modal.goNext}
-          onSelect={(i) => modal.openAt(i)}
-          onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
-          isFullScreen={isFullScreen}
-          onToggleFullScreen={() => setIsFullScreen((v) => !v)}
-        />
-      )}
-
       <ConfirmApprovalDialog
         open={pendingDelete !== null}
         onOpenChange={(o) => { if (!o) { setPendingDelete(null); setDeleteError(null); } }}
@@ -349,7 +442,6 @@ export default function ProjectsPage() {
           setDeletePending(false);
           if (ok) {
             setPendingDelete(null);
-            modal.onDeleted();
             setFileRefetch((n) => n + 1);
           } else {
             setDeleteError(`Failed to delete ${pendingDelete.fileName}. Please try again.`);
@@ -361,4 +453,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
