@@ -255,11 +255,7 @@
     {
       "bundlePath": "skills/rad-brainstorm/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/SKILL.md",
-<<<<<<< HEAD
       "sha256": "ad95b686996fbd970926046d64469b3fb4d18a74ac96577b886ff9da0cc43e3a"
-=======
-      "sha256": "02bd3b89cf4906ad031757ec9f3f7483a8064fd08a22b55a3e266a812d8eeee2"
->>>>>>> dfc1d75c (chore(PR-REVIEW-LOOP-2): Address Copilot PR review (loop 2) + fix failing cli CI typecheck)
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/collaboration.md",
@@ -279,11 +275,7 @@
     {
       "bundlePath": "skills/rad-brainstorm/references/make-it-visual.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/make-it-visual.md",
-<<<<<<< HEAD
-      "sha256": "15cad3ad73c2c5442e8a31d65ceb1f40d8a5bb2dcd7eca74b3cca7b60325e6c0"
-=======
-      "sha256": "719b3d24ecd53ea26a90e5d71bc2b05b7dc8a26814616798c502022f4d742008"
->>>>>>> dfc1d75c (chore(PR-REVIEW-LOOP-2): Address Copilot PR review (loop 2) + fix failing cli CI typecheck)
+      "sha256": "f547dcff1e21caed42324059c70155b63955f493b1ef6a9d6201369a433221fa"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/project-memory.md",
