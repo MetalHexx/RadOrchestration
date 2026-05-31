@@ -8,6 +8,7 @@ import type { ProjectState } from '@/types/state';
 import { getProjectsRoot } from '@/lib/path-resolver';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Skip project-internal scaffold dirs so the watcher doesn't recurse into a
 // project's own node_modules/.next/.git — on Windows that triggers a stream of
