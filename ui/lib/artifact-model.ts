@@ -12,6 +12,25 @@ export interface Artifact {
   isMarkdown: boolean;
 }
 
+/**
+ * Planner/pipeline-generated root docs that must NOT surface as artifacts.
+ *
+ * Markdown selection is a DENYLIST: every root `.md` is surfaced as a generic
+ * doc EXCEPT files whose name ends with one of these `${project}-…` suffixes.
+ * These are pipeline outputs (requirements, the master plan, the plan audit,
+ * the error log) — audit-trail docs, not brainstorming artifacts. Extend this
+ * list to hide additional pipeline-generated root docs.
+ *
+ * Note: tasks/phases/reports stay out via the root-only filter (they live in
+ * subfolders), so they are intentionally absent here.
+ */
+export const PIPELINE_DOC_SUFFIXES = [
+  '-REQUIREMENTS.md',
+  '-MASTER-PLAN.md',
+  '-PLAN-AUDIT.md',
+  '-ERROR-LOG.md',
+] as const;
+
 function isRootFile(relPath: string): boolean {
   return !relPath.includes('/');
 }
@@ -23,10 +42,15 @@ function humanizeSlug(slug: string): string {
     .join(' ');
 }
 
-function stripProjectPrefix(fileName: string, project: string): string {
-  const base = fileName.replace(/\.html$/i, '');
+/** Strip the leading `${project}-` prefix and the given extension (.html/.md). */
+function stripProjectPrefix(fileName: string, project: string, ext: RegExp): string {
+  const base = fileName.replace(ext, '');
   const prefix = `${project}-`;
   return base.startsWith(prefix) ? base.slice(prefix.length) : base;
+}
+
+function isPipelineDoc(fileName: string, project: string): boolean {
+  return PIPELINE_DOC_SUFFIXES.some((suffix) => fileName === `${project}${suffix}`);
 }
 
 export function deriveArtifacts(
@@ -61,21 +85,39 @@ export function deriveArtifacts(
     }));
   out.push(...wireframes);
 
+  // Trailing "other docs" group: every remaining root .html and .md, EXCEPT
+  // the pipeline denylist (.md) — merged and ordered by mtime asc so mixed
+  // .md/.html share one deterministic trailing sequence.
   const captured = new Set(out.map((a) => a.fileName));
-  const otherHtml = root
-    .filter((f) => f.endsWith('.html') && !captured.has(f))
+  const otherDocs = root
+    .filter((f) => !captured.has(f))
+    .filter((f) => {
+      if (f.endsWith('.html')) return true;
+      if (f.endsWith('.md')) return !isPipelineDoc(f, project);
+      return false;
+    })
     .sort((a, b) => (mtimes[a] ?? 0) - (mtimes[b] ?? 0))
-    .map((f) => {
-      const slug = stripProjectPrefix(f, project);
+    .map((f): Artifact => {
+      if (f.endsWith('.md')) {
+        const slug = stripProjectPrefix(f, project, /\.md$/i);
+        return {
+          fileName: f,
+          kind: 'markdown',
+          label: 'Doc',
+          title: slug ? humanizeSlug(slug) : null,
+          isMarkdown: true,
+        };
+      }
+      const slug = stripProjectPrefix(f, project, /\.html$/i);
       return {
         fileName: f,
-        kind: 'html' as const,
+        kind: 'html',
         label: 'Visual',
         title: slug ? humanizeSlug(slug) : null,
         isMarkdown: false,
       };
     });
-  out.push(...otherHtml);
+  out.push(...otherDocs);
 
   return out;
 }

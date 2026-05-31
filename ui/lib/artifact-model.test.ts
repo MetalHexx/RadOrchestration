@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveArtifacts } from './artifact-model';
+import { deriveArtifacts, PIPELINE_DOC_SUFFIXES } from './artifact-model';
 
 const PROJECT = 'DEMO';
 
-test('filters to BRAINSTORMING.md plus root *.html only (FR-1)', () => {
+test('filters to root .md/.html only, excluding subfolders and state.json (FR-1)', () => {
   const files = ['DEMO-BRAINSTORMING.md', 'DEMO-BRAINSTORM.html', 'state.json', 'reports/X.md', 'sub/Y.html'];
   const arts = deriveArtifacts(PROJECT, files, {});
   const names = arts.map((a) => a.fileName);
@@ -81,4 +81,109 @@ test('surfaces non-canonical root *.html as generic visuals, ordered by mtime as
   assert.equal(byName['DEMO-MOCKUP.html'].label, 'Visual');
   assert.equal(byName['DEMO-MOCKUP.html'].title, 'Mockup');
   assert.equal(byName['DEMO-MOCKUP.html'].isMarkdown, false);
+});
+
+test('includes a generic root .md (e.g. ARCHITECTURE) as a markdown doc with humanized title', () => {
+  const files = ['DEMO-ARCHITECTURE.md'];
+  const arts = deriveArtifacts(PROJECT, files, {});
+  assert.equal(arts.length, 1);
+  const a = arts[0];
+  assert.equal(a.fileName, 'DEMO-ARCHITECTURE.md');
+  assert.equal(a.kind, 'markdown');
+  assert.equal(a.isMarkdown, true);
+  assert.equal(a.title, 'Architecture');
+  assert.equal(a.label, 'Doc');
+});
+
+test('humanizes multi-word generic root .md titles (strips project prefix and .md)', () => {
+  const arts = deriveArtifacts('LIVE-DOCS', ['LIVE-DOCS-ARCHITECTURE.md'], {});
+  assert.equal(arts.length, 1);
+  assert.equal(arts[0].fileName, 'LIVE-DOCS-ARCHITECTURE.md');
+  assert.equal(arts[0].title, 'Architecture');
+  assert.equal(arts[0].label, 'Doc');
+  assert.equal(arts[0].kind, 'markdown');
+  assert.equal(arts[0].isMarkdown, true);
+});
+
+test('excludes planner/pipeline root docs via the denylist (requirements/master-plan/plan-audit/error-log)', () => {
+  const files = [
+    'DEMO-REQUIREMENTS.md',
+    'DEMO-MASTER-PLAN.md',
+    'DEMO-PLAN-AUDIT.md',
+    'DEMO-ERROR-LOG.md',
+  ];
+  const arts = deriveArtifacts(PROJECT, files, {});
+  assert.deepEqual(arts, []);
+});
+
+test('keeps pipeline denylist excluded while still surfacing a generic root .md (allowlist→denylist flip)', () => {
+  const files = ['DEMO-REQUIREMENTS.md', 'DEMO-MASTER-PLAN.md', 'DEMO-ARCHITECTURE.md'];
+  const arts = deriveArtifacts(PROJECT, files, {});
+  assert.deepEqual(arts.map((a) => a.fileName), ['DEMO-ARCHITECTURE.md']);
+});
+
+test('excludes subfolder docs (phases/tasks/reports) for both .md and .html', () => {
+  const files = ['phases/PHASE-1.md', 'tasks/TASK-A.md', 'reports/REPORT-Z.md', 'tasks/X.html'];
+  const arts = deriveArtifacts(PROJECT, files, {});
+  assert.deepEqual(arts, []);
+});
+
+test('exposes PIPELINE_DOC_SUFFIXES as a named extensible constant', () => {
+  assert.ok(Array.isArray(PIPELINE_DOC_SUFFIXES));
+  assert.ok(PIPELINE_DOC_SUFFIXES.includes('-REQUIREMENTS.md'));
+  assert.ok(PIPELINE_DOC_SUFFIXES.includes('-MASTER-PLAN.md'));
+  assert.ok(PIPELINE_DOC_SUFFIXES.includes('-PLAN-AUDIT.md'));
+  assert.ok(PIPELINE_DOC_SUFFIXES.includes('-ERROR-LOG.md'));
+});
+
+test('regression: brainstorm, wireframes and a generic DIAGRAM html all surface with correct labels/order', () => {
+  const files = [
+    'DEMO-BRAINSTORMING.md',
+    'DEMO-BRAINSTORM.html',
+    'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
+    'DEMO-DIAGRAM-FLOW.html',
+  ];
+  const mtimes = {
+    'DEMO-WIREFRAME-LAUNCH-SCREEN.html': 100,
+    'DEMO-DIAGRAM-FLOW.html': 200,
+  };
+  const arts = deriveArtifacts(PROJECT, files, mtimes);
+  assert.deepEqual(arts.map((a) => a.fileName), [
+    'DEMO-BRAINSTORMING.md',
+    'DEMO-BRAINSTORM.html',
+    'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
+    'DEMO-DIAGRAM-FLOW.html',
+  ]);
+  const byName = Object.fromEntries(arts.map((a) => [a.fileName, a]));
+  assert.equal(byName['DEMO-BRAINSTORMING.md'].label, 'Brainstorm');
+  assert.equal(byName['DEMO-BRAINSTORM.html'].label, 'Brainstorm Visual');
+  assert.equal(byName['DEMO-WIREFRAME-LAUNCH-SCREEN.html'].label, 'Wireframe');
+  assert.equal(byName['DEMO-DIAGRAM-FLOW.html'].label, 'Visual');
+  assert.equal(byName['DEMO-DIAGRAM-FLOW.html'].kind, 'html');
+});
+
+test('orders deterministically: BRAINSTORMING.md, BRAINSTORM.html, wireframes (mtime asc), then other docs (mtime asc, mixed md/html)', () => {
+  const files = [
+    'DEMO-ARCHITECTURE.md',
+    'DEMO-DIAGRAM-FLOW.html',
+    'DEMO-WIREFRAME-DAG.html',
+    'DEMO-WIREFRAME-LAUNCH.html',
+    'DEMO-BRAINSTORM.html',
+    'DEMO-BRAINSTORMING.md',
+  ];
+  const mtimes = {
+    'DEMO-WIREFRAME-DAG.html': 200,
+    'DEMO-WIREFRAME-LAUNCH.html': 100,
+    'DEMO-ARCHITECTURE.md': 50,
+    'DEMO-DIAGRAM-FLOW.html': 75,
+  };
+  const arts = deriveArtifacts(PROJECT, files, mtimes);
+  assert.deepEqual(arts.map((a) => a.fileName), [
+    'DEMO-BRAINSTORMING.md',
+    'DEMO-BRAINSTORM.html',
+    'DEMO-WIREFRAME-LAUNCH.html',
+    'DEMO-WIREFRAME-DAG.html',
+    'DEMO-ARCHITECTURE.md',
+    'DEMO-DIAGRAM-FLOW.html',
+  ]);
 });
