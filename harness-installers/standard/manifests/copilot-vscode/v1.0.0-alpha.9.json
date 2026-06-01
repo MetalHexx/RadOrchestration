@@ -430,7 +430,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "5efdf18b7ff7a8ad415c992e609da786e9dd38469d8800d5fc0689b6254bf995"
+      "sha256": "c80f45734763bbd2f5996e5f8cbd2c67eec2792ee87abb82f8e0ebe41b8dbb89"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
@@ -465,12 +465,22 @@
     {
       "bundlePath": "skills/rad-repo/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/SKILL.md",
-      "sha256": "467db2984178c6f7e89a3db7e52189f5d3ddbbdb6942e40316ccac291a0a2319"
+      "sha256": "a2e75c6dbebb39a8df69efa67be629ef086744dbcc9aaf29e7806ef11de8baa6"
     },
     {
-      "bundlePath": "skills/rad-repo/references/registration-model.md",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/registration-model.md",
-      "sha256": "ef83efcbda05f7f7cc231716fbd7b594f3e4beb5bd483955b1feb9545f132129"
+      "bundlePath": "skills/rad-repo/references/cli-commands.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/cli-commands.md",
+      "sha256": "ec645b6788d428548cb44fdbc6ca35a3ad3cb3aedf9280dcba6b60cddb61cc78"
+    },
+    {
+      "bundlePath": "skills/rad-repo/references/concepts.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/concepts.md",
+      "sha256": "2668d646faa2733b0acf7b81bad1d730adceb1266f287cf7b57fd6cd2c549bac"
+    },
+    {
+      "bundlePath": "skills/rad-repo/references/interacting-with-users.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/interacting-with-users.md",
+      "sha256": "28383b5bc8aa88d1ae4f197f931a5bc94876cbd17aa220c0e38eb9ed20b413d5"
     },
     {
       "bundlePath": "skills/rad-run-tests/SKILL.md",

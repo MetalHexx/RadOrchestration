@@ -23,6 +23,10 @@ describe('repo edit/remove', () => {
     addRepo({ root, name: 'svc', identity: { remote: 'g', default_branch: 'main', description: '' }, localPath: '/c/svc' });
     expect(() => repoEdit({ root, name: 'svc' })).toThrow(/no editable field/i);
   });
+  it('edit refuses to blank the description', () => {
+    addRepo({ root, name: 'svc', identity: { remote: 'g', default_branch: 'main', description: 'old' }, localPath: '/c/svc' });
+    expect(() => repoEdit({ root, name: 'svc', description: '   ' })).toThrow(/description cannot be empty/i);
+  });
   it('edit fails for an unregistered repo', () => {
     expect(() => repoEdit({ root, name: 'ghost', description: 'x' })).toThrow(/not registered/i);
   });

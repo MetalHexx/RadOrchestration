@@ -16,7 +16,12 @@ export interface GroupCreateResult {
   members: string[];
 }
 
-export function groupCreate({ root, name, members, description = '' }: GroupCreateOptions): GroupCreateResult {
+export function groupCreate({ root, name, members, description }: GroupCreateOptions): GroupCreateResult {
+  // A non-empty description is required — it is the scoping rationale that tells
+  // an agent which domain this group covers and why.
+  if (!description?.trim()) {
+    throw new UserError('a non-empty --description is required to create a repo-group');
+  }
   const reg = readRegistry({ root });
   try {
     assertUniqueName(reg, name);
@@ -29,7 +34,7 @@ export function groupCreate({ root, name, members, description = '' }: GroupCrea
     }
   }
   try {
-    createGroup({ root, name, members, description });
+    createGroup({ root, name, members, description: description.trim() });
   } catch (e) {
     throw new UserError(e instanceof Error ? e.message : String(e));
   }
@@ -46,7 +51,7 @@ export const groupCreateCommand = defineCommand({
     members: { description: 'Comma-separated list of registered repo names to include', required: true },
   },
   flags: {
-    description: { description: 'Optional description for the repo-group', type: 'string' as const },
+    description: { description: 'What this repo-group scopes and why an agent would use it (required)', type: 'string' as const },
   },
   handler: async ({ args, flags }: { args: Args; flags: { description?: string }; ctx: CommandContext }) => {
     if (!args.name) throw new UserError('--name is required');

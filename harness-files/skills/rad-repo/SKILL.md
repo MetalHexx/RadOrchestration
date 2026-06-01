@@ -1,53 +1,36 @@
 ---
 name: rad-repo
-description: Use this skill when trying to figure out where to find or write code for a task.  Because projects may span multiple repositories, this skill helps agents understand the structure of the codebase and make informed research and coding decisions.  This skill provides the ability to register and manage repositories in a central registry.
-
+description: Use this skill whenever a task might involve code beyond the current working directory — when you're figuring out where code lives, scoping work that may span multiple repositories, or about to act as if the current repo is the whole system — and whenever the user wants to register, bind, describe, group, or manage repositories and repo-groups. The repo registry is your map of the repos a team works across and how they relate.
 user-invocable: true
 ---
 
 # What is the `rad-repo` skill?
-The general idea of this skill is to give agents the skill needed to understand the repositories involved in a coding project.  In many team scenarios, a domain project may span multiple repositories.  So an agent needs to be aware of these repositories and where they live so that it can make informed decisions about where to discover and write code for a given task.
 
-This skill also provides the ability to help a user register repositories in a central registry, organize them into groups, and manage their local bindings. 
+Your view of the world is bounded by your current working directory. The work rarely is. A single feature or task often spans several repositories — a backend, a frontend, a shared library, infrastructure — and from inside one directory you have no way to know the others exist.
 
-## Repos and Repo-Groups
+The **repo registry** is your map of that larger world: the repositories a team works across, where each one lives on this machine, and — through each repo's **description** — what it is and why you'd ever look there. This skill exists to give you that map and teach you to use it well.
 
-The orchestration system keeps a small registry of git repositories so every project can reference repos by a short slug rather than a full path. A **repo** is a registered git repository with a team-portable identity (remote URL, default branch, optional description) stored in `repo-registry.yml`. A **repo-group** is a named collection of those slugs stored in the same file, useful when a project spans several repositories.
+Two forces are always in play, and good work needs both:
 
-Because paths differ from machine to machine, local directory paths live in a separate `repo-registry.local.yml` file that stays out of version control. When a repo has no local path recorded it is _unbound_ — it appears in listings but cannot be resolved to a directory until `repo bind` maps it to the right path on the current machine.
+- **Reach** — descriptions are your *reason to explore*. "There's a repo over there" is useless; "there's a repo over there that owns billing" is a decision you can act on. Reach is what stops you from tunnelling on the current directory and missing where the work actually lands.
+- **Focus** — **repo-groups** scope you to the repos that matter for a domain. A team may own *Products* and *Authentication*; a task about product copy has nothing to do with auth. Groups keep you from wasting effort and context on unrelated code.
 
-For a full explanation of the two-file split and the unbound state, see [`references/registration-model.md`](references/registration-model.md).
+Blindness (missing relevant repos) and distraction (drowning in irrelevant ones) are the two failure modes. The registry is the dial between them — and it only works if the map is **true**.
 
-Run any command with `--help` for the full flag listing — this skill intentionally omits flag detail to stay concise.
+# How you should work
 
----
+- **Don't assume the current directory is the whole story.** Before you research or write code, ask whether the task reaches other registered repos. Consult the session preamble, `repo list`, and `repo show` to orient.
+- **Scope deliberately with the user.** When scoping a project, use repo-groups and descriptions to propose and confirm the working set of repos — reach for what's relevant, leave out what isn't. See [references/interacting-with-users.md](references/interacting-with-users.md).
+- **Capture the *true* home, and interview on ambiguity.** Register a repo's durable main clone — never a throwaway worktree or a subdirectory you happen to be in. The CLI resolves the deterministic facts (the main clone, the remote, the default branch); *you* resolve the judgment calls (the slug, which remote, the description, "is this even the repo they mean?"). Run `repo add --dry-run` first to see what the CLI detected, then confirm with the user before writing.
+- **Descriptions are required and load-bearing.** Every repo and repo-group must carry a real "what is this and why would I look here." Never write a placeholder — a description-less map is a blind one.
+- **Confirm before anything destructive** (`repo remove`, `repo-group delete`); run everything else directly.
 
-## Routing table
+# Commands & references
 
-Infer the intent from what the user says. Confirm once if the inferred command would make a destructive or irreversible change (remove, delete); otherwise run it directly.
+The CLI is the mechanical executor — fail-loud and non-interactive. *You* bring the conversation. Describe operations to the user in plain language; don't recite flags. Every command supports `--help` at the noun, subcommand, and flag level.
 
-### Repo operations
+- **[references/concepts.md](references/concepts.md)** — what repos, repo-groups, and the registry are; the two-file model; the unbound state; slug and description rules. Start here when you (or the user) need the *why*.
+- **[references/cli-commands.md](references/cli-commands.md)** — the full command + flag reference for `repo` and `repo-group`.
+- **[references/interacting-with-users.md](references/interacting-with-users.md)** — how to register, scope, bind, and manage *with* the user: the dry-run → interview → confirm flow, project scoping, and the unbound/empty-state cases.
 
-| User intent | CLI |
-|---|---|
-| Register a repo from a local path | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo add --path <abs-path>` |
-| Bind an existing registry entry to a local path | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo bind --name <slug> --path <abs-path>` |
-| List all registered repos | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo list` |
-| Show details for one repo | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo show --name <slug>` |
-| Edit a repo's description, remote, or default branch | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo edit --name <slug> [--description "..."] [--remote <url>] [--default-branch <branch>]` |
-| Remove a repo from the registry | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo remove --name <slug>` |
-
-### Repo-group operations
-
-| User intent | CLI |
-|---|---|
-| Create a new group | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group create --name <slug> --members <slug1,slug2,...> [--description "..."]` |
-| Add a repo to an existing group | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group add --group <group-slug> --repo <repo-slug>` |
-| Remove a repo from a group | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group remove --group <group-slug> --repo <repo-slug>` |
-| Delete a group (repos are not unregistered) | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group delete --name <slug>` |
-| List all groups | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group list` |
-| Show members of one group | `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group show --name <slug>` |
-
----
-
-Each command emits a JSON envelope `{ "ok": <bool>, "data": { ... }, "error": { ... } }`. On success, surface the relevant fields from `data` in a short plain-language confirmation. On failure, surface `error.message`.
+Each command emits a JSON envelope `{ "ok": <bool>, "data": { ... }, "error": { ... } }`. On success, surface the relevant `data` fields in a short plain-language confirmation. On failure, surface `error.message`.

@@ -28,7 +28,11 @@ export function repoEdit({ root, name, description, remote, defaultBranch }: Rep
   if (description === undefined && remote === undefined && defaultBranch === undefined) {
     throw new UserError('no editable field flag supplied');
   }
-  if (description !== undefined) identity.description = description;
+  // The description is a required field — it can be changed, but never blanked.
+  if (description !== undefined && !description.trim()) {
+    throw new UserError('--description cannot be empty');
+  }
+  if (description !== undefined) identity.description = description.trim();
   if (remote !== undefined) identity.remote = remote;
   if (defaultBranch !== undefined) identity.default_branch = defaultBranch;
   writeIdentity({ root, repos: reg.repos, repoGroups: reg.repoGroups });

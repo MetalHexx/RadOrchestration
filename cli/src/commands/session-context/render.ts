@@ -27,12 +27,13 @@ export function renderPreamble({ root }: RenderPreambleOpts): string {
 
   if (repoNames.length === 0) {
     // Empty-state: assistant-directed announcement + offer to help (FR-15).
+    // Worldview-planting: name the gap — no map of code beyond the cwd.
     return (
       '[rad-orc session-start] At the start of your first reply, briefly tell the user that ' +
-      'Rad Orc is live but no repositories are registered yet, so you cannot work across their ' +
-      'repos until at least one is added. Offer to help them register their first repo with ' +
-      '/rad-repo (and walk them through it if they accept). Keep it short, then continue with ' +
-      'their request.'
+      'Rad Orc is live but no repositories are registered yet — so you have no map of the code ' +
+      'beyond the current directory and cannot yet reason across their repos. Offer to help them ' +
+      'register their first repo with /rad-repo (and walk them through it if they accept). Keep it ' +
+      'short, then continue with their request.'
     );
   }
 
@@ -43,8 +44,9 @@ export function renderPreamble({ root }: RenderPreambleOpts): string {
   const lines: string[] = [];
   lines.push(
     '[rad-orc session-start] At the start of your first reply, give the user a brief, friendly ' +
-    'summary of their registered Rad Orc repos below (in your own words, a couple of lines), then ' +
-    'mention /rad-repo to manage them. Continue with their request after.',
+    'summary of their registered Rad Orc repos below (in your own words, a couple of lines). Your ' +
+    'work may reach beyond the current directory — these are the repos you can explore; reach for ' +
+    '/rad-repo to inspect, scope a task across, or manage them. Continue with their request after.',
   );
   lines.push('');
   lines.push(`Repos (${repoNames.length} total, ${unboundCount} unbound):`);
