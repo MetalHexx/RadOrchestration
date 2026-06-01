@@ -12,6 +12,19 @@ test('snapshot pulls the file list over REST and derives the established set (FR
   assert.deepEqual(snap.files, ['DEMO-BRAINSTORMING.md', 'DEMO-BRAINSTORM.html']);
 });
 
+test('snapshot resolves to an empty set when the fetch rejects (no unhandled rejection)', async () => {
+  const rejectingFetch = async () => { throw new TypeError('network down'); };
+  const snap = await fetchArtifactSnapshot('DEMO', rejectingFetch as typeof fetch);
+  assert.deepEqual(snap, { files: [], artifacts: [], mtimes: {} });
+});
+
+test('snapshot resolves to an empty set when the body fails to parse', async () => {
+  const badJsonFetch = async () =>
+    ({ ok: true, json: async () => { throw new SyntaxError('bad json'); } } as unknown as Response);
+  const snap = await fetchArtifactSnapshot('DEMO', badJsonFetch as typeof fetch);
+  assert.deepEqual(snap, { files: [], artifacts: [], mtimes: {} });
+});
+
 test('reconcile drops unseen entries whose files no longer exist (FR-14)', () => {
   const unseen = new Set(['GONE.html', 'STILL.md']);
   const reconciled = reconcileUnseen(unseen, ['STILL.md', 'DEMO-BRAINSTORM.html']);

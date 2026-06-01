@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { SSEEvent, SSEPayloadMap } from './events';
 
-test('artifact_change is a notification carrying only a project name (FR-12)', () => {
+test('artifact_change is a file-content-free notification (projectName + kind) (FR-12)', () => {
   const ev: SSEEvent<'artifact_change'> = {
     type: 'artifact_change',
     timestamp: '2026-05-31T00:00:00.000Z',

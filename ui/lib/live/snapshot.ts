@@ -11,17 +11,28 @@ export interface SnapshotChange {
   kind: 'added' | 'changed' | 'removed';
 }
 
+// Fresh per call so a caller that stores/mutates the arrays can't corrupt a
+// shared instance — matches the original non-OK return.
+const emptySnapshot = (): ArtifactSnapshot => ({ files: [], artifacts: [], mtimes: {} });
+
 export async function fetchArtifactSnapshot(
   projectName: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ArtifactSnapshot> {
-  const res = await fetchImpl(`/api/projects/${encodeURIComponent(projectName)}/files`);
-  if (!res.ok) return { files: [], artifacts: [], mtimes: {} };
-  const data = (await res.json()) as { files: string[]; mtimes?: Record<string, number> };
-  const files = data.files ?? [];
-  const mtimes = data.mtimes ?? {};
-  const artifacts = deriveArtifacts(projectName, files);
-  return { files, artifacts, mtimes };
+  try {
+    const res = await fetchImpl(`/api/projects/${encodeURIComponent(projectName)}/files`);
+    if (!res.ok) return emptySnapshot();
+    const data = (await res.json()) as { files: string[]; mtimes?: Record<string, number> };
+    const files = data.files ?? [];
+    const mtimes = data.mtimes ?? {};
+    const artifacts = deriveArtifacts(projectName, files);
+    return { files, artifacts, mtimes };
+  } catch {
+    // A rejected fetch (offline/DNS/CORS) or a thrown res.json() resolves to the
+    // same empty snapshot as a non-OK response, so callers that `void` this
+    // (e.g. refreshSnapshot) never surface an unhandled rejection.
+    return emptySnapshot();
+  }
 }
 
 /** Self-heal: a reconnect snapshot drops unseen entries for files that are gone. */
