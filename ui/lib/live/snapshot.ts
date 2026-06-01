@@ -20,7 +20,7 @@ export async function fetchArtifactSnapshot(
   const data = (await res.json()) as { files: string[]; mtimes?: Record<string, number> };
   const files = data.files ?? [];
   const mtimes = data.mtimes ?? {};
-  const artifacts = deriveArtifacts(projectName, files, mtimes);
+  const artifacts = deriveArtifacts(projectName, files);
   return { files, artifacts, mtimes };
 }
 

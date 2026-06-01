@@ -5,9 +5,11 @@ import { deriveArtifacts, type Artifact } from "@/lib/artifact-model";
 import { emptyLiveState, applyDelta, clearUnseenFor, endPulseFor, type LiveState } from "@/lib/live/live-store-model";
 import { fetchArtifactSnapshot, reconcileUnseen, diffSnapshots } from "@/lib/live/snapshot";
 
-// How long a file stays in activePulse after a change lands. Outlasts the 0.9s CSS
-// pulse animation so the visual finishes, then clears so a later change re-pulses.
-const PULSE_SETTLE_MS = 1500;
+// How long a file stays in activePulse after the LAST change lands. Spans ~2 cycles
+// of the 1.4s CSS breathe so an isolated change pulses clearly (not a single missable
+// flash); each new change re-arms this timer below, extending the pulse while writes
+// continue, then it clears so the indicator is bounded — never indefinite.
+const MIN_PULSE_MS = 2600;
 
 interface ArtifactLiveValue {
   artifacts: Artifact[];
@@ -61,7 +63,7 @@ export function ArtifactLiveProvider({
     const timer = setTimeout(() => {
       timers.delete(fileName);
       setLive((s) => endPulseFor(s, fileName));
-    }, PULSE_SETTLE_MS);
+    }, MIN_PULSE_MS);
     timers.set(fileName, timer);
   }, []);
 
@@ -119,8 +121,8 @@ export function ArtifactLiveProvider({
   }, []);
 
   const artifacts = React.useMemo(
-    () => (projectName ? deriveArtifacts(projectName, files, mtimes) : []),
-    [projectName, files, mtimes],
+    () => (projectName ? deriveArtifacts(projectName, files) : []),
+    [projectName, files],
   );
 
   const value = React.useMemo<ArtifactLiveValue>(

@@ -302,16 +302,22 @@
   cursor: not-allowed;
 }
 
+/* Symmetric "breathing" keyframes: identical endpoints (0%/100%) so the loop has
+   no seam, peaking at 50%. Looped (infinite ease-in-out) so the pulse animates
+   continuously for as long as the .live-pulse-* class is applied — the JS hold in
+   use-artifact-live.tsx bounds that window (MIN_PULSE_MS). A one-shot animation
+   would only play once while the class stays applied, so a held/burst change read
+   as a single missable flash; the loop fixes that. */
 @keyframes live-pulse-frame-kf {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 70%, transparent); }
-  100% { box-shadow: 0 0 0 4px transparent; }
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 70%, transparent); }
 }
 @keyframes live-pulse-row-kf {
-  0% { background-color: color-mix(in srgb, var(--live) 22%, transparent); }
-  100% { background-color: transparent; }
+  0%, 100% { background-color: transparent; }
+  50% { background-color: color-mix(in srgb, var(--live) 22%, transparent); }
 }
-.live-pulse-frame { animation: live-pulse-frame-kf 0.9s ease-out; border-radius: inherit; }
-.live-pulse-row { animation: live-pulse-row-kf 0.9s ease-out; border-radius: inherit; }
+.live-pulse-frame { animation: live-pulse-frame-kf 1.4s ease-in-out infinite; border-radius: inherit; }
+.live-pulse-row { animation: live-pulse-row-kf 1.4s ease-in-out infinite; border-radius: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse {
@@ -326,9 +332,15 @@
   .transition-transform {
     transition-duration: 0.01ms !important;
   }
-  .live-pulse-frame,
+  /* No breathing under reduced motion, but keep a STATIC live indicator so the
+     change is still visible for the bounded hold (don't render it invisible). */
+  .live-pulse-frame {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 55%, transparent);
+  }
   .live-pulse-row {
     animation: none;
+    background-color: color-mix(in srgb, var(--live) 18%, transparent);
   }
 }
 

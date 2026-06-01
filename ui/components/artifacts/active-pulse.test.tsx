@@ -19,14 +19,33 @@ test('row variant is a contained background pulse with no border lines (DD-2)', 
   assert.ok(!html.includes('border'), 'row pulse adds no border lines');
 });
 
-test('inactive renders no pulse class — transient, never indefinite (FR-6)', () => {
+test('inactive renders no pulse class — bounded by the JS hold (MIN_PULSE_MS), never indefinite (FR-6)', () => {
+  // "Transient" now lives in the JS timer, not the CSS: the looping animation runs
+  // only while `active` is true, and the provider clears `active` after MIN_PULSE_MS.
   const html = renderToStaticMarkup(createElement(ActivePulse, { active: false, variant: 'frame' }));
   assert.ok(!html.includes('live-pulse-frame'));
 });
 
-test('reduced-motion block neutralizes the live pulse keyframes (NFR-10)', () => {
+test('the live pulse loops (infinite) so a held or bursting change pulses continuously, not one flash (FR-6)', () => {
+  // Regression guard for the "one missable flash" bug: a one-shot animation does not
+  // replay while its class stays applied, so a held/burst change only flashed once.
+  // Both pulse classes must loop. (Duration is intentionally not asserted — tunable.)
+  const css = readFileSync(path.join(process.cwd(), 'app', 'globals.css'), 'utf-8');
+  const base = css.slice(0, css.indexOf('prefers-reduced-motion'));
+  assert.match(base, /live-pulse-frame-kf[^;]*infinite/, 'frame pulse animation loops');
+  assert.match(base, /live-pulse-row-kf[^;]*infinite/, 'row pulse animation loops');
+});
+
+test('reduced-motion shows a STATIC live tint (not invisible) so the change is still seen (NFR-10)', () => {
   const css = readFileSync(path.join(process.cwd(), 'app', 'globals.css'), 'utf-8');
   const rm = css.slice(css.indexOf('prefers-reduced-motion'));
-  assert.ok(rm.includes('live-pulse-frame'), 'frame pulse neutralized under reduced motion');
-  assert.ok(rm.includes('live-pulse-row'), 'row pulse neutralized under reduced motion');
+  // Both pulse classes are still handled under reduced motion (animation killed)...
+  assert.ok(rm.includes('live-pulse-frame'), 'frame pulse handled under reduced motion');
+  assert.ok(rm.includes('live-pulse-row'), 'row pulse handled under reduced motion');
+  // ...but instead of vanishing, each holds a static lavender indicator so the
+  // change remains visible for the bounded hold.
+  const frameRule = rm.slice(rm.indexOf('.live-pulse-frame'));
+  assert.match(frameRule, /box-shadow:[^;]*var\(--live\)/, 'frame keeps a static live box-shadow');
+  const rowRule = rm.slice(rm.indexOf('.live-pulse-row'));
+  assert.match(rowRule, /background-color:[^;]*var\(--live\)/, 'row keeps a static live background tint');
 });

@@ -15,14 +15,14 @@ export async function deleteArtifact(projectName: string, fileName: string): Pro
   }
 }
 
-export function selectBrainstormingArtifacts(projectName: string, fileList: string[], mtimes: Record<string, number> = {}): Artifact[] {
-  return deriveArtifacts(projectName, fileList, mtimes);
+export function selectBrainstormingArtifacts(projectName: string, fileList: string[]): Artifact[] {
+  return deriveArtifacts(projectName, fileList);
 }
 
-export function useProjectArtifacts(projectName: string | null, fileList: string[], mtimes: Record<string, number> = {}): Artifact[] {
+export function useProjectArtifacts(projectName: string | null, fileList: string[]): Artifact[] {
   return useMemo(
-    () => (projectName ? deriveArtifacts(projectName, fileList, mtimes) : []),
-    [projectName, fileList, mtimes],
+    () => (projectName ? deriveArtifacts(projectName, fileList) : []),
+    [projectName, fileList],
   );
 }
 

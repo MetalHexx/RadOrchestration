@@ -56,7 +56,6 @@ function isPipelineDoc(fileName: string, project: string): boolean {
 export function deriveArtifacts(
   project: string,
   files: string[],
-  mtimes: Record<string, number>,
 ): Artifact[] {
   const brainstormingMd = `${project}-BRAINSTORMING.md`;
   const brainstormVisual = `${project}-BRAINSTORM.html`;
@@ -75,7 +74,6 @@ export function deriveArtifacts(
   const wireframes = root
     .map((f) => ({ f, m: wireframeRe.exec(f) }))
     .filter((x): x is { f: string; m: RegExpExecArray } => x.m !== null)
-    .sort((a, b) => (mtimes[a.f] ?? 0) - (mtimes[b.f] ?? 0))
     .map(({ f, m }) => ({
       fileName: f,
       kind: 'wireframe' as const,
@@ -85,9 +83,8 @@ export function deriveArtifacts(
     }));
   out.push(...wireframes);
 
-  // Trailing "other docs" group: every remaining root .html and .md, EXCEPT
-  // the pipeline denylist (.md) — merged and ordered by mtime asc so mixed
-  // .md/.html share one deterministic trailing sequence.
+  // "Other docs" group: every remaining root .html and .md, EXCEPT the pipeline
+  // denylist (.md). Final ordering for all groups is applied once at the end.
   const captured = new Set(out.map((a) => a.fileName));
   const otherDocs = root
     .filter((f) => !captured.has(f))
@@ -96,7 +93,6 @@ export function deriveArtifacts(
       if (f.endsWith('.md')) return !isPipelineDoc(f, project);
       return false;
     })
-    .sort((a, b) => (mtimes[a] ?? 0) - (mtimes[b] ?? 0))
     .map((f): Artifact => {
       if (f.endsWith('.md')) {
         const slug = stripProjectPrefix(f, project, /\.md$/i);
@@ -118,6 +114,16 @@ export function deriveArtifacts(
       };
     });
   out.push(...otherDocs);
+
+  // Stable ordering for every surface that renders this list (DAG rows, launch
+  // tiles, modal filmstrip): markdown first, then html, alphabetical by filename
+  // within each type. Deliberately NOT mtime-based — a live edit bumps a file's
+  // mtime, and an mtime sort would reorder rows on every change (and shift the
+  // modal's active item). Type+name is stable across edits.
+  out.sort((a, b) => {
+    if (a.isMarkdown !== b.isMarkdown) return a.isMarkdown ? -1 : 1;
+    return a.fileName.localeCompare(b.fileName);
+  });
 
   return out;
 }
