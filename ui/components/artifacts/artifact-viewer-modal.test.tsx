@@ -66,10 +66,41 @@ test('uses the windowed layout (max-w-5xl, rounded-xl) when not full-screen (FR-
   assert.ok(html.includes('rounded-xl'), 'windowed panel has rounded corners');
 });
 
-test('renders the persistent active-document glow on the stage and the active filmstrip cell (Fix 5)', () => {
+test('idle (no activePulse): active cell carries grey ring, no lavender glow classes anywhere (Fix 5)', () => {
   const html = render({ ...base, activeFileName: 'DEMO-WIREFRAME-X.html' });
-  assert.ok(html.includes('active-doc-glow-stage'), 'stage carries the persistent glow overlay');
-  assert.ok(html.includes('active-doc-glow-cell'), 'active filmstrip cell carries the persistent glow');
+  // Legacy classes must be gone
+  assert.ok(!html.includes('active-doc-glow-stage'), 'active-doc-glow-stage must not appear');
+  assert.ok(!html.includes('active-doc-glow-cell'), 'active-doc-glow-cell must not appear');
+  // Stage overlay must NOT carry the pulse class when the doc is not being written
+  assert.ok(!html.includes('live-pulse-stage'), 'stage overlay has no live-pulse-stage when idle');
+  // Active cell carries the grey ring
+  assert.ok(html.includes('ring-ring'), 'active cell carries ring-ring grey ring');
+  assert.ok(html.includes('border-ring'), 'active cell carries border-ring grey ring');
+  // Active cell has aria-current
+  assert.ok(html.includes('aria-current="true"'), 'active cell has aria-current="true"');
+});
+
+test('writing (activePulse contains active file): stage pulses lavender, lavender frame on cell, grey ring absent (Fix 5)', () => {
+  const html = render({
+    ...base,
+    activeFileName: 'DEMO-WIREFRAME-X.html',
+    activePulse: new Set(['DEMO-WIREFRAME-X.html']),
+  });
+  // Stage overlay must carry the pulse class
+  assert.ok(html.includes('live-pulse-stage'), 'stage overlay carries live-pulse-stage while writing');
+  // The active cell's ActivePulse wrapper is active — renders live-pulse-frame (lavender)
+  assert.ok(html.includes('live-pulse-frame'), 'active cell ActivePulse wrapper carries live-pulse-frame');
+  // The grey selection ring (ring-2 ring-ring) must NOT appear on the aria-current cell.
+  // We locate the aria-current cell's opening tag and confirm it lacks ring-2.
+  // (focus-visible:ring-ring appears on every cell as a focus style — we only care about
+  // the persistent selection ring-2 which is not added when pulsing.)
+  const currentCellMatch = html.match(/data-filmstrip-cell[^>]*aria-current="true"[^>]*class="([^"]+)"/);
+  assert.ok(currentCellMatch, 'aria-current cell found in markup');
+  const cellClasses = currentCellMatch![1];
+  // The grey selection ring adds "ring-2 ring-ring border-ring" as a group.
+  // focus-visible:ring-2 and focus-visible:ring-ring are focus styles present on every cell
+  // and are not the selection ring — check specifically for the standalone selection pattern.
+  assert.ok(!cellClasses.includes('ring-2 ring-ring'), 'grey selection ring-2 ring-ring is absent on active-pulsing cell (lavender supersedes)');
 });
 
 test('renders a label caption for every filmstrip cell (DD-8)', () => {

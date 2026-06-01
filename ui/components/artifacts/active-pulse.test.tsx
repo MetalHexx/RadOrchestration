@@ -34,6 +34,7 @@ test('the live pulse loops (infinite) so a held or bursting change pulses contin
   const base = css.slice(0, css.indexOf('prefers-reduced-motion'));
   assert.match(base, /live-pulse-frame-kf[^;]*infinite/, 'frame pulse animation loops');
   assert.match(base, /live-pulse-row-kf[^;]*infinite/, 'row pulse animation loops');
+  assert.match(base, /live-pulse-stage-kf[^;]*infinite/, 'stage pulse loops');
 });
 
 test('reduced-motion shows a STATIC live tint (not invisible) so the change is still seen (NFR-10)', () => {
@@ -48,4 +49,7 @@ test('reduced-motion shows a STATIC live tint (not invisible) so the change is s
   assert.match(frameRule, /box-shadow:[^;]*var\(--live\)/, 'frame keeps a static live box-shadow');
   const rowRule = rm.slice(rm.indexOf('.live-pulse-row'));
   assert.match(rowRule, /background-color:[^;]*var\(--live\)/, 'row keeps a static live background tint');
+  // Stage pulse: reduced-motion fallback keeps a static INSET lavender box-shadow.
+  const stageRule = rm.slice(rm.indexOf('.live-pulse-stage'));
+  assert.match(stageRule, /box-shadow:[^;]*inset[^;]*var\(--live\)/, 'stage keeps a static inset live box-shadow');
 });

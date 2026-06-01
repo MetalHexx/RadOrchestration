@@ -101,7 +101,13 @@ export function ArtifactViewerModal({
             activePulse={activePulse?.has(active.fileName) ?? false}
             liveMtime={mtimes?.[active.fileName] ?? 0}
           />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 active-doc-glow-stage" />
+          <div
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute inset-0",
+              (activePulse?.has(active.fileName) ?? false) && "live-pulse-stage",
+            )}
+          />
           <button type="button" aria-label="Previous artifact" onClick={onPrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background/70 p-2 text-foreground hover:bg-background">
             <ChevronLeft className="size-5" aria-hidden="true" />
@@ -117,8 +123,10 @@ export function ArtifactViewerModal({
         </div>
 
         <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
-          {artifacts.map((artifact) => (
-            <ActivePulse key={artifact.fileName} active={activePulse?.has(artifact.fileName) ?? false} variant="frame" className="rounded-md">
+          {artifacts.map((artifact) => {
+            const pulsing = activePulse?.has(artifact.fileName) ?? false;
+            return (
+            <ActivePulse key={artifact.fileName} active={pulsing} variant="frame" className="rounded-md">
             <div
               data-filmstrip-cell
               role="button"
@@ -130,8 +138,10 @@ export function ArtifactViewerModal({
               className={cn(
                 "flex h-16 w-24 shrink-0 cursor-pointer flex-col items-center overflow-hidden rounded-md border",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                artifact.fileName === activeFileName
-                  ? "border-[color-mix(in_srgb,var(--live)_60%,transparent)] active-doc-glow-cell"
+                // Grey neutral ring marks the SELECTED doc; while it's being written the
+                // ActivePulse lavender glow takes over (supersedes grey), so drop the grey then.
+                !pulsing && artifact.fileName === activeFileName
+                  ? "border-2 ring-2 ring-ring border-ring"
                   : "border-border",
               )}
             >
@@ -163,7 +173,8 @@ export function ArtifactViewerModal({
               </div>
             </div>
             </ActivePulse>
-          ))}
+            );
+          })}
         </footer>
       </div>
     </div>

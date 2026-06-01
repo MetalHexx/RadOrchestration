@@ -325,18 +325,19 @@
 .live-pulse-frame { animation: live-pulse-frame-kf 1.4s ease-in-out infinite; }
 .live-pulse-row { animation: live-pulse-row-kf 1.4s ease-in-out infinite; border-radius: inherit; }
 
-/* Persistent "this is the open/active document" lavender glow — always on while a
-   document is shown; separate from the transient change-pulse above. */
-.active-doc-glow-stage {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--live) 45%, transparent),
-    inset 0 0 28px 2px color-mix(in srgb, var(--live) 20%, transparent);
+/* Stage write-pulse: INSET ring + glow. The modal stage layer is `absolute inset-0`
+   inside an `overflow-hidden` container, so an OUTWARD box-shadow (like .live-pulse-frame)
+   is clipped to invisible — the stage must pulse with an inset shadow instead. Shown only
+   while the open document is being written (bounded by the JS hold), never persistently. */
+@keyframes live-pulse-stage-kf {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent, inset 0 0 0 0 transparent; }
+  50% {
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--live) 55%, transparent),
+      inset 0 0 30px 4px color-mix(in srgb, var(--live) 30%, transparent);
+  }
 }
-.active-doc-glow-cell {
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--live) 60%, transparent),
-    0 0 12px 1px color-mix(in srgb, var(--live) 35%, transparent);
-}
+.live-pulse-stage { animation: live-pulse-stage-kf 1.4s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse {
@@ -362,6 +363,12 @@
   .live-pulse-row {
     animation: none;
     background-color: color-mix(in srgb, var(--live) 18%, transparent);
+  }
+  .live-pulse-stage {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--live) 50%, transparent),
+      inset 0 0 26px 4px color-mix(in srgb, var(--live) 25%, transparent);
   }
   /* Neutralize the new modal enter/exit + size morph animations (added by another agent). */
   .artifact-modal-overlay,
