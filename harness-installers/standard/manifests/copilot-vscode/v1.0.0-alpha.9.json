@@ -255,7 +255,12 @@
     {
       "bundlePath": "skills/rad-brainstorm/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/SKILL.md",
-      "sha256": "ad95b686996fbd970926046d64469b3fb4d18a74ac96577b886ff9da0cc43e3a"
+      "sha256": "402e5730faa5ee2e8732f25d64aa4308fa9472a9c13d514e3f634f7cba39e49c"
+    },
+    {
+      "bundlePath": "skills/rad-brainstorm/references/architecture-visuals.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/architecture-visuals.md",
+      "sha256": "f60490190d955fbb073974fa21b954fa0f857e928b2e45bbb73c4adaccb9b41e"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/collaboration.md",
