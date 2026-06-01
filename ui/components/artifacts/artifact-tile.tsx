@@ -3,6 +3,8 @@
 import * as React from "react";
 import { FileText, Trash2 } from "lucide-react";
 import { IframePreview } from "./iframe-preview";
+import { ActivePulse } from "./active-pulse";
+import { ChangeBadge } from "@/components/badges";
 import type { Artifact } from "@/lib/artifact-model";
 import { cn } from "@/lib/utils";
 
@@ -11,11 +13,14 @@ export interface ArtifactTileProps {
   artifact: Artifact;
   onOpen: () => void;
   onDelete: () => void;
+  unseen?: boolean;
+  activePulse?: boolean;
 }
 
-export function ArtifactTile({ projectName, artifact, onOpen, onDelete }: ArtifactTileProps) {
+export function ArtifactTile({ projectName, artifact, onOpen, onDelete, unseen, activePulse }: ArtifactTileProps) {
   const friendly = artifact.title ?? artifact.label;
   return (
+    <ActivePulse active={!!activePulse} variant="frame" className="w-full rounded-md">
     <div
       className={cn(
         "group relative flex w-full flex-col overflow-hidden rounded-md border border-border bg-card text-left",
@@ -67,6 +72,12 @@ export function ArtifactTile({ projectName, artifact, onOpen, onDelete }: Artifa
       >
         <Trash2 className="size-3.5" aria-hidden="true" />
       </button>
+      {unseen && (
+        <div className="absolute left-2 top-2 z-10">
+          <ChangeBadge />
+        </div>
+      )}
     </div>
+    </ActivePulse>
   );
 }

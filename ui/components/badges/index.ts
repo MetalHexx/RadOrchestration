@@ -11,3 +11,4 @@ export { SSEStatusBanner } from "./sse-status-banner";
 export type { SSEStatusBannerProps } from "./sse-status-banner";
 export { CustomizedBadge } from "./customized-badge";
 export { PendingChangesBadge } from "./pending-changes-badge";
+export { ChangeBadge } from "./change-badge";

@@ -144,6 +144,10 @@
     /* ── Scrollbar Tokens ── */
     --scrollbar-thumb: oklch(0.55 0 0 / 0.45);
     --scrollbar-thumb-hover: oklch(0.45 0 0 / 0.7);
+
+    /* ── Live Indicator Tokens ── */
+    --live: #8a7cff;
+    --live-accent: #c3bbff;
   }
 
   .dark {
@@ -233,6 +237,10 @@
     /* ── Scrollbar Tokens (dark mode) ── */
     --scrollbar-thumb: oklch(0.55 0 0 / 0.5);
     --scrollbar-thumb-hover: oklch(0.75 0 0 / 0.8);
+
+    /* ── Live Indicator Tokens ── */
+    --live: #8a7cff;
+    --live-accent: #c3bbff;
   }
 
   /* ── Focus-visible ring ── */
@@ -294,6 +302,43 @@
   cursor: not-allowed;
 }
 
+/* Frame change-pulse: looping ring + soft glow (wireframe activePulse). Symmetric
+   endpoints (0%/100%) so the loop has no seam, peaking at 50%. Looped (infinite
+   ease-in-out) so the pulse animates continuously while the class is applied — the
+   JS hold in use-artifact-live.tsx bounds that window (MIN_PULSE_MS). A one-shot
+   animation would only play once, so a held/burst change read as one missable flash.
+   No border-radius here — the wrapper sets its own radius (rounded-md) so the shadow
+   hugs the content corners instead of inheriting the parent's (=square). */
+@keyframes live-pulse-frame-kf {
+  0%, 100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
+  50% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--live) 50%, transparent),
+      0 0 22px 4px color-mix(in srgb, var(--live) 40%, transparent);
+  }
+}
+/* DAG row pulse — background tint only, intentionally NO glow (user excluded the DAG view). */
+@keyframes live-pulse-row-kf {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: color-mix(in srgb, var(--live) 22%, transparent); }
+}
+.live-pulse-frame { animation: live-pulse-frame-kf 1.4s ease-in-out infinite; }
+.live-pulse-row { animation: live-pulse-row-kf 1.4s ease-in-out infinite; border-radius: inherit; }
+
+/* Stage write-pulse: INSET ring + glow. The modal stage layer is `absolute inset-0`
+   inside an `overflow-hidden` container, so an OUTWARD box-shadow (like .live-pulse-frame)
+   is clipped to invisible — the stage must pulse with an inset shadow instead. Shown only
+   while the open document is being written (bounded by the JS hold), never persistently. */
+@keyframes live-pulse-stage-kf {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent, inset 0 0 0 0 transparent; }
+  50% {
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--live) 55%, transparent),
+      inset 0 0 30px 4px color-mix(in srgb, var(--live) 30%, transparent);
+  }
+}
+.live-pulse-stage { animation: live-pulse-stage-kf 1.4s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse {
     animation: none;
@@ -306,6 +351,30 @@
   .transition-opacity,
   .transition-transform {
     transition-duration: 0.01ms !important;
+  }
+  /* No breathing under reduced motion, but keep a STATIC live indicator so the
+     change is still visible for the bounded hold (don't render it invisible). */
+  .live-pulse-frame {
+    animation: none;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--live) 50%, transparent),
+      0 0 20px 4px color-mix(in srgb, var(--live) 35%, transparent);
+  }
+  .live-pulse-row {
+    animation: none;
+    background-color: color-mix(in srgb, var(--live) 18%, transparent);
+  }
+  .live-pulse-stage {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--live) 50%, transparent),
+      inset 0 0 26px 4px color-mix(in srgb, var(--live) 25%, transparent);
+  }
+  /* Neutralize the new modal enter/exit + size morph animations (added by another agent). */
+  .artifact-modal-overlay,
+  .artifact-modal-panel {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

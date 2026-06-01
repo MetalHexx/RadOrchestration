@@ -6,36 +6,30 @@ const PROJECT = 'DEMO';
 
 test('filters to root .md/.html only, excluding subfolders and state.json (FR-1)', () => {
   const files = ['DEMO-BRAINSTORMING.md', 'DEMO-BRAINSTORM.html', 'state.json', 'reports/X.md', 'sub/Y.html'];
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   const names = arts.map((a) => a.fileName);
   assert.deepEqual(names.sort(), ['DEMO-BRAINSTORM.html', 'DEMO-BRAINSTORMING.md'].sort());
 });
 
-test('orders BRAINSTORMING.md, then BRAINSTORM.html, then wireframes by mtime asc (FR-2)', () => {
+test('orders markdown first, then html, alphabetical within each type (FR-2)', () => {
   const files = [
     'DEMO-WIREFRAME-DAG-VIEW.html',
     'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
     'DEMO-BRAINSTORM.html',
     'DEMO-BRAINSTORMING.md',
   ];
-  const mtimes = {
-    'DEMO-WIREFRAME-DAG-VIEW.html': 200,
-    'DEMO-WIREFRAME-LAUNCH-SCREEN.html': 100,
-    'DEMO-BRAINSTORM.html': 999,
-    'DEMO-BRAINSTORMING.md': 999,
-  };
-  const arts = deriveArtifacts(PROJECT, files, mtimes);
+  const arts = deriveArtifacts(PROJECT, files);
   assert.deepEqual(arts.map((a) => a.fileName), [
     'DEMO-BRAINSTORMING.md',
     'DEMO-BRAINSTORM.html',
-    'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
     'DEMO-WIREFRAME-DAG-VIEW.html',
+    'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
   ]);
 });
 
 test('assigns locked labels and humanized wireframe titles (FR-3)', () => {
   const files = ['DEMO-BRAINSTORMING.md', 'DEMO-BRAINSTORM.html', 'DEMO-WIREFRAME-LAUNCH-SCREEN.html'];
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   const byName = Object.fromEntries(arts.map((a) => [a.fileName, a]));
   assert.equal(byName['DEMO-BRAINSTORMING.md'].label, 'Brainstorm');
   assert.equal(byName['DEMO-BRAINSTORMING.md'].kind, 'markdown');
@@ -47,7 +41,7 @@ test('assigns locked labels and humanized wireframe titles (FR-3)', () => {
 });
 
 test('an empty listing yields an empty artifact list without throwing (NFR-3, FR-1)', () => {
-  assert.deepEqual(deriveArtifacts(PROJECT, [], {}), []);
+  assert.deepEqual(deriveArtifacts(PROJECT, []), []);
 });
 
 test('surfaces ANY root *.html as a generic visual; excludes non-html and non-root (tolerance)', () => {
@@ -55,7 +49,7 @@ test('surfaces ANY root *.html as a generic visual; excludes non-html and non-ro
   // Under tolerance, every root *.html surfaces as a generic 'html' artifact
   // (even those that are not the canonical brainstorm-visual or a wireframe).
   // Non-html files (notes.txt) and non-root html (sub/x.html) stay excluded.
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   const names = arts.map((a) => a.fileName).sort();
   assert.deepEqual(names, ['OTHER-PROJECT-BRAINSTORM.html', 'random.html']);
   assert.ok(arts.every((a) => a.kind === 'html'));
@@ -63,11 +57,10 @@ test('surfaces ANY root *.html as a generic visual; excludes non-html and non-ro
   assert.ok(!names.includes('sub/x.html'));
 });
 
-test('surfaces non-canonical root *.html as generic visuals, ordered by mtime asc (tolerance)', () => {
+test('surfaces non-canonical root *.html as generic visuals, alphabetical (tolerance)', () => {
   const arts = deriveArtifacts(
     'DEMO',
     ['DEMO-BRAINSTORM-VISUAL.html', 'DEMO-MOCKUP.html'],
-    { 'DEMO-BRAINSTORM-VISUAL.html': 100, 'DEMO-MOCKUP.html': 200 },
   );
   assert.equal(arts.length, 2);
   const byName = Object.fromEntries(arts.map((a) => [a.fileName, a]));
@@ -85,7 +78,7 @@ test('surfaces non-canonical root *.html as generic visuals, ordered by mtime as
 
 test('includes a generic root .md (e.g. ARCHITECTURE) as a markdown doc with humanized title', () => {
   const files = ['DEMO-ARCHITECTURE.md'];
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   assert.equal(arts.length, 1);
   const a = arts[0];
   assert.equal(a.fileName, 'DEMO-ARCHITECTURE.md');
@@ -96,7 +89,7 @@ test('includes a generic root .md (e.g. ARCHITECTURE) as a markdown doc with hum
 });
 
 test('humanizes multi-word generic root .md titles (strips project prefix and .md)', () => {
-  const arts = deriveArtifacts('LIVE-DOCS', ['LIVE-DOCS-ARCHITECTURE.md'], {});
+  const arts = deriveArtifacts('LIVE-DOCS', ['LIVE-DOCS-ARCHITECTURE.md']);
   assert.equal(arts.length, 1);
   assert.equal(arts[0].fileName, 'LIVE-DOCS-ARCHITECTURE.md');
   assert.equal(arts[0].title, 'Architecture');
@@ -112,19 +105,19 @@ test('excludes planner/pipeline root docs via the denylist (requirements/master-
     'DEMO-PLAN-AUDIT.md',
     'DEMO-ERROR-LOG.md',
   ];
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   assert.deepEqual(arts, []);
 });
 
 test('keeps pipeline denylist excluded while still surfacing a generic root .md (allowlist→denylist flip)', () => {
   const files = ['DEMO-REQUIREMENTS.md', 'DEMO-MASTER-PLAN.md', 'DEMO-ARCHITECTURE.md'];
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   assert.deepEqual(arts.map((a) => a.fileName), ['DEMO-ARCHITECTURE.md']);
 });
 
 test('excludes subfolder docs (phases/tasks/reports) for both .md and .html', () => {
   const files = ['phases/PHASE-1.md', 'tasks/TASK-A.md', 'reports/REPORT-Z.md', 'tasks/X.html'];
-  const arts = deriveArtifacts(PROJECT, files, {});
+  const arts = deriveArtifacts(PROJECT, files);
   assert.deepEqual(arts, []);
 });
 
@@ -136,23 +129,19 @@ test('exposes PIPELINE_DOC_SUFFIXES as a named extensible constant', () => {
   assert.ok(PIPELINE_DOC_SUFFIXES.includes('-ERROR-LOG.md'));
 });
 
-test('regression: brainstorm, wireframes and a generic DIAGRAM html all surface with correct labels/order', () => {
+test('regression: brainstorm, wireframes and a generic DIAGRAM html surface with correct labels/order (markdown first, then html alphabetical)', () => {
   const files = [
     'DEMO-BRAINSTORMING.md',
     'DEMO-BRAINSTORM.html',
     'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
     'DEMO-DIAGRAM-FLOW.html',
   ];
-  const mtimes = {
-    'DEMO-WIREFRAME-LAUNCH-SCREEN.html': 100,
-    'DEMO-DIAGRAM-FLOW.html': 200,
-  };
-  const arts = deriveArtifacts(PROJECT, files, mtimes);
+  const arts = deriveArtifacts(PROJECT, files);
   assert.deepEqual(arts.map((a) => a.fileName), [
     'DEMO-BRAINSTORMING.md',
     'DEMO-BRAINSTORM.html',
-    'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
     'DEMO-DIAGRAM-FLOW.html',
+    'DEMO-WIREFRAME-LAUNCH-SCREEN.html',
   ]);
   const byName = Object.fromEntries(arts.map((a) => [a.fileName, a]));
   assert.equal(byName['DEMO-BRAINSTORMING.md'].label, 'Brainstorm');
@@ -162,7 +151,7 @@ test('regression: brainstorm, wireframes and a generic DIAGRAM html all surface 
   assert.equal(byName['DEMO-DIAGRAM-FLOW.html'].kind, 'html');
 });
 
-test('orders deterministically: BRAINSTORMING.md, BRAINSTORM.html, wireframes (mtime asc), then other docs (mtime asc, mixed md/html)', () => {
+test('orders markdown first, then html, alphabetical within each type — deterministic, never mtime-based', () => {
   const files = [
     'DEMO-ARCHITECTURE.md',
     'DEMO-DIAGRAM-FLOW.html',
@@ -171,19 +160,21 @@ test('orders deterministically: BRAINSTORMING.md, BRAINSTORM.html, wireframes (m
     'DEMO-BRAINSTORM.html',
     'DEMO-BRAINSTORMING.md',
   ];
-  const mtimes = {
-    'DEMO-WIREFRAME-DAG.html': 200,
-    'DEMO-WIREFRAME-LAUNCH.html': 100,
-    'DEMO-ARCHITECTURE.md': 50,
-    'DEMO-DIAGRAM-FLOW.html': 75,
-  };
-  const arts = deriveArtifacts(PROJECT, files, mtimes);
+  const arts = deriveArtifacts(PROJECT, files);
   assert.deepEqual(arts.map((a) => a.fileName), [
+    'DEMO-ARCHITECTURE.md',
     'DEMO-BRAINSTORMING.md',
     'DEMO-BRAINSTORM.html',
-    'DEMO-WIREFRAME-LAUNCH.html',
-    'DEMO-WIREFRAME-DAG.html',
-    'DEMO-ARCHITECTURE.md',
     'DEMO-DIAGRAM-FLOW.html',
+    'DEMO-WIREFRAME-DAG.html',
+    'DEMO-WIREFRAME-LAUNCH.html',
+  ]);
+});
+
+test('orders markdown first, then html, alphabetical within each type (stable; never mtime-based)', () => {
+  const files = ['DEMO-ZEBRA.html', 'DEMO-ALPHA.md', 'DEMO-APPLE.html', 'DEMO-BETA.md'];
+  const arts = deriveArtifacts('DEMO', files);
+  assert.deepEqual(arts.map((a) => a.fileName), [
+    'DEMO-ALPHA.md', 'DEMO-BETA.md', 'DEMO-APPLE.html', 'DEMO-ZEBRA.html',
   ]);
 });

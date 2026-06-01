@@ -62,7 +62,7 @@ export function computeFitScale(containerWidth: number, designWidth: number): nu
   return containerWidth / designWidth;
 }
 
-export function StageIframe({ projectName, fileName }: { projectName: string; fileName: string }) {
+export function StageIframe({ projectName, fileName, onLoad, reloadKey }: { projectName: string; fileName: string; onLoad?: () => void; reloadKey?: number }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [size, setSize] = React.useState({ width: 0, height: 0 });
   React.useEffect(() => {
@@ -74,7 +74,8 @@ export function StageIframe({ projectName, fileName }: { projectName: string; fi
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const src = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}&chrome=scroll`;
+  const base = `/api/projects/${encodeURIComponent(projectName)}/raw?path=${encodeURIComponent(fileName)}&chrome=scroll`;
+  const src = reloadKey ? `${base}&v=${reloadKey}` : base;
   const measured = size.width > 0 && size.height > 0;
   const scale = measured ? computeFitScale(size.width, STAGE_DESIGN_WIDTH) : 1;
   // viewport dims chosen so displayed size === measured container size exactly (no blank band):
@@ -98,8 +99,11 @@ export function StageIframe({ projectName, fileName }: { projectName: string; fi
         sandbox="allow-same-origin"
         loading="eager"
         referrerPolicy="no-referrer"
-        className="border-0 bg-white"
+        // Dark backstop color, not white, so the first open (when the front
+        // iframe loads visibly) never flashes white before content paints (DD-8).
+        className="border-0 bg-background"
         style={style}
+        onLoad={onLoad}
       />
     </div>
   );

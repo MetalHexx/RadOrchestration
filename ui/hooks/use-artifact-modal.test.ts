@@ -1,6 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nextIndex, prevIndex, indexAfterDelete, modalKeyAction } from './use-artifact-modal';
+import {
+  nextIndex,
+  prevIndex,
+  indexAfterDelete,
+  modalKeyAction,
+  markdownPathForActive,
+  fileNameAtOffset,
+  fileNameAfterDelete,
+} from './use-artifact-modal';
+import type { Artifact } from '@/lib/artifact-model';
+
+const arts: Artifact[] = [
+  { fileName: 'A.md', kind: 'markdown', label: 'Brainstorm', title: null, isMarkdown: true },
+  { fileName: 'B.html', kind: 'visual', label: 'Brainstorm Visual', title: null, isMarkdown: false },
+  { fileName: 'C.html', kind: 'wireframe', label: 'Wireframe', title: 'X', isMarkdown: false },
+];
 
 test('nextIndex advances and loops past the end (FR-14)', () => {
   assert.equal(nextIndex(0, 3), 1);
@@ -40,4 +55,70 @@ test('modalKeyAction returns close for Escape (FR-14, FR-15)', () => {
 
 test('modalKeyAction returns null for any other key (FR-14, FR-15)', () => {
   assert.equal(modalKeyAction('a'), null);
+});
+
+// ─── markdownPathForActive — now anchored to a filename, not an index ─────────
+
+test('markdownPathForActive returns the md filename when the active artifact is markdown (FR-12, AD-8)', () => {
+  assert.equal(markdownPathForActive(arts, 'A.md'), 'A.md');
+});
+
+test('markdownPathForActive returns null when the active artifact is html (AD-8)', () => {
+  assert.equal(markdownPathForActive(arts, 'B.html'), null);
+});
+
+test('markdownPathForActive returns null when the filename is absent so the modal stays closed (FR-19)', () => {
+  assert.equal(markdownPathForActive(arts, null), null);
+  assert.equal(markdownPathForActive(arts, 'GONE.md'), null);
+});
+
+// ─── fileNameAtOffset — prev/next navigate by the active filename's position ──
+
+test('fileNameAtOffset advances to the next filename and wraps past the end (FR-14)', () => {
+  assert.equal(fileNameAtOffset(arts, 'A.md', 1), 'B.html');
+  assert.equal(fileNameAtOffset(arts, 'C.html', 1), 'A.md');
+});
+
+test('fileNameAtOffset retreats to the previous filename and wraps past the start (FR-14)', () => {
+  assert.equal(fileNameAtOffset(arts, 'B.html', -1), 'A.md');
+  assert.equal(fileNameAtOffset(arts, 'A.md', -1), 'C.html');
+});
+
+test('fileNameAtOffset navigates from the active filename position after a reorder, not a stale index (regression)', () => {
+  // The user is looking at B.html. The live list reorders underneath the modal.
+  const reordered: Artifact[] = [arts[2], arts[0], arts[1]]; // C, A, B
+  // Next from B (now last) wraps to C (now first) — the neighbour of the file
+  // the user actually sees, NOT whatever sits at B's old index 1.
+  assert.equal(fileNameAtOffset(reordered, 'B.html', 1), 'C.html');
+  // Prev from B lands on A — again, relative to B's CURRENT position.
+  assert.equal(fileNameAtOffset(reordered, 'B.html', -1), 'A.md');
+});
+
+test('fileNameAtOffset falls back to the first file when the active filename is gone (FR-19)', () => {
+  assert.equal(fileNameAtOffset(arts, 'GONE.md', 1), 'A.md');
+  assert.equal(fileNameAtOffset(arts, null, -1), 'A.md');
+});
+
+test('fileNameAtOffset returns null for an empty list', () => {
+  assert.equal(fileNameAtOffset([], 'A.md', 1), null);
+});
+
+// ─── fileNameAfterDelete — clamp semantics in filename terms (FR-19) ──────────
+
+test('fileNameAfterDelete keeps position when a middle file is removed', () => {
+  // delete B (index 1) → remaining [A, C], clamp Math.min(1, 1) = 1 → C
+  assert.equal(fileNameAfterDelete(arts, 'B.html'), 'C.html');
+});
+
+test('fileNameAfterDelete clamps to the new last file when the tail is removed', () => {
+  // delete C (index 2) → remaining [A, B], clamp Math.min(2, 1) = 1 → B
+  assert.equal(fileNameAfterDelete(arts, 'C.html'), 'B.html');
+});
+
+test('fileNameAfterDelete returns null when the only file is removed so the modal closes', () => {
+  assert.equal(fileNameAfterDelete([arts[0]], 'A.md'), null);
+});
+
+test('fileNameAfterDelete returns null when the active filename is absent', () => {
+  assert.equal(fileNameAfterDelete(arts, 'GONE.md'), null);
 });

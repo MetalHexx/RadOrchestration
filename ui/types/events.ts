@@ -1,7 +1,14 @@
 import type { AnyProjectState } from './state';
 
 /** SSE event types sent from server to client */
-export type SSEEventType = 'state_change' | 'project_added' | 'project_removed' | 'connected' | 'heartbeat';
+export type SSEEventType =
+  | 'state_change'
+  | 'project_added'
+  | 'project_removed'
+  | 'connected'
+  | 'heartbeat'
+  | 'artifact_change'
+  | 'live_degraded';
 
 export interface SSEEvent<T extends SSEEventType = SSEEventType> {
   type: T;
@@ -24,6 +31,13 @@ export interface SSEPayloadMap {
     projects: string[];
   };
   heartbeat: Record<string, never>;
+  artifact_change: {
+    projectName: string;
+    kind: 'added' | 'changed' | 'removed';
+  };
+  live_degraded: {
+    degraded: boolean;
+  };
 }
 
 /** Connection status for the SSE client hook */

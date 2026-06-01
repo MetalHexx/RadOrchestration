@@ -4,6 +4,8 @@ import * as React from "react";
 import { FileText, Image as ImageIcon, LayoutTemplate, Trash2 } from "lucide-react";
 import { NodeStatusBadge } from "./node-status-badge";
 import { SECTION_LABEL_CLASSES, CARD_SHELL_CLASSES } from "./dag-section-group";
+import { ActivePulse } from "@/components/artifacts/active-pulse";
+import { ChangeBadge } from "@/components/badges";
 import { cn } from "@/lib/utils";
 import type { Artifact, ArtifactKind } from "@/lib/artifact-model";
 
@@ -19,9 +21,11 @@ export interface BrainstormingSectionProps {
   artifacts: Artifact[];
   onOpen: (index: number) => void;
   onDelete: (artifact: Artifact) => void;
+  unseen?: Set<string>;
+  activePulse?: Set<string>;
 }
 
-export function BrainstormingSection({ artifacts, onOpen, onDelete }: BrainstormingSectionProps) {
+export function BrainstormingSection({ artifacts, onOpen, onDelete, unseen, activePulse }: BrainstormingSectionProps) {
   if (artifacts.length === 0) return null;
   return (
     <div role="group" aria-label="Brainstorming section">
@@ -30,9 +34,11 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
         <div className="py-2">
           {artifacts.map((artifact, index) => {
             const friendly = artifact.title ?? artifact.label;
+            const isUnseen = unseen?.has(artifact.fileName) ?? false;
+            const isActive = activePulse?.has(artifact.fileName) ?? false;
             return (
+              <ActivePulse key={artifact.fileName} active={isActive} variant="row">
               <div
-                key={artifact.fileName}
                 className="flex items-center gap-2 py-2 pr-3 pl-3 rounded-md hover:bg-accent/50"
               >
                 {/* Primary "open" control and the delete control are sibling
@@ -48,13 +54,21 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   )}
                 >
-                  <NodeStatusBadge
-                    status="completed"
-                    label={artifact.label}
-                    cssVar={BLUE}
-                    iconOnly
-                    icon={iconFor(artifact.kind)}
-                  />
+                  {/* Single badge per row: while the doc has unseen changes the
+                      leading slot shows the lavender change badge; once opened it
+                      reverts to the blue type icon (FR-7/DD-3 — one symbol). Both
+                      are the same icon-only SpinnerBadge, so the swap is pixel-stable. */}
+                  {isUnseen ? (
+                    <ChangeBadge />
+                  ) : (
+                    <NodeStatusBadge
+                      status="completed"
+                      label={artifact.label}
+                      cssVar={BLUE}
+                      iconOnly
+                      icon={iconFor(artifact.kind)}
+                    />
+                  )}
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{friendly}</span>
                 </button>
                 <div className="flex min-w-0 shrink-0 items-center gap-3">
@@ -69,6 +83,7 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete }: Brainstorm
                   </button>
                 </div>
               </div>
+              </ActivePulse>
             );
           })}
         </div>

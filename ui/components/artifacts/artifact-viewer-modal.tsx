@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText } from "lucide-react";
-import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
-import { IframePreview, StageIframe } from "./iframe-preview";
+import { IframePreview } from "./iframe-preview";
+import { ActivePulse } from "./active-pulse";
+import { BufferedStage } from "./buffered-stage";
+import { ChangeBadge } from "@/components/badges";
 import { cn } from "@/lib/utils";
 import { modalKeyAction } from "@/hooks/use-artifact-modal";
 import type { Artifact } from "@/lib/artifact-model";
@@ -11,23 +13,37 @@ import type { Artifact } from "@/lib/artifact-model";
 export interface ArtifactViewerModalProps {
   projectName: string;
   artifacts: Artifact[];
-  activeIndex: number;
+  /** Identity of the open document — anchored to the filename, not an array
+   *  index, so focus stays pinned across live reorders/inserts/deletes. */
+  activeFileName: string | null;
   /** Fetched BRAINSTORMING.md body when the active (or any) md cell needs it. */
   markdownContent: string | null;
+  /** Which file `markdownContent` belongs to — lets the stage withhold a stale
+   *  body from a freshly-navigated md layer until its own fetch resolves (BUG 1). */
+  markdownContentFileName?: string | null;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
-  onSelect: (index: number) => void;
+  onSelect: (fileName: string) => void;
   onRequestDelete: () => void;
   isFullScreen: boolean;
   onToggleFullScreen: () => void;
+  unseen?: Set<string>;
+  activePulse?: Set<string>;
+  /** Per-file live mtimes from the store; drives the open HTML doc's in-place
+   *  reload off a monotonic signal so repeated changes still bust the cache (BUG 2). */
+  mtimes?: Record<string, number>;
+  /** Drives the enter/exit animation. "open" plays the entrance; "closed" plays
+   *  the exit (the parent keeps the modal mounted for the exit's duration). */
+  dataState?: "open" | "closed";
 }
 
 export function ArtifactViewerModal({
-  projectName, artifacts, activeIndex, markdownContent,
+  projectName, artifacts, activeFileName, markdownContent, markdownContentFileName,
   onClose, onPrev, onNext, onSelect, onRequestDelete, isFullScreen, onToggleFullScreen,
+  unseen, activePulse, mtimes, dataState = "open",
 }: ArtifactViewerModalProps) {
-  const active = artifacts[activeIndex];
+  const active = artifacts.find((a) => a.fileName === activeFileName);
 
   React.useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -50,13 +66,15 @@ export function ArtifactViewerModal({
       role="dialog"
       aria-modal="true"
       aria-label={`${friendly} — ${active.fileName}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+      data-state={dataState}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 supports-backdrop-filter:backdrop-blur-sm artifact-modal-overlay duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        data-state={dataState}
         className={cn(
-          "flex flex-col overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-foreground/10 shadow-lg",
-          isFullScreen ? "fixed inset-0 rounded-none" : "h-[85vh] w-[90vw] max-w-5xl",
+          "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden bg-card text-card-foreground ring-1 ring-foreground/10 shadow-lg artifact-modal-panel transition-[width,height,max-width,border-radius] duration-200 ease-out data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          isFullScreen ? "h-screen w-screen max-w-[100vw] rounded-none" : "h-[85vh] w-[90vw] max-w-5xl rounded-xl",
         )}
       >
         <header className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -75,19 +93,21 @@ export function ArtifactViewerModal({
         </header>
 
         <div className="relative flex-1 overflow-hidden bg-muted">
-          {active.isMarkdown ? (
-            <div className="h-full overflow-auto bg-background p-6">
-              {markdownContent !== null
-                ? <MarkdownRenderer content={markdownContent} />
-                : (
-                  <div role="status" aria-label="Loading document" className="flex h-full items-center justify-center">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-                  </div>
-                )}
-            </div>
-          ) : (
-            <StageIframe projectName={projectName} fileName={active.fileName} />
-          )}
+          <BufferedStage
+            projectName={projectName}
+            artifact={active}
+            markdownContent={markdownContent}
+            markdownContentFileName={markdownContentFileName ?? undefined}
+            activePulse={activePulse?.has(active.fileName) ?? false}
+            liveMtime={mtimes?.[active.fileName] ?? 0}
+          />
+          <div
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute inset-0",
+              (activePulse?.has(active.fileName) ?? false) && "live-pulse-stage",
+            )}
+          />
           <button type="button" aria-label="Previous artifact" onClick={onPrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background/70 p-2 text-foreground hover:bg-background">
             <ChevronLeft className="size-5" aria-hidden="true" />
@@ -103,20 +123,26 @@ export function ArtifactViewerModal({
         </div>
 
         <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
-          {artifacts.map((artifact, i) => (
+          {artifacts.map((artifact) => {
+            const pulsing = activePulse?.has(artifact.fileName) ?? false;
+            return (
+            <ActivePulse key={artifact.fileName} active={pulsing} variant="frame" className="rounded-md">
             <div
-              key={artifact.fileName}
               data-filmstrip-cell
               role="button"
               tabIndex={0}
               aria-label={`View ${artifact.title ?? artifact.label}`}
-              aria-current={i === activeIndex ? 'true' : undefined}
-              onClick={() => onSelect(i)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(i); } }}
+              aria-current={artifact.fileName === activeFileName ? 'true' : undefined}
+              onClick={() => onSelect(artifact.fileName)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(artifact.fileName); } }}
               className={cn(
                 "flex h-16 w-24 shrink-0 cursor-pointer flex-col items-center overflow-hidden rounded-md border",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                i === activeIndex ? "border-2 ring-2 ring-ring border-ring" : "border-border",
+                // Grey neutral ring marks the SELECTED doc; while it's being written the
+                // ActivePulse lavender glow takes over (supersedes grey), so drop the grey then.
+                !pulsing && artifact.fileName === activeFileName
+                  ? "border-2 ring-2 ring-ring border-ring"
+                  : "border-border",
               )}
             >
               <div className="relative h-10 w-full shrink-0 overflow-hidden bg-background">
@@ -134,6 +160,11 @@ export function ArtifactViewerModal({
                     className="h-full w-full"
                   />
                 )}
+                {(unseen?.has(artifact.fileName) ?? false) && (
+                  <div className="absolute left-1 top-1 z-10">
+                    <ChangeBadge />
+                  </div>
+                )}
               </div>
               <div className="flex w-full flex-1 items-center justify-center px-1">
                 <span className="w-full truncate text-center text-[9px] leading-tight text-muted-foreground">
@@ -141,7 +172,9 @@ export function ArtifactViewerModal({
                 </span>
               </div>
             </div>
-          ))}
+            </ActivePulse>
+            );
+          })}
         </footer>
       </div>
     </div>
