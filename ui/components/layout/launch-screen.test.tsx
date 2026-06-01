@@ -46,6 +46,13 @@ test('with no artifacts, shows empty state and Start Brainstorming only (FR-8, F
   assert.ok(!html.includes('DEMO-BRAINSTORMING.md'), 'no tiles in empty state');
 });
 
+test('the tile scroll region reserves padding so the live-pulse glow is not clipped', () => {
+  // The tile live-pulse is an outward box-shadow; without clearance inside the
+  // overflow/mask scroll frame the last-column tile's glow gets hard-clipped.
+  const html = render({ ...base, artifacts: [md] });
+  assert.match(html, /overflow-y-auto[^"]*\bpx-/, 'scroller reserves horizontal padding for the glow');
+});
+
 test('pending start action disables the action button (AD-7)', () => {
   const html = render({ ...base, artifacts: [md], pendingAction: 'start-planning' });
   assert.ok(html.includes('disabled'), 'pending action disables the button');

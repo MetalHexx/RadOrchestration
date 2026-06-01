@@ -44,7 +44,11 @@ export function LaunchScreen({
 
         {hasArtifacts && (
           <div className="relative mt-6 flex-1 overflow-hidden" style={{ maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)' }}>
-            <div className="h-full overflow-y-auto">
+            {/* Padding gives the tiles' outward live-pulse glow (~26px box-shadow) clearance
+                from this scroller's clip edge so the last-column / edge tiles aren't cut off;
+                the glow renders into the padding. Scroll + the parent's bottom mask-fade are
+                unaffected. */}
+            <div className="h-full overflow-y-auto px-6 py-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {artifacts.map((artifact, index) => (
                   <ArtifactTile
