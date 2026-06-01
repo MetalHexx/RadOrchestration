@@ -48,3 +48,27 @@ test('renders nothing when there are no artifacts (FR-9)', () => {
   const html = render({ artifacts: [], onOpen: noop, onDelete: noop });
   assert.equal(html, '');
 });
+
+test('an unseen row swaps the leading type icon for the single lavender change badge (FR-7, DD-3)', () => {
+  const html = render({
+    artifacts: [arts[1]], onOpen: noop, onDelete: noop,
+    unseen: new Set(['DEMO-WIREFRAME-DAG-VIEW.html']),
+  });
+  // The lavender change badge is present in the leading slot...
+  assert.ok(html.includes('aria-label="Unseen change"'), 'change badge present on the unseen row');
+  assert.ok(html.includes('var(--live)'), 'lavender live token used');
+  // ...and it REPLACED the blue type icon rather than appearing alongside it:
+  // exactly one badge, no --tier-planning type badge on the row.
+  assert.ok(!html.includes('var(--tier-planning)'), 'blue type icon is swapped out, not shown alongside (single badge)');
+  const changeBadges = (html.match(/aria-label="Unseen change"/g) ?? []).length;
+  assert.equal(changeBadges, 1, 'exactly one change badge on the unseen row');
+});
+
+test('a seen row keeps the blue type icon and shows no change badge (DD-4, FR-8)', () => {
+  const html = render({
+    artifacts: [arts[1]], onOpen: noop, onDelete: noop,
+    unseen: new Set(),
+  });
+  assert.ok(html.includes('var(--tier-planning)'), 'blue type icon present when seen');
+  assert.ok(!html.includes('aria-label="Unseen change"'), 'no change badge once seen');
+});

@@ -54,15 +54,22 @@ export function BrainstormingSection({ artifacts, onOpen, onDelete, unseen, acti
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   )}
                 >
-                  <NodeStatusBadge
-                    status="completed"
-                    label={artifact.label}
-                    cssVar={BLUE}
-                    iconOnly
-                    icon={iconFor(artifact.kind)}
-                  />
+                  {/* Single badge per row: while the doc has unseen changes the
+                      leading slot shows the lavender change badge; once opened it
+                      reverts to the blue type icon (FR-7/DD-3 — one symbol). Both
+                      are the same icon-only SpinnerBadge, so the swap is pixel-stable. */}
+                  {isUnseen ? (
+                    <ChangeBadge />
+                  ) : (
+                    <NodeStatusBadge
+                      status="completed"
+                      label={artifact.label}
+                      cssVar={BLUE}
+                      iconOnly
+                      icon={iconFor(artifact.kind)}
+                    />
+                  )}
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{friendly}</span>
-                  {isUnseen && <ChangeBadge />}
                 </button>
                 <div className="flex min-w-0 shrink-0 items-center gap-3">
                   <span title={artifact.fileName} className="truncate font-mono text-xs text-muted-foreground">{artifact.fileName}</span>
