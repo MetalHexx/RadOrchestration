@@ -13,7 +13,9 @@ import type { Artifact } from "@/lib/artifact-model";
 export interface ArtifactViewerModalProps {
   projectName: string;
   artifacts: Artifact[];
-  activeIndex: number;
+  /** Identity of the open document — anchored to the filename, not an array
+   *  index, so focus stays pinned across live reorders/inserts/deletes. */
+  activeFileName: string | null;
   /** Fetched BRAINSTORMING.md body when the active (or any) md cell needs it. */
   markdownContent: string | null;
   /** Which file `markdownContent` belongs to — lets the stage withhold a stale
@@ -22,7 +24,7 @@ export interface ArtifactViewerModalProps {
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
-  onSelect: (index: number) => void;
+  onSelect: (fileName: string) => void;
   onRequestDelete: () => void;
   isFullScreen: boolean;
   onToggleFullScreen: () => void;
@@ -34,11 +36,11 @@ export interface ArtifactViewerModalProps {
 }
 
 export function ArtifactViewerModal({
-  projectName, artifacts, activeIndex, markdownContent, markdownContentFileName,
+  projectName, artifacts, activeFileName, markdownContent, markdownContentFileName,
   onClose, onPrev, onNext, onSelect, onRequestDelete, isFullScreen, onToggleFullScreen,
   unseen, activePulse, mtimes,
 }: ArtifactViewerModalProps) {
-  const active = artifacts[activeIndex];
+  const active = artifacts.find((a) => a.fileName === activeFileName);
 
   React.useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -109,20 +111,20 @@ export function ArtifactViewerModal({
         </div>
 
         <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
-          {artifacts.map((artifact, i) => (
+          {artifacts.map((artifact) => (
             <ActivePulse key={artifact.fileName} active={activePulse?.has(artifact.fileName) ?? false} variant="frame">
             <div
               data-filmstrip-cell
               role="button"
               tabIndex={0}
               aria-label={`View ${artifact.title ?? artifact.label}`}
-              aria-current={i === activeIndex ? 'true' : undefined}
-              onClick={() => onSelect(i)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(i); } }}
+              aria-current={artifact.fileName === activeFileName ? 'true' : undefined}
+              onClick={() => onSelect(artifact.fileName)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(artifact.fileName); } }}
               className={cn(
                 "flex h-16 w-24 shrink-0 cursor-pointer flex-col items-center overflow-hidden rounded-md border",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                i === activeIndex ? "border-2 ring-2 ring-ring border-ring" : "border-border",
+                artifact.fileName === activeFileName ? "border-2 ring-2 ring-ring border-ring" : "border-border",
               )}
             >
               <div className="relative h-10 w-full shrink-0 overflow-hidden bg-background">

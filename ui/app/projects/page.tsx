@@ -74,9 +74,9 @@ function ProjectsPageContent({
   const live = useArtifactLive();
   const artifacts = live.artifacts;
 
-  const getArtifactCount = useCallback(() => artifacts.length, [artifacts.length]);
-  const modal = useArtifactModal(-1, getArtifactCount);
-  const openArtifactModal = modal.openAt;
+  const getArtifacts = useCallback(() => artifacts, [artifacts]);
+  const modal = useArtifactModal(getArtifacts);
+  const openArtifactModal = modal.openByName;
 
   React.useEffect(() => {
     registerOnDeleted(modal.onDeleted);
@@ -89,8 +89,9 @@ function ProjectsPageContent({
   // from a freshly-navigated md layer until its own fetch lands (BUG 1).
   const [modalMarkdownFileName, setModalMarkdownFileName] = useState<string | null>(null);
 
-  // Compute the active file name from the modal state — single choke point.
-  const activeFileName = modal.open ? (artifacts[modal.index]?.fileName ?? null) : null;
+  // Active file name is the modal's own identity — single choke point, no
+  // longer derived from a (mutable) array index.
+  const activeFileName = modal.activeFileName;
 
   // Clear the unseen badge for whichever file the user is viewing — the one
   // authoritative place this fires so every open route and prev/next clears uniformly.
@@ -102,7 +103,7 @@ function ProjectsPageContent({
   useEffect(() => { if (!modal.open) setIsFullScreen(false); }, [modal.open]);
 
   useEffect(() => {
-    const mdPath = markdownPathForActive(artifacts, modal.index);
+    const mdPath = markdownPathForActive(artifacts, modal.activeFileName);
     if (!modal.open || !mdPath || !selectedProject) {
       setModalMarkdown(null);
       setModalMarkdownFileName(null);
@@ -125,7 +126,7 @@ function ProjectsPageContent({
         if (!cancelled) { setModalMarkdown(''); setModalMarkdownFileName(mdPath); }
       });
     return () => { cancelled = true; };
-  }, [modal.open, modal.index, artifacts, selectedProject]);
+  }, [modal.open, modal.activeFileName, artifacts, selectedProject]);
 
   const startAction = useStartAction(selectedProject);
 
@@ -188,7 +189,7 @@ function ProjectsPageContent({
               <>
                 <BrainstormingSection
                   artifacts={artifacts}
-                  onOpen={(index) => openArtifactModal(index)}
+                  onOpen={(index) => openArtifactModal(artifacts[index].fileName)}
                   onDelete={(a) => setPendingDelete(a)}
                   unseen={live.unseen}
                   activePulse={live.activePulse}
@@ -220,7 +221,7 @@ function ProjectsPageContent({
         <LaunchScreen
           projectName={selected.name}
           artifacts={artifacts}
-          onOpenArtifact={(index) => openArtifactModal(index)}
+          onOpenArtifact={(index) => openArtifactModal(artifacts[index].fileName)}
           onDeleteArtifact={(a) => setPendingDelete(a)}
           onStartPlanning={() => startAction.start('start-planning')}
           onStartBrainstorming={() => startAction.start('start-brainstorming')}
@@ -231,18 +232,18 @@ function ProjectsPageContent({
         />
       ) : null}
 
-      {modal.open && artifacts[modal.index] && (
+      {modal.open && artifacts.some((a) => a.fileName === modal.activeFileName) && (
         <ArtifactViewerModal
           projectName={selectedProject!}
           artifacts={artifacts}
-          activeIndex={modal.index}
+          activeFileName={modal.activeFileName}
           markdownContent={modalMarkdown}
           markdownContentFileName={modalMarkdownFileName}
           onClose={modal.close}
           onPrev={modal.goPrev}
           onNext={modal.goNext}
-          onSelect={(i) => modal.openAt(i)}
-          onRequestDelete={() => setPendingDelete(artifacts[modal.index])}
+          onSelect={(fileName) => modal.openByName(fileName)}
+          onRequestDelete={() => { const a = artifacts.find((x) => x.fileName === modal.activeFileName); if (a) setPendingDelete(a); }}
           isFullScreen={isFullScreen}
           onToggleFullScreen={() => setIsFullScreen((v) => !v)}
           unseen={live.unseen}
