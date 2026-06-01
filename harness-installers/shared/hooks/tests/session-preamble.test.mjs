@@ -112,3 +112,22 @@ test('main-execution block emits the preamble to stdout and never throws', () =>
   assert.ok(result.stdout.trim().length > 0, 'hook writes a non-empty payload to stdout');
   assert.match(result.stdout, /ambient awareness/i, 'falls back to the notice payload when radorch is unavailable');
 });
+
+test('emits via `node -e import()` — the Claude/VSCode hooks.json dynamic-import launch (argv[1] undefined)', () => {
+  // Regression guard: the real Claude / Copilot-VSCode hooks.json wraps the hook
+  // in `node -e "import(pathToFileURL(hook))"` (so the Windows CLAUDE_PLUGIN_ROOT
+  // `/c/`→`C:` fixup runs before the module loads). Under `node -e`, process.argv[1]
+  // is undefined — and the entry-point block used to require argv[1] to be truthy,
+  // so it stayed SILENT in exactly this (deployed) launch mode. Asserts the module
+  // now emits when imported with no entry script. With no plugin root + no installed
+  // radorch the default run resolves to the notice path, proving stdout is non-empty.
+  const hookPath = fileURLToPath(new URL('../session-preamble.mjs', import.meta.url));
+  const code = `import('node:url').then(u=>import(u.pathToFileURL(${JSON.stringify(hookPath)}).href))`;
+  const env = { ...process.env };
+  delete env.CLAUDE_PLUGIN_ROOT;
+  delete env.COPILOT_PLUGIN_ROOT;
+  const result = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', env });
+  assert.strictEqual(result.status, 0, 'dynamic-import launch exits cleanly (never throws)');
+  assert.ok(result.stdout.trim().length > 0, 'main block fires under `node -e import()` (was silent before the guard fix)');
+  assert.match(result.stdout, /ambient awareness/i, 'falls back to the notice payload when radorch is unavailable');
+});

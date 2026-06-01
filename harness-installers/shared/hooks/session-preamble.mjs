@@ -98,10 +98,14 @@ export function emitHookResult(out) {
   return out?.additionalContext ?? '';
 }
 
-// Main-execution block: only fires when this module is run as the entry point
-// (e.g. `node .../session-preamble.mjs` from the harness SessionStart hook).
+// Main-execution block: fires when this module is the session-start hook entry —
+// either run directly (`node .../session-preamble.mjs` → argv[1] === self) OR
+// dynamically imported with no entry script (`node -e "import(...)"` → argv[1]
+// undefined, the Claude/Copilot-VSCode hooks.json launch form, which wraps the
+// import so the Windows CLAUDE_PLUGIN_ROOT `/c/`→`C:` fixup can run first).
+// Stays silent when a test imports the module (argv[1] is the test file, ≠ self).
 // Soft-failing by contract — it must never throw and never block session start.
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (!process.argv[1] || fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   try {
     const out = buildHookOutput();
     const payload = emitHookResult(out);

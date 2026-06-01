@@ -245,7 +245,7 @@
     {
       "bundlePath": "hooks/session-preamble.mjs",
       "destinationPath": "${HARNESS_ROOT}/hooks/session-preamble.mjs",
-      "sha256": "1dd6649a136e076dfdf5449120175692adbb7a9673766239e4e386e087101587"
+      "sha256": "26b36d00b5d7007ce5eb95ed73df355e77b7dcf5d5f99d3cc78e09687bc992d3"
     },
     {
       "bundlePath": "skills/rad-approve-plan/SKILL.md",
