@@ -99,7 +99,9 @@ export function StageIframe({ projectName, fileName, onLoad, reloadKey }: { proj
         sandbox="allow-same-origin"
         loading="eager"
         referrerPolicy="no-referrer"
-        className="border-0 bg-white"
+        // Dark backstop color, not white, so the first open (when the front
+        // iframe loads visibly) never flashes white before content paints (DD-8).
+        className="border-0 bg-background"
         style={style}
         onLoad={onLoad}
       />

@@ -4,9 +4,22 @@ import * as React from "react";
 import { MarkdownRenderer } from "@/components/documents/markdown-renderer";
 import { StageIframe } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
-import { initStage, beginNavigate, markIncomingReady, applyLiveUpdate } from "./stage-transition";
+import {
+  initStage,
+  beginNavigate,
+  markIncomingReady,
+  settleStage,
+  applyLiveUpdate,
+  type SlotIndex,
+} from "./stage-transition";
 import type { Artifact } from "@/lib/artifact-model";
 import { cn } from "@/lib/utils";
+
+/** How long the cross-fade runs before the incoming slot is promoted and the
+ *  outgoing buffer is freed. Must match the `duration-300` transition below so
+ *  the promotion happens only after the fade has visually completed. A little
+ *  slack avoids freeing the outgoing layer one frame early. */
+const CROSSFADE_MS = 320;
 
 /** Markdown layer: reports ready via a layout effect once the body is committed
  *  to the DOM — a deterministic signal that does NOT depend on a <div onLoad>,
@@ -41,7 +54,7 @@ export function BufferedStage({
   artifact: Artifact;
   markdownContent: string | null;
   /** Which file `markdownContent` actually belongs to. When provided, a markdown
-   *  layer only renders the body if its own fileName matches — preventing a stale
+   *  slot only renders the body if its own fileName matches — preventing a stale
    *  flash of the previous doc on md→md navigation before the new fetch resolves
    *  (BUG 1). Omit (undefined) to keep the legacy "content always applies" behavior. */
   markdownContentFileName?: string;
@@ -52,20 +65,35 @@ export function BufferedStage({
   liveMtime?: number;
 }) {
   const [stage, setStage] = React.useState(() => initStage(artifact.fileName));
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  // One stable scroll container per physical slot so two markdown bodies can be
+  // in flight without sharing a ref.
+  const scrollRef0 = React.useRef<HTMLDivElement>(null);
+  const scrollRef1 = React.useRef<HTMLDivElement>(null);
+  const scrollRefs = [scrollRef0, scrollRef1] as const;
   const [liveRefreshKey, setLiveRefreshKey] = React.useState(0);
   const prevMtimeRef = React.useRef(liveMtime);
   const prevMtimeFileRef = React.useRef(artifact.fileName);
 
+  // The active artifact changed → load it into the background slot and cross-fade.
   React.useEffect(() => {
-    setStage((s) => (s.front.fileName === artifact.fileName ? s : beginNavigate(s, artifact.fileName)));
+    setStage((s) => beginNavigate(s, artifact.fileName));
   }, [artifact.fileName]);
 
+  // Once the incoming slot reports ready and the fade starts, promote it after
+  // the fade duration. Re-keyed on `incoming` so an interrupted navigation (a new
+  // beginNavigate resets crossfading) cancels the stale promotion.
   React.useEffect(() => {
-    // A live change just landed on the open document — detected via the monotonic
-    // per-file mtime advancing (fires for EVERY change, including a repeat inside
-    // the pulse-settle window where activePulse never drops, BUG 2). For a same-file
-    // update, reload the front iframe in place — preserve scroll, no cross-fade (DD-11).
+    if (!stage.crossfading) return;
+    const t = setTimeout(() => setStage((s) => settleStage(s)), CROSSFADE_MS);
+    return () => clearTimeout(t);
+  }, [stage.crossfading, stage.incoming]);
+
+  // A live change just landed on the open document — detected via the monotonic
+  // per-file mtime advancing (fires for EVERY change, including a repeat inside
+  // the pulse-settle window where activePulse never drops, BUG 2). For a same-file
+  // update, reload the foreground iframe in place — preserve scroll, no cross-fade
+  // (DD-11). Markdown re-renders in place via its content prop without a remount.
+  React.useEffect(() => {
     const sameFile = prevMtimeFileRef.current === artifact.fileName;
     if (sameFile && liveMtime > prevMtimeRef.current) {
       const plan = applyLiveUpdate(stage, artifact.fileName);
@@ -77,48 +105,64 @@ export function BufferedStage({
 
   const onReady = React.useCallback(() => setStage((s) => markIncomingReady(s)), []);
 
-  // Per-layer ready signal: only the incoming (back) layer needs to report
-  // ready; the visible front layer is already promoted.
-  function renderLayer(fileName: string, visible: boolean, isIncoming: boolean, reloadKey?: number) {
-    const isMd = fileName.endsWith(".md");
+  // Render one layer per stable physical slot. A slot is keyed by its index, not
+  // its file name, so promotion never reorders or remounts it; only the inner
+  // renderer remounts when a *new* file is loaded into that slot (StageIframe
+  // keys its <iframe> by fileName). Two layers always exist for double-buffering.
+  function renderSlot(slotIdx: SlotIndex) {
+    const layer = stage.slots[slotIdx];
+    const fileName = layer?.fileName ?? null;
+    const isFront = slotIdx === stage.front;
+    const isIncoming = slotIdx === stage.incoming;
+    // The foreground is visible; the incoming becomes visible only while it
+    // cross-fades in. An empty/parked slot stays hidden.
+    const visible = isFront || (isIncoming && stage.crossfading);
+    // The incoming layer must sit above the still-visible foreground as it fades
+    // in, so the foreground is never revealed through it mid-fade.
+    const zIndex = isIncoming ? 20 : isFront ? 10 : 0;
+    // Only the incoming (back) slot reports ready; the foreground is already shown.
     const reportReady = isIncoming ? onReady : undefined;
-    // Only apply the shared markdown body to the layer it actually belongs to. When
-    // markdownContentFileName is supplied and doesn't match, pass null so the layer
-    // shows its spinner and withholds onReady — the stale incoming doc is not
-    // promoted/cross-faded until the correct fetch resolves (BUG 1). When the prop
-    // is omitted (undefined), fall back to the legacy "content always applies" path.
+    // Only apply the shared markdown body to the slot it actually belongs to (BUG 1);
+    // when the prop is omitted, fall back to "content always applies".
+    const isMd = fileName?.endsWith(".md") ?? false;
     const layerContent =
       markdownContentFileName === undefined || fileName === markdownContentFileName
         ? markdownContent
         : null;
     return (
       <div
+        key={slotIdx}
         data-stage-layer
+        style={{ zIndex }}
         className={cn(
           "absolute inset-0 transition-all duration-300",
           visible ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-sm scale-[0.98]",
         )}
       >
-        {isMd ? (
-          <MarkdownLayer content={layerContent} scrollRef={scrollRef} onReady={reportReady} />
+        {fileName === null ? null : isMd ? (
+          <MarkdownLayer content={layerContent} scrollRef={scrollRefs[slotIdx]} onReady={reportReady} />
         ) : (
-          <StageIframe projectName={projectName} fileName={fileName} onLoad={reportReady} reloadKey={reloadKey} />
+          <StageIframe
+            projectName={projectName}
+            fileName={fileName}
+            onLoad={reportReady}
+            reloadKey={isFront ? liveRefreshKey : undefined}
+          />
         )}
       </div>
     );
   }
 
   return (
-    <ActivePulse active={activePulse} variant="frame" className="absolute inset-0">
+    // `isolate` keeps the per-slot z-index (front=10, incoming=20) a private
+    // stacking context so it never paints over the modal's prev/next/delete
+    // buttons, which are siblings of this stage in the DOM.
+    <ActivePulse active={activePulse} variant="frame" className="absolute inset-0 isolate">
       {/* Dark backstop replaces the white iframe background (DD-8). No onLoad
           here — readiness is reported per layer by each renderer. */}
       <div className="absolute inset-0 bg-background">
-        {renderLayer(stage.front.fileName, true, false, liveRefreshKey)}
-        {renderLayer(
-          stage.back?.fileName ?? stage.front.fileName,
-          stage.back ? stage.crossfading : false,
-          stage.back !== null,
-        )}
+        {renderSlot(0)}
+        {renderSlot(1)}
       </div>
     </ActivePulse>
   );

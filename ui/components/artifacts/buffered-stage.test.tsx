@@ -190,3 +190,22 @@ test('navigating md→md does not flash the previous doc as the incoming layer (
   assert.ok(/Beta/.test(showingB.textContent ?? ''), 'B renders once its own content arrives');
   await act(async () => { root.unmount(); });
 });
+
+test('the stage isolates its z-index so it never paints over the modal nav buttons (regression)', () => {
+  // The slot layers carry z-index (front/incoming) for the cross-fade. Without an
+  // isolated stacking context that z-index escapes and covers the modal's
+  // prev/next/delete buttons (which are DOM siblings of the stage).
+  const html = renderToStaticMarkup(createElement(BufferedStage, {
+    projectName: 'DEMO', artifact: MD, markdownContent: '# Hi', activePulse: false,
+  } as never));
+  assert.ok(/\bisolate\b/.test(html), 'stage root establishes an isolated stacking context so the slot z-index stays local');
+});
+
+test('the stage iframe uses the dark backstop color, not white — no first-open white flash (DD-8)', () => {
+  const htmlArt = { fileName: 'V.html', kind: 'html' as const, label: 'Visual', title: null, isMarkdown: false };
+  const html = renderToStaticMarkup(createElement(BufferedStage, {
+    projectName: 'DEMO', artifact: htmlArt, markdownContent: null, activePulse: false,
+  } as never));
+  assert.ok(!/bg-white/.test(html), 'stage iframe does not use a white background');
+  assert.ok(/bg-background/.test(html), 'stage iframe uses the dark app backstop color');
+});
