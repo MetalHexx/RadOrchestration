@@ -83,6 +83,8 @@ function ProjectsPageContent({
   }, [registerOnDeleted, modal.onDeleted]);
 
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [modalClosing, setModalClosing] = useState(false);
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [modalMarkdown, setModalMarkdown] = useState<string | null>(null);
   // Which file `modalMarkdown` currently holds the body for. Set when a fetch
   // resolves; null while clearing/loading. Lets the stage withhold a stale body
@@ -127,6 +129,16 @@ function ProjectsPageContent({
       });
     return () => { cancelled = true; };
   }, [modal.open, modal.activeFileName, artifacts, selectedProject]);
+
+  const handleModalClose = useCallback(() => {
+    setModalClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      modal.close();
+      setModalClosing(false);
+    }, 200);
+  }, [modal]);
+
+  React.useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
 
   const startAction = useStartAction(selectedProject);
 
@@ -239,7 +251,8 @@ function ProjectsPageContent({
           activeFileName={modal.activeFileName}
           markdownContent={modalMarkdown}
           markdownContentFileName={modalMarkdownFileName}
-          onClose={modal.close}
+          onClose={handleModalClose}
+          dataState={modalClosing ? "closed" : "open"}
           onPrev={modal.goPrev}
           onNext={modal.goNext}
           onSelect={(fileName) => modal.openByName(fileName)}

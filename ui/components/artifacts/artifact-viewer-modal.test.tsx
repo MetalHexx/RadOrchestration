@@ -56,7 +56,20 @@ test('exposes full-screen, delete, and close controls; omits new-tab/counter/leg
 
 test('applies the full-screen layout class when isFullScreen is true (FR-17)', () => {
   const html = render({ ...base, activeFileName: 'DEMO-WIREFRAME-X.html', isFullScreen: true });
-  assert.ok(html.includes('inset-0'), 'full-screen occupies the whole screen');
+  assert.ok(html.includes('w-screen'), 'full-screen panel spans the viewport width');
+  assert.ok(html.includes('h-screen'), 'full-screen panel spans the viewport height');
+});
+
+test('uses the windowed layout (max-w-5xl, rounded-xl) when not full-screen (FR-17 morph target)', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-WIREFRAME-X.html', isFullScreen: false });
+  assert.ok(html.includes('max-w-5xl'), 'windowed panel is capped at max-w-5xl');
+  assert.ok(html.includes('rounded-xl'), 'windowed panel has rounded corners');
+});
+
+test('renders the persistent active-document glow on the stage and the active filmstrip cell (Fix 5)', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-WIREFRAME-X.html' });
+  assert.ok(html.includes('active-doc-glow-stage'), 'stage carries the persistent glow overlay');
+  assert.ok(html.includes('active-doc-glow-cell'), 'active filmstrip cell carries the persistent glow');
 });
 
 test('renders a label caption for every filmstrip cell (DD-8)', () => {

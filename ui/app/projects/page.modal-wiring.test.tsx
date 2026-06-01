@@ -67,6 +67,11 @@ test('delete resolves the pending artifact by the active filename (FR-19)', () =
   assert.equal(fileNameAfterDelete(arts, 'DEMO-WIREFRAME-X.html'), 'DEMO-BRAINSTORM.html');
 });
 
+test('close runs the deferred-unmount handler and the modal is driven by a data-state (Fix 3 exit animation)', () => {
+  assert.ok(pageSrc.includes('onClose={handleModalClose}'), 'close is wired to the deferred-unmount handler');
+  assert.ok(pageSrc.includes('dataState={modalClosing ? "closed" : "open"}'), 'data-state toggles between open and closed for the exit animation');
+});
+
 test('the markdown fetch effect resolves its path from the active filename (FR-12, AD-8)', () => {
   assert.ok(
     pageSrc.includes('markdownPathForActive(artifacts, modal.activeFileName)'),

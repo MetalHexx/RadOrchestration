@@ -20,7 +20,7 @@ export interface ArtifactTileProps {
 export function ArtifactTile({ projectName, artifact, onOpen, onDelete, unseen, activePulse }: ArtifactTileProps) {
   const friendly = artifact.title ?? artifact.label;
   return (
-    <ActivePulse active={!!activePulse} variant="frame" className="w-full">
+    <ActivePulse active={!!activePulse} variant="frame" className="w-full rounded-md">
     <div
       className={cn(
         "group relative flex w-full flex-col overflow-hidden rounded-md border border-border bg-card text-left",

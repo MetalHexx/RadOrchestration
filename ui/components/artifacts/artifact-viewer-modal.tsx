@@ -33,12 +33,15 @@ export interface ArtifactViewerModalProps {
   /** Per-file live mtimes from the store; drives the open HTML doc's in-place
    *  reload off a monotonic signal so repeated changes still bust the cache (BUG 2). */
   mtimes?: Record<string, number>;
+  /** Drives the enter/exit animation. "open" plays the entrance; "closed" plays
+   *  the exit (the parent keeps the modal mounted for the exit's duration). */
+  dataState?: "open" | "closed";
 }
 
 export function ArtifactViewerModal({
   projectName, artifacts, activeFileName, markdownContent, markdownContentFileName,
   onClose, onPrev, onNext, onSelect, onRequestDelete, isFullScreen, onToggleFullScreen,
-  unseen, activePulse, mtimes,
+  unseen, activePulse, mtimes, dataState = "open",
 }: ArtifactViewerModalProps) {
   const active = artifacts.find((a) => a.fileName === activeFileName);
 
@@ -63,13 +66,15 @@ export function ArtifactViewerModal({
       role="dialog"
       aria-modal="true"
       aria-label={`${friendly} — ${active.fileName}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+      data-state={dataState}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 supports-backdrop-filter:backdrop-blur-sm artifact-modal-overlay duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        data-state={dataState}
         className={cn(
-          "flex flex-col overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-foreground/10 shadow-lg",
-          isFullScreen ? "fixed inset-0 rounded-none" : "h-[85vh] w-[90vw] max-w-5xl",
+          "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col overflow-hidden bg-card text-card-foreground ring-1 ring-foreground/10 shadow-lg artifact-modal-panel transition-[width,height,max-width,border-radius] duration-200 ease-out data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          isFullScreen ? "h-screen w-screen max-w-[100vw] rounded-none" : "h-[85vh] w-[90vw] max-w-5xl rounded-xl",
         )}
       >
         <header className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -96,6 +101,7 @@ export function ArtifactViewerModal({
             activePulse={activePulse?.has(active.fileName) ?? false}
             liveMtime={mtimes?.[active.fileName] ?? 0}
           />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 active-doc-glow-stage" />
           <button type="button" aria-label="Previous artifact" onClick={onPrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-background/70 p-2 text-foreground hover:bg-background">
             <ChevronLeft className="size-5" aria-hidden="true" />
@@ -112,7 +118,7 @@ export function ArtifactViewerModal({
 
         <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
           {artifacts.map((artifact) => (
-            <ActivePulse key={artifact.fileName} active={activePulse?.has(artifact.fileName) ?? false} variant="frame">
+            <ActivePulse key={artifact.fileName} active={activePulse?.has(artifact.fileName) ?? false} variant="frame" className="rounded-md">
             <div
               data-filmstrip-cell
               role="button"
@@ -124,7 +130,9 @@ export function ArtifactViewerModal({
               className={cn(
                 "flex h-16 w-24 shrink-0 cursor-pointer flex-col items-center overflow-hidden rounded-md border",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                artifact.fileName === activeFileName ? "border-2 ring-2 ring-ring border-ring" : "border-border",
+                artifact.fileName === activeFileName
+                  ? "border-[color-mix(in_srgb,var(--live)_60%,transparent)] active-doc-glow-cell"
+                  : "border-border",
               )}
             >
               <div className="relative h-10 w-full shrink-0 overflow-hidden bg-background">
