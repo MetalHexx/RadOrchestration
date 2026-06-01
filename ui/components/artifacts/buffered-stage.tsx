@@ -135,7 +135,13 @@ export function BufferedStage({
         data-stage-layer
         style={{ zIndex }}
         className={cn(
-          "absolute inset-0 transition-all duration-300",
+          "absolute inset-0",
+          // Only a slot that holds a document animates. A slot freed at settle
+          // (fileName === null) snaps to hidden instead of fading out — animating
+          // opacity/blur/scale on a just-emptied layer is the post-cross-fade flicker.
+          // The incoming slot already has content (and its transition) before it
+          // fades in, so the entrance animation is preserved.
+          fileName !== null && "transition-all duration-300",
           visible ? "opacity-100 blur-0 scale-100" : "opacity-0 blur-sm scale-[0.98]",
         )}
       >
