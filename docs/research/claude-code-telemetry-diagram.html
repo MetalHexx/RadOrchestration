@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code — Telemetry Surface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --base:#0a0016; --surface:#130020; --elevated:#1b0030; --border:#350055; --border-acc:rgba(111,0,239,0.55);
+    --txt1:#f0e8ff; --txt2:#b4a8c8; --txt3:#9080aa;
+    --purple:#6f00ef; --purple-lt:#a855f7; --cyan:#00cbff; --amber:#ffcc36; --orange:#fa6400; --green:#10b981;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{background:var(--base);}
+  body{
+    background:var(--base);
+    color:var(--txt1);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:0.9rem;
+    line-height:1.6;
+    position:relative;
+    min-height:100vh;
+    padding:48px 0 64px;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    background:
+      radial-gradient(900px 600px at 18% -5%, rgba(111,0,239,0.14), transparent 60%),
+      radial-gradient(800px 500px at 95% 8%, rgba(0,203,255,0.08), transparent 55%),
+      repeating-linear-gradient(45deg, rgba(111,0,239,0.07) 0 1px, transparent 1px 22px),
+      repeating-linear-gradient(-45deg, rgba(111,0,239,0.07) 0 1px, transparent 1px 22px);
+  }
+  .page-wrap{
+    width:1200px;
+    max-width:1200px;
+    margin:0 auto;
+    position:relative;
+    z-index:1;
+    padding:0 16px;
+  }
+
+  /* ---------- Header ---------- */
+  header.doc-head{margin-bottom:36px;}
+  h1{
+    font-size:2rem;
+    font-weight:700;
+    line-height:1.2;
+    background:linear-gradient(135deg,#ffffff,#6f00ef,#00cbff);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:#ffffff;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    margin-top:10px;
+    font-size:0.9rem;
+    color:var(--txt2);
+  }
+  .subtitle .mono{font-family:"JetBrains Mono","Fira Code",monospace; color:var(--cyan); font-size:0.82rem;}
+  .framing{
+    margin-top:16px;
+    padding:14px 18px;
+    background:var(--surface);
+    border:1px solid rgba(111,0,239,0.2);
+    border-left:3px solid var(--purple-lt);
+    border-radius:8px;
+    color:var(--txt1);
+    font-size:0.95rem;
+    line-height:1.55;
+  }
+  .framing b{color:#ffffff; font-weight:600;}
+
+  h2{
+    font-size:1.5rem;
+    font-weight:600;
+    color:var(--purple-lt);
+    margin-bottom:6px;
+    letter-spacing:-0.01em;
+  }
+  h3{font-size:1.125rem; font-weight:600; color:var(--txt1);}
+  .seclabel{
+    font-size:0.75rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--txt3);
+    font-weight:600;
+  }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid rgba(111,0,239,0.2);
+    border-radius:10px;
+    padding:20px 24px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  }
+  section{margin-top:34px;}
+  .sec-head{margin-bottom:14px;}
+
+  .mono{font-family:"JetBrains Mono","Fira Code",monospace;}
+  code, .field{
+    font-family:"JetBrains Mono","Fira Code",monospace;
+    font-size:0.82rem;
+    color:var(--cyan);
+    background:rgba(0,203,255,0.08);
+    border:1px solid rgba(0,203,255,0.18);
+    padding:1px 6px;
+    border-radius:5px;
+    white-space:nowrap;
+  }
+
+  /* ---------- Hero / SVG figure ---------- */
+  figure.hero{
+    background:var(--surface);
+    border:1px solid rgba(111,0,239,0.2);
+    border-radius:12px;
+    padding:18px 18px 12px;
+    box-shadow:0 6px 28px rgba(0,0,0,0.5);
+  }
+  figure.hero svg{display:block; width:100%; height:auto;}
+  figcaption{
+    margin-top:8px;
+    font-size:0.78rem;
+    color:var(--txt3);
+    text-align:center;
+  }
+
+  /* ---------- Correlation keys ---------- */
+  .key-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  .key-card{
+    background:var(--elevated);
+    border:1px solid rgba(111,0,239,0.25);
+    border-radius:9px;
+    padding:16px 18px;
+  }
+  .key-name{
+    font-family:"JetBrains Mono","Fira Code",monospace;
+    font-size:0.95rem;
+    font-weight:500;
+    color:var(--amber);
+    display:inline-block;
+    margin-bottom:6px;
+  }
+  .key-meta{font-size:0.78rem; color:var(--txt3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;}
+  .key-card p{font-size:0.85rem; color:var(--txt2);}
+  .key-card p .field{font-size:0.78rem;}
+  .joins{
+    margin-top:10px;
+    font-size:0.82rem;
+    color:var(--txt1);
+    display:flex; align-items:center; gap:8px;
+  }
+  .join-pill{
+    background:rgba(168,85,247,0.16);
+    border:1px solid rgba(168,85,247,0.4);
+    color:#d9bbff;
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:0.75rem;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .join-arrow{color:var(--purple-lt); font-weight:700;}
+
+  /* ---------- Attribution paths ---------- */
+  .path{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-top:1px solid rgba(111,0,239,0.18);
+  }
+  .path:first-of-type{border-top:none;}
+  .path-num{
+    flex:0 0 auto;
+    width:38px; height:38px;
+    border-radius:9px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.05rem;
+    color:var(--base);
+  }
+  .path-num.n1{background:var(--cyan);}
+  .path-num.n2{background:var(--orange);}
+  .path-num.n3{background:var(--amber);}
+  .path-body{flex:1;}
+  .path-body h3{margin-bottom:4px;}
+  .path-body h3 .tag{
+    font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
+    padding:2px 8px; border-radius:5px; margin-left:8px; vertical-align:middle;
+  }
+  .tag.metrics{background:rgba(0,203,255,0.14); color:var(--cyan); border:1px solid rgba(0,203,255,0.35);}
+  .tag.traces{background:rgba(250,100,0,0.14); color:var(--orange); border:1px solid rgba(250,100,0,0.4);}
+  .tag.disk{background:rgba(255,204,54,0.14); color:var(--amber); border:1px solid rgba(255,204,54,0.4);}
+  .path-body p{font-size:0.86rem; color:var(--txt2);}
+  .path-body p .field{font-size:0.78rem;}
+  .obsolete-note{
+    margin-top:18px;
+    padding:11px 16px;
+    background:rgba(16,185,129,0.08);
+    border:1px solid rgba(16,185,129,0.3);
+    border-radius:8px;
+    font-size:0.82rem;
+    color:var(--txt2);
+  }
+  .obsolete-note b{color:var(--green);}
+
+  /* ---------- Two-up cards ---------- */
+  .two-up{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  .two-up h3{margin-bottom:10px; display:flex; align-items:center; gap:8px;}
+  .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto;}
+  .dot.flat{background:var(--green);}
+  .dot.priv{background:var(--orange);}
+  ul.tight{list-style:none; display:flex; flex-direction:column; gap:9px;}
+  ul.tight li{
+    font-size:0.85rem; color:var(--txt2);
+    padding-left:18px; position:relative; line-height:1.5;
+  }
+  ul.tight li::before{
+    content:"▸";
+    position:absolute; left:0; top:0;
+    color:var(--purple-lt); font-size:0.8rem;
+  }
+  ul.tight li b{color:var(--txt1); font-weight:600;}
+  ul.tight li .field{font-size:0.76rem;}
+
+  /* ---------- Footer ---------- */
+  footer.foot{
+    margin-top:40px;
+    padding-top:18px;
+    border-top:1px solid rgba(111,0,239,0.18);
+    font-size:0.76rem;
+    color:var(--txt3);
+    line-height:1.55;
+  }
+  footer.foot .mono{font-size:0.72rem; color:var(--txt2);}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- ============ HEADER ============ -->
+  <header class="doc-head">
+    <h1>Claude Code — Telemetry Surface</h1>
+    <p class="subtitle">
+      Where Claude Code emits data, and how to trace token spend to a subagent ·
+      <span class="mono">verified 2026-05-24 against Claude Code 2.1.150</span>
+    </p>
+    <p class="framing">
+      <b>Five channels carry data off a session. Three correlation keys stitch them together. Three paths trace tokens to a specific subagent.</b>
+    </p>
+  </header>
+
+  <!-- ============ HERO: DATA-FLOW MAP ============ -->
+  <figure class="hero">
+    <svg viewBox="0 0 1140 800" role="img" aria-labelledby="heroTitle heroDesc" font-family="Inter,-apple-system,Segoe UI,sans-serif">
+      <title id="heroTitle">Claude Code telemetry data-flow map</title>
+      <desc id="heroDesc">A single Claude Code session emits to five channels: local disk, OTel metrics, OTel events, OTel traces, and hooks.</desc>
+
+      <defs>
+        <!-- one arrowhead marker per lane color -->
+        <marker id="ah-amber" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#ffcc36"/>
+        </marker>
+        <marker id="ah-cyan" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#00cbff"/>
+        </marker>
+        <marker id="ah-purplelt" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#a855f7"/>
+        </marker>
+        <marker id="ah-orange" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#fa6400"/>
+        </marker>
+        <marker id="ah-green" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#10b981"/>
+        </marker>
+      </defs>
+
+      <!-- ===== CONNECTORS (drawn first, live in the clear x250..360 gutter) ===== -->
+      <!-- source right edge x=250, vertical center y=426 -->
+      <!-- lane left edges at x=360; lane vertical centers: 150,288,426,564,702 (top+54) -->
+      <g stroke-width="2.5" fill="none">
+        <!-- to LOCAL DISK center y=150 -->
+        <path d="M250,426 C300,426 305,150 358,150" stroke="#ffcc36" marker-end="url(#ah-amber)"/>
+        <!-- to OTEL METRICS center y=288 -->
+        <path d="M250,426 C300,426 305,288 358,288" stroke="#00cbff" marker-end="url(#ah-cyan)"/>
+        <!-- to OTEL EVENTS center y=426 (straight) -->
+        <path d="M250,426 L358,426" stroke="#a855f7" marker-end="url(#ah-purplelt)"/>
+        <!-- to OTEL TRACES center y=564 -->
+        <path d="M250,426 C300,426 305,564 358,564" stroke="#fa6400" marker-end="url(#ah-orange)"/>
+        <!-- to HOOKS center y=702 -->
+        <path d="M250,426 C300,426 305,702 358,702" stroke="#10b981" marker-end="url(#ah-green)"/>
+      </g>
+
+      <!-- ===== SOURCE NODE ===== -->
+      <g>
+        <rect x="30" y="326" width="220" height="200" rx="14" fill="#1b0030" stroke="#6f00ef" stroke-width="2"/>
+        <rect x="30" y="326" width="220" height="40" rx="14" fill="#6f00ef"/>
+        <rect x="30" y="346" width="220" height="20" fill="#6f00ef"/>
+        <text x="140" y="353" text-anchor="middle" fill="#ffffff" font-size="14.5" font-weight="700">Claude Code session</text>
+
+        <!-- sub-pills -->
+        <g font-size="11.5" fill="#f0e8ff">
+          <rect x="46" y="380" width="188" height="34" rx="8" fill="#130020" stroke="#350055" stroke-width="1"/>
+          <text x="140" y="402" text-anchor="middle">main thread</text>
+          <rect x="46" y="422" width="188" height="34" rx="8" fill="#130020" stroke="#350055" stroke-width="1"/>
+          <text x="140" y="444" text-anchor="middle">subagents (Task tool)</text>
+          <rect x="46" y="464" width="188" height="34" rx="8" fill="#130020" stroke="#350055" stroke-width="1"/>
+          <text x="140" y="486" text-anchor="middle">compaction subagent</text>
+        </g>
+        <text x="140" y="516" text-anchor="middle" fill="#9080aa" font-size="9.5" font-family="JetBrains Mono,monospace">v2.1.150</text>
+      </g>
+
+      <!-- ===== LANE ROWS ===== -->
+      <!-- Lane geometry: x=360, width=720, height=108, pitch=138 (30px gaps). Tops: 96,234,372,510,648 -->
+
+      <!-- LANE 1: LOCAL DISK (amber) y top=96 -->
+      <g>
+        <rect x="360" y="96" width="720" height="108" rx="11" fill="#130020" stroke="rgba(255,204,54,0.45)" stroke-width="1.5"/>
+        <rect x="360" y="96" width="6" height="108" rx="3" fill="#ffcc36"/>
+        <text x="384" y="126" fill="#ffcc36" font-size="15" font-weight="700" letter-spacing="0.04em">LOCAL DISK</text>
+        <!-- trigger pill -->
+        <rect x="892" y="109" width="172" height="24" rx="12" fill="rgba(255,204,54,0.12)" stroke="rgba(255,204,54,0.5)" stroke-width="1"/>
+        <text x="978" y="125" text-anchor="middle" fill="#ffcc36" font-size="11" font-weight="600">always-on · all plans</text>
+        <!-- item chips -->
+        <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="#f0e8ff">
+          <rect x="384" y="146" width="222" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="395" y="163">session.jsonl</text>
+          <text x="395" y="179" fill="#b4a8c8" font-size="9.5">carries message.usage</text>
+          <rect x="618" y="146" width="240" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="629" y="163">subagents/agent-*.jsonl</text>
+          <text x="629" y="179" fill="#b4a8c8" font-size="9.5">+ .meta.json (agent type)</text>
+          <rect x="870" y="146" width="194" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="881" y="163">stats-cache / sessions</text>
+          <text x="881" y="179" fill="#b4a8c8" font-size="9.5">tool-results · no tokens</text>
+        </g>
+      </g>
+
+      <!-- LANE 2: OTEL METRICS (cyan) y top=234 -->
+      <g>
+        <rect x="360" y="234" width="720" height="108" rx="11" fill="#130020" stroke="rgba(0,203,255,0.45)" stroke-width="1.5"/>
+        <rect x="360" y="234" width="6" height="108" rx="3" fill="#00cbff"/>
+        <text x="384" y="264" fill="#00cbff" font-size="15" font-weight="700" letter-spacing="0.04em">OTEL METRICS</text>
+        <rect x="952" y="247" width="112" height="24" rx="12" fill="rgba(0,203,255,0.12)" stroke="rgba(0,203,255,0.5)" stroke-width="1"/>
+        <text x="1008" y="263" text-anchor="middle" fill="#00cbff" font-size="11" font-weight="600">every 60s</text>
+        <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="#f0e8ff">
+          <rect x="384" y="284" width="150" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="395" y="301">token.usage</text>
+          <text x="395" y="317" fill="#b4a8c8" font-size="9.5">+ query_source</text>
+          <rect x="546" y="284" width="150" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="557" y="301">cost.usage</text>
+          <text x="557" y="317" fill="#b4a8c8" font-size="9.5">estimate (USD)</text>
+          <rect x="708" y="284" width="190" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="719" y="301">code_edit_tool.decision</text>
+          <text x="719" y="317" fill="#b4a8c8" font-size="9.5">counts · accept/reject</text>
+          <rect x="910" y="284" width="154" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="921" y="301">active_time</text>
+          <text x="921" y="317" fill="#b4a8c8" font-size="9.5">user / cli seconds</text>
+        </g>
+      </g>
+
+      <!-- LANE 3: OTEL EVENTS (purple-lt) y top=372 -->
+      <g>
+        <rect x="360" y="372" width="720" height="108" rx="11" fill="#130020" stroke="rgba(168,85,247,0.45)" stroke-width="1.5"/>
+        <rect x="360" y="372" width="6" height="108" rx="3" fill="#a855f7"/>
+        <text x="384" y="402" fill="#a855f7" font-size="15" font-weight="700" letter-spacing="0.04em">OTEL EVENTS</text>
+        <rect x="958" y="385" width="106" height="24" rx="12" fill="rgba(168,85,247,0.12)" stroke="rgba(168,85,247,0.5)" stroke-width="1"/>
+        <text x="1011" y="401" text-anchor="middle" fill="#c89bff" font-size="11" font-weight="600">every 5s</text>
+        <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="#f0e8ff">
+          <rect x="384" y="422" width="206" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="395" y="439">api_request</text>
+          <text x="395" y="455" fill="#b4a8c8" font-size="9.5">request_id · query_source</text>
+          <rect x="602" y="422" width="206" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="613" y="439">tool_result</text>
+          <text x="613" y="455" fill="#b4a8c8" font-size="9.5">tool_use_id · prompt.id</text>
+          <rect x="820" y="422" width="244" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="831" y="439">compaction</text>
+          <text x="831" y="455" fill="#b4a8c8" font-size="9.5">pre_tokens / post_tokens</text>
+        </g>
+      </g>
+
+      <!-- LANE 4: OTEL TRACES (orange) y top=510 -->
+      <g>
+        <rect x="360" y="510" width="720" height="108" rx="11" fill="#130020" stroke="rgba(250,100,0,0.45)" stroke-width="1.5"/>
+        <rect x="360" y="510" width="6" height="108" rx="3" fill="#fa6400"/>
+        <text x="384" y="540" fill="#fa6400" font-size="15" font-weight="700" letter-spacing="0.04em">OTEL TRACES</text>
+        <rect x="930" y="523" width="134" height="24" rx="12" fill="rgba(250,100,0,0.12)" stroke="rgba(250,100,0,0.55)" stroke-width="1"/>
+        <text x="997" y="539" text-anchor="middle" fill="#ff8a3d" font-size="11" font-weight="600">beta · opt-in</text>
+        <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="#f0e8ff">
+          <rect x="384" y="560" width="320" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="395" y="577">interaction → llm_request / tool</text>
+          <text x="395" y="593" fill="#b4a8c8" font-size="9.5">spans carry token counts</text>
+          <rect x="716" y="560" width="348" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="727" y="577">agent_id / parent_agent_id</text>
+          <text x="727" y="593" fill="#b4a8c8" font-size="9.5">per-subagent attribution (span level)</text>
+        </g>
+      </g>
+
+      <!-- LANE 5: HOOKS (green) y top=648 -->
+      <g>
+        <rect x="360" y="648" width="720" height="108" rx="11" fill="#130020" stroke="rgba(16,185,129,0.45)" stroke-width="1.5"/>
+        <rect x="360" y="648" width="6" height="108" rx="3" fill="#10b981"/>
+        <text x="384" y="678" fill="#10b981" font-size="15" font-weight="700" letter-spacing="0.04em">HOOKS</text>
+        <rect x="952" y="661" width="112" height="24" rx="12" fill="rgba(16,185,129,0.12)" stroke="rgba(16,185,129,0.5)" stroke-width="1"/>
+        <text x="1008" y="677" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">lifecycle</text>
+        <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="#f0e8ff">
+          <rect x="384" y="698" width="232" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="395" y="715">SubagentStart / Stop</text>
+          <text x="395" y="731" fill="#b4a8c8" font-size="9.5">timing window only</text>
+          <rect x="628" y="698" width="180" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="639" y="715">tool_use_id</text>
+          <text x="639" y="731" fill="#b4a8c8" font-size="9.5">joins to OTel events</text>
+          <rect x="820" y="698" width="244" height="42" rx="7" fill="#1b0030" stroke="#350055"/>
+          <text x="831" y="715" fill="#ffcc36">⚠ NO token counts</text>
+          <text x="831" y="731" fill="#b4a8c8" font-size="9.5">on stdin to hook commands</text>
+        </g>
+      </g>
+
+      <!-- ===== LEGEND ===== -->
+      <g>
+        <rect x="30" y="40" width="1080" height="44" rx="9" fill="#1b0030" stroke="#350055" stroke-width="1"/>
+        <text x="48" y="60" fill="#f0e8ff" font-size="11.5" font-weight="600">Arrow = session emits to a channel</text>
+        <!-- color key -->
+        <g font-size="11" fill="#b4a8c8">
+          <rect x="360" y="53" width="12" height="12" rx="2" fill="#ffcc36"/><text x="378" y="63">Local disk</text>
+          <rect x="452" y="53" width="12" height="12" rx="2" fill="#00cbff"/><text x="470" y="63">Metrics</text>
+          <rect x="540" y="53" width="12" height="12" rx="2" fill="#a855f7"/><text x="558" y="63">Events</text>
+          <rect x="624" y="53" width="12" height="12" rx="2" fill="#fa6400"/><text x="642" y="63">Traces</text>
+          <rect x="710" y="53" width="12" height="12" rx="2" fill="#10b981"/><text x="728" y="63">Hooks</text>
+        </g>
+        <text x="1062" y="60" text-anchor="end" fill="#9080aa" font-size="10.5">Traces &amp; detail flags: opt-in (off by default)</text>
+      </g>
+    </svg>
+    <figcaption>Data-flow map — one Claude Code session fanning out to five telemetry channels. Local disk is always on; OTel metrics/events need a collector; traces and content flags are opt-in.</figcaption>
+  </figure>
+
+  <!-- ============ THREE CORRELATION KEYS ============ -->
+  <section>
+    <div class="sec-head">
+      <p class="seclabel">The joins</p>
+      <h2>Three correlation keys</h2>
+    </div>
+    <div class="key-grid">
+      <div class="key-card">
+        <span class="key-name">requestId</span>
+        <p class="key-meta">JSONL ↔ OTel</p>
+        <p>Top-level <span class="field">requestId</span> in the JSONL transcript equals <span class="field">request_id</span> on OTel <span class="field">api_request</span> / <span class="field">api_error</span> events.</p>
+        <div class="joins"><span class="join-pill">transcript</span><span class="join-arrow">↔</span><span class="join-pill">OTel</span></div>
+      </div>
+      <div class="key-card">
+        <span class="key-name">tool_use_id</span>
+        <p class="key-meta">OTel ↔ hooks</p>
+        <p>On OTel <span class="field">tool_result</span> / <span class="field">tool_decision</span> it matches the field passed to hooks on stdin.</p>
+        <div class="joins"><span class="join-pill">OTel</span><span class="join-arrow">↔</span><span class="join-pill">hooks</span></div>
+      </div>
+      <div class="key-card">
+        <span class="key-name">prompt.id</span>
+        <p class="key-meta">OTel events only</p>
+        <p>UUID v4 on events (intentionally <b>not</b> on metrics). Links every event triggered while processing one user prompt.</p>
+        <div class="joins"><span class="join-pill">one prompt</span><span class="join-arrow">→</span><span class="join-pill">all its events</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ THREE ATTRIBUTION PATHS ============ -->
+  <section>
+    <div class="sec-head">
+      <p class="seclabel">The payoff</p>
+      <h2>Three paths to per-subagent token attribution</h2>
+    </div>
+    <div class="card">
+      <div class="path">
+        <div class="path-num n1">1</div>
+        <div class="path-body">
+          <h3>OTel metrics <code>agent.name</code><span class="tag metrics">metrics</span></h3>
+          <p>Built-in and official-plugin agents appear verbatim on <span class="field">token.usage</span> / <span class="field">cost.usage</span>; custom user-defined agents collapse to <span class="field">custom</span> unless <span class="field">OTEL_LOG_TOOL_DETAILS=1</span>. <b>Zero pipeline code.</b></p>
+        </div>
+      </div>
+      <div class="path">
+        <div class="path-num n2">2</div>
+        <div class="path-body">
+          <h3>OTel traces <code>agent_id</code> / <code>parent_agent_id</code><span class="tag traces">traces</span></h3>
+          <p>Span-level, unconditional once traces are on. Subagent <span class="field">llm_request</span> spans nest under the parent's <span class="field">tool</span> span and carry token counts. <b>Cleanest answer if a trace backend exists.</b></p>
+        </div>
+      </div>
+      <div class="path">
+        <div class="path-num n3">3</div>
+        <div class="path-body">
+          <h3>JSONL correlation<span class="tag disk">local disk</span></h3>
+          <p>Flat-rate, no collector: sum <span class="field">message.usage</span> across <span class="field">subagents/agent-&lt;hex&gt;.jsonl</span>; the <span class="field">.meta.json</span> gives the agent type.</p>
+        </div>
+      </div>
+      <div class="obsolete-note">
+        <b>Note:</b> the old "per-subagent tracking is a feature gap" claim (issue&nbsp;#22625) predates this <span class="mono">agent.name</span> / <span class="mono">agent_id</span> / <span class="mono">subagents/</span> layout.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TWO-UP CARDS ============ -->
+  <section>
+    <div class="two-up">
+      <div class="card">
+        <h3><span class="dot flat"></span>Flat-rate plans (Pro / Max)</h3>
+        <ul class="tight">
+          <li><b>No Console analytics</b> — that's Team / Enterprise only. Parse your own JSONL or run your own collector.</li>
+          <li><span class="field">cost.usage</span> is an <b>estimate</b> calibrated to API pricing, not actual billing.</li>
+          <li><b>Cache-hit rate</b> is the meaningful efficiency metric — cache reads consume less of the rate-limit allocation than fresh input tokens.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="dot priv"></span>Privacy gates (off by default)</h3>
+        <ul class="tight">
+          <li>Prompt text — <span class="field">OTEL_LOG_USER_PROMPTS</span> (else only <span class="field">prompt_length</span>).</li>
+          <li>Tool details — <span class="field">OTEL_LOG_TOOL_DETAILS</span> (params, bash commands, custom agent names).</li>
+          <li>Raw API bodies — <span class="field">OTEL_LOG_RAW_API_BODIES</span> (full conversation history).</li>
+          <li><b>Extended-thinking content is always redacted</b>, regardless of any flag.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="foot">
+    Source: <span class="mono">docs/research/claude-code-telemetry.md</span> · verified 2026-05-24 vs Claude Code 2.1.150 &amp; code.claude.com/docs.
+    Items marked observed/undocumented in the source are not guaranteed contracts.
+  </footer>
+
+</div>
+</body>
+</html>
