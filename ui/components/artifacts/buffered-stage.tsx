@@ -152,7 +152,13 @@ export function BufferedStage({
             projectName={projectName}
             fileName={fileName}
             onLoad={reportReady}
-            reloadKey={isFront ? liveRefreshKey : undefined}
+            // Cache-bust is keyed to the live edit count, NOT to front-promotion. The
+            // incoming slot renders with the same reloadKey it will keep as front, so
+            // settle (front flip) never mutates the src → no reload/flicker when the
+            // cross-fade completes. A genuine live edit still bumps liveRefreshKey and
+            // reloads the front doc in place (BUG 2). liveRefreshKey starts at 0 (falsy),
+            // so there's no `&v=` until a real change lands.
+            reloadKey={liveRefreshKey}
           />
         )}
       </div>
