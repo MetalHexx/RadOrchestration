@@ -10,23 +10,30 @@ beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-')); });
 afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 
 describe('session-context preamble', () => {
-  it('emits init line, projects awareness, concise registry block with unbound flagged, and the /rad-repo pointer', () => {
+  it('emits an assistant-directed summary with repos, unbound flagged, groups, counts, and the /rad-repo pointer', () => {
     addRepo({ root, name: 'bound-one', identity: { remote: 'g', default_branch: 'main', description: '' }, localPath: '/c/b' });
     writeIdentity({ root, repos: { 'bound-one': { remote: 'g', default_branch: 'main', description: '' }, 'unbound-one': { remote: 'h', default_branch: 'main', description: '' } }, repoGroups: {} });
     createGroup({ root, name: 'core-set', members: ['bound-one'] });
     const text = renderPreamble({ root });
-    expect(text).toContain('Rad Orc Initialized!');
-    expect(text).toContain('.radorc/projects/');
+    // Assistant-directed relay directive (the announcement instruction).
+    expect(text).toMatch(/session-start/i);
+    expect(text).toMatch(/first reply/i);
+    // Concise facts: names, unbound flag, group, and counts.
     expect(text).toContain('bound-one');
-    expect(text).toMatch(/unbound-one.*unbound/i);
+    expect(text).toMatch(/unbound-one.*\[unbound\]/i);
     expect(text).toContain('core-set');
-    expect(text.trimEnd().endsWith('/rad-repo')).toBe(false);
+    expect(text).toMatch(/2 total/);
+    expect(text).toMatch(/1 unbound/);
     expect(text).toMatch(/\/rad-repo/);
+    // Local paths are intentionally omitted for brevity.
+    expect(text).not.toContain('/c/b');
   });
-  it('emits empty-state nudge to /rad-repo and no registry block when nothing is registered', () => {
+  it('emits an assistant-directed empty-state announcement to /rad-repo and no registry block when nothing is registered', () => {
     const text = renderPreamble({ root });
-    expect(text).toContain('Rad Orc Initialized!');
+    expect(text).toMatch(/session-start/i);
+    expect(text).toMatch(/first reply/i);
+    expect(text).toMatch(/no repositories are registered/i);
     expect(text).toMatch(/\/rad-repo/);
-    expect(text).not.toMatch(/unbound/i);
+    expect(text).not.toMatch(/\[unbound\]/i);
   });
 });
