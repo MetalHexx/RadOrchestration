@@ -1,10 +1,16 @@
 ---
 name: rad-repo
-description: Use this skill when the user wants to register, view, edit, or remove a repo or repo-group — including cloning onto a new machine (repo bind), organizing repos into named groups, or asking how the repo registry works.
+description: Use this skill when trying to figure out where to find or write code for a task.  Because projects may span multiple repositories, this skill helps agents understand the structure of the codebase and make informed research and coding decisions.  This skill provides the ability to register and manage repositories in a central registry.
+
 user-invocable: true
 ---
 
-# Repos and Repo-Groups
+# What is the `rad-repo` skill?
+The general idea of this skill is to give agents the skill needed to understand the repositories involved in a coding project.  In many team scenarios, a domain project may span multiple repositories.  So an agent needs to be aware of these repositories and where they live so that it can make informed decisions about where to discover and write code for a given task.
+
+This skill also provides the ability to help a user register repositories in a central registry, organize them into groups, and manage their local bindings. 
+
+## Repos and Repo-Groups
 
 The orchestration system keeps a small registry of git repositories so every project can reference repos by a short slug rather than a full path. A **repo** is a registered git repository with a team-portable identity (remote URL, default branch, optional description) stored in `repo-registry.yml`. A **repo-group** is a named collection of those slugs stored in the same file, useful when a project spans several repositories.
 
