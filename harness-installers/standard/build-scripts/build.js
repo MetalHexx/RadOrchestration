@@ -47,7 +47,10 @@ function tokenMapFor(harness) {
  *  `rootDir` is the repo root. `greenfieldRel` (default '.') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems.
  *  Unit tests construct a synthetic fixture without a parent folder,
- *  so they pass `greenfieldRel: '.'` to flatten the layout. */
+ *  so they pass `greenfieldRel: '.'` to flatten the layout.
+ *  `skipBootstrap` skips the `build-lib-dist` step; used by synthetic
+ *  fixture/test builds that lack a real workspace package.json and cannot
+ *  run the workspace lib build. */
 export async function runBuild(opts) {
   const root = path.resolve(opts.rootDir);
   const greenfieldRel = opts.greenfieldRel ?? '.';
@@ -56,8 +59,7 @@ export async function runBuild(opts) {
   const out = path.join(installerDir, 'output');
 
   // Shared helpers are dynamic-imported here; esbuild resolves from the
-  // hoisted root node_modules (single root install). opts.skipBootstrap is
-  // accepted but unused — callers that still pass it do not break.
+  // hoisted root node_modules (single root install).
   const { emitCliBundle } = await import('../../shared/build-helpers/emit-cli-bundle.js');
   const { emitUiBundle } = await import('../../shared/build-helpers/emit-ui-bundle.js');
   const { expandTokens } = await import('../../shared/build-helpers/expand-tokens.js');

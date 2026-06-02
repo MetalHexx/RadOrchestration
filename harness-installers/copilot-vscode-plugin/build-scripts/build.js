@@ -37,8 +37,9 @@ export async function runBuild(opts) {
   const adapterOut = path.join(root, 'harness-adapters/output/copilot-vscode');
 
   // All dependencies are satisfied by the single root install (hoisted
-  // node_modules). opts.skipBootstrap is accepted but unused — callers that
-  // still pass it do not break.
+  // node_modules). opts.skipBootstrap skips the build-lib-dist step; used by
+  // synthetic fixture/test builds that lack a real workspace package.json and
+  // cannot run the workspace lib build.
 
   if (!opts.skipAdapterEngine) {
     await step('adapter-engine', () => {

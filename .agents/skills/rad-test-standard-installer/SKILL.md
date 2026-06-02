@@ -97,7 +97,7 @@ node harness-installers/standard/build-scripts/build.js
 
 > Expected: exit 0; `harness-installers/standard/output/` populated; `output/<harness>/manifests/v<version>.json` exists. (The publish `package.json` lives at the source root `standard/package.json` — the build does not write a top-level `output/package.json`.)
 >
-> On first run (or any run after one of the package `node_modules` folders was removed), expect one or more `npm install` operations from Step 2 and/or `bootstrap-deps`. The `ui/` install is typically the longest (~1 min on a cold network).
+> On first run (or any run after `node_modules` was deleted at the root), expect the root `npm install` from Step 2 to run. The `ui/` install is typically the longest (~1 min on a cold network).
 >
 > On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 

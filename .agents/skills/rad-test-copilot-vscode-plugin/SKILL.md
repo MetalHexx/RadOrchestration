@@ -50,6 +50,10 @@ Use the result as `{repoRoot}` for every subsequent path. The user is on Windows
 Before running the build, verify that the root `node_modules` is present and the required executables (`esbuild`, `next`) are hoisted. The repo uses npm workspaces and all binaries resolve from the root `node_modules/.bin` — not from per-package `node_modules/.bin` paths:
 
 ```powershell
+if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next.cmd')) -and
+    -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next'))) {
+  npm install --prefix "{repoRoot}"
+}
 if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild.cmd')) -and
     -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild'))) {
     npm install --prefix "{repoRoot}"
@@ -68,7 +72,7 @@ node harness-installers/copilot-vscode-plugin/build-scripts/build.js
 
 > Expected: exit 0; `harness-installers/copilot-vscode-plugin/output/` populated; the build's final `validate` step reports no missing artifacts.
 >
-> On first run (or any run after sub-package `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs.
+> On first run (or any run after `node_modules` was deleted at the root), expect the root `npm install` to run. Expect longer build times on first run; subsequent runs skip the root install.
 >
 > On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 

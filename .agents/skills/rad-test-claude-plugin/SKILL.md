@@ -52,6 +52,10 @@ Use the result as `{repoRoot}` for every subsequent path. The user is on Windows
 Before running the build, verify that the root `node_modules` is present and the required executables (`esbuild`, `next`) are hoisted. The repo uses npm workspaces and all binaries resolve from the root `node_modules/.bin` — not from per-package `node_modules/.bin` paths:
 
 ```powershell
+if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next.cmd')) -and
+    -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next'))) {
+  npm install --prefix "{repoRoot}"
+}
 if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild.cmd')) -and
     -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild'))) {
     npm install --prefix "{repoRoot}"
