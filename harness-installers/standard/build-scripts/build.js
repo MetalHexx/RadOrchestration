@@ -115,6 +115,19 @@ export async function runBuild(opts) {
     }
   });
 
+  // Build the library dist before any step that bundles the CLI or the UI:
+  // the UI's `next build` resolves the by-name import through the workspace
+  // symlink against dist, and the by-name CLI bundle depends on dist too (AD-5).
+  if (!opts.skipBootstrap) {
+    await step('build-lib-dist', () => {
+      execSync('npm run build -w @rad-orchestration/repo-registry', {
+        cwd: root,
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+    });
+  }
+
   // Per-harness CLI bundle. cli/ lives at the repo root.
   await step('emit-cli-bundle', async () => {
     for (const h of HARNESSES) {
