@@ -3,7 +3,7 @@
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": "../",
+    "rootDir": "./src",
     "outDir": "./dist",
     "declaration": false,
     "sourceMap": true,
@@ -17,6 +17,6 @@
     "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "../lib/repo-registry/src/**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "tests"]
 }
