@@ -22,7 +22,7 @@ Pick the one matching the channel you want to validate. Single-harness per run k
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- **A pre-bootstrap step is required on a fresh clone** (see Step 2 below). `build.js` has top-level `import` statements that load from `harness-installers/shared/build-helpers/` — specifically `emit-cli-bundle.js`, `emit-hook-bundle.js`, `emit-ui-bundle.js`, and `expand-tokens.js`. Those modules require `esbuild`, which lives in `build-helpers/node_modules`. On a fresh clone that directory does not exist, so Node rejects the imports before any code in `build.js` runs — including the `bootstrap-deps` step that would otherwise install them. The fix is to run `npm install` in `build-helpers` once, pre-emptively, before invoking the build. The build's own `bootstrap-deps` step then handles the remaining three packages (`harness-adapters/engine`, `cli/`, `ui/`) during the normal build run.
+- **A single root install is required on a fresh clone** (see Step 2 below). The repo uses npm workspaces; `build.js` and the shared `build-helpers` modules all resolve `esbuild`, `next`, and other executables from the hoisted root `node_modules/.bin`. On a fresh clone that directory does not exist, so the fix is to run `npm install` once at the repo root — this installs all workspace packages and hoists every binary into the root `node_modules/.bin`.
 
 ## Workflow
 
@@ -58,51 +58,31 @@ git rev-parse --show-toplevel
 
 Use the result as `{repoRoot}` for every subsequent path.
 
-Before running the build, run a dependency-health preflight. Why this is required: `build.js` only checks whether each package has a `node_modules/` directory; it does **not** verify that required executables exist. A partial or stale `node_modules/` (for example, `ui/node_modules` exists but `next` is missing) will make the build skip bootstrap and then fail later in `emit-ui-bundle` with `'next' is not recognized`.
+Before running the build, run a dependency-health preflight. Why this is required: the repo uses npm workspaces and all executables (`esbuild`, `next`, `tsx`) are hoisted into the root `node_modules/.bin`. A missing or incomplete root install means the build cannot find those binaries and will fail.
 
 Run this PowerShell block:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
 
-$bhDir = Join-Path "{repoRoot}" 'harness-installers\shared\build-helpers'
-$engineDir = Join-Path "{repoRoot}" 'harness-adapters\engine'
-$cliDir = Join-Path "{repoRoot}" 'cli'
-$uiDir = Join-Path "{repoRoot}" 'ui'
-
-function Ensure-NodeModules([string]$pkgDir) {
-  if (-not (Test-Path (Join-Path $pkgDir 'node_modules'))) {
-    npm install --prefix $pkgDir
-  }
+# Guard: verify the root install is present and required binaries are hoisted.
+if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next.cmd')) -and
+    -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next'))) {
+  npm install --prefix "{repoRoot}"
 }
-
-# build-helpers must exist before build.js can import shared helpers.
-Ensure-NodeModules $bhDir
-
-# Keep the remaining package roots healthy for bootstrap/build steps.
-Ensure-NodeModules $engineDir
-Ensure-NodeModules $cliDir
-Ensure-NodeModules $uiDir
-
-# Guard against partial installs: verify required executables exist.
-if (-not (Test-Path (Join-Path $uiDir 'node_modules\.bin\next.cmd')) -and -not (Test-Path (Join-Path $uiDir 'node_modules\.bin\next'))) {
-  npm install --prefix $uiDir
-}
-if (-not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild.cmd')) -and -not (Test-Path (Join-Path $cliDir 'node_modules\.bin\esbuild'))) {
-  npm install --prefix $cliDir
+if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild.cmd')) -and
+    -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild'))) {
+  npm install --prefix "{repoRoot}"
 }
 ```
 
-Expected: missing or unhealthy dependencies are installed and required binaries (`next`, `esbuild`, `tsx`) exist. If any `npm install` fails, stop and report — the build cannot proceed.
+Expected: the root `node_modules/.bin` contains `next` and `esbuild`. If `npm install` fails, stop and report — the build cannot proceed.
 
-The build's own `bootstrap-deps` still runs during build, but this preflight prevents false-green `node_modules` checks from causing late failures.
-
-If Step 3 later fails with a Next.js SWC-native error such as `Failed to load SWC binary for win32/x64` or `next-swc... is not a valid Win32 application`, treat `ui/node_modules` as unhealthy and repair it before retrying:
+If Step 3 later fails with a Next.js SWC-native error such as `Failed to load SWC binary for win32/x64` or `next-swc... is not a valid Win32 application`, remove and reinstall the root `node_modules` before retrying:
 
 ```powershell
-$uiDir = Join-Path "{repoRoot}" 'ui'
-Remove-Item -Recurse -Force (Join-Path $uiDir 'node_modules') -ErrorAction SilentlyContinue
-npm install --prefix $uiDir
+Remove-Item -Recurse -Force (Join-Path "{repoRoot}" 'node_modules') -ErrorAction SilentlyContinue
+npm install --prefix "{repoRoot}"
 ```
 
 Then re-run Step 3 once.
