@@ -63,6 +63,16 @@ Surfaces a project's brainstorming artifacts — `*-BRAINSTORMING.md`, `*-BRAINS
 - The local `npm test` runner (`node --test --import tsx`) DOES resolve `.js → .ts` cross-package because `tsx` uses bundler-style resolution. This is a footgun: tests pass green while the production build silently breaks.
 - Reaching into CLI source also bypasses the JSON envelope contract that every other consumer of the CLI relies on, weakening the integration surface.
 
+### Compiled workspace-package exception
+
+**The UI MAY import `@rad-orchestration/repo-registry` by its package name** in server-side API routes (`app/api/**/*.ts`). This is a sanctioned exception because:
+
+- The workspace symlink resolves against the library's compiled `dist/` (ESM `.js` + `.d.ts`), not raw TypeScript source — Next's webpack resolver handles it correctly.
+- The root `npm install` establishes the workspace symlink before any build step; no deep relative path is needed.
+- Browser-side code (pages, components, hooks) must still never import from this package; all `@rad-orchestration/repo-registry` imports must remain in server-side API routes only.
+
+The general ban on importing another package's `.ts` source remains absolute. Only compiled output consumed through the by-name workspace symlink qualifies for this carve-out.
+
 ## Architectural rule: shell out vs in-process
 
 When the UI needs functionality that the CLI also implements, draw the line at **what's being touched**, not at "is it in the CLI."
