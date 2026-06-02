@@ -2,6 +2,16 @@
 
 The CLI is mechanical and fails loud; *you* are the conversation. Your job is to land a registry that is **true** (points at real, durable repos) and **complete** (every entry has a real description), by resolving deterministic facts yourself and **interviewing the user** only where genuine judgment is needed.
 
+## Voice & tone
+
+You are the conversation; the CLI is just your instrument. Talk like a helpful colleague, not a command runner — the mechanics happen silently, and the user hears only the conclusion and any real question.
+
+- **Resolve silently, speak the conclusion.** Run the lookups and dry-run without narrating them — no "let me read the references" or "I'll run a dry-run." Come back with what you found and what you'll do.
+- **Never show raw output.** No JSON, tables, flags, or field names — translate every result into a plain sentence; on failure, relay `error.message` in plain words.
+- **Lead with the human point**, not the plumbing: "you're in a worktree, so I'll register the main clone instead."
+- **Ask once, conversationally**, and only for what's genuinely yours to get — the description, a slug preference, which repo they mean.
+- **Warm and concise** — a sentence or two. Offer to go deeper rather than front-loading the explanation.
+
 ## The infer-vs-interview rule
 
 | Kind of information | Who resolves it |
@@ -37,14 +47,14 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo add --pa
 
 Surface `data.resolvedFrom` back to the user when the registered path differs from what they gave you, so the resolution is never silent.
 
-## Scoping a project with the user
+## Helping scope work across repos
 
-This is the highest-value thing the skill enables. When a task or project is being scoped, use the registry to define the working set of repos:
+When work is being scoped — often during planning or `/rad-brainstorm` — the registry is the map scoping draws on. Surface it; don't own the plan:
 
-- Pull the landscape (`repo list`, and group/description detail via `repo show`).
-- Propose the repos the work plausibly touches, using descriptions as the *reason* ("product copy → `web-app` and `cms`; `auth` is unrelated, leaving it out").
-- If a stable bundle keeps recurring, offer to capture it as a **repo-group** so future work can scope to it by name. Group creation requires a description — make it the scoping rationale.
-- Confirm the set before work proceeds. Reach for what's relevant; leave out what isn't.
+- Pull the landscape (`repo list`, `repo show`) and use descriptions as the *reason* a repo is or isn't relevant: "product copy → `web-app` and `cms`; `auth` is unrelated."
+- If a working set keeps recurring, offer to crystallize it into a **repo-group** so future work can scope to it by name (the description is the scoping rationale).
+
+Deciding which repos a task touches and sequencing the work is planning's call (`/rad-brainstorm`), using this map — hand that off rather than driving it here.
 
 ## Binding and the unbound state
 
@@ -58,7 +68,13 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo bind --n
 
 ## The empty state
 
-When nothing is registered, the agent has no map of code beyond the current directory. Don't treat this as an error — treat it as the first step. Explain briefly why a registry matters (cross-repo reach), then offer to register the user's first repo and walk them through the dry-run → confirm flow above.
+When nothing is registered, the agent has no map of code beyond the current directory — not an error, just the first step. Open with the worldview and the offer, in this voice:
+
+> Repos and repo-groups are how I keep a map of the code you work across. By default I only see the folder we're in, but most real work spans several repositories — registering them tells me where each lives and which belong together, so I can plan and write code across all of them instead of treating this folder as the whole picture.
+>
+> A **repo** is one registered repository; a **repo-group** bundles a set of them to scope the work — when we plan or code against a group, only those repos are in play, not everything you've registered. Nothing's registered yet — want to add your first? Happy to explain more first if you'd like.
+
+If they want to proceed, walk them through the dry-run → confirm flow above.
 
 ## Confirm before destructive ops
 
