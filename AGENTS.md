@@ -111,6 +111,11 @@ All of these resolve to `node harness-dogfood/build.js` with the appropriate har
 
 This repo is a polyglot monorepo with several test runners. Pick the right one:
 
+- **Root workspace/integration guards** (`tests/`) — Node's built-in test runner. Run from repo root:
+  ```
+  node --test tests/*.test.mjs
+  ```
+  Covers by-name resolution of `@rad-orchestration/repo-registry`, npm workspace linkage, and CI workflow wiring. These also run as part of the `repo-registry` CI job.
 - **CLI bundle and pipeline engine** (`cli/`) — Vitest:
   ```
   cd cli && npm test                              # full suite
@@ -197,6 +202,7 @@ The canonical sources at `harness-files/agents/` and `harness-files/skills/` are
 - `ui/` — Next.js dashboard (committed)
 - `prompt-tests/` — operator-driven planner regression harness (committed)
 - `harness-files/tests/` — repo-wide cross-cutting tests (e.g., reserved-namespace, agent-skill ref integrity) (committed)
+- `tests/` — root-level workspace/integration guard tests: by-name resolution of `@rad-orchestration/repo-registry`, npm workspace linkage, and CI workflow wiring assertions (committed)
 - `docs/` — user-facing docs; `docs/internals/` for refactor design notes (committed)
 - `.agents/` — non-production / dev-only skills and prompts (e.g., `rad-create-skill` scaffolding) (committed)
 - `.githooks/`, `.github/` — git and CI configuration (committed)

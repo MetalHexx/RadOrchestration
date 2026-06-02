@@ -8,6 +8,10 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const ci = fs.readFileSync(path.join(repoRoot, '.github/workflows/ci.yml'), 'utf8');
 const cli = fs.readFileSync(path.join(repoRoot, '.github/workflows/cli.yml'), 'utf8');
 
+test('ci.yml runs root workspace guard tests', () => {
+  assert.match(ci, /node --test tests\//, 'ci.yml must run root guard tests via node --test tests/');
+});
+
 test('ci.yml builds and tests the library', () => {
   assert.match(ci, /repo-registry/);
   assert.match(ci, /npm run build -w @rad-orchestration\/repo-registry/);

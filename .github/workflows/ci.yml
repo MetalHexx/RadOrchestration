@@ -27,6 +27,19 @@ jobs:
       - name: Test lib/repo-registry
         run: npm test -w @rad-orchestration/repo-registry
 
+      - name: Root workspace guard tests (by-name resolution, workspace linkage, CI wiring)
+        run: node --test tests/*.test.mjs
+
+      - name: Build-helper structural tests (tests/)
+        run: node --test harness-installers/shared/build-helpers/tests/*.test.mjs
+
+      - name: Build-helper structural tests (__tests__/)
+        run: node --test harness-installers/shared/build-helpers/__tests__/*.test.mjs
+
+      - name: UI smoke route test (library resolves by-name inside Next app server)
+        working-directory: ui
+        run: node --test --import tsx "app/api/registry-smoke/route.test.ts"
+
   adapters:
     runs-on: ubuntu-latest
     steps:
