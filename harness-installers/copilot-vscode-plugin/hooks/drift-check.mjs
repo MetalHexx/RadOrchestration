@@ -27,10 +27,15 @@ function run() {
   const installed = readJsonSafe(path.join(radHome, 'install.json'));
   const installedVersion = installed?.harnesses?.['copilot-vscode-plugin']?.version;
   if (installedVersion && installedVersion !== deliveringVersion) {
-    process.stdout.write(
+    const line =
       `[rad-orchestration drift] ~/.radorc/install.json is at version ${installedVersion}. ` +
       `The Copilot in VS Code plugin's bundled rad-orchestration is at version ${deliveringVersion}. ` +
-      `Reinstall the plugin (or re-run the standard installer) to keep them in sync.\n`,
+      `Reinstall the plugin (or re-run the standard installer) to keep them in sync.`;
+    // VS Code parses a hook's stdout as JSON and injects context ONLY from the
+    // nested hookSpecificOutput.additionalContext field; raw stdout is discarded.
+    // See docs/research/copilot-vscode-hooks.md.
+    process.stdout.write(
+      JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line } }),
     );
   }
 }

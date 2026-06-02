@@ -106,8 +106,13 @@ test('serializeForStdout wraps text as bare-JSON additionalContext under Copilot
   assert.deepStrictEqual(parsed, { additionalContext: 'hello preamble' });
 });
 
-test('serializeForStdout writes raw text + newline off Copilot CLI (Claude/VSCode path unchanged)', () => {
-  assert.strictEqual(serializeForStdout('hello preamble', {}), 'hello preamble\n');
+test('serializeForStdout wraps text as nested hookSpecificOutput.additionalContext off Copilot CLI (Claude Code + VS Code)', () => {
+  // VS Code parses stdout as JSON and injects ONLY from the nested field; Claude
+  // Code accepts the same nested shape. See docs/research/copilot-vscode-hooks.md.
+  const parsed = JSON.parse(serializeForStdout('hello preamble', {}));
+  assert.deepStrictEqual(parsed, {
+    hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'hello preamble' },
+  });
 });
 
 test('serializeForStdout returns empty string for empty text so the caller writes nothing', () => {
@@ -115,18 +120,22 @@ test('serializeForStdout returns empty string for empty text so the caller write
   assert.strictEqual(serializeForStdout(undefined, {}), '');
 });
 
-test('main-execution block emits the preamble to stdout and never throws', () => {
+test('main-execution block emits the preamble as nested JSON and never throws (non-CLI harness)', () => {
   // Run the hook as the entry point. With no plugin root and no installed
   // radorch, the default run resolves to the notice path — proving the module
   // emits SOMETHING to stdout (it is no longer silent when fired as a hook).
+  // Off Copilot CLI, the payload is the nested hookSpecificOutput shape.
   const hookPath = fileURLToPath(new URL('../session-preamble.mjs', import.meta.url));
   const env = { ...process.env };
   delete env.CLAUDE_PLUGIN_ROOT;
   delete env.COPILOT_PLUGIN_ROOT;
+  delete env.COPILOT_CLI;
   const result = spawnSync(process.execPath, [hookPath], { encoding: 'utf8', env });
   assert.strictEqual(result.status, 0, 'hook exits cleanly (never throws)');
   assert.ok(result.stdout.trim().length > 0, 'hook writes a non-empty payload to stdout');
-  assert.match(result.stdout, /ambient awareness/i, 'falls back to the notice payload when radorch is unavailable');
+  const parsed = JSON.parse(result.stdout);
+  assert.strictEqual(parsed.hookSpecificOutput?.hookEventName, 'SessionStart');
+  assert.match(parsed.hookSpecificOutput.additionalContext, /ambient awareness/i, 'notice flows through the nested wrapper');
 });
 
 test('emits via `node -e import()` — the Claude/VSCode hooks.json dynamic-import launch (argv[1] undefined)', () => {
@@ -142,6 +151,7 @@ test('emits via `node -e import()` — the Claude/VSCode hooks.json dynamic-impo
   const env = { ...process.env };
   delete env.CLAUDE_PLUGIN_ROOT;
   delete env.COPILOT_PLUGIN_ROOT;
+  delete env.COPILOT_CLI;
   const result = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', env });
   assert.strictEqual(result.status, 0, 'dynamic-import launch exits cleanly (never throws)');
   assert.ok(result.stdout.trim().length > 0, 'main block fires under `node -e import()` (was silent before the guard fix)');

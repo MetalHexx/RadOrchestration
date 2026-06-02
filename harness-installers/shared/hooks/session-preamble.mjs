@@ -100,14 +100,18 @@ export function emitHookResult(out) {
 
 /**
  * Serialize the hook's additionalContext for stdout in the shape the *current
- * harness* injects as session-start context. The two harness families differ:
- *   - Copilot CLI (sets COPILOT_CLI=1): a sessionStart hook must emit a JSON
- *     object with a BARE top-level `additionalContext` string; raw/plain stdout
- *     is discarded for every event. See docs/research/copilot-cli-hooks.md.
- *   - Claude Code / Copilot-VSCode: the SessionStart hook injects raw stdout as
- *     context, so the text is written verbatim (the historical behavior — must
- *     stay unchanged so the working Claude path does not regress).
- * Returns '' for empty text so the caller writes nothing.
+ * harness* injects as session-start context. Each runtime has its own contract
+ * (see docs/research/copilot-cli-hooks.md and docs/research/copilot-vscode-hooks.md):
+ *   - Copilot CLI (sets COPILOT_CLI=1): a JSON object with a BARE top-level
+ *     `additionalContext` string; raw stdout is discarded for every event.
+ *   - Copilot in VS Code: stdout is parsed as JSON and context is injected ONLY
+ *     from the NESTED `hookSpecificOutput.additionalContext` field; raw stdout is
+ *     silently dropped.
+ *   - Claude Code: injects raw stdout OR the nested shape — it accepts nested too.
+ * Because VS Code *requires* the nested shape and Claude Code *accepts* it, the
+ * non-CLI branch emits nested — there is no need to distinguish VS Code from
+ * Claude Code (unreliable: both set CLAUDE_PLUGIN_ROOT, and VSCODE_PID is present
+ * whenever Claude runs in a VS Code terminal). Returns '' for empty text.
  *
  * @param {string} text
  * @param {NodeJS.ProcessEnv} [env]
@@ -116,7 +120,7 @@ export function emitHookResult(out) {
 export function serializeForStdout(text, env = process.env) {
   if (!text) return '';
   if (env.COPILOT_CLI === '1') return JSON.stringify({ additionalContext: text });
-  return `${text}\n`;
+  return JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } });
 }
 
 // Main-execution block: fires when this module is the session-start hook entry —
