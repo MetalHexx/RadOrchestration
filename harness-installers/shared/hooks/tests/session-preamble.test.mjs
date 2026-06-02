@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { buildHookOutput, resolveRadorch, emitHookResult } from '../session-preamble.mjs';
+import { buildHookOutput, resolveRadorch, emitHookResult, serializeForStdout } from '../session-preamble.mjs';
 
 test('wraps the preamble in additionalContext on ok envelope', () => {
   const run = () => ({ status: 0, stdout: JSON.stringify({ ok: true, data: { preamble: 'Rad Orc Initialized!\n/rad-repo' } }) });
@@ -99,6 +99,22 @@ test('emitHookResult is soft and returns empty string for missing/empty output',
   assert.strictEqual(emitHookResult({}), '');
 });
 
+test('serializeForStdout wraps text as bare-JSON additionalContext under Copilot CLI (COPILOT_CLI=1)', () => {
+  // Copilot CLI discards raw stdout; a sessionStart hook must emit a JSON object
+  // with a BARE top-level additionalContext. See docs/research/copilot-cli-hooks.md.
+  const parsed = JSON.parse(serializeForStdout('hello preamble', { COPILOT_CLI: '1' }));
+  assert.deepStrictEqual(parsed, { additionalContext: 'hello preamble' });
+});
+
+test('serializeForStdout writes raw text + newline off Copilot CLI (Claude/VSCode path unchanged)', () => {
+  assert.strictEqual(serializeForStdout('hello preamble', {}), 'hello preamble\n');
+});
+
+test('serializeForStdout returns empty string for empty text so the caller writes nothing', () => {
+  assert.strictEqual(serializeForStdout('', { COPILOT_CLI: '1' }), '');
+  assert.strictEqual(serializeForStdout(undefined, {}), '');
+});
+
 test('main-execution block emits the preamble to stdout and never throws', () => {
   // Run the hook as the entry point. With no plugin root and no installed
   // radorch, the default run resolves to the notice path — proving the module
@@ -130,4 +146,25 @@ test('emits via `node -e import()` — the Claude/VSCode hooks.json dynamic-impo
   assert.strictEqual(result.status, 0, 'dynamic-import launch exits cleanly (never throws)');
   assert.ok(result.stdout.trim().length > 0, 'main block fires under `node -e import()` (was silent before the guard fix)');
   assert.match(result.stdout, /ambient awareness/i, 'falls back to the notice payload when radorch is unavailable');
+});
+
+test('main-execution block emits bare-JSON additionalContext under COPILOT_CLI=1 (Copilot CLI contract)', () => {
+  // End-to-end: when fired as the hook under Copilot CLI, stdout must be a JSON
+  // object with a top-level additionalContext — raw stdout is discarded by the
+  // CLI (docs/research/copilot-cli-hooks.md). With no plugin root + no installed
+  // radorch the default run resolves to the notice path, proving the JSON wrapper
+  // carries whatever text the hook produces.
+  const hookPath = fileURLToPath(new URL('../session-preamble.mjs', import.meta.url));
+  const env = { ...process.env };
+  delete env.CLAUDE_PLUGIN_ROOT;
+  delete env.COPILOT_PLUGIN_ROOT;
+  env.COPILOT_CLI = '1';
+  const result = spawnSync(process.execPath, [hookPath], { encoding: 'utf8', env });
+  assert.strictEqual(result.status, 0, 'hook exits cleanly (never throws)');
+  const parsed = JSON.parse(result.stdout);
+  assert.ok(
+    typeof parsed.additionalContext === 'string' && parsed.additionalContext.length > 0,
+    'stdout is a JSON object with a non-empty top-level additionalContext',
+  );
+  assert.match(parsed.additionalContext, /ambient awareness/i, 'notice payload flows through the JSON wrapper');
 });

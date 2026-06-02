@@ -98,6 +98,27 @@ export function emitHookResult(out) {
   return out?.additionalContext ?? '';
 }
 
+/**
+ * Serialize the hook's additionalContext for stdout in the shape the *current
+ * harness* injects as session-start context. The two harness families differ:
+ *   - Copilot CLI (sets COPILOT_CLI=1): a sessionStart hook must emit a JSON
+ *     object with a BARE top-level `additionalContext` string; raw/plain stdout
+ *     is discarded for every event. See docs/research/copilot-cli-hooks.md.
+ *   - Claude Code / Copilot-VSCode: the SessionStart hook injects raw stdout as
+ *     context, so the text is written verbatim (the historical behavior — must
+ *     stay unchanged so the working Claude path does not regress).
+ * Returns '' for empty text so the caller writes nothing.
+ *
+ * @param {string} text
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {string}
+ */
+export function serializeForStdout(text, env = process.env) {
+  if (!text) return '';
+  if (env.COPILOT_CLI === '1') return JSON.stringify({ additionalContext: text });
+  return `${text}\n`;
+}
+
 // Main-execution block: fires when this module is the session-start hook entry —
 // either run directly (`node .../session-preamble.mjs` → argv[1] === self) OR
 // dynamically imported with no entry script (`node -e "import(...)"` → argv[1]
@@ -108,8 +129,8 @@ export function emitHookResult(out) {
 if (!process.argv[1] || fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   try {
     const out = buildHookOutput();
-    const payload = emitHookResult(out);
-    if (payload) process.stdout.write(`${payload}\n`);
+    const payload = serializeForStdout(emitHookResult(out));
+    if (payload) process.stdout.write(payload);
   } catch {
     /* never throw from the hook entry point */
   }
