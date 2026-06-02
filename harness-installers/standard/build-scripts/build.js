@@ -11,9 +11,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-// Shared build-helpers transitively import esbuild at module-load time, and
-// esbuild lives in shared/build-helpers/node_modules which `bootstrap-deps`
-// populates. They are dynamic-imported inside runBuild() after that step.
+// Shared build-helpers are dynamic-imported inside runBuild() so esbuild
+// resolves from the hoisted root node_modules (single root install, AD-3).
 import { emitManifest } from './emit-manifest.js';
 import { validatePackageTree } from './validate.js';
 
@@ -56,27 +55,9 @@ export async function runBuild(opts) {
   const installerDir = path.join(greenfield, 'harness-installers/standard');
   const out = path.join(installerDir, 'output');
 
-  // Bootstrap missing sub-package node_modules on first run. Idempotent and
-  // fixture-safe (skipped when package.json absent). Opt-out via skipBootstrap.
-  if (!opts.skipBootstrap) {
-    const BOOTSTRAP_TARGETS = [
-      path.join(greenfield, 'harness-installers/shared/build-helpers'),
-      path.join(greenfield, 'harness-adapters/engine'),
-      path.join(root, 'cli'),
-      path.join(root, 'ui'),
-    ];
-    await step('bootstrap-deps', () => {
-      for (const pkgDir of BOOTSTRAP_TARGETS) {
-        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
-        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
-        process.stderr.write(`[build:standard] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
-        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
-      }
-    });
-  }
-
-  // Shared helpers are dynamic-imported here, after bootstrap-deps, because
-  // emit-cli-bundle top-level-imports esbuild.
+  // Shared helpers are dynamic-imported here; esbuild resolves from the
+  // hoisted root node_modules (single root install). opts.skipBootstrap is
+  // accepted but unused — callers that still pass it do not break.
   const { emitCliBundle } = await import('../../shared/build-helpers/emit-cli-bundle.js');
   const { emitUiBundle } = await import('../../shared/build-helpers/emit-ui-bundle.js');
   const { expandTokens } = await import('../../shared/build-helpers/expand-tokens.js');

@@ -40,35 +40,9 @@ export async function runBuild(opts) {
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
 
-  // Bootstrap missing sub-package node_modules on first run. The build reads
-  // from four sub-packages whose node_modules are owned by the sub-package
-  // (build-helpers needs esbuild; engine needs yaml; cli is the esbuild source
-  // for emit-cli-bundle and needs its own runtime deps resolvable; ui runs
-  // `next build` via emit-ui-bundle and needs next on PATH from ui/node_modules).
-  // Without this, a fresh clone hits ERR_MODULE_NOT_FOUND / `next not recognized`
-  // mid-build, one package at a time. Idempotent (skip when node_modules exists)
-  // and fixture-safe (skip when package.json is absent — synthetic test fixtures
-  // have neither). opt-out for tests that pin their own dep state: opts.skipBootstrap.
-  if (!opts.skipBootstrap) {
-    const BOOTSTRAP_TARGETS = [
-      path.join(greenfield, 'harness-installers/shared/build-helpers'),
-      path.join(greenfield, 'harness-adapters/engine'),
-      path.join(root, 'cli'),
-      path.join(root, 'ui'),
-      // The plugin's own dir — needed so esbuild can resolve `tar` when
-      // bundling hooks/bootstrap.mjs (run-install.js imports tar to extract
-      // the UI tarball at install time).
-      installerDir,
-    ];
-    await step('bootstrap-deps', () => {
-      for (const pkgDir of BOOTSTRAP_TARGETS) {
-        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
-        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
-        process.stderr.write(`[build:claude-plugin] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
-        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
-      }
-    });
-  }
+  // All dependencies are satisfied by the single root install (hoisted
+  // node_modules). opts.skipBootstrap is accepted but unused — callers that
+  // still pass it do not break.
 
   // Step 0 — adapter engine first. Skipped in unit
   // tests; production end-to-end runs through this branch.

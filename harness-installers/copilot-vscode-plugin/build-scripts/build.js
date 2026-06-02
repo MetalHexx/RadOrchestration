@@ -36,26 +36,9 @@ export async function runBuild(opts) {
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(root, 'harness-adapters/output/copilot-vscode');
 
-  if (!opts.skipBootstrap) {
-    const BOOTSTRAP_TARGETS = [
-      path.join(root, 'harness-installers/shared/build-helpers'),
-      path.join(root, 'harness-adapters/engine'),
-      path.join(root, 'cli'),
-      path.join(root, 'ui'),
-      // The plugin's own dir — needed so esbuild can resolve `tar` when
-      // bundling hooks/bootstrap.mjs (run-install.js imports tar to extract
-      // the UI tarball at install time).
-      installerDir,
-    ];
-    await step('bootstrap-deps', () => {
-      for (const pkgDir of BOOTSTRAP_TARGETS) {
-        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
-        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
-        process.stderr.write(`[build:copilot-vscode-plugin] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
-        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
-      }
-    });
-  }
+  // All dependencies are satisfied by the single root install (hoisted
+  // node_modules). opts.skipBootstrap is accepted but unused — callers that
+  // still pass it do not break.
 
   if (!opts.skipAdapterEngine) {
     await step('adapter-engine', () => {
