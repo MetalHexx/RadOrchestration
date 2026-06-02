@@ -104,6 +104,37 @@ describe('radorch program wiring', () => {
     expect(listHelp).toMatch(/Absolute path to the repository root[\s\S]+scanned/);
   }, 30_000);
 
+  it('exposes repo-group subcommands at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\brepo-group\b/);
+    const { stdout: rgHelp } = await node(['repo-group', '--help']);
+    expect(rgHelp).toMatch(/create\s+Create a repo-group/);
+    expect(rgHelp).toMatch(/add\s+Add a registered repo to a repo-group/);
+    expect(rgHelp).toMatch(/remove\s+Remove a repo from a repo-group/);
+    expect(rgHelp).toMatch(/delete\s+Delete a repo-group/);
+    expect(rgHelp).toMatch(/list\s+List all repo-groups/);
+    expect(rgHelp).toMatch(/show\s+Show description and members/);
+    expect(rgHelp).toMatch(/edit\s+Edit a repo-group/);
+    const { stdout: createHelp } = await node(['repo-group', 'create', '--help']);
+    expect(createHelp).toMatch(/--name/);
+    expect(createHelp).toMatch(/--members/);
+  }, 30_000);
+
+  it('exposes session-context in root help and with description in its own --help', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bsession-context\b/);
+    const { stdout: scHelp } = await node(['session-context', '--help']);
+    expect(scHelp).toMatch(/Rendered session preamble/);
+  }, 30_000);
+
   it('exposes pipeline signal at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {

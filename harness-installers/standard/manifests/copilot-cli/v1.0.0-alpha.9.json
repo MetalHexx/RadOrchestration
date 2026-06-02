@@ -205,42 +205,47 @@
     {
       "bundlePath": "agents/brainstormer.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/brainstormer.agent.md",
-      "sha256": "fc9179403dfcceed6e8b2a7db0cedade40846ab781eccafdd68e6cb31d67dddf"
+      "sha256": "ebabd60d59dcb861d34b876d431472494e4a7026451623b6f0f153595fec7b72"
     },
     {
       "bundlePath": "agents/coder-junior.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/coder-junior.agent.md",
-      "sha256": "2ecdc2dce6c1fcf13178ba37994bb9d04fe4f9e9dc7c4ed07b09693a311bdb18"
+      "sha256": "dcd5a47bcee879c9e9bc15dbd43e90a4d43fa17a20bb6b3878755a580c76b11d"
     },
     {
       "bundlePath": "agents/coder-senior.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/coder-senior.agent.md",
-      "sha256": "7df6535f24ced09315d11433364f28ef84ba9574cc7e4554a132c54f362e152f"
+      "sha256": "b0173821c80fe2609dd151da3858da39c73a9b1d98ec8571f918d1050ab0ed4f"
     },
     {
       "bundlePath": "agents/coder.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/coder.agent.md",
-      "sha256": "800f4fdd8970d479b0a359d49884495ead1d76aac3cb21d16bf09ad5543f1d58"
+      "sha256": "99795814aa1aa5c1682c09ce91e1945cd7d3e8dd7c8e42cf36da3ca2605f73af"
     },
     {
       "bundlePath": "agents/orchestrator.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/orchestrator.agent.md",
-      "sha256": "da4f18e8d6b7cb3bc7a6d9eaafd5945bda8ef0480a121757ea9194bfe892856d"
+      "sha256": "b82a3bcffa0cf44dbaed839bfcf95159c5d441ac650bb0b9358c0a6f2ef5809b"
     },
     {
       "bundlePath": "agents/planner.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/planner.agent.md",
-      "sha256": "52b149c0d296c59bec686bb319b1c704afba6fc7cdba6496ca5b28c07d4269ad"
+      "sha256": "cea3c1da27cd5867717ebff6d2cfb1eeab30892e0646e84d3895e7d9b35f8e7d"
     },
     {
       "bundlePath": "agents/reviewer.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/reviewer.agent.md",
-      "sha256": "82357ef6cc525437a6092d49d592fae6dbc1a66994278355c8c4e4ed94089cfe"
+      "sha256": "aba59aeca8ddbc2525a01f424e7c95ad3d4902080c52c9ac6852d39a0eb99027"
     },
     {
       "bundlePath": "agents/source-control.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/source-control.agent.md",
-      "sha256": "e127fc934bc66fd4f7635370e2dd48341fbd8da5c96e873672ccdffde8f2e71f"
+      "sha256": "a69afbbdd2e58b7dbe84bf9c52e2301a027629e9788d860123736f6ccb3f9089"
+    },
+    {
+      "bundlePath": "hooks/session-preamble.mjs",
+      "destinationPath": "${HARNESS_ROOT}/hooks/session-preamble.mjs",
+      "sha256": "c2feb3860e9c77f85c8fc6793ba14d827d0bd608c6f0cd64a611663569ec17cc"
     },
     {
       "bundlePath": "skills/rad-approve-plan/SKILL.md",
@@ -425,7 +430,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "c43d6dca8cac24067ce4a9b7ee5ba2f01195616e6a0da58117b35265b1331cab"
+      "sha256": "e1c600f1c181a5d5c80e8317c10536817a9452cd73f12be84774e5499d83cd60"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
@@ -456,6 +461,26 @@
       "bundlePath": "skills/rad-plan/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan/SKILL.md",
       "sha256": "71e7b7b43242000b382d835407e9af61c90c71ca5d3e0b36aaab8263816c20cb"
+    },
+    {
+      "bundlePath": "skills/rad-repo/SKILL.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/SKILL.md",
+      "sha256": "0816cfabdac6f46235a684fe64f676fdffc47821482636b96b574dabdd3c3d3c"
+    },
+    {
+      "bundlePath": "skills/rad-repo/references/cli-commands.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/cli-commands.md",
+      "sha256": "cf96de940febe6fdcadb9cd55e98a5a41dd7ab34937134af16dd5e5c3b3ae12b"
+    },
+    {
+      "bundlePath": "skills/rad-repo/references/concepts.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/concepts.md",
+      "sha256": "2d9ef43bfbab5ef59fea8acd1abee3e1048e9a24927458b5b0fa68f78fd95c21"
+    },
+    {
+      "bundlePath": "skills/rad-repo/references/interacting-with-users.md",
+      "destinationPath": "${HARNESS_ROOT}/skills/rad-repo/references/interacting-with-users.md",
+      "sha256": "cf432c94e56b14ff9a1c266601184ec8d7612fea81ea0f98d2b0d8208320682d"
     },
     {
       "bundlePath": "skills/rad-run-tests/SKILL.md",

@@ -35,6 +35,20 @@ test('drift-check emits a single stdout line on version mismatch naming both ver
   fs.rmSync(radHome, { recursive: true, force: true });
 });
 
+test('drift-check emits nested hookSpecificOutput.additionalContext on mismatch (VS Code injection contract)', () => {
+  const { pluginRoot, radHome } = makeCase('1.1.0', '1.0.0');
+  const result = spawnSync(process.execPath, [DRIFT_CHECK], {
+    env: { ...process.env, COPILOT_VSCODE_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome }, encoding: 'utf8',
+  });
+  assert.strictEqual(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.strictEqual(parsed.hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.match(parsed.hookSpecificOutput.additionalContext, /1\.0\.0/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /1\.1\.0/);
+  fs.rmSync(pluginRoot, { recursive: true, force: true });
+  fs.rmSync(radHome, { recursive: true, force: true });
+});
+
 test('drift-check is silent on version match and absent install.json (FR-6)', () => {
   const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0');
   const r1 = spawnSync(process.execPath, [DRIFT_CHECK], {

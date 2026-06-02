@@ -4,6 +4,21 @@
 
 ---
 
+## Why multi-repo (the orienting philosophy)
+
+A CLI agent's entire universe is its current working directory — it has no peripheral vision into code that lives elsewhere. Real software work is the opposite: a feature or task is cross-cutting, landing across a backend, a frontend, a shared library, infra. The repository a change lives in is an accident of how a team stores code; the *task* is the unit of intent, and intent spans repos. Single-repo tooling forces intent to conform to storage — so the cross-cutting, high-value work is exactly what it cannot reach.
+
+The registry is a **logical map** that decouples an agent's worldview from how the filesystem happens to be laid out (a parent folder, a monorepo, scattered clones — it no longer matters). It is the foundation every later iteration stands on, so it must be **true** (pointing at real, durable repositories — main clones, never transient worktrees) and **complete** (every entry carrying a real description).
+
+Two forces pull in opposite directions, on purpose:
+
+- **Reach** — descriptions are the *reason to explore*. They turn "a repo exists" into "I should look there for this," and stop an agent from tunnelling on the cwd and missing where the work lands.
+- **Focus** — repo-groups scope attention to the repos relevant to a domain, so an agent isn't dragged through unrelated code.
+
+Blindness (missing relevant repos) and distraction (drowning in irrelevant ones) are the two failure modes; the registry is the dial between them. Everything in this design — ambient awareness, descriptions, repo-groups, the `/rad-repo` skill — exists to give a context-bounded agent a **true, scoped model of a system larger than it can see**. Hold this framing when picking up any iteration.
+
+---
+
 ## Vocabulary
 
 | Term | Definition |
@@ -180,13 +195,14 @@ Worktree **creation** is implicit — it happens during `radorch source-control 
 
 Registration and management are exposed through a single user-facing skill, **`/rad-repo`**, which covers both repos and repo-groups. The skill dispatches to underlying CLI commands; the CLI itself is not surfaced for direct user use today.
 
-**Behavior:**
+**Behavior** (revised 2026-06-01 — supersedes the original "infer-hard" sketch; see the Amendment in the iteration-1 Requirements/Brainstorming):
 
-- Infer-hard, one-confirmation pattern. When a user runs `/rad-repo add C:\REPO-FOLDER`, the skill reads git remote, default branch, and last-segment name from the path; surfaces the inferred values as a proposed registration; asks only on ambiguity. Single confirmation step, then write.
-- Interview only when needed — the skill can prompt for missing fields (e.g., no git remote) but does not run a multi-step wizard for common cases.
-- The skill teaches the agent about the concepts (repo, repo-group, registry files, common operations) and lets natural intent route to the right CLI command. `/rad-repo` with no args surfaces a help-style entry point; `/rad-repo my-frontend` could disambiguate (show / edit / remove).
+- **Worldview-first orientation.** The skill is authored as a briefing — *worldview → posture → toolbox* — not a CLI mirror. It grounds the agent in *why* the registry matters (reach + focus, the philosophy above) before *how* to drive it, across a lean `SKILL.md` plus three references (concepts, CLI commands, interacting-with-users).
+- **Deterministic detection + confirmation, not hard inference.** `repo add` resolves the canonical **main clone** even when pointed at a linked worktree or a subdirectory, derives the slug from the **remote name** (camelCase-split; not the folder basename), and exposes a read-only `--dry-run` reporting the resolved path, slug, and detection (`isWorktree`, `remoteAlreadyRegisteredAs`, …). The skill runs the dry-run, then **interviews** the user to confirm path, slug, and description before writing. Guessing a judgment call — a worktree as the repo, a meaningless slug, an empty description — is treated as worse than asking; the CLI fails loud on ambiguity so the conversation lives in the skill.
+- **Descriptions are required.** `repo add` / `repo-group create` refuse an empty description and `repo edit` refuses to blank one — the description is the load-bearing "reason to explore," so the skill always elicits a real one.
+- The skill teaches the concepts and routes natural intent to the right CLI command. `/rad-repo` with no args surfaces a help-style entry point.
 
-Detailed skill instructions are out of scope for this design.
+This subsection supersedes the earlier "infer-hard, last-path-segment name, one-confirmation" sketch and discharges the **Future Iterations** entry "`/rad-repo` skill scope."
 
 ### Ambient awareness
 

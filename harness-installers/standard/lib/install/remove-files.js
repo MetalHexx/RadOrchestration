@@ -8,6 +8,10 @@
 // FR-20 defensive guard: refuses any manifest entry that targets a path under
 // ${RAD_HOME}/action-events/custom/. The shipped manifest must never list a
 // user-authored custom payload; if one ever appears, abort the uninstall.
+//
+// AD-11: refuses any manifest entry whose resolved basename matches
+// repo-registry.yml or repo-registry.local.yml — registry files survive
+// uninstall unconditionally.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,9 +30,10 @@ export function removeManifestFiles(manifest, harness) {
   let removedCount = 0;
   const dirsTouched = new Set();
 
-  // FR-20 defensive guard: refuse any manifest entry that targets a payload
-  // under action-events/custom/. The shipped manifest must list none; if one
-  // ever appears, abort before touching disk.
+  // FR-20 / AD-11 defensive guard: refuse any manifest entry that targets a
+  // payload under action-events/custom/ or a repo-registry*.yml file. The
+  // shipped manifest must list neither; if one ever appears, abort before
+  // touching disk.
   const customSegment = `${path.sep}action-events${path.sep}custom${path.sep}`;
   for (const entry of manifest.files ?? []) {
     const resolved = expandDestinationTokens(entry.destinationPath, harness);
@@ -36,6 +41,13 @@ export function removeManifestFiles(manifest, harness) {
       throw new Error(
         `uninstall safety: manifest entry '${entry.bundlePath}' targets an action-events/custom/ ` +
         `payload. Refusing to proceed.`,
+      );
+    }
+    // AD-11: registry files are sacred — refuse removal just as install refuses writes.
+    if (/repo-registry(\.local)?\.yml$/.test(path.basename(resolved))) {
+      throw new Error(
+        `uninstall safety: manifest entry '${entry.bundlePath}' targets a ` +
+        `registry file. Refusing to proceed.`,
       );
     }
   }

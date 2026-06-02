@@ -37,6 +37,7 @@ import {
   detectPluginCoexistence,
   isEntryCurrent,
 } from './install-json.js';
+import { mergePreambleHook } from './claude-hook-settings.js';
 
 const STANDARD_CHANNEL = 'standard';
 
@@ -50,7 +51,11 @@ const STANDARD_CHANNEL = 'standard';
  *   sharedRoot?: string,
  *   harness: string,
  *   stderr?: { write(s: string): unknown },
+ *   settingsPath?: string,
  * }} opts
+ *   settingsPath — absolute path to Claude's settings.json (FR-18, AD-10).
+ *                  When absent and harness === 'claude', defaults to
+ *                  ~/.claude/settings.json. Not used for Copilot harnesses.
  * @returns {Promise<{
  *   action: 'fresh-install' | 'upgrade-complete' | 'noop' | 'downgrade-refused',
  *   code: number,
@@ -63,6 +68,8 @@ export async function installHarness(opts) {
   const paths = userDataPaths();
   const sharedRoot = opts.sharedRoot ?? opts.bundleRoot;
   const stderr = opts.stderr ?? process.stderr;
+  // Resolve Claude settings.json path (FR-18, AD-10). Defaults to ~/.claude/settings.json.
+  const settingsPath = opts.settingsPath ?? path.join(harnessRoot('claude'), 'settings.json');
 
   // 1. Resolve delivering version from bundle/package.json.
   const pkgPath = path.join(opts.bundleRoot, 'package.json');
@@ -89,7 +96,7 @@ export async function installHarness(opts) {
   // 5. Action decision (AD-11).
   if (!existingEntry) {
     return doFreshInstall({
-      paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr,
+      paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr, settingsPath,
     });
   }
 
@@ -98,7 +105,7 @@ export async function installHarness(opts) {
     // return the action as 'fresh-install' (no special action name).
     safeWrite(stderr, '[install] sentinel missing — forcing fresh install\n');
     return doFreshInstall({
-      paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr,
+      paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr, settingsPath,
       installedVersion: existingEntry.version,
     });
   }
@@ -148,7 +155,7 @@ export async function installHarness(opts) {
   // 6. Upgrade path.
   return doUpgrade({
     paths, opts, sharedRoot, deliveringVersion, installedVersion,
-    installKey, existingEntry, registry, stderr,
+    installKey, existingEntry, registry, stderr, settingsPath,
   });
 }
 
@@ -157,7 +164,7 @@ export async function installHarness(opts) {
 // ---------------------------------------------------------------------------
 
 function doFreshInstall({
-  paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr,
+  paths, opts, sharedRoot, deliveringVersion, installKey, registry, stderr, settingsPath,
   installedVersion,
 }) {
   // Ensure ~/.radorc/ skeleton exists.
@@ -166,6 +173,14 @@ function doFreshInstall({
   // Copy the delivering manifest's files.
   const newManifest = loadBundledManifest(opts.bundleRoot, opts.harness, deliveringVersion);
   installManifestFiles(newManifest, opts.bundleRoot, opts.harness, { sharedRoot });
+
+  // Preamble hook wiring (FR-18, AD-9, AD-10): merge the marked SessionStart
+  // entry into Claude's settings.json. The shim path is the manifest-dropped
+  // hooks/session-preamble.mjs resolved to its install-time absolute location.
+  if (opts.harness === 'claude') {
+    const shimPath = path.join(harnessRoot('claude'), 'hooks', 'session-preamble.mjs');
+    mergePreambleHook({ settingsPath, hookCommand: `node "${shimPath}"` });
+  }
 
   // Folder mutex + cross-channel emission, best-effort (NFR-4).
   emitPostInstallNotices({ registry, installKey, stderr });
@@ -192,7 +207,7 @@ function doFreshInstall({
 
 function doUpgrade({
   paths, opts, sharedRoot, deliveringVersion, installedVersion,
-  installKey, existingEntry, registry, stderr,
+  installKey, existingEntry, registry, stderr, settingsPath,
 }) {
   fs.mkdirSync(paths.root, { recursive: true });
 
@@ -203,6 +218,13 @@ function doUpgrade({
 
   const newManifest = loadBundledManifest(opts.bundleRoot, opts.harness, deliveringVersion);
   installManifestFiles(newManifest, opts.bundleRoot, opts.harness, { sharedRoot });
+
+  // Preamble hook wiring (FR-18, AD-9, AD-10): merge idempotent — a no-op if
+  // the marker is already present from a prior install.
+  if (opts.harness === 'claude') {
+    const shimPath = path.join(harnessRoot('claude'), 'hooks', 'session-preamble.mjs');
+    mergePreambleHook({ settingsPath, hookCommand: `node "${shimPath}"` });
+  }
 
   emitPostInstallNotices({ registry, installKey, stderr });
 
