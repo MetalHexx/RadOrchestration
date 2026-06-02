@@ -5,7 +5,8 @@
       { "type": "command", "command": "node hooks/launcher.cjs bootstrap.mjs" }
     ],
     "sessionStart": [
-      { "type": "command", "command": "node hooks/launcher.cjs drift-check.mjs" }
+      { "type": "command", "command": "node hooks/launcher.cjs drift-check.mjs" },
+      { "type": "command", "command": "node hooks/launcher.cjs session-preamble.mjs" }
     ]
   }
 }

@@ -23,10 +23,18 @@ function run() {
   const installed = readJsonSafe(path.join(radHome, 'install.json'));
   const installedVersion = installed?.harnesses?.['copilot-cli-plugin']?.version;
   if (installedVersion && installedVersion !== deliveringVersion) {
-    process.stdout.write(
+    const line =
       `[rad-orchestration drift] ~/.radorc/install.json is at version ${installedVersion}. ` +
       `The Copilot CLI plugin's bundled rad-orchestration is at version ${deliveringVersion}. ` +
-      `Recommend running \`copilot plugin update rad-orc\` (or re-running the standard installer) to keep them in sync.\n`,
+      `Recommend running \`copilot plugin update rad-orc\` (or re-running the standard installer) to keep them in sync.`;
+    // Copilot CLI discards a hook's raw stdout — a sessionStart hook must emit a
+    // JSON object with a bare top-level `additionalContext` to inject context
+    // (see docs/research/copilot-cli-hooks.md). COPILOT_CLI=1 is injected by the
+    // CLI at runtime; off-CLI (e.g. tests) we fall back to the raw line.
+    process.stdout.write(
+      process.env.COPILOT_CLI === '1'
+        ? JSON.stringify({ additionalContext: line })
+        : `${line}\n`,
     );
   }
 }

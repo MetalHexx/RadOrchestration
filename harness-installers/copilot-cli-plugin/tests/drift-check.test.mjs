@@ -35,6 +35,20 @@ test('drift-check emits a single stdout line on version mismatch naming both ver
   fs.rmSync(radHome, { recursive: true, force: true });
 });
 
+test('drift-check emits bare-JSON additionalContext under Copilot CLI (COPILOT_CLI=1)', () => {
+  const { pluginRoot, radHome } = makeCase('1.1.0', '1.0.0');
+  const result = spawnSync(process.execPath, [DRIFT_CHECK], {
+    env: { ...process.env, COPILOT_CLI_PLUGIN_ROOT: pluginRoot, RAD_HOME: radHome, COPILOT_CLI: '1' }, encoding: 'utf8',
+  });
+  assert.strictEqual(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.match(parsed.additionalContext, /1\.0\.0/);
+  assert.match(parsed.additionalContext, /1\.1\.0/);
+  assert.match(parsed.additionalContext, /copilot plugin update/);
+  fs.rmSync(pluginRoot, { recursive: true, force: true });
+  fs.rmSync(radHome, { recursive: true, force: true });
+});
+
 test('drift-check is silent on version match', () => {
   const { pluginRoot, radHome } = makeCase('1.0.0', '1.0.0');
   const result = spawnSync(process.execPath, [DRIFT_CHECK], {

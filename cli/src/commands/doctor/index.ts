@@ -5,7 +5,7 @@ import { resolveInstallRoot } from '../../lib/paths.js';
 import { renderBanner } from '../../framework/banner.js';
 import { getCliVersion } from '../../lib/package-version.js';
 import type { CheckResult } from './checks.js';
-import { runEnvironmentChecks, runInstallChecks, runPluginChecks, runToolingChecks } from './checks.js';
+import { runEnvironmentChecks, runInstallChecks, runPluginChecks, runRegistryHealthChecks, runToolingChecks } from './checks.js';
 
 const pkg = { version: getCliVersion() };
 
@@ -58,6 +58,7 @@ export async function runDoctor(opts: { env: NodeJS.ProcessEnv }): Promise<Docto
       iter01Version,
     })),
     ...(await runToolingChecks()),
+    ...(await runRegistryHealthChecks({ root })),
   ];
   const all_passed = !checks.some((c) => c.status === 'fail');
   return { all_passed, checks };

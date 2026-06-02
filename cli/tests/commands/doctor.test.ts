@@ -73,17 +73,18 @@ describe('radorch doctor', () => {
     expect(installCategory.some((c) => c.status === 'fail')).toBe(true);
   });
 
-  it('reports all_passed=true when installed (Environment + Install + Plugin only)', async () => {
+  it('reports all_passed=true when installed (Environment + Install + Plugin + Registry)', async () => {
     const root = path.join(tmp, '.radorc');
     await seedRadorchDir(root);
     const result = await runDoctor({ env: process.env });
-    // Scope to the three categories named in the test title; Tooling depends on
-    // host git/gh state (CI runners are not `gh auth login`-ed) and has its
-    // own hermetic coverage in doctor.tooling.test.ts.
+    // Scope away from Tooling; Tooling depends on host git/gh state (CI runners
+    // are not `gh auth login`-ed) and has its own hermetic coverage in
+    // doctor.tooling.test.ts. Registry warns are allowed (unbound repos when no
+    // registry file present) — only fails block all_passed.
     const scoped = result.checks.filter((c) => c.category !== 'Tooling');
     expect(scoped.every((c) => c.status !== 'fail')).toBe(true); // warns allowed; only fails block
     const categories = [...new Set(result.checks.map((c) => c.category))];
-    expect(categories).not.toContain('Registry');
+    expect(categories).toContain('Registry');
     expect(categories).toContain('Environment');
     expect(categories).toContain('Install');
     expect(categories).toContain('Plugin');

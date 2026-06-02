@@ -144,6 +144,21 @@ export async function runBuild(opts) {
     }
   });
 
+  // Per-harness preamble hook shim staging (FR-18, AD-8, AD-13).
+  // Copies harness-installers/shared/hooks/session-preamble.mjs into each
+  // per-harness output/<harness>/hooks/ tree. For Copilot harnesses the
+  // manifest file-drop places the shim in the auto-discovered hooks directory.
+  // For the Claude harness the shim lands at ~/.claude/hooks/session-preamble.mjs,
+  // which is the absolute path that install-harness.js points the settings entry at.
+  await step('copy-hook-shim', () => {
+    const shimSrc = path.join(greenfield, 'harness-installers/shared/hooks/session-preamble.mjs');
+    for (const h of HARNESSES) {
+      const hooksDir = path.join(out, h, 'hooks');
+      fs.mkdirSync(hooksDir, { recursive: true });
+      fs.copyFileSync(shimSrc, path.join(hooksDir, 'session-preamble.mjs'));
+    }
+  });
+
   // Prune non-runtime artifacts from per-harness scripts trees. Only
   // runtime artifacts (.js, .mjs) survive.
   // Files named `.gitignore` are not kept because npm-packlist hardcodes

@@ -99,6 +99,14 @@ function stageFixture(root) {
   for (const h of HARNESSES) {
     fs.mkdirSync(path.join(installerSrc, 'manifests', h), { recursive: true });
   }
+
+  // harness-installers/shared/hooks/ — source for the copy-hook-shim build step (FR-18).
+  const sharedHooksDir = path.join(root, 'harness-installers/shared/hooks');
+  fs.mkdirSync(sharedHooksDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(sharedHooksDir, 'session-preamble.mjs'),
+    '// session-preamble.mjs shim (fixture)\n',
+  );
 }
 
 /**
