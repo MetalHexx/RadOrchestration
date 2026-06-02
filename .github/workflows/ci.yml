@@ -8,6 +8,25 @@ on:
     branches: [main]
 
 jobs:
+  repo-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies (root workspace)
+        run: npm ci
+
+      - name: Build lib/repo-registry
+        run: npm run build -w @rad-orchestration/repo-registry
+
+      - name: Test lib/repo-registry
+        run: npm test -w @rad-orchestration/repo-registry
+
   adapters:
     runs-on: ubuntu-latest
     steps:

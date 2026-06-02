@@ -5,19 +5,18 @@ on:
   pull_request:
     paths:
       - 'cli/**'
+      - 'lib/repo-registry/**'
       - '.github/workflows/cli.yml'
   push:
     branches: [main]
     paths:
       - 'cli/**'
+      - 'lib/repo-registry/**'
       - '.github/workflows/cli.yml'
 
 jobs:
   cli:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cli
     steps:
       - uses: actions/checkout@v4
 
@@ -26,21 +25,17 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install dependencies (root workspace)
         run: npm ci
 
-      # cli/tsconfig.json includes ../lib/repo-registry/src/**; its `js-yaml`
-      # import resolves against lib/repo-registry/node_modules, so the lib's
-      # deps must be installed for `tsc --noEmit` to type-resolve them.
-      - name: Install repo-registry deps (cli typecheck includes lib sources)
-        working-directory: lib/repo-registry
-        run: npm install
-
       - name: Typecheck (tsc --noEmit)
+        working-directory: cli
         run: npx tsc --noEmit
 
       - name: Lint (ESLint flat config)
+        working-directory: cli
         run: npx eslint .
 
       - name: Test (Vitest full suite)
+        working-directory: cli
         run: npx vitest run
