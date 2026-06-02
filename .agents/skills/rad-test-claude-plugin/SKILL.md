@@ -74,7 +74,7 @@ node harness-installers/claude-plugin/build-scripts/build.js
 
 > Expected: exit 0; `harness-installers/claude-plugin/output/` populated; the build's final `validate` step (from `build-scripts/validate.js`) reports no missing artifacts and the per-version manifest exists.
 >
-> On first run (or any run after `cli/` or `ui/` `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs. The `ui/` install is the largest (~1 min on a cold network).
+> On first run (or any run after `node_modules` was deleted at the root), expect the root `npm install` from Step 2 to run. Expect longer build times on first run; subsequent runs skip the root install. The `ui/` install is the largest (~1 min on a cold network).
 >
 > On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 
