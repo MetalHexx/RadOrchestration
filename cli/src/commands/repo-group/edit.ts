@@ -1,7 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { readRegistry, editGroup } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, editGroup } from '@rad-orchestration/repo-registry';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface GroupEditOptions { root: string; name: string; description?: string }

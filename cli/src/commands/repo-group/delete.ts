@@ -1,7 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { readRegistry, deleteGroup } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, deleteGroup } from '@rad-orchestration/repo-registry';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface GroupDeleteOptions {

@@ -1,4 +1,4 @@
-import { readRegistry, resolveRepoPath } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
 
 export interface RenderPreambleOpts { root: string }
 

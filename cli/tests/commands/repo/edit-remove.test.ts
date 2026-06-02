@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { addRepo, createGroup, readRegistry } from '../../../../lib/repo-registry/src/index.js';
+import { addRepo, createGroup, readRegistry } from '@rad-orchestration/repo-registry';
 import { repoEdit, repoEditCommand } from '../../../src/commands/repo/edit.js';
 import { repoRemove } from '../../../src/commands/repo/remove.js';
 import { runCommand } from '../../../src/framework/command.js';

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { addRepo, writeIdentity } from '../../../../lib/repo-registry/src/index.js';
+import { addRepo, writeIdentity } from '@rad-orchestration/repo-registry';
 import { repoList } from '../../../src/commands/repo/list.js';
 import { repoShow } from '../../../src/commands/repo/show.js';
 

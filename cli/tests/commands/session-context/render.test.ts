@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { addRepo, writeIdentity, createGroup } from '../../../../lib/repo-registry/src/index.js';
+import { addRepo, writeIdentity, createGroup } from '@rad-orchestration/repo-registry';
 import { renderPreamble } from '../../../src/commands/session-context/render.js';
 
 let root: string;

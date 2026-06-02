@@ -9,7 +9,7 @@ import { cmpSemver, readLastWriterVersion } from '../../lib/install-json.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { scanUserLevelHarnesses, type HarnessInstallReport } from '../../lib/cross-harness-scan.js';
 import { getCliVersion } from '../../lib/package-version.js';
-import { readRegistry } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry } from '@rad-orchestration/repo-registry';
 
 const pkg = { version: getCliVersion() };
 
