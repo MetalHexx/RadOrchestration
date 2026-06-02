@@ -56,7 +56,7 @@ if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next.cmd')) -and
 }
 if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild.cmd')) -and
     -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild'))) {
-    npm install --prefix "{repoRoot}"
+  npm install --prefix "{repoRoot}"
 }
 ```
 
