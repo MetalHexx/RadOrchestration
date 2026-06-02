@@ -4,7 +4,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const cliRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const DEEP = 'lib/repo-registry/src/index.js';
 
 function walk(dir: string, acc: string[] = []): string[] {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

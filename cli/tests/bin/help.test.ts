@@ -8,7 +8,7 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 describe('radorch program wiring', () => {
   it('exposes doctor and where subcommands in --help', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const { stdout } = await execP('node', ['dist/cli/src/bin/radorch.js', '--help'], {
+    const { stdout } = await execP('node', ['dist/bin/radorch.js', '--help'], {
       cwd: repoRoot,
       env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
@@ -19,7 +19,7 @@ describe('radorch program wiring', () => {
 
   it('exposes git commit and git pr subcommands at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -37,7 +37,7 @@ describe('radorch program wiring', () => {
 
   it('exposes project context and project find subcommands at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -56,7 +56,7 @@ describe('radorch program wiring', () => {
 
   it('exposes worktree create and worktree launch with per-agent matrix in launch help', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -77,7 +77,7 @@ describe('radorch program wiring', () => {
 
   it('exposes plan explode at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -92,7 +92,7 @@ describe('radorch program wiring', () => {
 
   it('exposes skill list at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -106,7 +106,7 @@ describe('radorch program wiring', () => {
 
   it('exposes repo-group subcommands at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -126,7 +126,7 @@ describe('radorch program wiring', () => {
 
   it('exposes session-context in root help and with description in its own --help', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);
@@ -137,7 +137,7 @@ describe('radorch program wiring', () => {
 
   it('exposes pipeline signal at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/cli/src/bin/radorch.js', ...args], {
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     const { stdout: rootHelp } = await node(['--help']);

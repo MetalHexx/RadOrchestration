@@ -15,7 +15,7 @@ describe('pipeline signal end-to-end via the built bundle', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipe-e2e-'));
     fs.copyFileSync(path.join(TEMPLATES_DIR, 'medium.yml'), path.join(dir, 'template.yml'));
     const { stdout } = await execP('node', [
-      'dist/cli/src/bin/radorch.js', 'pipeline', 'signal',
+      'dist/bin/radorch.js', 'pipeline', 'signal',
       '--event', 'start', '--project-dir', dir, '--template', 'medium',
     ], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1', RADORCH_TEMPLATES_DIR: TEMPLATES_DIR, RADORCH_ACTION_EVENTS_DIR: ACTION_EVENTS_DIR } });
     const env = JSON.parse(stdout);
