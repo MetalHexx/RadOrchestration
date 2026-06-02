@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { readRegistry, writeLocal } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, bindRepo } from '../../../../lib/repo-registry/src/index.js';
 import { type Exec, isInsideWorkTree, getMainWorktreePath, getRemotes, samePath } from '../../lib/repo-identity.js';
 import type { CommandContext } from '../../framework/context.js';
 
@@ -65,8 +65,8 @@ export function repoBind({ root, name, repoPath, exec }: RepoBindOptions): RepoB
     warnings.push('path is not a git working tree');
   }
 
-  reg.localPaths[name] = boundPath;
-  writeLocal({ root, localPaths: reg.localPaths });
+  // Write through the library mutation seam (the UI consumes the same surface).
+  bindRepo({ root, name, localPath: boundPath });
 
   const result: RepoBindResult = { name, repoPath: boundPath, warnings };
   if (!samePath(boundPath, repoPath)) result.resolvedFrom = repoPath;

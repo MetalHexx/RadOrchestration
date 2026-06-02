@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { addRepo } from '../../../../lib/repo-registry/src/index.js';
 import { groupCreate } from '../../../src/commands/repo-group/create.js';
+import { groupEdit } from '../../../src/commands/repo-group/edit.js';
 import { groupAdd, groupRemove } from '../../../src/commands/repo-group/members.js';
 import { groupDelete } from '../../../src/commands/repo-group/delete.js';
 import { groupList, groupShow } from '../../../src/commands/repo-group/list-show.js';
@@ -54,5 +55,24 @@ describe('repo-group', () => {
     groupDelete({ root, name: 'set' });
     expect(() => groupShow({ root, name: 'set' })).toThrow(/not a registered repo-group/i);
     expect(groupList({ root }).groups).toEqual([]);
+  });
+  it('edit changes the group description while leaving members intact', () => {
+    groupCreate({ root, name: 'set', members: ['a', 'b'], description: DESC });
+    const r = groupEdit({ root, name: 'set', description: 'A sharper rationale' });
+    expect(r.description).toBe('A sharper rationale');
+    const shown = groupShow({ root, name: 'set' });
+    expect(shown.description).toBe('A sharper rationale');
+    expect(shown.members).toEqual(['a', 'b']);
+  });
+  it('edit rejects a blank description', () => {
+    groupCreate({ root, name: 'set', members: ['a'], description: DESC });
+    expect(() => groupEdit({ root, name: 'set', description: '   ' })).toThrow(/cannot be empty/i);
+  });
+  it('edit rejects when no description flag is supplied', () => {
+    groupCreate({ root, name: 'set', members: ['a'], description: DESC });
+    expect(() => groupEdit({ root, name: 'set' })).toThrow(/no editable field/i);
+  });
+  it('edit rejects an unknown group', () => {
+    expect(() => groupEdit({ root, name: 'ghost', description: 'x' })).toThrow(/not a registered repo-group/i);
   });
 });

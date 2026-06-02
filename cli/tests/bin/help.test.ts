@@ -118,6 +118,7 @@ describe('radorch program wiring', () => {
     expect(rgHelp).toMatch(/delete\s+Delete a repo-group/);
     expect(rgHelp).toMatch(/list\s+List all repo-groups/);
     expect(rgHelp).toMatch(/show\s+Show description and members/);
+    expect(rgHelp).toMatch(/edit\s+Edit a repo-group/);
     const { stdout: createHelp } = await node(['repo-group', 'create', '--help']);
     expect(createHelp).toMatch(/--name/);
     expect(createHelp).toMatch(/--members/);

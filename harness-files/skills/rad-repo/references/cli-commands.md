@@ -56,6 +56,12 @@ Create a group from member repos (`--description` is required — it is the scop
 node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group create --name <slug> --members <slug1,slug2,...> --description "<what this group scopes>"
 ```
 
+Edit a group's description (the slug cannot be changed; the description cannot be blanked):
+
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" repo-group edit --name <slug> --description "<new scoping rationale>"
+```
+
 Add or remove a member repo:
 
 ```

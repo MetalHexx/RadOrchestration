@@ -21,7 +21,7 @@ A **repo** is a git repository recorded under a short lowercase-kebab slug (e.g.
 
 ## What a repo-group is
 
-A **repo-group** is a named list of repo slugs with its own slug and a **required** description. Groups let a project reference several repositories as one scoping unit instead of enumerating slugs. The description is the *scoping rationale* — what domain this group covers and why. Deleting a group removes only the group record; the member repos stay registered.
+A **repo-group** is a named list of repo slugs with its own slug and a **required** description. Groups let a project reference several repositories as one scoping unit instead of enumerating slugs. The description is the *scoping rationale* — what domain this group covers and why; it is **editable via `repo-group edit`** (parity with a repo's description), though, like a slug, it can never be blanked. The slug itself stays immutable once set. Deleting a group removes only the group record; the member repos stay registered.
 
 ## The two-file model
 

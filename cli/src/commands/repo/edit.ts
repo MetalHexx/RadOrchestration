@@ -1,7 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { readRegistry, writeIdentity } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, editRepo } from '../../../../lib/repo-registry/src/index.js';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface RepoEditOptions {
@@ -21,8 +21,7 @@ export interface RepoEditResult {
 
 export function repoEdit({ root, name, description, remote, defaultBranch }: RepoEditOptions): RepoEditResult {
   const reg = readRegistry({ root });
-  const identity = reg.repos[name];
-  if (!identity) {
+  if (!reg.repos[name]) {
     throw new UserError(`repo '${name}' is not registered`);
   }
   if (description === undefined && remote === undefined && defaultBranch === undefined) {
@@ -32,11 +31,15 @@ export function repoEdit({ root, name, description, remote, defaultBranch }: Rep
   if (description !== undefined && !description.trim()) {
     throw new UserError('--description cannot be empty');
   }
-  if (description !== undefined) identity.description = description.trim();
-  if (remote !== undefined) identity.remote = remote;
-  if (defaultBranch !== undefined) identity.default_branch = defaultBranch;
-  writeIdentity({ root, repos: reg.repos, repoGroups: reg.repoGroups });
-  return { name, description: identity.description, remote: identity.remote, default_branch: identity.default_branch };
+  // Write through the library mutation seam (the UI consumes the same surface).
+  const updated = editRepo({
+    root,
+    name,
+    description: description !== undefined ? description.trim() : undefined,
+    remote,
+    defaultBranch,
+  });
+  return { name, description: updated.description, remote: updated.remote, default_branch: updated.default_branch };
 }
 
 interface Flags { description?: string; remote?: string; 'default-branch'?: string }

@@ -1,5 +1,7 @@
 export { groupCreate, groupCreateCommand } from './create.js';
 export type { GroupCreateOptions, GroupCreateResult } from './create.js';
+export { groupEdit, groupEditCommand } from './edit.js';
+export type { GroupEditOptions, GroupEditResult } from './edit.js';
 export { groupAdd, groupRemove, groupAddCommand, groupRemoveCommand } from './members.js';
 export type { GroupAddOptions, GroupAddResult, GroupRemoveOptions, GroupRemoveResult } from './members.js';
 export { groupDelete, groupDeleteCommand } from './delete.js';

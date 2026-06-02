@@ -9,7 +9,7 @@ import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktre
 import { planExplodeCommand } from './commands/plan/index.js';
 import { skillListCommand } from './commands/skill/index.js';
 import { pipelineSignalCommand } from './commands/pipeline/index.js';
-import { groupCreateCommand, groupAddCommand, groupRemoveCommand, groupDeleteCommand, groupListCommand, groupShowCommand } from './commands/repo-group/index.js';
+import { groupCreateCommand, groupEditCommand, groupAddCommand, groupRemoveCommand, groupDeleteCommand, groupListCommand, groupShowCommand } from './commands/repo-group/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 import { sessionContextCommand } from './commands/session-context/index.js';
 
@@ -219,6 +219,16 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(groupShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  repoGroup
+    .command('edit')
+    .description(groupEditCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(groupEditCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const project = program.command('project').description('Project state read operations');
