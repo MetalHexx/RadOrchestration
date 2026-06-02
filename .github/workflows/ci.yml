@@ -19,7 +19,7 @@ jobs:
           node-version: 24
 
       - name: Install dependencies (root workspace)
-        run: npm ci
+        run: npm install
 
       - name: Build lib/repo-registry
         run: npm run build -w @rad-orchestration/repo-registry

@@ -26,7 +26,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies (root workspace)
-        run: npm ci
+        run: npm install
 
       - name: Typecheck (tsc --noEmit)
         working-directory: cli
