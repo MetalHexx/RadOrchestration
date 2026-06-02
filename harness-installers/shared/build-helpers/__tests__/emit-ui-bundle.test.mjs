@@ -19,9 +19,11 @@ test('emitUiBundle packs standalone, static, public into a tarball and removes .
     // Synthetic .next/ tree that the fake runner pretends to populate, plus
     // a node_modules/ subtree inside standalone/ to mimic Next's standalone
     // bundle output (the loss of this dir at publish is the bug this fix addresses).
+    // With outputFileTracingRoot = repo root, Next emits the app under
+    // standalone/ui/ (the app directory path relative to the repo root).
     const runner = async () => {
-      fs.mkdirSync(join(ui, '.next/standalone'), { recursive: true });
-      fs.writeFileSync(join(ui, '.next/standalone/server.js'), '// server\n');
+      fs.mkdirSync(join(ui, '.next/standalone/ui'), { recursive: true });
+      fs.writeFileSync(join(ui, '.next/standalone/ui/server.js'), '// server\n');
       fs.mkdirSync(join(ui, '.next/standalone/node_modules/next'), { recursive: true });
       fs.writeFileSync(join(ui, '.next/standalone/node_modules/next/package.json'), '{"name":"next"}');
       fs.mkdirSync(join(ui, '.next/static/chunks'), { recursive: true });
@@ -42,9 +44,9 @@ test('emitUiBundle packs standalone, static, public into a tarball and removes .
     const extracted = join(tmpRoot, 'extracted');
     fs.mkdirSync(extracted, { recursive: true });
     await tar.x({ file: target, cwd: extracted });
-    assert.ok(fs.existsSync(join(extracted, 'server.js')), 'standalone server.js roundtripped');
+    assert.ok(fs.existsSync(join(extracted, 'ui/server.js')), 'standalone ui/server.js roundtripped');
     assert.ok(fs.existsSync(join(extracted, 'node_modules/next/package.json')), 'node_modules/ roundtripped');
-    assert.ok(fs.existsSync(join(extracted, '.next/static/chunks/main.js')), '.next/static roundtripped');
+    assert.ok(fs.existsSync(join(extracted, 'ui/.next/static/chunks/main.js')), 'ui/.next/static roundtripped');
     assert.ok(fs.existsSync(join(extracted, 'public/logo.svg')), 'public/ roundtripped');
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });

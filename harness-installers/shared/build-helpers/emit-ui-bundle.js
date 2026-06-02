@@ -6,6 +6,13 @@
 // survives both publish transports. Installers extract the tarball into
 // `~/.radorc/ui/` at install time.
 //
+// Layout note (outputFileTracingRoot = repo root): Next.js emits the standalone
+// app under <source>/.next/standalone/ui/ (the app directory path relative to
+// the repo root), so the staged tarball contains ui/server.js at the nested
+// path. Installers that extract to ~/.radorc/ui/ will find the server entry at
+// ~/.radorc/ui/ui/server.js. The start command must reference ui/server.js
+// relative to the uiDir.
+//
 // Dev workflows (npm run dev inside ui/) remain unaffected — they create
 // .next/ on demand and own it themselves; this helper applies only to
 // installer builds.
@@ -43,7 +50,7 @@ export async function emitUiBundle(opts) {
   }
   const staticSrc = path.join(source, '.next/static');
   if (fs.existsSync(staticSrc)) {
-    fs.cpSync(staticSrc, path.join(staging, '.next/static'), { recursive: true });
+    fs.cpSync(staticSrc, path.join(staging, 'ui/.next/static'), { recursive: true });
   }
   const publicSrc = path.join(source, 'public');
   if (fs.existsSync(publicSrc)) {
