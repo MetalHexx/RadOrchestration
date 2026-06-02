@@ -656,6 +656,11 @@ This design is too large to ship as one project. Practical delivery order, super
 
 1. **Registry foundation** — `repo-registry.yml` + `.local.yml` files, `cli/src/lib/repo-registry/` lib module, `radorch repo` / `radorch repo-group` CLI subcommands (including `bind`), minimal `/rad-repo` skill, session-start hook for ambient awareness. Ships standalone — no project integration yet. Unlocks everything else.
 
+   **Bridge — UI registry management.** Iteration 1 built `lib/repo-registry` as UI-*ready* source but explicitly deferred the build/packaging wiring and any UI consumer ("the library is designed to be UI-consumable; wiring the UI onto it — and any workspace/Next.js build setup — is future work"). Two small, focused follow-on projects discharge that deferred work, in order. They branch off iteration 1 and are **independent of the planning/execution backbone (iterations 2–5)**, which continues unchanged:
+
+   - **MULTI-REPO-1-LIB** — turn `lib/repo-registry` into a properly-built, in-process-consumable package: emit a compiled `dist/` (ESM + `.d.ts`), link it so the Next.js dashboard can import it, and sequence the build so the library is ready before the UI builds — **without changing the CLI** (it keeps compiling the library source as it does today). Pure plumbing; deliberately small blast radius.
+   - **MULTI-REPO-1-UI** — a new **Repositories** view in the radorch dashboard (header nav, between Projects and Process Editor) giving a human operator a **token-free**, no-agent, no-CLI surface for the full registry operation set (repos + repo-groups), with client-side validation. Consumes MULTI-REPO-1-LIB's package **in-process** via API routes. Depends on MULTI-REPO-1-LIB.
+
 2. **Multi-repo planning artifacts** — `/rad-brainstorm` updates + `Repo Targets` section on BRAINSTORMING.md + Requirements / Master Plan frontmatter + per-task `**Target repos:**` + per-repo `**Files for <repo>:**` + explosion-script strict parse + `TaskIterationEntry.repos` state mutation. Users can author multi-repo plans (execution wires up in later iterations).
 
 3. **Worktree + source-control init** — `radorch worktree` CLI, `worktree_name` field, managed-worktree lifecycle, `radorch source-control init` reframed as a real CLI doing the work + state mutation directly. After this, multi-repo projects can be initialized end-to-end on disk.
