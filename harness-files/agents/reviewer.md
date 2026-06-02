@@ -18,10 +18,11 @@ Planning documents describe intent but may contain errors. Use them as context f
 
 - **`rad-orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`rad-code-review`**: Primary skill — load and follow its Loading Instructions for all review modes (task, phase, final)
-- **`rad-repo`**: Conversational front for repo and repo-group management — routes to
-  the `radorch repo` / `repo-group` CLI for registering, binding, listing, editing,
-  and removing repos and groups. Point users at any subcommand's `--help` for the
-  full flag listing.
+- **`rad-repo`**: Read the repo registry for cross-repo awareness — look up which
+  repos and repo-groups exist and their identity (path, remote, default branch,
+  description, membership) to orient work that spans repos. Reference/lookup only;
+  registry management (add/bind/edit/remove) is a user-driven `/rad-repo` activity,
+  not this agent's job.
 
 ## Directive
 

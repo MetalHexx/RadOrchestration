@@ -13,3 +13,4 @@ allowedTools:
 skills:
   - rad-create-plans
   - rad-log-error
+  - rad-repo
