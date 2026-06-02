@@ -6,7 +6,18 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  outputFileTracingRoot: repoRoot,
+  experimental: {
+    outputFileTracingRoot: repoRoot,
+    externalDir: true,
+    serverComponentsExternalPackages: ['@rad-orchestration/repo-registry'],
+    outputFileTracingIncludes: {
+      '/api/registry-smoke': [
+        '../lib/repo-registry/dist/**',
+        '../lib/repo-registry/package.json',
+        '../node_modules/js-yaml/**',
+      ],
+    },
+  },
 };
 
 export default nextConfig;
