@@ -90,9 +90,9 @@ function makeFixture(root) {
 
   // ui/ — emit-ui-bundle's `runner` is stubbed via opts.skipUiRunner. The
   // helper still cpSync's .next/standalone + static; we provide those dirs.
-  fs.mkdirSync(path.join(root, 'ui/.next/standalone'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'ui/.next/standalone/ui'), { recursive: true });
   fs.mkdirSync(path.join(root, 'ui/.next/static'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'ui/.next/standalone/server.js'), '// ui\n');
+  fs.writeFileSync(path.join(root, 'ui/.next/standalone/ui/server.js'), '// ui\n');
 
   // harness-files/agents/ — canonical agents listing for the validate step.
   const canonicalAgentsDir = path.join(root, 'harness-files/agents');
@@ -285,8 +285,8 @@ test('build then install produces correct ~/.radorc/ and ~/.<harness>/ shapes fo
     });
     assert.ok(!fs.existsSync(stalePath),
       'FR-16: prior ui/ contents wiped on re-hydrate (atomic tmp-rename)');
-    assert.ok(fs.existsSync(path.join(rad, 'ui/server.js')),
-      'FR-16: bundle ui/server.js present after re-hydrate');
+    assert.ok(fs.existsSync(path.join(rad, 'ui', 'ui', 'server.js')),
+      'FR-16: bundle ui/ui/server.js present after re-hydrate (nested standalone layout)');
 
     // ---------------------------------------------------------------------
     // NFR-10c: ~/.radorc/projects/ is never written into by manifest copies.

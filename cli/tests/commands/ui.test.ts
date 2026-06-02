@@ -177,4 +177,16 @@ describe('ui start (with mocked spawn)', () => {
     expect(r.pid).toBe(5151);
     expect(r.port).toBe(3000);
   });
+  it('spawns the server entry at the nested ui/server.js path (standalone layout)', async () => {
+    const uiDir = path.join(home, 'fake-ui');
+    const probe = vi.fn().mockResolvedValue(true);
+    const fakeSpawn = vi.fn().mockReturnValue({ pid: 7373, unref: () => {} });
+    await runStart({
+      env: { ...process.env, RADORCH_UI_DIR: uiDir },
+      _probePortFree: probe,
+      _spawn: fakeSpawn as never,
+    });
+    const spawnedServerJs: string = fakeSpawn.mock.calls[0][1][0];
+    expect(spawnedServerJs).toBe(path.join(uiDir, 'ui', 'server.js'));
+  });
 });
