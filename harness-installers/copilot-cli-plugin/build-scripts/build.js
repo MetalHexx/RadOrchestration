@@ -35,26 +35,10 @@ export async function runBuild(opts) {
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(greenfield, 'harness-adapters/output/copilot-cli');
 
-  if (!opts.skipBootstrap) {
-    const BOOTSTRAP_TARGETS = [
-      path.join(greenfield, 'harness-installers/shared/build-helpers'),
-      path.join(greenfield, 'harness-adapters/engine'),
-      path.join(root, 'cli'),
-      path.join(root, 'ui'),
-      // The plugin's own dir — needed so esbuild can resolve `tar` when
-      // bundling hooks/bootstrap.mjs (run-install.js imports tar to extract
-      // the UI tarball at install time).
-      installerDir,
-    ];
-    await step('bootstrap-deps', () => {
-      for (const pkgDir of BOOTSTRAP_TARGETS) {
-        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
-        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
-        process.stderr.write(`[build:copilot-cli-plugin] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
-        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
-      }
-    });
-  }
+  // All dependencies are satisfied by the single root install (hoisted
+  // node_modules). opts.skipBootstrap skips the build-lib-dist step; used by
+  // synthetic fixture/test builds that lack a real workspace package.json and
+  // cannot run the workspace lib build.
 
   if (!opts.skipAdapterEngine) {
     await step('adapter-engine', () => {
@@ -92,6 +76,19 @@ export async function runBuild(opts) {
       { recursive: true, filter },
     );
   });
+
+  // Build the library dist before any step that bundles the CLI or the UI:
+  // the UI's `next build` resolves the by-name import through the workspace
+  // symlink against dist, and the by-name CLI bundle depends on dist too (AD-5).
+  if (!opts.skipBootstrap) {
+    await step('build-lib-dist', () => {
+      execSync('npm run build -w @rad-orchestration/repo-registry', {
+        cwd: root,
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+    });
+  }
 
   await step('emit-cli-bundle', () => emitCliBundle({
     source: path.join(root, 'cli'),

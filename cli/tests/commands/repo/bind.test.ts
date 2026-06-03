@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { repoBind } from '../../../src/commands/repo/bind.js';
-import { writeIdentity } from '../../../../lib/repo-registry/src/index.js';
+import { writeIdentity } from '@rad-orchestration/repo-registry';
 
 let root: string;
 let realDir: string;

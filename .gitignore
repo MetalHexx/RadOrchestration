@@ -1,6 +1,6 @@
 node_modules/
 package-lock.json
-# CI's `npm ci` for the cli subpackage needs a committed lockfile
+# cli keeps a committed lockfile for dependency repeatability
 !cli/package-lock.json
 # Engine needs a committed lockfile for dependency repeatability
 !greenfield/harness-adapters/engine/package-lock.json

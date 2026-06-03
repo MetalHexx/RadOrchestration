@@ -28,7 +28,7 @@ Surface this reminder in your handoff message — do not assume the user remembe
 
 - Node.js and npm installed.
 - Working directory is anywhere inside the repo clone (the skill resolves repo root itself).
-- **A pre-bootstrap step is required on a fresh clone** (see Step 2 below). `build.js` has top-level `import` statements that load from `harness-installers/shared/build-helpers/` — specifically `emit-cli-bundle.js`, `emit-hook-bundle.js`, `emit-ui-bundle.js`, and `expand-tokens.js`. Those modules require `esbuild`, which lives in `build-helpers/node_modules`. On a fresh clone that directory does not exist, so Node rejects the imports before any code in `build.js` runs — including the `bootstrap-deps` step that would otherwise install them. The fix is to run `npm install` in `build-helpers` once, pre-emptively, before invoking the build. The build's own `bootstrap-deps` step then handles the remaining packages during the normal build run.
+- **A single root install is required on a fresh clone** (see Step 2 below). The repo uses npm workspaces; `build.js` and the shared `build-helpers` modules all resolve `esbuild`, `next`, and other executables from the hoisted root `node_modules/.bin`. On a fresh clone that directory does not exist, so the fix is to run `npm install` once at the repo root — this installs all workspace packages and hoists every binary into the root `node_modules/.bin`.
 - The build paths `harness-installers/copilot-cli-plugin/output/` and `harness-installers/copilot-cli-plugin/build-scripts/build.js` must exist (this skill is sequenced last in the iteration and those paths are produced by earlier tasks).
 
 ## Workflow
@@ -41,20 +41,22 @@ git rev-parse --show-toplevel
 
 Use the result as `{repoRoot}` for every subsequent path. The user is on Windows — backslash-separate paths in the handoff message.
 
-### 2. Pre-install build-helpers dependencies (fresh-clone guard)
+### 2. Root install (fresh-clone guard)
 
-Before running the build, check whether `harness-installers/shared/build-helpers/node_modules` exists. If it does not, install it now — this is the only package that must exist before `build.js` is invoked, because `build.js` imports from it at module-load time:
+Before running the build, verify that the root `node_modules` is present and the required executables (`esbuild`, `next`) are hoisted. The repo uses npm workspaces and all binaries resolve from the root `node_modules/.bin` — not from per-package `node_modules/.bin` paths:
 
 ```powershell
-$bhDir = "{repoRoot}\harness-installers\shared\build-helpers"
-if (-not (Test-Path "$bhDir\node_modules")) {
-    npm install --prefix $bhDir
+if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next.cmd')) -and
+    -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\next'))) {
+  npm install --prefix "{repoRoot}"
+}
+if (-not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild.cmd')) -and
+    -not (Test-Path (Join-Path "{repoRoot}" 'node_modules\.bin\esbuild'))) {
+  npm install --prefix "{repoRoot}"
 }
 ```
 
-Expected: `npm install` completes (or is skipped because `node_modules` already exists). If `npm install` fails, stop and report — the build cannot proceed.
-
-The build's own `bootstrap-deps` step will handle the remaining packages during the build run; those do not need pre-installation.
+Expected: `npm install` completes (or is skipped because the root `node_modules` already exists with the required binaries hoisted). If `npm install` fails, stop and report — the build cannot proceed.
 
 ### 3. Build the greenfield Copilot CLI plugin
 
@@ -66,7 +68,7 @@ node harness-installers/copilot-cli-plugin/build-scripts/build.js
 
 > Expected: exit 0; `harness-installers/copilot-cli-plugin/output/` populated; the build's final `validate` step reports no missing artifacts.
 >
-> On first run (or any run after sub-package `node_modules` were deleted), the `bootstrap-deps` step runs `npm install` in those sub-packages. Expect longer build times on first run; subsequent runs skip the installs.
+> On first run (or any run after `node_modules` was deleted at the root), expect the root `npm install` to run. Expect longer build times on first run; subsequent runs skip the root install.
 >
 > On Windows and Linux, `next build` (invoked during `emit-ui-bundle`) emits a non-fatal `Module not found: Can't resolve 'fsevents'` warning. `fsevents` is a macOS-only file-watcher used by `chokidar` (a transitive `next` dependency); the warning is cosmetic and the build completes normally. Ignore unless the build's overall exit code is non-zero.
 

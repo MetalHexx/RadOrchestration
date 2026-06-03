@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
  *
  * This avoids fragile relative-path math from createRequire, which would need
  * different `..` counts depending on whether the file runs from source (e.g.
- * Vitest) or from the compiled `dist/cli/src/...` tree (with `rootDir: "../"`
- * the cli's tsc outputs preserve repo-level relativity).
+ * Vitest) or from the compiled `dist/...` tree (with `rootDir: "./src"`
+ * tsc emits to `cli/dist/` preserving the src-relative layout).
  */
 function findCliPackageJson(): { version: string } {
   let dir = path.dirname(fileURLToPath(import.meta.url));

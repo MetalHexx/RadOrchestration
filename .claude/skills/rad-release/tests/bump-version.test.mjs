@@ -17,6 +17,7 @@ const to = '1.0.0-alpha.10';
 const WRAPPER_JSON_FILES = [
   'cli/package.json',
   'ui/package.json',
+  'lib/repo-registry/package.json',
   'harness-adapters/engine/package.json',
   'harness-installers/standard/package.json',
   'harness-installers/shared/build-helpers/package.json',
@@ -155,6 +156,14 @@ test('bumpVersion renames every per-version manifest catalog and updates interna
     const body = JSON.parse(await fs.promises.readFile(newFile, 'utf8'));
     assert.strictEqual(body.version, to, `manifest ${dir} internal version not bumped`);
   }
+});
+
+test('bumpVersion enrolls the repo-registry library wrapper', async () => {
+  const { WRAPPER_JSON_FILES: inv } = await import('../scripts/bump-version.mjs');
+  assert.ok(
+    inv.includes('lib/repo-registry/package.json'),
+    'repo-registry package.json must be in the bump inventory',
+  );
 });
 
 test('bumpVersion fails loudly when stray copies of the prior version remain', async () => {

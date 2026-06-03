@@ -8,6 +8,38 @@ on:
     branches: [main]
 
 jobs:
+  repo-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies (root workspace)
+        run: npm install
+
+      - name: Build lib/repo-registry
+        run: npm run build -w @rad-orchestration/repo-registry
+
+      - name: Test lib/repo-registry
+        run: npm test -w @rad-orchestration/repo-registry
+
+      - name: Root workspace guard tests (by-name resolution, workspace linkage, CI wiring)
+        run: node --test tests/*.test.mjs
+
+      - name: Build-helper structural tests (tests/)
+        run: node --test harness-installers/shared/build-helpers/tests/*.test.mjs
+
+      - name: Build-helper structural tests (__tests__/)
+        run: node --test harness-installers/shared/build-helpers/__tests__/*.test.mjs
+
+      - name: UI smoke route test (library resolves by-name inside Next app server)
+        working-directory: ui
+        run: node --test --import tsx "app/api/registry-smoke/route.test.ts"
+
   adapters:
     runs-on: ubuntu-latest
     steps:

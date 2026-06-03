@@ -34,12 +34,12 @@ describe('registry mutation seam', () => {
 
   it('the guard catches every binding form and ignores safe imports', () => {
     // Violations — static, CJS, and dynamic binding of a raw writer from the seam.
-    expect(bindsRawWriter(`import { writeIdentity } from '../../../../lib/repo-registry/src/index.js';`)).toBe(true);
+    expect(bindsRawWriter(`import { writeIdentity } from '@rad-orchestration/repo-registry';`)).toBe(true);
     expect(bindsRawWriter(`import { readRegistry, writeLocal } from '@rad-orchestration/repo-registry';`)).toBe(true);
-    expect(bindsRawWriter(`const { ensureLocalGitignored } = require('../../lib/repo-registry/src/index.js');`)).toBe(true);
-    expect(bindsRawWriter(`const { writeLocal } = await import('../../../../lib/repo-registry/src/index.js');`)).toBe(true);
+    expect(bindsRawWriter(`const { ensureLocalGitignored } = require('@rad-orchestration/repo-registry');`)).toBe(true);
+    expect(bindsRawWriter(`const { writeLocal } = await import('@rad-orchestration/repo-registry');`)).toBe(true);
     // Safe — named mutations/reads from the seam, and writers from unrelated modules.
-    expect(bindsRawWriter(`import { readRegistry, editRepo, bindRepo } from '../../../../lib/repo-registry/src/index.js';`)).toBe(false);
+    expect(bindsRawWriter(`import { readRegistry, editRepo, bindRepo } from '@rad-orchestration/repo-registry';`)).toBe(false);
     expect(bindsRawWriter(`import { writeIdentity } from './some-other-module.js';`)).toBe(false);
   });
 });

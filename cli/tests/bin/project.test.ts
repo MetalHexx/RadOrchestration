@@ -9,7 +9,7 @@ const repoRoot = path.resolve(__dirname, '..', '..');
 describe('radorch project subcommands run through the compiled ESM binary', () => {
   it('`project context` exits 0 and returns an envelope without orchRoot', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const { stdout } = await execP('node', ['dist/cli/src/bin/radorch.js', 'project', 'context'], {
+    const { stdout } = await execP('node', ['dist/bin/radorch.js', 'project', 'context'], {
       cwd: repoRoot,
       env: { ...process.env, RADORCH_NO_LOG: '1' },
     });

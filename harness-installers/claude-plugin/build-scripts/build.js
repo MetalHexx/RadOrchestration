@@ -40,35 +40,10 @@ export async function runBuild(opts) {
   const out = path.join(installerDir, 'output');
   const adapterOut = path.join(greenfield, 'harness-adapters/output/claude');
 
-  // Bootstrap missing sub-package node_modules on first run. The build reads
-  // from four sub-packages whose node_modules are owned by the sub-package
-  // (build-helpers needs esbuild; engine needs yaml; cli is the esbuild source
-  // for emit-cli-bundle and needs its own runtime deps resolvable; ui runs
-  // `next build` via emit-ui-bundle and needs next on PATH from ui/node_modules).
-  // Without this, a fresh clone hits ERR_MODULE_NOT_FOUND / `next not recognized`
-  // mid-build, one package at a time. Idempotent (skip when node_modules exists)
-  // and fixture-safe (skip when package.json is absent — synthetic test fixtures
-  // have neither). opt-out for tests that pin their own dep state: opts.skipBootstrap.
-  if (!opts.skipBootstrap) {
-    const BOOTSTRAP_TARGETS = [
-      path.join(greenfield, 'harness-installers/shared/build-helpers'),
-      path.join(greenfield, 'harness-adapters/engine'),
-      path.join(root, 'cli'),
-      path.join(root, 'ui'),
-      // The plugin's own dir — needed so esbuild can resolve `tar` when
-      // bundling hooks/bootstrap.mjs (run-install.js imports tar to extract
-      // the UI tarball at install time).
-      installerDir,
-    ];
-    await step('bootstrap-deps', () => {
-      for (const pkgDir of BOOTSTRAP_TARGETS) {
-        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
-        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
-        process.stderr.write(`[build:claude-plugin] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
-        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
-      }
-    });
-  }
+  // All dependencies are satisfied by the single root install (hoisted
+  // node_modules). opts.skipBootstrap skips the build-lib-dist step; used by
+  // synthetic fixture/test builds that lack a real workspace package.json and
+  // cannot run the workspace lib build.
 
   // Step 0 — adapter engine first. Skipped in unit
   // tests; production end-to-end runs through this branch.
@@ -108,6 +83,19 @@ export async function runBuild(opts) {
       { recursive: true, filter },
     );
   });
+
+  // Build the library dist before any step that bundles the CLI or the UI:
+  // the UI's `next build` resolves the by-name import through the workspace
+  // symlink against dist, and the by-name CLI bundle depends on dist too (AD-5).
+  if (!opts.skipBootstrap) {
+    await step('build-lib-dist', () => {
+      execSync('npm run build -w @rad-orchestration/repo-registry', {
+        cwd: root,
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+    });
+  }
 
   // cli/ lives at the repo root for the duration of iteration 1 per parent
   // design Decision 10 — read from `root`, not from `greenfield`.

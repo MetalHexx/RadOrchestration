@@ -11,9 +11,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-// Shared build-helpers transitively import esbuild at module-load time, and
-// esbuild lives in shared/build-helpers/node_modules which `bootstrap-deps`
-// populates. They are dynamic-imported inside runBuild() after that step.
+// Shared build-helpers are dynamic-imported inside runBuild() so esbuild
+// resolves from the hoisted root node_modules (single root install, AD-3).
 import { emitManifest } from './emit-manifest.js';
 import { validatePackageTree } from './validate.js';
 
@@ -48,7 +47,10 @@ function tokenMapFor(harness) {
  *  `rootDir` is the repo root. `greenfieldRel` (default '.') names
  *  the relative folder under `rootDir` that hosts the new staged subsystems.
  *  Unit tests construct a synthetic fixture without a parent folder,
- *  so they pass `greenfieldRel: '.'` to flatten the layout. */
+ *  so they pass `greenfieldRel: '.'` to flatten the layout.
+ *  `skipBootstrap` skips the `build-lib-dist` step; used by synthetic
+ *  fixture/test builds that lack a real workspace package.json and cannot
+ *  run the workspace lib build. */
 export async function runBuild(opts) {
   const root = path.resolve(opts.rootDir);
   const greenfieldRel = opts.greenfieldRel ?? '.';
@@ -56,27 +58,8 @@ export async function runBuild(opts) {
   const installerDir = path.join(greenfield, 'harness-installers/standard');
   const out = path.join(installerDir, 'output');
 
-  // Bootstrap missing sub-package node_modules on first run. Idempotent and
-  // fixture-safe (skipped when package.json absent). Opt-out via skipBootstrap.
-  if (!opts.skipBootstrap) {
-    const BOOTSTRAP_TARGETS = [
-      path.join(greenfield, 'harness-installers/shared/build-helpers'),
-      path.join(greenfield, 'harness-adapters/engine'),
-      path.join(root, 'cli'),
-      path.join(root, 'ui'),
-    ];
-    await step('bootstrap-deps', () => {
-      for (const pkgDir of BOOTSTRAP_TARGETS) {
-        if (!fs.existsSync(path.join(pkgDir, 'package.json'))) continue;
-        if (fs.existsSync(path.join(pkgDir, 'node_modules'))) continue;
-        process.stderr.write(`[build:standard] bootstrapping ${path.relative(root, pkgDir)} ...\n`);
-        execSync('npm install', { cwd: pkgDir, stdio: 'inherit', shell: process.platform === 'win32' });
-      }
-    });
-  }
-
-  // Shared helpers are dynamic-imported here, after bootstrap-deps, because
-  // emit-cli-bundle top-level-imports esbuild.
+  // Shared helpers are dynamic-imported here; esbuild resolves from the
+  // hoisted root node_modules (single root install).
   const { emitCliBundle } = await import('../../shared/build-helpers/emit-cli-bundle.js');
   const { emitUiBundle } = await import('../../shared/build-helpers/emit-ui-bundle.js');
   const { expandTokens } = await import('../../shared/build-helpers/expand-tokens.js');
@@ -133,6 +116,19 @@ export async function runBuild(opts) {
       fs.cpSync(aeSrc, path.join(out, h, 'action-events'), { recursive: true, filter });
     }
   });
+
+  // Build the library dist before any step that bundles the CLI or the UI:
+  // the UI's `next build` resolves the by-name import through the workspace
+  // symlink against dist, and the by-name CLI bundle depends on dist too (AD-5).
+  if (!opts.skipBootstrap) {
+    await step('build-lib-dist', () => {
+      execSync('npm run build -w @rad-orchestration/repo-registry', {
+        cwd: root,
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+    });
+  }
 
   // Per-harness CLI bundle. cli/ lives at the repo root.
   await step('emit-cli-bundle', async () => {

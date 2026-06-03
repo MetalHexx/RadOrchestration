@@ -3,7 +3,7 @@ import path from 'node:path';
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { addRepo, readRegistry, isSlug } from '../../../../lib/repo-registry/src/index.js';
+import { addRepo, readRegistry, isSlug } from '@rad-orchestration/repo-registry';
 import {
   type Exec,
   slugify,

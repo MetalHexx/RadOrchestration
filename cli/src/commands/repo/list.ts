@@ -1,6 +1,6 @@
 import { defineCommand } from '../../framework/command.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { readRegistry, resolveRepoPath } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface RepoListOptions {

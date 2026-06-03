@@ -60,7 +60,7 @@ export async function runStart(opts: {
   // plugin cache location. RADORCH_UI_DIR is the explicit override for tests.
   const uiDir = opts.env['RADORCH_UI_DIR']
     ?? path.join(resolveInstallRoot(), 'ui');
-  const serverJs = path.join(uiDir, 'server.js');
+  const serverJs = path.join(uiDir, 'ui', 'server.js');
   const spawnFn = opts._spawn ?? defaultSpawn;
   // In plugin mode, ~/.radorc is the canonical workspace and orch root in
   // one. WORKSPACE_ROOT must point at ~/.radorc so the UI can read

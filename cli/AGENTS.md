@@ -39,6 +39,23 @@ When a subcommand's flag matrix depends on a discriminant flag value (e.g., `wor
 - **`harness-installers/shared/build-helpers/emit-cli-bundle.js`** — bundles `cli/src/` into `radorch.mjs` via esbuild. Runs once per harness during the standard installer build (and again during each plugin build).
 - **`harness-installers/standard/manifests/<harness>/v1.0.0-alpha.N.json`** — the standard installer's checked-in manifest. After any addition or deletion under `cli/src/`, the manifest must be regenerated via `npm run build` in `harness-installers/standard/` so the bundled `radorch.mjs` sha256 is current. Manifests are regenerated in place at the current alpha version; no version bump per iteration.
 - **`cli/src/lib/pipeline-engine/`** — the pipeline engine, shared across multiple command surfaces. `commands/pipeline/signal.ts` is the primary consumer; `commands/gate/shared.ts` drives `processEvent` for both `gate approve-plan` and `gate approve-final`. New subcommands should not reach into the engine surface unless they are approving or progressing pipeline state.
+- **`@rad-orchestration/repo-registry` (workspace package, by name)** — the CLI imports the registry library by package name, resolved through the npm workspace symlink at `node_modules/@rad-orchestration/repo-registry`. This is the only sanctioned seam for registry reads and writes. Deep relative imports that reach into `lib/repo-registry/src/` directly are retired and prohibited. The workspace symlink resolves against the library's compiled `dist/` output, so `npm run build -w @rad-orchestration/repo-registry` must run (or have already run) before bundling the CLI.
+
+## Build output layout
+
+`npm run build` (i.e., `tsc`) compiles `cli/src/` into `cli/dist/` with the following top-level layout:
+
+```
+dist/
+  bin/
+    radorch.js          ← process entry point (referenced by package.json "bin")
+  cli.js
+  commands/             ← one sub-folder per noun
+  framework/
+  lib/
+```
+
+The `radorch.mjs` single-file bundle (produced by `emit-cli-bundle` via esbuild) is the shipping artifact — it is NOT the same as `dist/bin/radorch.js`. The `dist/` tree is used locally (via `npm start` / `npm run build-and-start`) and during the standard-installer build to verify that the library's workspace package resolves before bundling. The bundle itself inlines all dependencies (including the repo-registry dist) into a single `.mjs` file shipped to `output/<harness>/skills/rad-orchestration/scripts/radorch.mjs`.
 
 ## Adding a new subcommand — worked walkthrough using `radorch git commit`
 

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { readRegistry, bindRepo } from '../../../../lib/repo-registry/src/index.js';
+import { readRegistry, bindRepo } from '@rad-orchestration/repo-registry';
 import { type Exec, isInsideWorkTree, getMainWorktreePath, getRemotes, samePath } from '../../lib/repo-identity.js';
 import type { CommandContext } from '../../framework/context.js';
 

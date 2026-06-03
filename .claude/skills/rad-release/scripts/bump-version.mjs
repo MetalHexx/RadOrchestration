@@ -20,10 +20,11 @@ import { fileURLToPath } from 'node:url';
 // Carrier inventory
 // -----------------------------------------------------------------------------
 
-// 1. Wrapper package.json files (8) — JSON, in-place `version` bump.
+// 1. Wrapper package.json files (9) — JSON, in-place `version` bump.
 export const WRAPPER_JSON_FILES = [
   'cli/package.json',
   'ui/package.json',
+  'lib/repo-registry/package.json',
   'harness-adapters/engine/package.json',
   'harness-installers/standard/package.json',
   'harness-installers/shared/build-helpers/package.json',

@@ -41,10 +41,31 @@ node example/build.js
 ```
 
 ## Per-module ownership
-- Every module folder (`harness-files/`, `harness-adapters/`, `harness-dogfood/`, each `harness-installers/<variant>/`, `runtime-config/`, `cli/`, `ui/`) owns its own code, tests, and `AGENTS.md`.
+- Every module folder (`harness-files/`, `harness-adapters/`, `harness-dogfood/`, each `harness-installers/<variant>/`, `runtime-config/`, `cli/`, `ui/`, `lib/repo-registry/`) owns its own code, tests, and `AGENTS.md`.
 - Cross-module reach-ins are forbidden. A module does not `require`, import, or read another module's internal files directly.
 - Cross-module sharing happens only through documented seams — the canonical example is `harness-installers/shared/build-helpers/`, which every installer variant consumes as a published-seam package.
 - Read the target module's `AGENTS.md` before touching it; it carries that module's local conventions, build commands, and seam contract.
+
+## Sanctioned cross-package consumption seam: `@rad-orchestration/repo-registry`
+
+The npm workspace package `@rad-orchestration/repo-registry` (at `lib/repo-registry/`) is the sanctioned seam for registry reads and writes. It is consumed by name by both the CLI (`cli/`) and the UI's server-side API routes (`ui/app/api/**`). npm workspaces establish a symlink at `node_modules/@rad-orchestration/repo-registry` pointing to `lib/repo-registry/`; consumers resolve against the package's compiled `dist/` (ESM + `.d.ts`), not raw source.
+
+Rules:
+- Import this library by name (`@rad-orchestration/repo-registry`) only. Deep relative imports that point into `lib/repo-registry/src/` from another module are prohibited.
+- The library's `dist/` must be compiled before any step that bundles the CLI or builds the UI. The standard-installer build (`node harness-installers/standard/build-scripts/build.js`) runs `npm run build -w @rad-orchestration/repo-registry` automatically as the `build-lib-dist` step before `emit-cli-bundle` and `emit-ui-bundle`.
+
+## Build and test validation gates
+
+Four installer/plugin builds and a standalone-trace gate remain enforced manually/locally. Run them in order from the repo root after a root `npm install`:
+
+```
+node harness-installers/standard/build-scripts/build.js
+node harness-installers/claude-plugin/build-scripts/build.js
+node harness-installers/copilot-cli-plugin/build-scripts/build.js
+node harness-installers/copilot-vscode-plugin/build-scripts/build.js
+```
+
+Each must exit 0. The standard build produces its CLI esbuild output and the UI Next standalone; the plugin builders each produce their own CLI bundle. Automated enforcement is provided at the unit level by the CI lib job (which runs `lib/repo-registry` tests); the full installer builds are manual/local gates run before landing changes that touch `lib/repo-registry`, `cli/`, `ui/`, or the shared build-helpers.
 
 ## Reserved Namespace: rad-*
 
@@ -90,6 +111,11 @@ All of these resolve to `node harness-dogfood/build.js` with the appropriate har
 
 This repo is a polyglot monorepo with several test runners. Pick the right one:
 
+- **Root workspace/integration guards** (`tests/`) — Node's built-in test runner. Run from repo root:
+  ```
+  node --test tests/*.test.mjs
+  ```
+  Covers by-name resolution of `@rad-orchestration/repo-registry`, npm workspace linkage, and CI workflow wiring. These also run as part of the `repo-registry` CI job.
 - **CLI bundle and pipeline engine** (`cli/`) — Vitest:
   ```
   cd cli && npm test                              # full suite
@@ -176,6 +202,7 @@ The canonical sources at `harness-files/agents/` and `harness-files/skills/` are
 - `ui/` — Next.js dashboard (committed)
 - `prompt-tests/` — operator-driven planner regression harness (committed)
 - `harness-files/tests/` — repo-wide cross-cutting tests (e.g., reserved-namespace, agent-skill ref integrity) (committed)
+- `tests/` — root-level workspace/integration guard tests: by-name resolution of `@rad-orchestration/repo-registry`, npm workspace linkage, and CI workflow wiring assertions (committed)
 - `docs/` — user-facing docs; `docs/internals/` for refactor design notes (committed)
 - `.agents/` — non-production / dev-only skills and prompts (e.g., `rad-create-skill` scaffolding) (committed)
 - `.githooks/`, `.github/` — git and CI configuration (committed)

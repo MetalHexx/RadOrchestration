@@ -30,10 +30,10 @@ const pkg = require('../package.json');
 const VERSION = pkg.version;
 
 // The cli source uses a runtime walk (lib/package-version.ts → getCliVersion())
-// because the post-rootDir-widening tsc output sits deeper in dist/ than before,
-// breaking the old createRequire-relative path math. At bundle time we replace
+// because the narrowed rootDir tsc output sits at dist/ (not deeper), but the
+// walk keeps the bundle entry-point resolution clean. At bundle time we replace
 // that walk with the inlined version so the bundle is fully self-contained.
-const PKG_VERSION_FILE_SUFFIX = path.join('dist', 'cli', 'src', 'lib', 'package-version.js');
+const PKG_VERSION_FILE_SUFFIX = path.join('dist', 'lib', 'package-version.js');
 
 // Plugin: inline cli version in the package-version module so the bundled
 // radorch.mjs never needs to fs-walk for cli/package.json at runtime.
@@ -58,7 +58,7 @@ const require = __cjsRequireHelper(import.meta.url);
 `;
 
 await build({
-  entryPoints: [path.join(cliRoot, 'dist', 'cli', 'src', 'bin', 'radorch.js')],
+  entryPoints: [path.join(cliRoot, 'dist', 'bin', 'radorch.js')],
   bundle: true,
   platform: 'node',
   format: 'esm',

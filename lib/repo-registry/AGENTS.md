@@ -65,6 +65,20 @@ import { readRegistry, writeIdentity, writeLocal, ensureLocalGitignored,
 
 **Mutation seam (hard rule).** Every semantic write is a named mutation here. The raw `writeIdentity` / `writeLocal` writers are low-level building blocks for *these* mutations and for test fixtures — consumer/command code must never call them directly. See `cli/AGENTS.md` and the `registry-mutation-seam` enforcement test.
 
+## Build and distribution
+
+```
+npm run build
+```
+
+This runs `tsc` and emits a compiled ESM `dist/` tree — `dist/index.js` (the module entry) plus `.d.ts` type declarations for every public export. The `package.json` `exports` map resolves `@rad-orchestration/repo-registry` to `dist/index.js` (runtime) and `dist/index.d.ts` (types).
+
+**Workspace consumption.** The root `package.json` declares this package as a workspace entry (`lib/repo-registry`). After a root `npm install`, npm creates a symlink at `node_modules/@rad-orchestration/repo-registry` pointing here. Consumers — the CLI (`cli/`) and the UI (`ui/`) — import this library by name (`@rad-orchestration/repo-registry`) and resolve against the compiled `dist/` through that symlink. Neither consumer imports raw source directly.
+
+**Frozen API surface.** The public exports listed in the `Public API` table above are the complete and frozen surface. New functions may be added through the normal PR process; existing signatures must not change in a breaking way without a coordinated version bump across all consumers.
+
+**Mutation seam.** The `writeIdentity` / `writeLocal` / `ensureLocalGitignored` low-level writers are intentionally excluded from consumer/command code. All semantic writes go through the named mutations (`addRepo`, `editRepo`, `removeRepo`, etc.). The `registry-mutation-seam` enforcement test in `cli/tests/lib/` catches direct low-level calls from CLI command code.
+
 ## Running tests
 
 ```

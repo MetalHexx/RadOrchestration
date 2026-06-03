@@ -1,6 +1,17 @@
 {
   "name": "rad-orchestration-monorepo",
   "private": true,
+  "workspaces": [
+    "lib/repo-registry",
+    "cli",
+    "ui",
+    "harness-adapters/engine",
+    "harness-installers/shared/build-helpers",
+    "harness-installers/standard",
+    "harness-installers/claude-plugin",
+    "harness-installers/copilot-cli-plugin",
+    "harness-installers/copilot-vscode-plugin"
+  ],
   "type": "module",
   "description": "Repo-root build scripts for the multi-harness adapter build loop.",
   "scripts": {
