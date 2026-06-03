@@ -7,11 +7,16 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(_req: Request, { params }: { params: { slug: string } }) {
-  const reg = readRegistry({ root: getRegistryRoot() });
-  if (!(params.slug in reg.repos)) {
-    return NextResponse.json(
-      { error: { code: 'NOT_FOUND', message: `Repo '${params.slug}' was not found.`, field: 'slug' } },
-      { status: 404 });
+  try {
+    const reg = readRegistry({ root: getRegistryRoot() });
+    if (!(params.slug in reg.repos)) {
+      return NextResponse.json(
+        { error: { code: 'NOT_FOUND', message: `Repo '${params.slug}' was not found.`, field: 'slug' } },
+        { status: 404 });
+    }
+    return NextResponse.json(computeRepo(reg, params.slug), { status: 200 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    return NextResponse.json({ error: { code: 'INTERNAL', message, field: '' } }, { status: 500 });
   }
-  return NextResponse.json(computeRepo(reg, params.slug), { status: 200 });
 }
