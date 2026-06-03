@@ -29,3 +29,12 @@ test('detail mode renders staged tags via rowStatus; create mode does not (FR-13
 test('staged colors are token-driven, no hardcoded hex (NFR-2)', () => {
   assert.doesNotMatch(src, /#[0-9a-fA-F]{3,8}/);
 });
+
+test('group container exposes accessible name via aria-label; ariaLabel prop is forwarded with default fallback (NFR-5)', () => {
+  // Props interface must include ariaLabel
+  assert.match(src, /ariaLabel\??\s*:\s*string/);
+  // group container must have aria-label attribute
+  assert.match(src, /aria-label=/);
+  // fallback default must be present in source
+  assert.match(src, /Membership selection/);
+});

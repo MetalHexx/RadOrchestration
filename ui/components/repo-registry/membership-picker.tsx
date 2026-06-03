@@ -17,11 +17,12 @@ interface Props {
   checked: Set<string>;
   mode: 'detail' | 'create';
   onToggle: (slug: string) => void;
+  ariaLabel?: string;
 }
 
-export function MembershipPicker({ entityType, options, saved, checked, mode, onToggle }: Props) {
+export function MembershipPicker({ entityType, options, saved, checked, mode, onToggle, ariaLabel }: Props) {
   return (
-    <div className="mt-1 overflow-hidden rounded-lg border" role="group">
+    <div className="mt-1 overflow-hidden rounded-lg border" role="group" aria-label={ariaLabel ?? 'Membership selection'}>
       {options.map(opt => {
         const status = rowStatus(opt.slug, saved, checked, mode);
         const isChecked = checked.has(opt.slug);
