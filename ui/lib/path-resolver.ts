@@ -5,6 +5,7 @@ function radorchHome(): string {
   return path.join(os.homedir(), '.radorc');
 }
 export function getProjectsRoot(): string { return path.join(radorchHome(), 'projects'); }
+export function getRegistryRoot(): string { return radorchHome(); }
 export function getTemplatesRoot(): string { return path.join(radorchHome(), 'templates'); }
 export function getOrchestrationYmlPath(): string { return path.join(radorchHome(), 'orchestration.yml'); }
 export function resolveProjectDir(name: string): string { return path.join(getProjectsRoot(), name); }
