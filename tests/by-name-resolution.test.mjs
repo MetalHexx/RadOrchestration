@@ -10,7 +10,14 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const require = createRequire(path.join(repoRoot, 'package.json'));
 
 before(() => {
-  execSync('npm install', { cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32' });
+  // Only install when the workspace linkage is missing (e.g. a bare checkout).
+  // CI and local dev have already run a root install, so re-running a networked
+  // install here would be redundant and a source of flakiness. The lib dist is
+  // always rebuilt so the by-name resolution checks run against fresh output.
+  const symlink = path.join(repoRoot, 'node_modules/@rad-orchestration/repo-registry');
+  if (!fs.existsSync(symlink)) {
+    execSync('npm install', { cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32' });
+  }
   execSync('npm run build -w @rad-orchestration/repo-registry', { cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32' });
 });
 
