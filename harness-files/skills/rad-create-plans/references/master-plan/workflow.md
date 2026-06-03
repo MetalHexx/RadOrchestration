@@ -160,6 +160,7 @@ becomes task-local and action-oriented.
    {≤3 sentence phase description.}
 
    **Requirements:** FR-1, FR-3, AD-2, DD-1
+   **Target repos:** backend, frontend
 
    **Execution order:**
        T01 → T02
@@ -175,6 +176,7 @@ becomes task-local and action-oriented.
    - Phase description: lead with what the phase delivers as a whole — the capability or system state that exists when all tasks complete. No task enumeration or file lists.
    - The `**Requirements:**` line on the phase heading lists the union of
      requirement IDs its tasks address.
+   - The `**Target repos:**` line on the phase heading is the union of the target repos of that phase's tasks, mirroring the placement and plural-form convention of the `**Requirements:**` line. (FR-8, DD-3, AD-4)
    - The execution-order block is an ASCII dependency tree. Use indentation,
      `→`, and parenthetical dependency notes. One block per phase.
 
@@ -251,6 +253,14 @@ becomes task-local and action-oriented.
      steps, inline in the description for write steps). This is the YAGNI
      gate — a step that doesn't trace to a requirement shouldn't exist.
 
+7a. **Repo nesting invariants (planner self-check).** These are guidance,
+    not machine-enforced — verify them by hand before saving:
+    - Each task's `**Target repos:**` ⊆ the frontmatter `repos:` seal.
+    - Each phase's `**Target repos:**` = the union of its tasks' target repos.
+    - The frontmatter `repos:` seal = the union of all tasks' target repos.
+    The seal is derived bottom-up from the tasks, not declared top-down.
+    Cross-check the frontmatter against the body before saving.
+
 8. Run a structural lint pass on your own authored text before saving:
    - Every `### {ID}:` task heading matches `### P\d{2}-T\d{2}:`.
    - Every task block carries a `**Task type:**` line.
@@ -259,6 +269,9 @@ becomes task-local and action-oriented.
    - No `TBD`, `TODO`, `FIXME`, `implement later`, `similar to` strings
      appear anywhere in the body.
    - Every requirement ID cited by any task exists in the Requirements doc.
+   - Every `### P\d{2}-T\d{2}:` task carries a `**Target repos:**` line and at least one matching `**Files for <repo>:**` subsection.
+   - Every `## P\d{2}:` phase carries a `**Target repos:**` union line equal to the union of its tasks' target repos.
+   - The frontmatter `repos:` seal equals the union of all tasks' `**Target repos:**`.
    - The frontmatter `repos:` seal is consistent with the body's target repos: it equals the union of every task's `**Target repos:**` value, and no body target-repos value falls outside the seal.
 
 9. Save to `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`.
