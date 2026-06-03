@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs';
 import { isSlug } from '@rad-orchestration/repo-registry';
 import type { Registry } from '@rad-orchestration/repo-registry';
-import { RegistryError } from './errors.js';
+import { RegistryError } from '@/lib/registry/errors';
 
 export function validateSlug(slug: string): void {
   if (!isSlug(slug)) {
