@@ -13,12 +13,14 @@ import { GroupDetailPane } from '@/components/repo-registry/group-detail-pane';
 import { AddRepoDrawer } from '@/components/repo-registry/add-repo-drawer';
 import { AddGroupDrawer } from '@/components/repo-registry/add-group-drawer';
 import { useRegistryLive } from '@/components/repo-registry/use-registry-live';
+import { useNavGuard, UnsavedChangesDialog } from '@/components/repo-registry/use-nav-guard';
 
 export default function RepoRegistryPage() {
   const { store, isLoading, refetch, upsertRepo, removeRepo, upsertGroup, removeGroup } = useRegistryStore();
   const [selected, setSelected] = useState<RailSelection | null>(null);
   const [drawer, setDrawer] = useState<'add-repo' | 'add-group' | null>(null);
   const [paneDirty, setPaneDirty] = useState(false);
+  const { open, guard, onConfirm, onCancel } = useNavGuard();
 
   useRegistryLive({ dirty: paneDirty, onRefetch: refetch });
 
@@ -26,16 +28,15 @@ export default function RepoRegistryPage() {
   const isEmpty = store.repos.length === 0 && store.repoGroups.length === 0;
 
   function handleSelect(kind: 'repo' | 'group', slug: string) {
-    setSelected({ kind, slug });
-    setPaneDirty(false);
+    guard(paneDirty, () => { setSelected({ kind, slug }); setPaneDirty(false); });
   }
 
   function handleAddRepo() {
-    setDrawer('add-repo');
+    guard(paneDirty, () => setDrawer('add-repo'));
   }
 
   function handleAddGroup() {
-    setDrawer('add-group');
+    guard(paneDirty, () => setDrawer('add-group'));
   }
 
   return (
@@ -98,6 +99,7 @@ export default function RepoRegistryPage() {
         onCreated={upsertGroup}
         onSelect={handleSelect}
       />
+      <UnsavedChangesDialog open={open} onConfirm={onConfirm} onCancel={onCancel} />
     </div>
   );
 }

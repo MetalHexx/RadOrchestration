@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +30,7 @@ interface Props {
 }
 
 export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDeselect, onDirtyChange }: Props) {
-  const baseline = groupDraftFrom(group);
+  const baseline = useMemo(() => groupDraftFrom(group), [group]);
   const { draft, setDraft, reset, dirty } = useDirtyBatch<GroupDraft>(baseline);
 
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);

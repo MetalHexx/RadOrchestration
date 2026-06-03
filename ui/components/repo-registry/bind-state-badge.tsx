@@ -11,7 +11,7 @@ export function BindStateBadge({ state }: { state: BindState }) {
       className="gap-1.5"
       style={{ color: `var(${entry.cssVar})`, borderColor: `var(${entry.cssVar})` }}
     >
-      <BindStateDot state={state} />
+      <BindStateDot state={state} decorative />
       {entry.label}
     </Badge>
   );

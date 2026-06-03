@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,7 @@ import {
   DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
-import type { RepoRead, ApiError } from './types';
-import { classifyError } from './registry-requests';
-import { buildRepoSaveBody } from './registry-requests';
+import { classifyError, buildRepoSaveBody } from './registry-requests';
 import { useDirtyBatch } from './use-dirty-batch';
 import { EntityHeader } from './entity-header';
 import { EditableCard } from './editable-card';
@@ -22,7 +20,7 @@ import { LocalPathCard } from './local-path-card';
 import { MembershipPicker } from './membership-picker';
 import { SaveBar } from './save-bar';
 import { repoDraftFrom, validateRepoDraft, type RepoDraft } from './repo-save-flow';
-import type { RepoGroupRead } from './types';
+import type { RepoRead, RepoGroupRead, ApiError } from './types';
 
 interface Props {
   repo: RepoRead;
@@ -34,7 +32,7 @@ interface Props {
 }
 
 export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselect, onDirtyChange }: Props) {
-  const baseline = repoDraftFrom(repo);
+  const baseline = useMemo(() => repoDraftFrom(repo), [repo]);
   const { draft, setDraft, reset, dirty } = useDirtyBatch<RepoDraft>(baseline);
 
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);

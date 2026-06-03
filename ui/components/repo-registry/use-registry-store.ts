@@ -9,16 +9,26 @@ import {
 export function useRegistryStore() {
   const [store, setStore] = useState<RegistryStore>({ repos: [], repoGroups: [] });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
-    const res = await fetch('/api/registry', { cache: 'no-store' });
-    if (res.ok) setStore(hydrate((await res.json()) as RegistrySnapshot));
+    try {
+      const res = await fetch('/api/registry', { cache: 'no-store' });
+      if (res.ok) {
+        setStore(hydrate((await res.json()) as RegistrySnapshot));
+        setError(null);
+      } else {
+        setError(`Failed to load registry (${res.status})`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load registry');
+    }
   }, []);
 
   useEffect(() => { void refetch().finally(() => setIsLoading(false)); }, [refetch]);
 
   return {
-    store, isLoading, refetch, setStore,
+    store, isLoading, error, refetch, setStore,
     upsertRepo: (r: Parameters<typeof up>[1]) => setStore(s => up(s, r)),
     removeRepo: (slug: string) => setStore(s => rr(s, slug)),
     upsertGroup: (g: Parameters<typeof ug>[1]) => setStore(s => ug(s, g)),

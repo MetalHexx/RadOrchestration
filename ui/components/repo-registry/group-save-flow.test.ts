@@ -28,3 +28,8 @@ test('pane saves via PUT, reconciles, deletes via DELETE with "repos stay" copy 
   assert.match(pane, /repos stay|member repos.*stay/i);
   assert.match(pane, /upsertGroup|removeGroup/);
 });
+
+test('pane memoizes the draft baseline keyed on the group prop (P07 F-21)', () => {
+  assert.match(pane, /useMemo/);
+  assert.match(pane, /const baseline = useMemo\(\s*\(\)\s*=>\s*groupDraftFrom\(group\),\s*\[group\]\s*\)/);
+});

@@ -90,3 +90,32 @@ test('page tracks paneDirty state and passes onDirtyChange to detail panes (FR-2
   assert.match(page, /paneDirty/);
   assert.match(page, /onDirtyChange/);
 });
+
+// --- Nav-away unsaved-changes guard assertions (FR-26) ---
+
+test('page imports useNavGuard and UnsavedChangesDialog from the nav-guard module (FR-26)', () => {
+  assert.match(page, /import\s*\{[^}]*useNavGuard[^}]*\}\s*from\s*['"][^'"]*use-nav-guard['"]/);
+  assert.match(page, /import\s*\{[^}]*UnsavedChangesDialog[^}]*\}\s*from\s*['"][^'"]*use-nav-guard['"]/);
+});
+
+test('page wires up the nav guard via useNavGuard (FR-26)', () => {
+  assert.match(page, /useNavGuard\s*\(\s*\)/);
+});
+
+test('all three nav-away handlers route through guard(paneDirty, ...) (FR-26)', () => {
+  // handleSelect must guard the intent
+  assert.match(page, /function handleSelect[\s\S]*?guard\(paneDirty/);
+  // handleAddRepo must guard the intent
+  assert.match(page, /function handleAddRepo[\s\S]*?guard\(paneDirty/);
+  // handleAddGroup must guard the intent
+  assert.match(page, /function handleAddGroup[\s\S]*?guard\(paneDirty/);
+  // The clean nav-away handlers no longer call setSelected/setDrawer directly without guarding
+  assert.match(page, /guard\(/);
+});
+
+test('page renders the UnsavedChangesDialog wired to the guard state (FR-26)', () => {
+  assert.match(page, /<UnsavedChangesDialog/);
+  assert.match(page, /open=\{open\}/);
+  assert.match(page, /onConfirm=\{onConfirm\}/);
+  assert.match(page, /onCancel=\{onCancel\}/);
+});

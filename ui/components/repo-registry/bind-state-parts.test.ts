@@ -20,6 +20,23 @@ test('badge renders dot + word from the map (DD-1)', () => {
   assert.match(badge, /\.label/);
 });
 
+test('standalone dot keeps its aria-label for screen readers (P02 F-15)', () => {
+  // Default/non-decorative usage still emits aria-label from the map entry
+  assert.match(dot, /aria-label['"]?\s*:\s*entry\.label|aria-label.*entry\.label/);
+});
+
+test('dot accepts a decorative prop that hides it from screen readers (P02 F-15)', () => {
+  // The component exposes a decorative flag
+  assert.match(dot, /decorative/);
+  // Decorative mode sets aria-hidden and omits aria-label (no double-announcement)
+  assert.match(dot, /aria-hidden/);
+});
+
+test('badge embeds the dot as decorative to avoid double-announcing the state (P02 F-15)', () => {
+  // The badge renders the label as visible text, so the embedded dot must be decorative
+  assert.match(badge, /<BindStateDot[^>]*\bdecorative\b/);
+});
+
 test('entity header carries kind prefix + slug and picks glyph by kind (DD-3)', () => {
   assert.match(header, /GitBranch/);
   assert.match(header, /Layers/);

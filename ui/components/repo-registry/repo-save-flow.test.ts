@@ -56,3 +56,23 @@ test('handleRemove has a non-OK branch that surfaces the DELETE error via setFor
   // Pattern: removeRepo ... onDeselect ... } else { ... setFormError
   assert.match(pane, /removeRepo[\s\S]{0,200}onDeselect[\s\S]{0,200}\}\s*else[\s\S]{0,200}setFormError/);
 });
+
+test('pane imports classifyError and buildRepoSaveBody from a single ./registry-requests statement (P06 F-20)', () => {
+  // Combined single import — both symbols in one statement
+  assert.match(pane, /import\s*\{[^}]*classifyError[^}]*buildRepoSaveBody[^}]*\}\s*from\s*['"]\.\/registry-requests['"]/);
+  // No more than one import from ./registry-requests
+  const reqImports = pane.match(/from\s*['"]\.\/registry-requests['"]/g) ?? [];
+  assert.strictEqual(reqImports.length, 1);
+});
+
+test('pane consolidates RepoRead, RepoGroupRead, ApiError into one ./types import (P06 F-20)', () => {
+  assert.match(pane, /import\s+type\s*\{[^}]*RepoRead[^}]*RepoGroupRead[^}]*ApiError[^}]*\}\s*from\s*['"]\.\/types['"]/);
+  // Only a single import from ./types
+  const typeImports = pane.match(/from\s*['"]\.\/types['"]/g) ?? [];
+  assert.strictEqual(typeImports.length, 1);
+});
+
+test('pane memoizes the draft baseline keyed on the repo prop (P07 F-21)', () => {
+  assert.match(pane, /useMemo/);
+  assert.match(pane, /const baseline = useMemo\(\s*\(\)\s*=>\s*repoDraftFrom\(repo\),\s*\[repo\]\s*\)/);
+});
