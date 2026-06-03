@@ -52,6 +52,15 @@ prompt says, no more.
     rules, or error-handling patterns the eligible skill defines.
     Absence of the section means no eligible repo skills exist; proceed normally.
 
+1c. When no brainstorming doc is present, invoke the `/rad-repo` skill to read the
+    registry and infer the affected repos from the orchestrator prompt and codebase
+    discovery — a planner runs as a subagent and does not receive the session-start
+    ambient registry block, so the registry must be read explicitly. Record the
+    inferred set in the `repos:` frontmatter. When a brainstorm IS present, restate
+    (and may refine) its `## Repo Targets (proposed)` set instead. Cross-reference:
+    this fallback keeps the iteration self-contained per NFR-2's author-boundary
+    scope. (FR-6, NFR-2)
+
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:
    - FR-1, FR-2, ... (functional requirements — what the system does, capabilities, behaviors, features, etc.)
@@ -105,6 +114,8 @@ type: requirements
 status: "draft"
 approved_at: null
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name   # optional, provenance only
 requirement_count: {N}
 author: "planner-agent"
 ---
@@ -113,6 +124,8 @@ author: "planner-agent"
 - `status`: `draft` | `approved` | `frozen`. Always `draft` at authoring time.
 - `approved_at`: `null` at authoring time. Set to `"{ISO-DATE-TIME}"` when a
   human gate approves the doc.
+- `repos`: list of registry repo names — a **non-authoritative restate** the planner may refine from the brainstorm's proposed set. Requirement *bodies* stay repo-agnostic; the repo set lives only in frontmatter.
+- `repo-group`: optional registry repo-group name carried for provenance only.
 - `requirement_count`: total of FR + NFR + AD + DD blocks in the body.
 - `author`: exactly `"planner-agent"`.
 
