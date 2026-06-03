@@ -59,30 +59,37 @@ test('validateUniqueName throws NAME_TAKEN across both namespaces (AD-4, AD-5)',
   assert.doesNotThrow(() => validateUniqueName(reg as never, 'baz'));
 });
 
-test('normalizeRemote strips trailing .git and prefers https (AD-4)', () => {
-  // scheme-less host/owner/repo → https, with/without .git
-  assert.equal(normalizeRemote('github.com/a/b.git'), 'https://github.com/a/b');
-  assert.equal(normalizeRemote('github.com/a/b'), 'https://github.com/a/b');
-});
-
-test('normalizeRemote coerces SSH shorthand to https (AD-4)', () => {
+// normalizeRemote MIRRORS the canonical CLI normalizer in
+// cli/src/lib/repo-identity.ts: trim, strip a trailing `.git`, convert SSH
+// shorthand to https, and leave every other form unchanged (no http→https,
+// ssh→https, or scheme-less→https coercion). These tests pin that canonical
+// behavior so the CLI and the API normalize the same remote identically.
+test('normalizeRemote converts SSH shorthand to https (AD-4)', () => {
   assert.equal(normalizeRemote('git@github.com:acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
   assert.equal(normalizeRemote('git@github.com:acme/checkout-api'), 'https://github.com/acme/checkout-api');
 });
 
-test('normalizeRemote coerces ssh:// URLs to https (AD-4)', () => {
-  assert.equal(normalizeRemote('ssh://git@github.com/acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
-  assert.equal(normalizeRemote('ssh://git@github.com/acme/checkout-api'), 'https://github.com/acme/checkout-api');
-});
-
-test('normalizeRemote coerces http:// to https (AD-4)', () => {
-  assert.equal(normalizeRemote('http://github.com/acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
-  assert.equal(normalizeRemote('http://github.com/acme/checkout-api'), 'https://github.com/acme/checkout-api');
-});
-
-test('normalizeRemote leaves https form intact except stripping .git (AD-4)', () => {
+test('normalizeRemote strips a trailing .git from https form (AD-4)', () => {
   assert.equal(normalizeRemote('https://github.com/acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
   assert.equal(normalizeRemote('https://github.com/acme/checkout-api'), 'https://github.com/acme/checkout-api');
+});
+
+test('normalizeRemote leaves scheme-less form unchanged except stripping .git (AD-4)', () => {
+  // Canonical CLI behavior: scheme-less stays scheme-less — NOT coerced to https.
+  assert.equal(normalizeRemote('github.com/a/b.git'), 'github.com/a/b');
+  assert.equal(normalizeRemote('github.com/a/b'), 'github.com/a/b');
+});
+
+test('normalizeRemote leaves http:// form unchanged (AD-4)', () => {
+  // Canonical CLI behavior: http:// is NOT coerced to https.
+  assert.equal(normalizeRemote('http://github.com/acme/checkout-api'), 'http://github.com/acme/checkout-api');
+  assert.equal(normalizeRemote('http://github.com/acme/checkout-api.git'), 'http://github.com/acme/checkout-api');
+});
+
+test('normalizeRemote leaves ssh:// form unchanged except stripping .git (AD-4)', () => {
+  // Canonical CLI behavior: ssh:// is NOT coerced to https.
+  assert.equal(normalizeRemote('ssh://git@github.com/acme/checkout-api.git'), 'ssh://git@github.com/acme/checkout-api');
+  assert.equal(normalizeRemote('ssh://git@github.com/acme/checkout-api'), 'ssh://git@github.com/acme/checkout-api');
 });
 
 test('normalizeRemote is idempotent (AD-4)', () => {
