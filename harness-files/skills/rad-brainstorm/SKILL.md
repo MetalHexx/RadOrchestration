@@ -34,6 +34,13 @@ When you're talking about a change the user wants to make, consider asking them 
 ## Past Project Memories
 If the user references past work, related projects, or a known domain, consider consulting `project-memory.md` to find relevant documents that can inform the brainstorming.  You can offer to link to these documents in the "Related Projects" section of the BRAINSTORMING.md to create a richer context for the project.
 
+## Repo Targets
+Every brainstorm establishes a proposed working repo set — the repos the project is expected to touch. Surface this adaptively, never as a rigid interrogation:
+
+- **Surface from the registry.** When domain hints land in conversation (e.g. the user mentions "the checkout flow" or "the dashboard"), draw on the registered repos and their descriptions to propose a candidate set — "sounds like `backend` plus `frontend`, confirm?". You own the *how*: infer from conversation and registry descriptions when you can, and ask freely when you're unsure.
+- **Confirm before writing.** At convergence, explicitly confirm the working repo set with the user before writing the `## Repo Targets (proposed)` section. No brainstorm ships without that section.
+- **Route unregistered repos to `/rad-repo`.** If a repo relevant to the working set is not yet in the registry, route the user to the `/rad-repo` skill to register it rather than inventing an unregistered name. The brainstorm is the front line of anti-blindness — the first place a missing repo gets caught.
+
 ## Related Docs
 If the user offers documentation that could help with planning, offer to link it to the "Related Projects" section of the BRAINSTORMING.md.  This could include design docs, images, architecture diagrams, product requirement documents, or any other relevant materials.  The goal is to create a rich context for the project that planners can refer to when they start working on it.
 
