@@ -17,6 +17,7 @@ const EVENT_TYPES: SSEEventType[] = [
   "project_added",
   "project_removed",
   "heartbeat",
+  "registry_change",
 ];
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────

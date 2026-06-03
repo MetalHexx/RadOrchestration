@@ -8,7 +8,8 @@ export type SSEEventType =
   | 'connected'
   | 'heartbeat'
   | 'artifact_change'
-  | 'live_degraded';
+  | 'live_degraded'
+  | 'registry_change';
 
 export interface SSEEvent<T extends SSEEventType = SSEEventType> {
   type: T;
@@ -38,6 +39,7 @@ export interface SSEPayloadMap {
   live_degraded: {
     degraded: boolean;
   };
+  registry_change: Record<string, never>;
 }
 
 /** Connection status for the SSE client hook */

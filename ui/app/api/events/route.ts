@@ -5,9 +5,10 @@ import chokidar from 'chokidar';
 
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
 import type { ProjectState } from '@/types/state';
-import { getProjectsRoot } from '@/lib/path-resolver';
+import { getProjectsRoot, getRegistryRoot } from '@/lib/path-resolver';
 import { getLiveRuntime } from '@/lib/live/live-hub-runtime';
 import { wireProjectStateWatcher } from './state-watcher';
+import { wireRegistryWatcher, REGISTRY_SETTLE_WINDOW_MS } from './registry-watcher';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -187,12 +188,27 @@ export async function GET(request: Request) {
         console.error('[SSE] Chokidar dir watcher error:', error);
       });
 
-      // ── 4. Heartbeat interval (30s) ────────────────────────────────
+      // ── 4. Set up registry-file watcher ──────────────────────────
+      const registryWatcher = wireRegistryWatcher({
+        registryRoot: getRegistryRoot(),
+        makeWatcher: (watchPath) => {
+          const w = chokidar.watch(watchPath, {
+            usePolling, depth: 0, ignoreInitial: true,
+            awaitWriteFinish: { stabilityThreshold: REGISTRY_SETTLE_WINDOW_MS, pollInterval: 50 },
+          });
+          w.on('error', (error: unknown) => console.error('[SSE] Registry watcher error:', error));
+          return w;
+        },
+        emit: () => debouncedEmit('__registry__', () =>
+          enqueue(createSSEEvent('registry_change', {} as Record<string, never>))),
+      });
+
+      // ── 5. Heartbeat interval (30s) ────────────────────────────────
       const heartbeatInterval = setInterval(() => {
         enqueue(createSSEEvent('heartbeat', {} as Record<string, never>));
       }, 30_000);
 
-      // ── 5. Subscribe to the shared artifact hub (O(1) watcher) ─────
+      // ── 6. Subscribe to the shared artifact hub (O(1) watcher) ─────
       // The hub lazily warms a single process-level watcher shared across
       // all SSE connections. Each connection registers a connection-scoped
       // all-topics subscriber that fans in every project's artifact topic.
@@ -204,7 +220,7 @@ export async function GET(request: Request) {
         enqueue(createSSEEvent('live_degraded', n.payload)),
       );
 
-      // ── 6. Cleanup on disconnect ───────────────────────────────────
+      // ── 7. Cleanup on disconnect ───────────────────────────────────
       function cleanup(): void {
         if (closed) return;
         closed = true;
@@ -218,6 +234,9 @@ export async function GET(request: Request) {
         });
         dirWatcher.close().catch((err) => {
           console.error('[SSE] Error closing dir watcher:', err);
+        });
+        registryWatcher.close().catch((err) => {
+          console.error('[SSE] Error closing registry watcher:', err);
         });
 
         try {
