@@ -80,6 +80,15 @@ becomes task-local and action-oriented.
     relevant tasks under their requirement IDs. Absence of the section means
     no eligible repo skills exist; proceed normally.
 
+2b. When no brainstorming doc and no Requirements `repos:` set are available,
+    invoke the `/rad-repo` skill to read the registry and infer the affected
+    repos from the orchestrator prompt and codebase discovery — a planner runs
+    as a subagent and does not receive the session-start ambient registry block.
+    When a Requirements `repos:` restate exists, seal it (refining only with
+    cause) into the Master Plan frontmatter. The seal is derived bottom-up and
+    cross-checked against the body's target repos before saving (see Step 9's
+    self-check). (FR-6, NFR-2)
+
 3. Decide the phase and task breakdown. Phases group work by natural seam
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
@@ -247,6 +256,8 @@ project: "{PROJECT-NAME}"
 type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name   # optional, provenance only
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
@@ -254,6 +265,8 @@ author: "planner-agent"
 ```
 
 - `status`: `draft` | `approved`. Always `draft` at authoring time.
+- `repos`: list of registry repo names — the **sealed, authoritative** repo set for the project. This is the single source of truth the explosion script will read; downstream documents are superseded by this seal.
+- `repo-group`: optional registry repo-group name carried for provenance only.
 - `total_phases`: count of `## P\d{2}:` headings.
 - `total_tasks`: count of `### P\d{2}-T\d{2}:` headings.
 - `author`: exactly `"planner-agent"`.

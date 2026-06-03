@@ -3,6 +3,8 @@ project: "{PROJECT-NAME}"
 type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name   # optional, provenance only
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
