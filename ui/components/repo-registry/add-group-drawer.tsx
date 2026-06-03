@@ -12,7 +12,7 @@ import {
   SheetScrollBody,
 } from '@/components/ui/sheet';
 import type { RepoGroupRead, RepoRead, ApiError } from './types';
-import { classifyError, buildGroupCreateBody } from './registry-requests';
+import { classifyError, buildGroupCreateBody, NETWORK_ERROR_MESSAGE } from './registry-requests';
 import { MembershipPicker } from './membership-picker';
 import { FieldError } from './field-error';
 import { FormErrorNotice } from './form-error-notice';
@@ -100,6 +100,8 @@ export function AddGroupDrawer({ open, repos, onClose, onCreated, onSelect }: Pr
           setFormError(classified.message);
         }
       }
+    } catch {
+      setFormError(NETWORK_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

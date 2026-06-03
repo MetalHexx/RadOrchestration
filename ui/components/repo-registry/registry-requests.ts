@@ -1,5 +1,10 @@
 import type { ApiError } from './types';
 
+// Shown when a request rejects before producing a response (network error,
+// aborted request) — i.e. there is no ApiError body to classify.
+export const NETWORK_ERROR_MESSAGE =
+  'Something went wrong. Please check your connection and try again.';
+
 export type ClassifiedError =
   | { kind: 'field'; field: string; message: string }
   | { kind: 'form'; message: string };

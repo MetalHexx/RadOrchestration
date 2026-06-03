@@ -10,7 +10,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import type { RepoGroupRead, RepoRead, ApiError } from './types';
-import { classifyError, buildGroupSaveBody } from './registry-requests';
+import { classifyError, buildGroupSaveBody, NETWORK_ERROR_MESSAGE } from './registry-requests';
 import { useDirtyBatch } from './use-dirty-batch';
 import { EntityHeader } from './entity-header';
 import { EditableCard } from './editable-card';
@@ -77,6 +77,8 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
           setFormError(classified.message);
         }
       }
+    } catch {
+      setFormError(NETWORK_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -96,6 +98,8 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
         const classified = classifyError((errBody as { error: ApiError }).error);
         setFormError(classified.message);
       }
+    } catch {
+      setFormError(NETWORK_ERROR_MESSAGE);
     } finally {
       setRemoving(false);
       setConfirmOpen(false);
@@ -130,6 +134,7 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
           <div>
             <Textarea
               id="group-description"
+              aria-label="Description"
               value={draft.description}
               aria-invalid={!!fieldErrors.description}
               aria-describedby="err-description"

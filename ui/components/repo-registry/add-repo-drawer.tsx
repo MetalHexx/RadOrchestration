@@ -12,7 +12,7 @@ import {
   SheetScrollBody,
 } from '@/components/ui/sheet';
 import type { RepoRead, RepoGroupRead, ApiError } from './types';
-import { classifyError, buildRepoCreateBody } from './registry-requests';
+import { classifyError, buildRepoCreateBody, NETWORK_ERROR_MESSAGE } from './registry-requests';
 import { MembershipPicker } from './membership-picker';
 import { FieldError } from './field-error';
 import { FormErrorNotice } from './form-error-notice';
@@ -109,6 +109,8 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
           setFormError(classified.message);
         }
       }
+    } catch {
+      setFormError(NETWORK_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -216,7 +218,9 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   aria-describedby="err-create-repo-local-path"
                   onPaste={e => {
                     e.preventDefault();
-                    const pasted = e.clipboardData.getData('text');
+                    // Trim clipboard whitespace/newlines so a stray trailing
+                    // char doesn't trip server-side PATH_INVALID on a valid path.
+                    const pasted = e.clipboardData.getData('text').trim();
                     setForm(prev => ({ ...prev, localPath: pasted }));
                   }}
                 />

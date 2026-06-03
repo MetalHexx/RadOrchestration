@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
-import { classifyError, buildRepoSaveBody } from './registry-requests';
+import { classifyError, buildRepoSaveBody, NETWORK_ERROR_MESSAGE } from './registry-requests';
 import { useDirtyBatch } from './use-dirty-batch';
 import { EntityHeader } from './entity-header';
 import { EditableCard } from './editable-card';
@@ -79,6 +79,8 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
           setFormError(classified.message);
         }
       }
+    } catch {
+      setFormError(NETWORK_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -98,6 +100,8 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
         const classified = classifyError((errBody as { error: ApiError }).error);
         setFormError(classified.message);
       }
+    } catch {
+      setFormError(NETWORK_ERROR_MESSAGE);
     } finally {
       setRemoving(false);
       setConfirmOpen(false);
