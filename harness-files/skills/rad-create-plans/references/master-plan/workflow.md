@@ -186,10 +186,12 @@ becomes task-local and action-oriented.
 
    **Task type:** code
    **Requirements:** FR-1, AD-2
-   **Files:**
+   **Target repos:** backend, frontend
+   **Files for backend:**
    - Create: `exact/path/to/new/file.ts`
-   - Modify: `exact/path/to/existing.ts:45-60`
    - Test: `tests/exact/path.test.ts`
+   **Files for frontend:**
+   - Modify: `exact/path/to/existing.ts:45-60`
 
    - [ ] **Step 1: Write the failing test (FR-1)**
        (exact test code inline)
@@ -202,6 +204,7 @@ becomes task-local and action-oriented.
        Run: `npm test -- login.test.ts`
        Expected: PASS (FR-1)
    ```
+   (FR-7, DD-2, AD-3)
 
    **Title rule:** 4–7 words, imperative verb + outcome noun. Names what the task establishes, not what files it touches. Example: "Add rate-limit validator" not "Implement rate-limit validator function with allowlist constant and five test cases."
 
@@ -212,8 +215,23 @@ becomes task-local and action-oriented.
      `config` | `infra`.
    - `**Requirements:**` is mandatory on every task. Lists IDs the task
      addresses. At least one ID.
-   - `**Files:**` block is mandatory on every task. Sub-bullets use
-     `Create:` | `Modify:` | `Test:` | `Delete:` prefixes.
+   - `**Target repos:**` is mandatory on every task. A comma-separated list
+     of registry repo names on a single line, placed alongside the
+     `**Requirements:**` line (always plural-form, even for one name). This
+     mirrors the `**Requirements:**` convention so the line stays stable and
+     machine-greppable.
+   - One `**Files for <repo>:**` subsection per named repo is mandatory; the
+     task's `**Target repos:**` names every repo for which a subsection
+     exists, and vice versa. Sub-bullets use `Create:` | `Modify:` | `Test:`
+     | `Delete:` prefixes. There is no flat `**Files:**` block — the per-repo
+     subsection is the only valid file-listing shape, uniform even for a
+     single-repo task.
+   - A single-repo task is visually identical to today's plan except the flat
+     `**Files:**` label becomes `**Files for <repo>:**` and a one-name
+     `**Target repos:**` line is added — keeping single-repo plans legible
+     while making the shape uniform. Single-repo execution is unaffected
+     because the new lines are inert body text the explosion script copies
+     verbatim (it parses only `**Requirements:**`).
    - For `code` type: exactly 4 steps in the RED-GREEN shape:
      1. Write the failing test (inline code).
      2. Run the test, confirm it fails (exact command, expected-fail reason
