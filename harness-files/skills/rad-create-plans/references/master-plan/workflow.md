@@ -86,8 +86,8 @@ becomes task-local and action-oriented.
     as a subagent and does not receive the session-start ambient registry block.
     When a Requirements `repos:` restate exists, seal it (refining only with
     cause) into the Master Plan frontmatter. The seal is derived bottom-up and
-    cross-checked against the body's target repos before saving (see Step 9's
-    self-check). (FR-6, NFR-2)
+    cross-checked against the body's target repos before saving (see Step 8's
+    structural lint pass). (FR-6, NFR-2)
 
 3. Decide the phase and task breakdown. Phases group work by natural seam
    (layer boundary, independently deliverable slice). Tasks within a phase are
@@ -241,6 +241,7 @@ becomes task-local and action-oriented.
    - No `TBD`, `TODO`, `FIXME`, `implement later`, `similar to` strings
      appear anywhere in the body.
    - Every requirement ID cited by any task exists in the Requirements doc.
+   - The frontmatter `repos:` seal is consistent with the body's target repos: it equals the union of every task's `**Target repos:**` value, and no body target-repos value falls outside the seal.
 
 9. Save to `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`.
 
