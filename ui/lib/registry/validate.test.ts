@@ -59,7 +59,46 @@ test('validateUniqueName throws NAME_TAKEN across both namespaces (AD-4, AD-5)',
   assert.doesNotThrow(() => validateUniqueName(reg as never, 'baz'));
 });
 
-test('normalizeRemote strips trailing .git (AD-4)', () => {
-  assert.equal(normalizeRemote('github.com/a/b.git'), 'github.com/a/b');
-  assert.equal(normalizeRemote('github.com/a/b'), 'github.com/a/b');
+test('normalizeRemote strips trailing .git and prefers https (AD-4)', () => {
+  // scheme-less host/owner/repo → https, with/without .git
+  assert.equal(normalizeRemote('github.com/a/b.git'), 'https://github.com/a/b');
+  assert.equal(normalizeRemote('github.com/a/b'), 'https://github.com/a/b');
+});
+
+test('normalizeRemote coerces SSH shorthand to https (AD-4)', () => {
+  assert.equal(normalizeRemote('git@github.com:acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
+  assert.equal(normalizeRemote('git@github.com:acme/checkout-api'), 'https://github.com/acme/checkout-api');
+});
+
+test('normalizeRemote coerces ssh:// URLs to https (AD-4)', () => {
+  assert.equal(normalizeRemote('ssh://git@github.com/acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
+  assert.equal(normalizeRemote('ssh://git@github.com/acme/checkout-api'), 'https://github.com/acme/checkout-api');
+});
+
+test('normalizeRemote coerces http:// to https (AD-4)', () => {
+  assert.equal(normalizeRemote('http://github.com/acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
+  assert.equal(normalizeRemote('http://github.com/acme/checkout-api'), 'https://github.com/acme/checkout-api');
+});
+
+test('normalizeRemote leaves https form intact except stripping .git (AD-4)', () => {
+  assert.equal(normalizeRemote('https://github.com/acme/checkout-api.git'), 'https://github.com/acme/checkout-api');
+  assert.equal(normalizeRemote('https://github.com/acme/checkout-api'), 'https://github.com/acme/checkout-api');
+});
+
+test('normalizeRemote is idempotent (AD-4)', () => {
+  const inputs = [
+    'git@github.com:acme/checkout-api.git',
+    'ssh://git@github.com/acme/checkout-api.git',
+    'http://github.com/acme/checkout-api.git',
+    'github.com/acme/checkout-api.git',
+    'https://github.com/acme/checkout-api.git',
+  ];
+  for (const input of inputs) {
+    const once = normalizeRemote(input);
+    assert.equal(normalizeRemote(once), once);
+  }
+});
+
+test('normalizeRemote trims surrounding whitespace (AD-4)', () => {
+  assert.equal(normalizeRemote('  git@github.com:acme/checkout-api.git  '), 'https://github.com/acme/checkout-api');
 });

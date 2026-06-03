@@ -29,7 +29,7 @@ test('POST /api/repos creates repo + group membership, born bound (FR-5, FR-11)'
       }));
       assert.equal(res.status, 201);
       const reg = readRegistry({ root });
-      assert.equal(reg.repos['checkout-api'].remote, 'github.com/acme/checkout-api');
+      assert.equal(reg.repos['checkout-api'].remote, 'https://github.com/acme/checkout-api');
       assert.equal(reg.localPaths['checkout-api'], root);
       assert.deepEqual(reg.repoGroups['checkout'].members, ['checkout-api']);
     });

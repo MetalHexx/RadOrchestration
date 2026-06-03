@@ -25,14 +25,11 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   try {
     const reg = readRegistry({ root: getRegistryRoot() });
     if (!(params.slug in reg.repoGroups)) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: `Repo-group '${params.slug}' was not found.`, field: 'slug' } },
-        { status: 404 });
+      throw new RegistryError('NOT_FOUND', `Repo-group '${params.slug}' was not found.`, 'slug');
     }
     return NextResponse.json(computeRepoGroup(reg, params.slug), { status: 200 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: { code: 'INTERNAL', message, field: '' } }, { status: 500 });
+    return fail(err);
   }
 }
 

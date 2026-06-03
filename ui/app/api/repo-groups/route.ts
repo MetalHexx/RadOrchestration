@@ -8,6 +8,16 @@ import { validateSlug, validateRequired, validateUniqueName } from '@/lib/regist
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+function fail(err: unknown) {
+  if (err instanceof RegistryError) {
+    return NextResponse.json(
+      { error: { code: err.code, message: err.message, field: err.field } },
+      { status: statusForCode(err.code) });
+  }
+  const message = err instanceof Error ? err.message : 'Internal server error';
+  return NextResponse.json({ error: { code: 'INTERNAL', message, field: '' } }, { status: 500 });
+}
+
 export async function POST(request: Request) {
   const root = getRegistryRoot();
   try {
@@ -30,12 +40,6 @@ export async function POST(request: Request) {
     createGroup({ root, name: slug, members, description });
     return NextResponse.json(computeRepoGroup(readRegistry({ root }), slug), { status: 201 });
   } catch (err) {
-    if (err instanceof RegistryError) {
-      return NextResponse.json(
-        { error: { code: err.code, message: err.message, field: err.field } },
-        { status: statusForCode(err.code) });
-    }
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: { code: 'INTERNAL', message, field: '' } }, { status: 500 });
+    return fail(err);
   }
 }

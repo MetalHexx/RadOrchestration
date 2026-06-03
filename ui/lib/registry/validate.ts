@@ -28,6 +28,28 @@ export function validateUniqueName(reg: Registry, slug: string): void {
   }
 }
 
+// Normalize a git remote per AD-4: strip a trailing `.git` and coerce the
+// remote to an `https://host/path` URL. Handles SSH shorthand
+// (`git@host:owner/repo`), `ssh://`/`http://` URLs, scheme-less
+// `host/owner/repo`, and already-`https://` forms. Idempotent.
 export function normalizeRemote(remote: string): string {
-  return remote.replace(/\.git$/, '');
+  const trimmed = remote.trim();
+  const withoutGit = trimmed.replace(/\.git$/, '');
+
+  // SSH shorthand: git@host:owner/repo → https://host/owner/repo
+  const sshShorthand = withoutGit.match(/^[^@/]+@([^:/]+):(.+)$/);
+  if (sshShorthand) {
+    return `https://${sshShorthand[1]}/${sshShorthand[2]}`;
+  }
+
+  // Explicit scheme (ssh://, http://, https://, git://, …):
+  // git@-style userinfo is dropped and the scheme is coerced to https.
+  const withScheme = withoutGit.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/(.+)$/);
+  if (withScheme) {
+    const afterScheme = withScheme[1].replace(/^[^@/]+@/, '');
+    return `https://${afterScheme}`;
+  }
+
+  // Scheme-less host/owner/repo → https://host/owner/repo
+  return `https://${withoutGit}`;
 }

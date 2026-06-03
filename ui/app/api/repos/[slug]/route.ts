@@ -5,7 +5,7 @@ import {
   removeRepo,
 } from '@rad-orchestration/repo-registry';
 import { getRegistryRoot } from '@/lib/path-resolver';
-import { computeRepo, computeSnapshot } from '@/lib/registry/read-shape';
+import { computeRepo } from '@/lib/registry/read-shape';
 import { RegistryError, statusForCode } from '@/lib/registry/errors';
 import {
   validateRequired, validateDirectory, normalizeRemote,
@@ -28,14 +28,11 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   try {
     const reg = readRegistry({ root: getRegistryRoot() });
     if (!(params.slug in reg.repos)) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: `Repo '${params.slug}' was not found.`, field: 'slug' } },
-        { status: 404 });
+      throw new RegistryError('NOT_FOUND', `Repo '${params.slug}' was not found.`, 'slug');
     }
     return NextResponse.json(computeRepo(reg, params.slug), { status: 200 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return NextResponse.json({ error: { code: 'INTERNAL', message, field: '' } }, { status: 500 });
+    return fail(err);
   }
 }
 
@@ -85,7 +82,7 @@ export async function PUT(request: Request, { params }: { params: { slug: string
     for (const g of desired) if (!currentGroups.includes(g)) addGroupMember({ root, group: g, repo: slug });
     for (const g of currentGroups) if (!desired.includes(g)) removeGroupMember({ root, group: g, repo: slug });
 
-    return NextResponse.json(computeSnapshot(readRegistry({ root })).repos.find(r => r.slug === slug), { status: 200 });
+    return NextResponse.json(computeRepo(readRegistry({ root }), slug), { status: 200 });
   } catch (err) {
     return fail(err);
   }

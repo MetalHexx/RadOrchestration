@@ -235,7 +235,9 @@ export async function GET(request: Request) {
         dirWatcher.close().catch((err) => {
           console.error('[SSE] Error closing dir watcher:', err);
         });
-        registryWatcher.close().catch(() => {});
+        registryWatcher.close().catch((err) => {
+          console.error('[SSE] Error closing registry watcher:', err);
+        });
 
         try {
           controller.close();

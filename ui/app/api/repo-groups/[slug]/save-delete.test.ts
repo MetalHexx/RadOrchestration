@@ -32,6 +32,23 @@ test('PUT edits description and diffs members (FR-9, FR-11)', async () => {
   } finally { await rm(tmp, { recursive: true, force: true }); }
 });
 
+test('PUT with a slug in the body is rejected IMMUTABLE_SLUG (FR-12, F-20)', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'gs-'));
+  try {
+    const root = path.join(tmp, '.radorc');
+    await mkdir(root, { recursive: true });
+    await seed(root);
+    await withHomedir(tmp, async () => {
+      const { PUT } = await import('./route.ts');
+      const res = await PUT(put('checkout', { slug: 'renamed', description: 'd', members: [] }),
+        { params: { slug: 'checkout' } });
+      const body = await res.json();
+      assert.equal(res.status, 400);
+      assert.equal(body.error.code, 'IMMUTABLE_SLUG');
+    });
+  } finally { await rm(tmp, { recursive: true, force: true }); }
+});
+
 test('PUT with empty description is rejected REQUIRED (FR-9, FR-13)', async () => {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'gs-'));
   try {

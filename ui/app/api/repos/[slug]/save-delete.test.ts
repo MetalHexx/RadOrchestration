@@ -4,13 +4,21 @@ import os from 'node:os';
 import path from 'node:path';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { readRegistry } from '@rad-orchestration/repo-registry';
+import { stringify as yamlStringify } from 'yaml';
 import { withHomedir } from '../../../../lib/test-helpers.js';
 
 async function seed(root: string, repoPath: string) {
-  await writeFile(path.join(root, 'repo-registry.yml'),
-    `repos:\n  checkout-api:\n    remote: r\n    default_branch: main\n    description: old\nrepo_groups:\n  a:\n    description: a\n    members:\n      - checkout-api\n  b:\n    description: b\n    members: []\n`, 'utf8');
+  await writeFile(path.join(root, 'repo-registry.yml'), yamlStringify({
+    repos: {
+      'checkout-api': { remote: 'r', default_branch: 'main', description: 'old' },
+    },
+    repo_groups: {
+      a: { description: 'a', members: ['checkout-api'] },
+      b: { description: 'b', members: [] },
+    },
+  }), 'utf8');
   await writeFile(path.join(root, 'repo-registry.local.yml'),
-    `paths:\n  checkout-api: ${repoPath.replace(/\\/g, '\\\\')}\n`, 'utf8');
+    yamlStringify({ paths: { 'checkout-api': repoPath } }), 'utf8');
 }
 function put(slug: string, body: unknown): Request {
   return new Request(`http://x/api/repos/${slug}`, { method: 'PUT', body: JSON.stringify(body) });
