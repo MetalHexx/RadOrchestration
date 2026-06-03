@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,11 +26,14 @@ interface Props {
   upsertGroup: (g: RepoGroupRead) => void;
   removeGroup: (slug: string) => void;
   onDeselect: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDeselect }: Props) {
+export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDeselect, onDirtyChange }: Props) {
   const baseline = groupDraftFrom(group);
   const { draft, setDraft, reset, dirty } = useDirtyBatch<GroupDraft>(baseline);
+
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | undefined>();

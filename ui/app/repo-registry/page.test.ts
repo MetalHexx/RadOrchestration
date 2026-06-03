@@ -29,3 +29,64 @@ test('page pulls upsertRepo and removeRepo from the store hook (FR-17)', () => {
   assert.match(page, /upsertRepo/);
   assert.match(page, /removeRepo/);
 });
+
+// --- Corrective P07-PHASE-C1 assertions ---
+
+test('page imports GroupDetailPane from the repo-registry component (FR-9)', () => {
+  assert.match(page, /import.*GroupDetailPane.*from.*group-detail-pane/);
+});
+
+test('page renders GroupDetailPane in the group-selection branch, not the placeholder (FR-9, FR-20)', () => {
+  // Must use GroupDetailPane in JSX
+  assert.match(page, /<GroupDetailPane/);
+  // Must guard with selected.kind === 'group'
+  assert.match(page, /selected\.kind\s*===\s*['"]group['"]/);
+  // Must NOT use the placeholder paragraph any more
+  assert.doesNotMatch(page, /Group:\s*\$\{selected\.slug\}/);
+});
+
+test('page passes upsertGroup, removeGroup, and onDeselect to GroupDetailPane (FR-9, FR-20)', () => {
+  assert.match(page, /upsertGroup=/);
+  assert.match(page, /removeGroup=/);
+});
+
+test('page imports AddRepoDrawer from the repo-registry component (FR-10, FR-15)', () => {
+  assert.match(page, /import.*AddRepoDrawer.*from.*add-repo-drawer/);
+});
+
+test('page mounts AddRepoDrawer driven by drawer === "add-repo" (FR-10, FR-15)', () => {
+  assert.match(page, /<AddRepoDrawer/);
+  assert.match(page, /drawer\s*===\s*['"]add-repo['"]/);
+});
+
+test('page imports AddGroupDrawer from the repo-registry component (FR-11, FR-16)', () => {
+  assert.match(page, /import.*AddGroupDrawer.*from.*add-group-drawer/);
+});
+
+test('page mounts AddGroupDrawer driven by drawer === "add-group" (FR-11, FR-16)', () => {
+  assert.match(page, /<AddGroupDrawer/);
+  assert.match(page, /drawer\s*===\s*['"]add-group['"]/);
+});
+
+test('page imports useRegistryLive from the repo-registry component (FR-24, AD-7)', () => {
+  assert.match(page, /import.*useRegistryLive.*from.*use-registry-live/);
+});
+
+test('page calls useRegistryLive with onRefetch and dirty (FR-24, FR-25, AD-7, NFR-4)', () => {
+  assert.match(page, /useRegistryLive\s*\(/);
+  // Must pass onRefetch
+  assert.match(page, /onRefetch/);
+  // Must pass dirty
+  assert.match(page, /dirty/);
+});
+
+test('page pulls refetch, upsertGroup, and removeGroup from the store hook (FR-9, FR-24)', () => {
+  assert.match(page, /refetch/);
+  assert.match(page, /upsertGroup/);
+  assert.match(page, /removeGroup/);
+});
+
+test('page tracks paneDirty state and passes onDirtyChange to detail panes (FR-25)', () => {
+  assert.match(page, /paneDirty/);
+  assert.match(page, /onDirtyChange/);
+});

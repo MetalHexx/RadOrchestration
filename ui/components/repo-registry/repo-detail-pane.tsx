@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -30,11 +30,14 @@ interface Props {
   upsertRepo: (r: RepoRead) => void;
   removeRepo: (slug: string) => void;
   onDeselect: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselect }: Props) {
+export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselect, onDirtyChange }: Props) {
   const baseline = repoDraftFrom(repo);
   const { draft, setDraft, reset, dirty } = useDirtyBatch<RepoDraft>(baseline);
+
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | undefined>();
