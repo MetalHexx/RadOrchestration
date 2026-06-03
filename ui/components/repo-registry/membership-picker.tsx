@@ -30,7 +30,7 @@ export function MembershipPicker({ entityType, options, saved, checked, mode, on
           <label
             key={opt.slug}
             className={cn(
-              'flex cursor-pointer items-center gap-2.5 border-b px-3 py-2.5 last:border-b-0 hover:bg-accent/30',
+              'flex min-w-0 cursor-pointer items-center gap-2.5 border-b px-3 py-2.5 last:border-b-0 hover:bg-accent/30',
               status === 'pending-add' && 'bg-[color-mix(in_oklch,var(--status-complete)_12%,transparent)]',
               status === 'pending-remove' && 'opacity-55',
             )}

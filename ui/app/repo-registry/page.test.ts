@@ -133,3 +133,21 @@ test('page consumes the store error and renders RegistryErrorState instead of th
   // retry is wired to the store's refetch
   assert.match(page, /onRetry=\{refetch\}/);
 });
+
+// --- Detail panes remount per selection so draft state never goes stale (stale-draft fix) ---
+
+test('detail panes are keyed by selection so draft state resets on switch', () => {
+  assert.match(page, /<RepoDetailPane[\s\S]*?key=\{`repo:\$\{repo\.slug\}`\}/);
+  assert.match(page, /<GroupDetailPane[\s\S]*?key=\{`group:\$\{group\.slug\}`\}/);
+});
+
+// --- Layout fits the available width and matches the /projects spacing gold standard ---
+
+test('main column opts into min-w-0 so the detail pane cannot overflow the page row (overflow fix)', () => {
+  assert.match(page, /<main className="flex min-w-0 flex-1 flex-col">/);
+});
+
+test('detail wrapper drops the redundant p-6 so padding is a single layer (matches /projects)', () => {
+  assert.match(page, /<div className="flex flex-1 flex-col">/);
+  assert.doesNotMatch(page, /flex flex-1 flex-col p-6/);
+});

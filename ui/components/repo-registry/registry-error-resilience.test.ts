@@ -44,3 +44,17 @@ test('add-repo-drawer trims pasted local paths so trailing whitespace cannot tri
 test('group description textarea has an accessible name (aria-label)', () => {
   assert.match(groupPane, /<Textarea[\s\S]*?aria-label="Description"[\s\S]*?id="group-description"|id="group-description"[\s\S]*?aria-label="Description"/);
 });
+
+test('detail panes use a single-layer px-6 py-4 scroll padding (matches /projects, no double-padding)', () => {
+  assert.match(repoPane, /overflow-y-auto px-6 py-4/);
+  assert.match(groupPane, /overflow-y-auto px-6 py-4/);
+  assert.doesNotMatch(repoPane, /px-7 pt-6/);
+  assert.doesNotMatch(groupPane, /px-7 pt-6/);
+});
+
+test('add-repo-drawer local path is typeable: not readOnly, onChange wired to form.localPath', () => {
+  // the create-repo local path Input accepts typed input
+  assert.match(addRepo, /id="create-repo-local-path"[\s\S]*?onChange=\{e => setForm\(prev => \(\{ \.\.\.prev, localPath: e\.target\.value \}\)\)\}/);
+  // and must no longer be read-only
+  assert.doesNotMatch(addRepo, /id="create-repo-local-path"[\s\S]*?readOnly/);
+});

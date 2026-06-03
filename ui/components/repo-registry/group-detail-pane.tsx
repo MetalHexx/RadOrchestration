@@ -124,7 +124,7 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-7 pt-6 pb-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         <EntityHeader kind="group" slug={group.slug} />
 
         <FormErrorNotice message={formError} />

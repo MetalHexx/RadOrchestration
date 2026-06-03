@@ -38,3 +38,10 @@ test('group container exposes accessible name via aria-label; ariaLabel prop is 
   // fallback default must be present in source
   assert.match(src, /Membership selection/);
 });
+
+test('member row label opts into min-w-0 so long descriptions truncate instead of overflowing', () => {
+  // the row label allows its children to shrink below their content size
+  assert.match(src, /'flex min-w-0 cursor-pointer items-center/);
+  // the description span already truncates with flex-1 + min-w-0
+  assert.match(src, /min-w-0 flex-1 truncate/);
+});

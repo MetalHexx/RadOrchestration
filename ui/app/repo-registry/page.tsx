@@ -41,7 +41,7 @@ export default function RepoRegistryPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-56px)]">
+    <div className="flex h-[calc(100vh-56px)]">
       <RegistryRail
         sections={sections}
         selected={selected}
@@ -49,7 +49,7 @@ export default function RepoRegistryPage() {
         onAddRepo={handleAddRepo}
         onAddGroup={handleAddGroup}
       />
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col">
         {isLoading ? null : error && isEmpty ? (
           <RegistryErrorState message={error} onRetry={refetch} />
         ) : isEmpty ? (
@@ -57,11 +57,12 @@ export default function RepoRegistryPage() {
         ) : selected === null ? (
           <NothingSelectedState />
         ) : (
-          <div className="flex flex-1 flex-col p-6">
+          <div className="flex flex-1 flex-col">
             {selected.kind === 'repo' ? (() => {
               const repo = store.repos.find(r => r.slug === selected.slug);
               return repo ? (
                 <RepoDetailPane
+                  key={`repo:${repo.slug}`}
                   repo={repo}
                   groups={store.repoGroups}
                   upsertRepo={upsertRepo}
@@ -74,6 +75,7 @@ export default function RepoRegistryPage() {
               const group = store.repoGroups.find(g => g.slug === selected.slug);
               return group ? (
                 <GroupDetailPane
+                  key={`group:${group.slug}`}
                   group={group}
                   repos={store.repos}
                   upsertGroup={upsertGroup}

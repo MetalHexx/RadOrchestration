@@ -122,7 +122,7 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto px-7 pt-6 pb-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         <EntityHeader kind="repo" slug={repo.slug} bindState={repo.bind.state} />
 
         <FormErrorNotice message={formError} />

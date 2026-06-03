@@ -212,10 +212,10 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   id="create-repo-local-path"
                   className="font-mono"
                   value={form.localPath}
-                  placeholder="Paste local folder path…"
-                  readOnly
+                  placeholder="Local folder path…"
                   aria-invalid={!!fieldErrors.localPath}
                   aria-describedby="err-create-repo-local-path"
+                  onChange={e => setForm(prev => ({ ...prev, localPath: e.target.value }))}
                   onPaste={e => {
                     e.preventDefault();
                     // Trim clipboard whitespace/newlines so a stray trailing
