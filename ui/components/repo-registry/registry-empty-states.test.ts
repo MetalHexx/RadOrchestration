@@ -20,3 +20,12 @@ test('placeholder copy is muted, token-driven, no hardcoded color (NFR-2)', () =
   assert.match(src, /text-muted-foreground/);
   assert.doesNotMatch(src, /#[0-9a-fA-F]{3,8}/);
 });
+
+test('exports a RegistryErrorState that announces the failure and offers a retry', () => {
+  assert.match(src, /export function RegistryErrorState/);
+  // accessible, token-driven error text (matches the Projects-page error idiom)
+  assert.match(src, /role=["']alert["']/);
+  assert.match(src, /text-destructive/);
+  // a retry affordance wired to an onRetry handler
+  assert.match(src, /onRetry/);
+});

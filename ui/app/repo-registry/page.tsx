@@ -7,6 +7,7 @@ import { RegistryRail, type RailSelection } from '@/components/repo-registry/reg
 import {
   EmptyRegistryState,
   NothingSelectedState,
+  RegistryErrorState,
 } from '@/components/repo-registry/registry-empty-states';
 import { RepoDetailPane } from '@/components/repo-registry/repo-detail-pane';
 import { GroupDetailPane } from '@/components/repo-registry/group-detail-pane';
@@ -16,7 +17,7 @@ import { useRegistryLive } from '@/components/repo-registry/use-registry-live';
 import { useNavGuard, UnsavedChangesDialog } from '@/components/repo-registry/use-nav-guard';
 
 export default function RepoRegistryPage() {
-  const { store, isLoading, refetch, upsertRepo, removeRepo, upsertGroup, removeGroup } = useRegistryStore();
+  const { store, isLoading, error, refetch, upsertRepo, removeRepo, upsertGroup, removeGroup } = useRegistryStore();
   const [selected, setSelected] = useState<RailSelection | null>(null);
   const [drawer, setDrawer] = useState<'add-repo' | 'add-group' | null>(null);
   const [paneDirty, setPaneDirty] = useState(false);
@@ -49,7 +50,9 @@ export default function RepoRegistryPage() {
         onAddGroup={handleAddGroup}
       />
       <main className="flex flex-1 flex-col">
-        {isLoading ? null : isEmpty ? (
+        {isLoading ? null : error && isEmpty ? (
+          <RegistryErrorState message={error} onRetry={refetch} />
+        ) : isEmpty ? (
           <EmptyRegistryState onAddRepo={handleAddRepo} />
         ) : selected === null ? (
           <NothingSelectedState />

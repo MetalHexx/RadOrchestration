@@ -20,3 +20,12 @@ export function NothingSelectedState() {
     </div>
   );
 }
+
+export function RegistryErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center">
+      <p className="max-w-md text-sm text-destructive" role="alert">{message}</p>
+      <Button variant="outline" onClick={onRetry}>Try again</Button>
+    </div>
+  );
+}

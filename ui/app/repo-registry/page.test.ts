@@ -119,3 +119,17 @@ test('page renders the UnsavedChangesDialog wired to the guard state (FR-26)', (
   assert.match(page, /onConfirm=\{onConfirm\}/);
   assert.match(page, /onCancel=\{onCancel\}/);
 });
+
+// --- Initial-load failure surfaces an error state (PR #109 review cycle 2) ---
+
+test('page consumes the store error and renders RegistryErrorState instead of the empty state on a failed initial load', () => {
+  // error must be pulled from the store hook (no longer dropped during destructuring)
+  assert.match(page, /const\s*\{[^}]*\berror\b[^}]*\}\s*=\s*useRegistryStore\(\)/);
+  // RegistryErrorState must be imported and rendered
+  assert.match(page, /import[\s\S]*RegistryErrorState[\s\S]*from.*registry-empty-states/);
+  assert.match(page, /<RegistryErrorState/);
+  // gated on error && isEmpty so a transient refetch failure doesn't nuke a populated view
+  assert.match(page, /error\s*&&\s*isEmpty/);
+  // retry is wired to the store's refetch
+  assert.match(page, /onRetry=\{refetch\}/);
+});
