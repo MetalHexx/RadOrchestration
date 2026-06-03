@@ -8,9 +8,10 @@ import {
   EmptyRegistryState,
   NothingSelectedState,
 } from '@/components/repo-registry/registry-empty-states';
+import { RepoDetailPane } from '@/components/repo-registry/repo-detail-pane';
 
 export default function RepoRegistryPage() {
-  const { store, isLoading } = useRegistryStore();
+  const { store, isLoading, upsertRepo, removeRepo } = useRegistryStore();
   const [selected, setSelected] = useState<RailSelection | null>(null);
   const [drawer, setDrawer] = useState<'add-repo' | 'add-group' | null>(null);
 
@@ -45,10 +46,21 @@ export default function RepoRegistryPage() {
           <NothingSelectedState />
         ) : (
           <div className="flex flex-1 flex-col p-6">
-            {/* Detail pane slot — filled by P06/P07 */}
-            <p className="text-sm text-muted-foreground">
-              {selected.kind === 'repo' ? `Repo: ${selected.slug}` : `Group: ${selected.slug}`}
-            </p>
+            {selected.kind === 'repo' ? (() => {
+              const repo = store.repos.find(r => r.slug === selected.slug);
+              return repo ? (
+                <RepoDetailPane
+                  repo={repo}
+                  groups={store.repoGroups}
+                  upsertRepo={upsertRepo}
+                  removeRepo={removeRepo}
+                  onDeselect={() => setSelected(null)}
+                />
+              ) : <NothingSelectedState />;
+            })() : (
+              /* group selection — Phase 7 placeholder, leave as-is */
+              <p className="text-sm text-muted-foreground">{`Group: ${selected.slug}`}</p>
+            )}
           </div>
         )}
       </main>

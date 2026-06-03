@@ -41,3 +41,18 @@ test('pane saves via PUT, reconciles response, removes via DELETE with cascade c
   assert.match(pane, /dropped from every group|local binding is removed/i);
   assert.match(pane, /upsertRepo|onSaved/);
 });
+
+test('PUT error path unwraps the inner ApiError before calling classifyError — not the outer envelope (AD-4)', () => {
+  // The pane must pass errBody.error (inner ApiError) to classifyError, not the raw errBody.
+  // Pattern: classifyError((errBody as ...).error) or classifyError(errBody.error)
+  assert.match(pane, /classifyError\([\s\S]*?\.error\)/);
+  // Confirm the raw errBody is NOT passed directly (no classifyError(errBody) without .error)
+  assert.doesNotMatch(pane, /classifyError\(\s*errBody\s*\)/);
+});
+
+test('handleRemove has a non-OK branch that surfaces the DELETE error via setFormError (FR-19)', () => {
+  // The pane must handle res.ok === false for DELETE and call setFormError with a message.
+  // handleRemove contains removeRepo/onDeselect in the ok branch, followed by an else that calls setFormError.
+  // Pattern: removeRepo ... onDeselect ... } else { ... setFormError
+  assert.match(pane, /removeRepo[\s\S]{0,200}onDeselect[\s\S]{0,200}\}\s*else[\s\S]{0,200}setFormError/);
+});

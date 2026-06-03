@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
-import type { RepoRead } from './types';
+import type { RepoRead, ApiError } from './types';
 import { classifyError } from './registry-requests';
 import { buildRepoSaveBody } from './registry-requests';
 import { useDirtyBatch } from './use-dirty-batch';
@@ -71,7 +71,7 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
         setDraft(newBaseline);
       } else {
         const errBody = await res.json();
-        const classified = classifyError(errBody);
+        const classified = classifyError((errBody as { error: ApiError }).error);
         if (classified.kind === 'field') {
           setFieldErrors({ [classified.field]: classified.message });
         } else {
@@ -92,6 +92,10 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
       if (res.ok) {
         removeRepo(repo.slug);
         onDeselect();
+      } else {
+        const errBody = await res.json();
+        const classified = classifyError((errBody as { error: ApiError }).error);
+        setFormError(classified.message);
       }
     } finally {
       setRemoving(false);
