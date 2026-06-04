@@ -87,7 +87,7 @@ they appear across the two docs.
 |-------|---------------|
 | **Interface shape stability** | An interface named in the Requirements doc has the same fields, types etc. |
 | **Module responsibility stability** | A module described as "responsible for X" in the Requirements doc isn't described as "responsible for Y" in a Master Plan task body. |
-| **File path consistency** | The same file is referenced by the same path in both docs — no `/src/config.ts` in Requirements and `/lib/config.ts` in a task's `**Files:**` block. |
+| **File path consistency** | The same file is referenced by the same path in both docs — no `/src/config.ts` in Requirements and `/lib/config.ts` in a task's `**Files for <repo>:**` subsection. |
 | **Frozen contract integrity** | Contracts marked frozen, sacred, or NFR-constrained in the Requirements doc are not modified by any task — even additively. |
 
 ### 2.3 Terminology Consistency
@@ -142,7 +142,7 @@ especially step 7 (task rules + YAGNI gate).
 | **Tag justification** | Every task includes at least one `(FR-N)` / `(NFR-N)` / `(AD-N)` / `(DD-N)` tag.  The YAGNI gate: a task that doesn't trace to a requirement shouldn't exist. |
 | **Tag validity** | Every tag cited anywhere in the Master Plan (phase heading, task heading, step line) resolves to an ID block in the Requirements doc. No phantom `FR-99` / `AD-12` citations. |
 | **Phase heading shape** | Every `## P\d{2}:` heading carries a `**Requirements:**` line. Phase numbers are zero-padded two digits. |
-| **Task heading shape** | Every `### P\d{2}-T\d{2}:` heading carries three mandatory lines: `**Task type:**` (one of `code` / `doc` / `config` / `infra`), `**Requirements:**`, and `**Files:**` (with `Create:` / `Modify:` / `Test:` / `Delete:` sub-bullets). |
+| **Task heading shape** | Every `### P\d{2}-T\d{2}:` heading carries these mandatory lines: `**Task type:**` (one of `code` / `doc` / `config` / `infra`), `**Requirements:**`, `**Target repos:**` (a comma-separated list of registry repo names), and one `**Files for <repo>:**` subsection per named repo (each with `Create:` / `Modify:` / `Test:` / `Delete:` sub-bullets). A missing flat `**Files:**` block is NOT a finding — the per-repo subsection is the valid shape. |
 | **`code` task RED-GREEN shape** | Every task with `**Task type:** code` contains exactly four steps in order: (1) write the failing test, (2) run the test and confirm failure, (3) implement the minimal code, (4) run the test and confirm pass. |
 | **No placeholders** | No `TBD`, `TODO`, `FIXME`, `implement later`, `similar to`, `as needed` anywhere in the Master Plan body. |
 | **No vague language** | No "if needed", "optional", "as appropriate", "investigate", "explore", "consider" — any language that leaves the coder unsure of what to do. |
