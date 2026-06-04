@@ -6,7 +6,7 @@ import type { AnyProjectState } from "@/types/state";
 import { isV5State } from "@/types/state";
 import type { SSEEvent, SSEConnectionStatus } from "@/types/events";
 import { derivePlanningStatus, deriveExecutionStatus } from "@/lib/status-derivation";
-import { useSSE } from "@/hooks/use-sse";
+import { useSSEContext } from "@/hooks/use-sse-context";
 
 const STORAGE_KEY = "monitoring-ui-selected-project";
 
@@ -23,9 +23,9 @@ interface UseProjectsReturn {
   isLoading: boolean;
   /** Error message string, or null */
   error: string | null;
-  /** SSE connection status from useSSE */
+  /** SSE connection status from the shared SSE provider */
   sseStatus: SSEConnectionStatus;
-  /** Manual reconnect function — tears down and re-creates EventSource */
+  /** Manual reconnect function — tears down and re-creates the shared EventSource */
   reconnect: () => void;
 }
 
@@ -136,10 +136,12 @@ export function useProjects(): UseProjectsReturn {
     [fetchProjectList],
   );
 
-  const { status: sseStatus, reconnect } = useSSE({
-    url: "/api/events",
-    onEvent: handleSSEEvent,
-  });
+  // Ride the single shared multiplexed EventSource instead of opening our own.
+  // sseStatus/reconnect pass through from the provider unchanged so the page's
+  // single-SSE-source-of-truth banner wiring still holds.
+  const { sseStatus, reconnect, subscribe } = useSSEContext();
+
+  useEffect(() => subscribe(handleSSEEvent), [subscribe, handleSSEEvent]);
 
   const fetchProjectState = useCallback(async (name: string) => {
     setProjectState(null);

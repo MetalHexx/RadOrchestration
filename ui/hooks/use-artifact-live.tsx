@@ -4,6 +4,8 @@ import * as React from "react";
 import { deriveArtifacts, type Artifact } from "@/lib/artifact-model";
 import { emptyLiveState, applyDelta, clearUnseenFor, endPulseFor, type LiveState } from "@/lib/live/live-store-model";
 import { fetchArtifactSnapshot, reconcileUnseen, diffSnapshots } from "@/lib/live/snapshot";
+import { useSSEContext } from "@/hooks/use-sse-context";
+import type { SSEEvent } from "@/types/events";
 
 // How long a file stays in activePulse after the LAST change lands. Spans ~2 cycles
 // of the 1.4s CSS breathe so an isolated change pulses clearly (not a single missable
@@ -50,6 +52,11 @@ export function ArtifactLiveProvider({
   const activeRef = React.useRef<string | null>(activeFileName);
   activeRef.current = activeFileName;
 
+  // Live deltas now ride the single shared multiplexed EventSource via the SSE
+  // provider rather than this provider opening its own connection (AD-11 fallback
+  // retired): one tab holds exactly one /api/events stream.
+  const { subscribe, sseStatus } = useSSEContext();
+
   const prevFilesRef = React.useRef<string[] | null>(null);
   const prevMtimesRef = React.useRef<Record<string, number>>({});
   const pulseTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -87,6 +94,7 @@ export function ArtifactLiveProvider({
     if (reconcile) setLive((s) => ({ ...s, unseen: reconcileUnseen(s.unseen, snap.files) }));
   }, [projectName, applyChange]);
 
+  // On project change: reset the diff baseline and take an initial snapshot.
   React.useEffect(() => {
     if (!projectName) {
       setFiles([]); setLive(emptyLiveState());
@@ -95,20 +103,36 @@ export function ArtifactLiveProvider({
     }
     prevFilesRef.current = null;
     prevMtimesRef.current = {};
-    let es: EventSource | null = new EventSource("/api/events");
     void refreshSnapshot(false);
-    es.addEventListener("artifact_change", (m: MessageEvent) => {
-      const ev = JSON.parse(m.data) as { payload: { projectName: string; kind: 'added' | 'changed' | 'removed' } };
-      if (ev.payload.projectName !== projectName) return;
-      void refreshSnapshot(false);
-    });
-    es.addEventListener("live_degraded", (m: MessageEvent) => {
-      const ev = JSON.parse(m.data) as { payload: { degraded: boolean } };
-      setDegraded(ev.payload.degraded);
-    });
-    es.onerror = () => { void refreshSnapshot(true); };
-    return () => { es?.close(); es = null; };
   }, [projectName, refreshSnapshot]);
+
+  // Subscribe to the shared provider for live deltas. Where the old code held its
+  // own EventSource and parsed raw MessageEvents, the provider now delivers parsed
+  // SSEEvents; we filter artifact_change to the active project and forward
+  // live_degraded — byte-for-byte the same reconcile/setDegraded behavior.
+  React.useEffect(() => {
+    if (!projectName) return;
+    return subscribe((ev: SSEEvent) => {
+      if (ev.type === "artifact_change") {
+        const payload = ev.payload as { projectName: string; kind: 'added' | 'changed' | 'removed' };
+        if (payload.projectName !== projectName) return;
+        void refreshSnapshot(false);
+      } else if (ev.type === "live_degraded") {
+        const payload = ev.payload as { degraded: boolean };
+        setDegraded(payload.degraded);
+      }
+    });
+  }, [projectName, subscribe, refreshSnapshot]);
+
+  // Reconnect self-heal: when the shared connection drops to reconnecting/disconnected,
+  // reconcile the unseen set against a fresh snapshot — the same self-heal the old
+  // `es.onerror = () => refreshSnapshot(true)` provided, now driven by the status edge.
+  React.useEffect(() => {
+    if (!projectName) return;
+    if (sseStatus === "reconnecting" || sseStatus === "disconnected") {
+      void refreshSnapshot(true);
+    }
+  }, [projectName, sseStatus, refreshSnapshot]);
 
   React.useEffect(() => {
     const timers = pulseTimersRef.current;

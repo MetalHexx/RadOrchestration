@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from 'react';
-import { useSSE } from '@/hooks/use-sse';
+import { useSSEContext } from '@/hooks/use-sse-context';
 import type { SSEEvent } from '@/types/events';
 
 export type LiveInput =
@@ -34,13 +34,17 @@ export function useRegistryLive(opts: { dirty: boolean; onRefetch: () => void })
     }
   }, [opts.dirty, opts.onRefetch]);
 
-  useSSE({
-    url: '/api/events',
-    onEvent: (e: SSEEvent) => {
-      if (e.type !== 'registry_change') return;
-      const a = nextLiveAction({ event: 'nudge', dirty: dirtyRef.current, held: heldRef.current });
-      heldRef.current = a.held;
-      if (a.refetch) opts.onRefetch();
-    },
-  });
+  // Ride the single shared multiplexed EventSource via the SSE provider instead of
+  // opening our own connection; the registry_change handler and the hold-while-dirty
+  // policy below are unchanged.
+  const { subscribe } = useSSEContext();
+  const onRefetchRef = useRef(opts.onRefetch);
+  onRefetchRef.current = opts.onRefetch;
+
+  useEffect(() => subscribe((e: SSEEvent) => {
+    if (e.type !== 'registry_change') return;
+    const a = nextLiveAction({ event: 'nudge', dirty: dirtyRef.current, held: heldRef.current });
+    heldRef.current = a.held;
+    if (a.refetch) onRefetchRef.current();
+  }), [subscribe]);
 }
