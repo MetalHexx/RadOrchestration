@@ -212,12 +212,29 @@ export async function GET(request: Request) {
       // The hub lazily warms a single process-level watcher shared across
       // all SSE connections. Each connection registers a connection-scoped
       // all-topics subscriber that fans in every project's artifact topic.
-      const liveRuntime = getLiveRuntime({ projectsRoot: absoluteProjectsDir });
+      const liveRuntime = getLiveRuntime({
+        projectsRoot: absoluteProjectsDir,
+        registryRoot: getRegistryRoot(),
+      });
       const unsubArtifacts = liveRuntime.subscribeAllArtifactTopics((n) =>
         enqueue(createSSEEvent('artifact_change', n.payload)),
       );
       const unsubDegraded = liveRuntime.subscribeDegraded((n) =>
         enqueue(createSSEEvent('live_degraded', n.payload)),
+      );
+      const unsubState = liveRuntime.subscribeAllStateTopics((n) =>
+        enqueue(
+          createSSEEvent('state_change', {
+            projectName: n.payload.projectName,
+            state: n.payload.state as ProjectState,
+          }),
+        ),
+      );
+      const unsubRegistry = liveRuntime.subscribeRegistry(() =>
+        enqueue(createSSEEvent('registry_change', {} as Record<string, never>)),
+      );
+      const unsubLifecycle = liveRuntime.subscribeLifecycle((n) =>
+        enqueue(createSSEEvent(n.type, { projectName: n.payload.projectName })),
       );
 
       // ── 7. Cleanup on disconnect ───────────────────────────────────
@@ -229,6 +246,9 @@ export async function GET(request: Request) {
         clearAllDebounceTimers();
         unsubArtifacts();
         unsubDegraded();
+        unsubState();
+        unsubRegistry();
+        unsubLifecycle();
         stateWatcher.close().catch((err) => {
           console.error('[SSE] Error closing watcher:', err);
         });
