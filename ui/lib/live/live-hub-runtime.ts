@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { classifyArtifactEvent, type ArtifactSemanticEvent } from './artifact-adapter';
 import {
   classifyStateEvent,
@@ -29,11 +30,24 @@ export interface DegradedNotification {
   type: 'live_degraded';
   payload: { degraded: boolean };
 }
+export interface RegistryChangeNotification {
+  type: 'registry_change';
+  payload: Record<string, never>;
+  timestamp: string;
+}
 
 interface RuntimeScheduler { schedule(cb: () => void): unknown; cancel(handle: unknown): void; }
+type MinimalWatcher = { on: (e: string, cb: (p: unknown) => void) => unknown; close: () => Promise<void> };
 interface RuntimeArgs {
   projectsRoot: string;
-  makeWatcher?: () => { on: (e: string, cb: (p: unknown) => void) => unknown; close: () => Promise<void> };
+  makeWatcher?: () => MinimalWatcher;
+  // The radorc-home root (e.g. ~/.radorc) watched for registry-file changes,
+  // distinct from projectsRoot. When provided, build() warms a second
+  // process-level singleton watch scoped to it (FR-2, AD-1, AD-2).
+  registryRoot?: string;
+  // Optional injected registry watcher so a test can drive registry events
+  // deterministically; production constructs a real chokidar watch.
+  makeRegistryWatcher?: () => MinimalWatcher;
   coalesceWindowMs?: number;
   maxRestarts?: number;
   // Optional injected scheduler so a test can drive coalescing deterministically
@@ -46,6 +60,20 @@ interface RuntimeArgs {
 
 const GLOBAL_KEY = '__radLiveRuntime__';
 
+// Explicitly chosen settle window for the registry watch, matching the route's
+// registry-watcher (REGISTRY_SETTLE_WINDOW_MS = 300) — distinct from lib/live's
+// 500ms projects-tree window (DD-2).
+const REGISTRY_SETTLE_WINDOW_MS = 300;
+// The two registry files a change on either of which fires a nudge (FR-2, DD-2).
+const REGISTRY_FILES = new Set(['repo-registry.yml', 'repo-registry.local.yml']);
+function isRegistryFile(filePath: string): boolean {
+  return REGISTRY_FILES.has(path.basename(filePath));
+}
+// The single topic every registry nudge publishes on; subscribeRegistry fans it
+// in. Distinct from the artifact/state/lifecycle topics so the same hub carries
+// all four without collision (AD-2).
+const REGISTRY_TOPIC = 'registry';
+
 function build(args: RuntimeArgs) {
   const hub = createTopicHub({
     coalesceWindowMs: args.coalesceWindowMs ?? 50,
@@ -53,7 +81,8 @@ function build(args: RuntimeArgs) {
     scheduler: args.scheduler,
   });
   const degradedListeners = new Set<(n: DegradedNotification) => void>();
-  let watcher: { on: (e: string, cb: (p: unknown) => void) => unknown; close: () => Promise<void> } | null = null;
+  let watcher: MinimalWatcher | null = null;
+  let registryWatcher: MinimalWatcher | null = null;
 
   const supervisor = createWatcherSupervisor({
     maxRestarts: args.maxRestarts ?? 3,
@@ -104,6 +133,46 @@ function build(args: RuntimeArgs) {
     hub.publish({ topic: sem.topic, kind: 'changed', projectName: sem.projectName, notif });
   }
 
+  // A registry-file add/change/unlink fires an empty nudge on the registry topic.
+  // The contract carries no payload (DD-2): the client refetches GET /api/registry
+  // on receipt, so the watch only needs to signal "something changed".
+  function publishRegistryEvent(filePath: string): void {
+    if (!isRegistryFile(filePath)) return;
+    const notif: RegistryChangeNotification = {
+      type: 'registry_change',
+      payload: {},
+      timestamp: new Date().toISOString(),
+    };
+    hub.publish({ topic: REGISTRY_TOPIC, kind: 'changed', projectName: '__registry__', notif });
+  }
+
+  // Second process-level singleton watch scoped to registryRoot (~/.radorc),
+  // distinct from the projects-tree watcher (AD-1, AD-2). Only constructed when
+  // registryRoot is provided. Errors route through the same supervisor so a
+  // registry-watch failure degrades through the existing path (NFR-6).
+  function startRegistryWatcher(): void {
+    if (!args.registryRoot) return;
+    let w: MinimalWatcher;
+    if (args.makeRegistryWatcher) {
+      w = args.makeRegistryWatcher();
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const chokidarMod = require('chokidar');
+      const usePolling = process.env.CHOKIDAR_USEPOLLING === '1';
+      w = chokidarMod.watch(args.registryRoot, {
+        usePolling,
+        depth: 0,
+        ignoreInitial: true,
+        awaitWriteFinish: { stabilityThreshold: REGISTRY_SETTLE_WINDOW_MS, pollInterval: 50 },
+      }) as never;
+    }
+    (['add', 'change', 'unlink'] as const).forEach((type) => {
+      w.on(type, (filePath: unknown) => publishRegistryEvent(String(filePath)));
+    });
+    w.on('error', (err: unknown) => supervisor.reportError(err));
+    registryWatcher = w;
+  }
+
   function startWatcher(): void {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const chokidarMod = require('chokidar');
@@ -148,6 +217,9 @@ function build(args: RuntimeArgs) {
   // Start the watcher eagerly so the error handler is registered immediately,
   // allowing supervisor.reportError to fire even before any subscriber connects.
   startWatcher();
+  // Start the registry watch eagerly too (no-op when registryRoot is absent),
+  // so registry nudges flow without waiting for a subscriber to connect.
+  startRegistryWatcher();
 
   function toNotif(e: ArtifactSemanticEvent): ArtifactChangeNotification {
     return { type: 'artifact_change', payload: { projectName: e.projectName, kind: e.kind }, timestamp: new Date().toISOString() };
@@ -183,9 +255,30 @@ function build(args: RuntimeArgs) {
         if (e.topic === LIFECYCLE_TOPIC && e.notif) listener(e.notif as LifecycleNotification);
       });
     },
+    subscribeRegistry(listener: (n: RegistryChangeNotification) => void): () => void {
+      // Rides the single registry topic. The empty-payload notification was built
+      // at publish time and rides the hub event's notif field, so we deliver it
+      // directly after coalescing (a burst collapses under maxQueuePerTopic = 1).
+      return hub.subscribeAll((e) => {
+        if (e.topic === REGISTRY_TOPIC && e.notif) listener(e.notif as RegistryChangeNotification);
+      });
+    },
     subscribeDegraded(listener: (n: DegradedNotification) => void): () => void {
       degradedListeners.add(listener);
       return () => degradedListeners.delete(listener);
+    },
+    // Tear down both process-level watchers (projects + registry). The singleton
+    // normally stays warm for the process lifetime; teardown exists so a host that
+    // owns the runtime lifecycle can close both fs handles together.
+    teardown(): void {
+      if (watcher) {
+        void watcher.close().catch((e) => console.error('[live] watcher close failed:', e));
+        watcher = null;
+      }
+      if (registryWatcher) {
+        void registryWatcher.close().catch((e) => console.error('[live] registry watcher close failed:', e));
+        registryWatcher = null;
+      }
     },
   };
 }

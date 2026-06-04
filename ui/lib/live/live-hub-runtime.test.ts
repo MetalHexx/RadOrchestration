@@ -201,3 +201,48 @@ test('a project directory removal fires project_removed (FR-3, DD-3)', () => {
   assert.deepEqual(got, [{ type: 'project_removed', payload: { projectName: 'OLD' }, timestamp: got[0]?.timestamp }]);
   off();
 });
+
+test('a repo-registry.yml change fires an empty registry nudge from the registry watch root (FR-2, AD-2, DD-2)', () => {
+  __resetLiveRuntimeForTest();
+  const projectsW = fakeWatcher();
+  const registryW = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => projectsW as never,
+    makeRegistryWatcher: () => registryW as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+  });
+  const got: Array<{ type: string; payload: Record<string, never> }> = [];
+  const off = rt.subscribeRegistry((n) => got.push(n));
+  registryW.emit('change', '/home/.radorc/repo-registry.yml');
+  clock.flush();
+  assert.equal(got.length, 1, 'one registry nudge delivered');
+  assert.equal(got[0].type, 'registry_change');
+  assert.deepEqual(got[0].payload, {});
+  off();
+});
+
+test('the local registry override file also fires a nudge; a non-registry file does not (FR-2)', () => {
+  __resetLiveRuntimeForTest();
+  const projectsW = fakeWatcher();
+  const registryW = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => projectsW as never,
+    makeRegistryWatcher: () => registryW as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+  });
+  const got: string[] = [];
+  const off = rt.subscribeRegistry((n) => got.push(n.type));
+  registryW.emit('change', '/home/.radorc/repo-registry.local.yml');
+  registryW.emit('change', '/home/.radorc/orchestration.yml');
+  clock.flush();
+  assert.deepEqual(got, ['registry_change'], 'only registry files nudge; orchestration.yml is ignored');
+  off();
+});
