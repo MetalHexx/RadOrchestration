@@ -31,6 +31,19 @@ test('use-registry-live subscribes through the shared provider and keeps hold-wh
   assert.ok(registrySrc.includes('nextLiveAction'), 'hold-while-dirty policy must be preserved');
 });
 
+test('project_removed reconciles against the authoritative list to survive lifecycle coalescing (FR-3, NFR-4)', () => {
+  // The lifecycle topic coalesces latest-wins (maxQueuePerTopic = 1), so a burst of
+  // lifecycle events collapses to the newest. project_added/connected already refetch;
+  // project_removed must ALSO refetch so a surviving removal recovers any sibling
+  // lifecycle event the coalesce window dropped — otherwise those projects linger stale.
+  const removedCase = projectsSrc.slice(projectsSrc.indexOf('case "project_removed"'));
+  const removedBody = removedCase.slice(0, removedCase.indexOf('break;'));
+  assert.ok(
+    /fetchProjectList\(\)/.test(removedBody),
+    'the project_removed handler must refetch the authoritative list, not only filter locally',
+  );
+});
+
 test('page.test.tsx guard is rewritten for the multiplexed single-connection model (DD-4)', () => {
   assert.ok(!/page\.tsx must not import or call useSSEContext/.test(pageTestSrc),
     'the old guard forbidding useSSEContext must be removed');

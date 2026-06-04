@@ -27,7 +27,8 @@ test('provider is a Context provider with no new state-management dependency (NF
   const src = readFileSync(path.join(process.cwd(), 'hooks', 'use-artifact-live.tsx'), 'utf-8');
   assert.ok(src.includes('createContext'), 'uses React Context idiom');
   assert.ok(!/from ['"](zustand|redux|jotai|recoil|valtio)['"]/.test(src), 'no new state library imported');
-  assert.ok(src.includes('EventSource'), 'owns its own live connection (documented fallback, AD-11)');
+  assert.ok(src.includes('useSSEContext'), 'rides the shared SSE provider, not its own connection (single connection per tab)');
+  assert.ok(!src.includes('new EventSource('), 'constructs no raw EventSource of its own');
   assert.ok(src.includes('fetchArtifactSnapshot'), 'snapshots over REST on connect');
 });
 
@@ -37,6 +38,23 @@ test('the artifact_change path feeds live deltas into the store via snapshot dif
   assert.ok(!/void\s+applyChange/.test(src), 'applyChange is wired, not silenced with void');
   assert.ok(!/void\s+setMtimes/.test(src), 'setMtimes is wired, not silenced with void');
   assert.ok(/applyChange\s*\(/.test(src), 'applyChange is actually invoked');
+});
+
+test('reconnect self-heal is gated on a prior connection, not the initial disconnected state (no double-fetch per select)', () => {
+  const src = readFileSync(path.join(process.cwd(), 'hooks', 'use-artifact-live.tsx'), 'utf-8');
+  // The shared provider starts sseStatus = "disconnected" before its first onopen.
+  // The self-heal effect must guard on having-connected-once so it does NOT fire a
+  // redundant refreshSnapshot(true) on every project select on top of the
+  // project-change effect's refreshSnapshot(false).
+  assert.ok(/hasConnectedRef/.test(src), 'self-heal tracks whether the connection has ever opened');
+  assert.ok(
+    /sseStatus\s*===\s*["']connected["']/.test(src),
+    'the guard flips true on the first "connected" status',
+  );
+  assert.ok(
+    /if\s*\(\s*!hasConnectedRef\.current\s*\)\s*return/.test(src),
+    'the self-heal bails out while the connection has never opened (ignores initial "disconnected")',
+  );
 });
 
 test('the active pulse settles via endPulseFor on a timer (FR-6)', () => {

@@ -247,6 +247,47 @@ test('the local registry override file also fires a nudge; a non-registry file d
   off();
 });
 
+test('a registry watcher error restarts the registry watcher, not the projects watcher (NFR-6 registry resilience)', () => {
+  __resetLiveRuntimeForTest();
+  const proj = spyWatcher();
+  const reg1 = spyWatcher();
+  const reg2 = spyWatcher();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => proj as never,
+    makeRegistryWatcher: watcherSequence([reg1, reg2]),
+    coalesceWindowMs: 0,
+    maxRestarts: 1,
+  });
+  void rt;
+  reg1.emit('error', new Error('registry watch died')); // budget allows one registry restart
+  assert.equal(reg1.closeCount, 1, 'the failed registry watcher is closed on its own restart');
+  assert.equal(proj.closeCount, 0, 'a registry error must not restart/close the projects watcher');
+});
+
+test('a registry error does not consume the projects watcher restart budget (independent supervisors, NFR-6)', () => {
+  __resetLiveRuntimeForTest();
+  const proj1 = spyWatcher();
+  const proj2 = spyWatcher();
+  const reg1 = spyWatcher();
+  const reg2 = spyWatcher();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: watcherSequence([proj1, proj2]),
+    makeRegistryWatcher: watcherSequence([reg1, reg2]),
+    coalesceWindowMs: 0,
+    maxRestarts: 1,
+  });
+  const degraded: Array<{ type: string }> = [];
+  rt.subscribeDegraded((n) => degraded.push(n));
+  reg1.emit('error', new Error('registry fail'));   // consumes the REGISTRY budget (restart #1)
+  proj1.emit('error', new Error('projects fail'));  // projects still has its full budget → restarts
+  assert.deepEqual(degraded, [], 'neither surface degraded: each restart drew from its own budget');
+  assert.equal(proj1.closeCount, 1, 'the projects watcher restarted on its own untouched budget');
+});
+
 test('a registry change never reaches an artifact subscriber (AD-1 topic isolation)', () => {
   __resetLiveRuntimeForTest();
   const projectsW = fakeWatcher();

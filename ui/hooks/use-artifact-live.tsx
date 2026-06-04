@@ -124,11 +124,20 @@ export function ArtifactLiveProvider({
     });
   }, [projectName, subscribe, refreshSnapshot]);
 
-  // Reconnect self-heal: when the shared connection drops to reconnecting/disconnected,
-  // reconcile the unseen set against a fresh snapshot — the same self-heal the old
-  // `es.onerror = () => refreshSnapshot(true)` provided, now driven by the status edge.
+  // Reconnect self-heal: when the shared connection DROPS (reconnecting/disconnected)
+  // after having been live, reconcile the unseen set against a fresh snapshot — the
+  // same self-heal the old `es.onerror = () => refreshSnapshot(true)` provided, now
+  // driven by the status edge. The shared provider initializes sseStatus to
+  // "disconnected" before its first onopen, so we gate on having-connected-once:
+  // without this guard the effect would fire a redundant reconcile on EVERY
+  // project select (before the connection opens), doubling up on the project-change
+  // effect's initial refreshSnapshot(false). hasConnectedRef flips true on the first
+  // "connected" and stays true, so every genuine post-connect drop still self-heals.
+  const hasConnectedRef = React.useRef(false);
   React.useEffect(() => {
+    if (sseStatus === "connected") { hasConnectedRef.current = true; return; }
     if (!projectName) return;
+    if (!hasConnectedRef.current) return; // ignore the initial pre-connect "disconnected"
     if (sseStatus === "reconnecting" || sseStatus === "disconnected") {
       void refreshSnapshot(true);
     }

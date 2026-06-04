@@ -122,11 +122,20 @@ export function useProjects(): UseProjectsReturn {
         }
         case "project_removed": {
           const payload = event.payload as { projectName: string };
+          // Optimistic local removal for instant sidebar feedback.
           setProjects((prev) => prev.filter((p) => p.name !== payload.projectName));
           if (payload.projectName === currentSelected) {
             setSelectedProject(null);
             setProjectState(null);
           }
+          // Then reconcile against the authoritative list. The lifecycle topic
+          // coalesces latest-wins (maxQueuePerTopic = 1), so a burst of lifecycle
+          // events collapses to the newest one. A surviving project_removed must
+          // therefore refetch to recover any sibling lifecycle event the coalesce
+          // window dropped (e.g. two removals in one window, or a removal that
+          // landed after a coalesced-away project_added) — without it those
+          // projects would linger stale until the next event or reconnect.
+          fetchProjectList();
           break;
         }
         default:

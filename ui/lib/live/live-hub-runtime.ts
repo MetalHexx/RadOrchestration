@@ -84,13 +84,28 @@ function build(args: RuntimeArgs) {
   let watcher: MinimalWatcher | null = null;
   let registryWatcher: MinimalWatcher | null = null;
 
+  const emitDegraded = () => {
+    const n: DegradedNotification = { type: 'live_degraded', payload: { degraded: true } };
+    for (const l of degradedListeners) l(n);
+  };
+
   const supervisor = createWatcherSupervisor({
     maxRestarts: args.maxRestarts ?? 3,
     start: () => { startWatcher(); },
-    onDegraded: () => {
-      const n: DegradedNotification = { type: 'live_degraded', payload: { degraded: true } };
-      for (const l of degradedListeners) l(n);
-    },
+    onDegraded: emitDegraded,
+  });
+
+  // The registry watch runs under its OWN supervisor so a registry-watch failure
+  // restarts the registry watcher (not the projects watcher) on a SEPARATE restart
+  // budget. Without this, registry errors route into the projects supervisor whose
+  // restart only re-runs startWatcher() — a registry fault would consume the
+  // projects budget and never recreate the registry watcher, leaving registry live
+  // updates permanently dead. Both supervisors share one degrade emit: a degrade of
+  // either surface degrades "live" for the UI banner (NFR-6).
+  const registrySupervisor = createWatcherSupervisor({
+    maxRestarts: args.maxRestarts ?? 3,
+    start: () => { startRegistryWatcher(); },
+    onDegraded: emitDegraded,
   });
 
   // Default disk read; tests inject readStateFile for deterministic content.
@@ -152,6 +167,10 @@ function build(args: RuntimeArgs) {
   // registry-watch failure degrades through the existing path (NFR-6).
   function startRegistryWatcher(): void {
     if (!args.registryRoot) return;
+    // Capture the outgoing registry watcher so a supervisor restart closes it once
+    // the new one is wired, rather than leaking its fs handles + listeners (parity
+    // with startWatcher's Defect 1). Skipped on the very first start.
+    const previous = registryWatcher;
     let w: MinimalWatcher;
     if (args.makeRegistryWatcher) {
       w = args.makeRegistryWatcher();
@@ -169,8 +188,17 @@ function build(args: RuntimeArgs) {
     (['add', 'change', 'unlink'] as const).forEach((type) => {
       w.on(type, (filePath: unknown) => publishRegistryEvent(String(filePath)));
     });
-    w.on('error', (err: unknown) => supervisor.reportError(err));
+    // Route registry-watch errors into the registry supervisor so the registry
+    // watcher is the thing that gets restarted, on its own budget (NFR-6).
+    w.on('error', (err: unknown) => registrySupervisor.reportError(err));
+    // chokidar 'ready' marks a healthy (re)start — reset the registry budget so
+    // transient registry errors that each recover do not accumulate into a
+    // permanent degrade (parity with startWatcher's Defect 2).
+    w.on('ready', () => registrySupervisor.reportHealthy());
     registryWatcher = w;
+    if (previous) {
+      void previous.close().catch((e) => console.error('[live] registry watcher close failed:', e));
+    }
   }
 
   function startWatcher(): void {
