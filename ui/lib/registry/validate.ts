@@ -9,17 +9,19 @@ export function validateSlug(slug: string): void {
   }
 }
 
-export function validateRequired(value: string | undefined, field: string): void {
+// `label` is the human Proper-Case name used in the message ("Local Path");
+// `field` stays the machine name so the UI can route the error to the input.
+export function validateRequired(value: string | undefined, field: string, label: string = field): void {
   if (value === undefined || value.trim() === '') {
-    throw new RegistryError('REQUIRED', `${field} is required.`, field);
+    throw new RegistryError('REQUIRED', `${label} is required.`, field);
   }
 }
 
-export function validateDirectory(p: string, field: string): void {
+export function validateDirectory(p: string, field: string, label: string = field): void {
   try {
     if (statSync(p).isDirectory()) return;
   } catch { /* falls through */ }
-  throw new RegistryError('PATH_INVALID', `${field} must be an existing directory.`, field);
+  throw new RegistryError('PATH_INVALID', `${label} must be an existing folder on this machine.`, field);
 }
 
 export function validateUniqueName(reg: Registry, slug: string): void {

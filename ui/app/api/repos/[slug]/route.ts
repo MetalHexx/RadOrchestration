@@ -54,9 +54,9 @@ export async function PUT(request: Request, { params }: { params: { slug: string
     const defaultBranch = body.defaultBranch === undefined ? undefined : String(body.defaultBranch);
     // description: omit = unchanged, empty = REQUIRED reject (DD per-entity mechanics)
     const description = 'description' in body ? String(body.description) : undefined;
-    if (remote !== undefined) validateRequired(remote, 'remote');
-    if (defaultBranch !== undefined) validateRequired(defaultBranch, 'defaultBranch');
-    if (description !== undefined) validateRequired(description, 'description');
+    if (remote !== undefined) validateRequired(remote, 'remote', 'Remote');
+    if (defaultBranch !== undefined) validateRequired(defaultBranch, 'defaultBranch', 'Default Branch');
+    if (description !== undefined) validateRequired(description, 'description', 'Description');
 
     const edit: { description?: string; remote?: string; defaultBranch?: string } = {};
     if (remote !== undefined && remote !== current.remote) edit.remote = remote;
@@ -67,8 +67,8 @@ export async function PUT(request: Request, { params }: { params: { slug: string
     // bind: present-and-different = re-point; omit = unchanged (never clears)
     if ('localPath' in body && body.localPath !== undefined) {
       const localPath = String(body.localPath);
-      validateRequired(localPath, 'localPath');
-      validateDirectory(localPath, 'localPath');
+      validateRequired(localPath, 'localPath', 'Local Path');
+      validateDirectory(localPath, 'localPath', 'Local Path');
       if (localPath !== reg.localPaths[slug]) bindRepo({ root, name: slug, localPath });
     }
 

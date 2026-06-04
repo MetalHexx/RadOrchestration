@@ -34,15 +34,24 @@ test('validateRequired throws REQUIRED naming the field for empty string (AD-4)'
   assert.equal(err.field, 'description');
 });
 
+test('validateRequired uses the Proper-Case label in the message but keeps field for routing', () => {
+  let err: RegistryError | undefined;
+  try { validateRequired('', 'localPath', 'Local Path'); } catch (e) { err = e as RegistryError; }
+  assert.ok(err instanceof RegistryError);
+  assert.equal(err.field, 'localPath');           // machine name for UI routing
+  assert.equal(err.message, 'Local Path is required.'); // Proper-Case in the message
+});
+
 test('validateDirectory passes for an existing dir, throws PATH_INVALID otherwise (AD-4)', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'val-'));
   try {
     assert.doesNotThrow(() => validateDirectory(dir, 'localPath'));
     let err: RegistryError | undefined;
-    try { validateDirectory(path.join(dir, 'nope'), 'localPath'); } catch (e) { err = e as RegistryError; }
+    try { validateDirectory(path.join(dir, 'nope'), 'localPath', 'Local Path'); } catch (e) { err = e as RegistryError; }
     assert.ok(err instanceof RegistryError);
     assert.equal(err.code, 'PATH_INVALID');
     assert.equal(err.field, 'localPath');
+    assert.equal(err.message, 'Local Path must be an existing folder on this machine.');
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
