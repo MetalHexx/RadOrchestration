@@ -52,14 +52,9 @@ prompt says, no more.
     rules, or error-handling patterns the eligible skill defines.
     Absence of the section means no eligible repo skills exist; proceed normally.
 
-1c. When no brainstorming doc is present, invoke the `/rad-repo` skill to read the
-    registry and infer the affected repos from the orchestrator prompt and codebase
-    discovery — a planner runs as a subagent and does not receive the session-start
-    ambient registry block, so the registry must be read explicitly. Record the
-    inferred set in the `repos:` frontmatter. When a brainstorm IS present, restate
-    (and may refine) its `## Repo Targets (proposed)` set instead. Cross-reference:
-    this fallback keeps the iteration self-contained per NFR-2's author-boundary
-    scope. (FR-6, NFR-2)
+1c. Even when a brainstorming doc is present, or spawn prompt is present, invoke the `/rad-repo` skill to read the
+    registry.  Record the inferred set in the `repos:` frontmatter. When a brainstorm IS present, use this as
+    a guiding post for exploration, not the final set.  
 
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:
