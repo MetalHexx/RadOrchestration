@@ -87,7 +87,8 @@ becomes task-local and action-oriented.
     When a Requirements `repos:` restate exists, seal it (refining only with
     cause) into the Master Plan frontmatter. The seal is derived bottom-up and
     cross-checked against the body's target repos before saving (see Step 8's
-    structural lint pass). (FR-6, NFR-2)
+    structural lint pass). If you're absolutely have no clue which repos to check, 
+    abort the operation and ask for help.
 
 3. Decide the phase and task breakdown. Phases group work by natural seam
    (layer boundary, independently deliverable slice). Tasks within a phase are
