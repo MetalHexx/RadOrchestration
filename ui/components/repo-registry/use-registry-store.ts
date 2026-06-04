@@ -18,7 +18,14 @@ export function useRegistryStore() {
         setStore(hydrate((await res.json()) as RegistrySnapshot));
         setError(null);
       } else {
-        setError(`Failed to load registry (${res.status})`);
+        // Surface the server's error message (route returns { error: { message } });
+        // fall back to the status code if the body isn't the expected JSON shape.
+        let message = `Failed to load registry (${res.status})`;
+        try {
+          const body = (await res.json()) as { error?: { message?: string } };
+          if (body?.error?.message) message = body.error.message;
+        } catch { /* non-JSON body — keep the status-based fallback */ }
+        setError(message);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load registry');

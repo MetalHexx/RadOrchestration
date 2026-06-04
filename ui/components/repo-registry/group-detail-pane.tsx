@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  DialogClose,
 } from '@/components/ui/dialog';
 import type { RepoGroupRead, RepoRead, ApiError } from './types';
 import { classifyError, buildGroupSaveBody, NETWORK_ERROR_MESSAGE } from './registry-requests';
@@ -195,9 +194,7 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
             This action cannot be undone.
           </DialogDescription>
           <div className="mt-4 flex justify-end gap-2">
-            <DialogClose>
-              <Button variant="ghost" disabled={removing}>Cancel</Button>
-            </DialogClose>
+            <Button variant="ghost" disabled={removing} onClick={() => setConfirmOpen(false)}>Cancel</Button>
             <Button
               variant="destructive"
               disabled={removing}

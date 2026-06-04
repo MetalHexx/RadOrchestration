@@ -46,6 +46,13 @@ test('member row label opts into min-w-0 so long descriptions truncate instead o
   assert.match(src, /min-w-0 flex-1 truncate/);
 });
 
+test('rows show a visible focus state for keyboard users since the checkbox is sr-only (PR #109 review)', () => {
+  // the actual control is visually hidden
+  assert.match(src, /type="checkbox"[\s\S]*?className="sr-only"/);
+  // so the row must light up on focus-within, not only on hover
+  assert.match(src, /focus-within:/);
+});
+
 test('pending-remove mirrors pending-add: red row tint + red badge (not dimming/amber)', () => {
   // add uses a 12% --status-complete (green) tint; remove uses the matching --status-failed (red) tint
   assert.match(src, /status === 'pending-add' && 'bg-\[color-mix\(in_oklch,var\(--status-complete\)_12%,transparent\)\]'/);

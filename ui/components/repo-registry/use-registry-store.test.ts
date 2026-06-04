@@ -37,6 +37,15 @@ test('refetch handles fetch failures rather than silently dropping them (P04 F-1
   assert.match(hook, /setError\(null\)/);
 });
 
+test('a non-ok response surfaces the server error message, not just the status code (PR #109 review)', () => {
+  // route returns { error: { message } }; the hook must prefer that message
+  assert.match(hook, /body\??\.error\??\.message/);
+  // still keeps a status-code fallback for non-JSON / shapeless bodies
+  assert.match(hook, /Failed to load registry \(\$\{res\.status\}\)/);
+  // the body parse is guarded so a non-JSON body can't throw past the handler
+  assert.match(hook, /catch\s*\{[^}]*\}/);
+});
+
 test('page composes the rail and the empty state, never imports the server validator (FR-2, FR-27, NFR-1)', () => {
   assert.match(page, /RegistryRail|registry-rail/);
   assert.match(page, /EmptyRegistryState|registry-empty-states/);

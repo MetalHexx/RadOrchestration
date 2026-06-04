@@ -95,3 +95,10 @@ test('pane memoizes the draft baseline keyed on the repo prop (P07 F-21)', () =>
   assert.match(pane, /useMemo/);
   assert.match(pane, /const baseline = useMemo\(\s*\(\)\s*=>\s*repoDraftFrom\(repo\),\s*\[repo\]\s*\)/);
 });
+
+test('remove-confirm Cancel closes the controlled dialog without nesting buttons (PR #109 review)', () => {
+  // the dialog is controlled, so Cancel closes it by setting confirmOpen false
+  assert.match(pane, /onClick=\{\(\) => setConfirmOpen\(false\)\}/);
+  // DialogClose must not wrap our <Button> — Base UI Close renders its own button (nested buttons)
+  assert.doesNotMatch(pane, /DialogClose/);
+});

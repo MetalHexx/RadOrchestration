@@ -8,7 +8,6 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { classifyError, buildRepoSaveBody, NETWORK_ERROR_MESSAGE } from './registry-requests';
 import { useDirtyBatch } from './use-dirty-batch';
@@ -237,9 +236,7 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
             This action cannot be undone.
           </DialogDescription>
           <div className="mt-4 flex justify-end gap-2">
-            <DialogClose>
-              <Button variant="ghost" disabled={removing}>Cancel</Button>
-            </DialogClose>
+            <Button variant="ghost" disabled={removing} onClick={() => setConfirmOpen(false)}>Cancel</Button>
             <Button
               variant="destructive"
               disabled={removing}
