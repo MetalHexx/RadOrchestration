@@ -163,8 +163,10 @@ function build(args: RuntimeArgs) {
 
   // Second process-level singleton watch scoped to registryRoot (~/.radorc),
   // distinct from the projects-tree watcher (AD-1, AD-2). Only constructed when
-  // registryRoot is provided. Errors route through the same supervisor so a
-  // registry-watch failure degrades through the existing path (NFR-6).
+  // registryRoot is provided. Errors route through the dedicated registrySupervisor
+  // (its own restart budget) and share the projects watcher's degrade emit, so a
+  // registry-watch failure restarts the registry watcher itself and still degrades
+  // "live" through the existing path (NFR-6).
   function startRegistryWatcher(): void {
     if (!args.registryRoot) return;
     // Capture the outgoing registry watcher so a supervisor restart closes it once
