@@ -82,8 +82,7 @@ becomes task-local and action-oriented.
 
 2b. When no brainstorming doc and no Requirements `repos:` set are available,
     invoke the `/rad-repo` skill to read the registry and infer the affected
-    repos from the orchestrator prompt and codebase discovery — a planner runs
-    as a subagent and does not receive the session-start ambient registry block.
+    repos from the orchestrator prompt and codebase discovery.
     When a Requirements `repos:` restate exists, seal it (refining only with
     cause) into the Master Plan frontmatter. The seal is derived bottom-up and
     cross-checked against the body's target repos before saving (see Step 8's
