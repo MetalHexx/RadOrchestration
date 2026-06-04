@@ -255,12 +255,12 @@
     {
       "bundlePath": "skills/rad-brainstorm/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/SKILL.md",
-      "sha256": "7143e5f0d07e0c52707610ec9124a860327afaa21205bc772098800c4913400e"
+      "sha256": "41b2ee4b512f9a8f0d7b2797f6bdede20210c406ebcc172f23046669ff502f6e"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/architecture-visuals.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/architecture-visuals.md",
-      "sha256": "f60490190d955fbb073974fa21b954fa0f857e928b2e45bbb73c4adaccb9b41e"
+      "sha256": "bf89257f05b303af722c2b952f1492b7bc03eba649b642476f67dfcfd0ee9505"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/collaboration.md",
@@ -275,12 +275,12 @@
     {
       "bundlePath": "skills/rad-brainstorm/references/generate-mockup.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/generate-mockup.md",
-      "sha256": "ceca7698411d14abb9ba0d9cdee5e619f55c9b98239bc37143252aa2c59f2a95"
+      "sha256": "049b0676b976b39c4a9cbdb783c698e19b9c8fe76fba88b971fb76f948a4f0c1"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/make-it-visual.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/make-it-visual.md",
-      "sha256": "f547dcff1e21caed42324059c70155b63955f493b1ef6a9d6201369a433221fa"
+      "sha256": "8a88e9a5498732855d41639dd06e2b13ad0a99b4794608c530332ffd12702f82"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/project-memory.md",
@@ -430,7 +430,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "a4768b0a9056dfc2ece593d81b7b5de214ba78f63840f7be4d5eda2fc06de913"
+      "sha256": "5aea2770b1da22ff6ae33e8f9d7602abd1bbf3e77fa8a9284932b9858d913d6f"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
