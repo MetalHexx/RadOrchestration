@@ -207,7 +207,6 @@ becomes task-local and action-oriented.
        Run: `npm test -- login.test.ts`
        Expected: PASS (FR-1)
    ```
-   (FR-7, DD-2, AD-3)
 
    **Title rule:** 4–7 words, imperative verb + outcome noun. Names what the task establishes, not what files it touches. Example: "Add rate-limit validator" not "Implement rate-limit validator function with allowlist constant and five test cases."
 
