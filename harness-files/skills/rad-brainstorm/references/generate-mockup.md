@@ -82,19 +82,15 @@ Add more detail — icon placeholders (SVG outlines), micro-copy, hover state an
 
 ---
 
-### Step 4 — Save and Open
+### Step 4 — Save and Offer in the Dashboard
 
 Save to the resolved output folder with the correct filename.
 
-Then open in the default browser:
+Then point the user *into the dashboard* — **never** open the file as a `file://` page in a separate browser tab. Follow *View Scribed Docs in the Dashboard* in the main SKILL.md: silently check `/rad-ui-status`, then offer to open the mockup at its deep link `<base>/projects/<PROJECT-NAME>/docs/<filename>` (offer `/rad-ui-start` first if the UI is down).
 
-```powershell
-Start-Process "<output-folder>\<filename>"
-```
+Confirm: **"Mockup saved: `<output-folder>\<filename>`"**, then make the open-in-dashboard offer.
 
-Confirm: **"Mockup saved and opened: `<output-folder>\<filename>`"**
-
-Tell the user: *"It should be open in your browser. Come back with changes or say 'looks good' to proceed."*
+Tell the user: *"Open it in the dashboard? Come back with changes or say 'looks good' to proceed."*
 
 ## Screenshot Input Handling
 

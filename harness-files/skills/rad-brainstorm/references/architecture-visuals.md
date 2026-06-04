@@ -67,7 +67,7 @@ Flow / sequence diagrams — swimlanes, modules-as-boxes, labeled connector arro
 **Verify by rendering — the biggest lesson**
 
 - **Always render and eyeball the result. Never trust a "no overlaps" self-check.** SVG coordinate math is easy to get subtly wrong; only a real render reveals floating arrows, overlaps, and garbled labels.
-- If a running app serves the artifact, render **through the app** (e.g. a raw-HTML route on the local dashboard) rather than a `file://` URL — browser tools often block `file://`. Scroll top-to-bottom and check: every connector connects, every label is legible, nothing overlaps.
+- If a running app serves the artifact, render **through the app** — the dashboard's raw-HTML route (`/api/projects/<name>/raw?path=<file>`) — rather than a `file://` URL (browser tools often block `file://`, and the dashboard is the canonical viewer anyway). Scroll top-to-bottom and check: every connector connects, every label is legible, nothing overlaps.
 - Then **iterate** — fix coordinates, re-render, repeat until clean.
 
 ## How It's Produced

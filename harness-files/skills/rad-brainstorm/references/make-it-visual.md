@@ -38,7 +38,7 @@ Generates screenshot-ready, self-contained HTML (or SVG) visuals from any source
 4. **Brand sampling (URL given only).** Run colors + fonts + logos + voice (see Brand Sampling section). Show preview and wait for confirmation before generating.
 5. **Layout.** Match source type to a layout pattern below.
 6. **Data.** Use only real source data — no Lorem Ipsum, no invented labels.
-7. **Save.** Write to the output folder; confirm the exact filename; suggest opening in browser.
+7. **Save.** Write to the output folder; confirm the exact filename; then offer to open it in the dashboard (see *View Scribed Docs in the Dashboard* in the main SKILL.md) — never open it as a `file://` page in a separate browser tab.
 
 ---
 
