@@ -288,7 +288,7 @@ type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
 repos: [repo-a, repo-b]
-repo-group: repo-group-name   # optional, provenance only
+repo-group: repo-group-name 
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
@@ -297,7 +297,7 @@ author: "planner-agent"
 
 - `status`: `draft` | `approved`. Always `draft` at authoring time.
 - `repos`: list of registry repo names — the **sealed, authoritative** repo set for the project. This is the single source of truth the explosion script will read; downstream documents are superseded by this seal.
-- `repo-group`: optional registry repo-group name carried for provenance only.
+- `repo-group`: the repo-group scope for this project.
 - `total_phases`: count of `## P\d{2}:` headings.
 - `total_tasks`: count of `### P\d{2}-T\d{2}:` headings.
 - `author`: exactly `"planner-agent"`.
