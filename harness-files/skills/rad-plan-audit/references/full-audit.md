@@ -36,7 +36,7 @@ inventory of:
 - Every ID cited in the Master Plan — phase `**Requirements:**` lines,
   task `**Requirements:**` lines, inline step tags.
 - Contracts and interfaces (exact shapes).
-- Phase and task headings, `**Task type:**` / `**Files:**` blocks.
+- Phase and task headings, `**Task type:**` / `**Target repos:**` / per-repo `**Files for <repo>:**` blocks.
 - Anything marked frozen, sacred, or NFR-constrained.
 - Frontmatter fields (`requirement_count` in Requirements,
   `total_phases` / `total_tasks` in Master Plan).
@@ -71,7 +71,8 @@ Apply [rubric Part 3](./audit-rubric.md#part-3-buildability-explosion-readiness)
 
 - Tag coverage, tag justification, tag validity.
 - Phase + task heading shape (mandatory `**Task type:**`,
-  `**Requirements:**`, `**Files:**` lines).
+  `**Requirements:**`, `**Target repos:**`, and per-repo
+  `**Files for <repo>:**` subsections).
 - `code`-task RED-GREEN shape (exactly 4 steps).
 - No placeholders (`TBD`, `TODO`, `FIXME`, `implement later`,
   `similar to`, `as needed`).

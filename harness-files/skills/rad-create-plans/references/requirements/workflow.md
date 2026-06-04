@@ -52,6 +52,10 @@ prompt says, no more.
     rules, or error-handling patterns the eligible skill defines.
     Absence of the section means no eligible repo skills exist; proceed normally.
 
+1c. Even when a brainstorming doc is present, or spawn prompt is present, invoke the `/rad-repo` skill to read the
+    registry.  Record the inferred set in the `repos:` frontmatter. When a brainstorm IS present, use this as
+    a guiding post for exploration, not the final set.  
+
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:
    - FR-1, FR-2, ... (functional requirements — what the system does, capabilities, behaviors, features, etc.)
@@ -105,6 +109,8 @@ type: requirements
 status: "draft"
 approved_at: null
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name
 requirement_count: {N}
 author: "planner-agent"
 ---
@@ -113,6 +119,8 @@ author: "planner-agent"
 - `status`: `draft` | `approved` | `frozen`. Always `draft` at authoring time.
 - `approved_at`: `null` at authoring time. Set to `"{ISO-DATE-TIME}"` when a
   human gate approves the doc.
+- `repos`: list of registry repo names — a **non-authoritative restate** the planner may refine from the brainstorm's proposed set. Requirement *bodies* stay repo-agnostic; the repo set lives only in frontmatter.
+- `repo-group`: registry repo-group name.
 - `requirement_count`: total of FR + NFR + AD + DD blocks in the body.
 - `author`: exactly `"planner-agent"`.
 

@@ -4,6 +4,8 @@ type: requirements
 status: "draft"
 approved_at: null
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name
 requirement_count: {N}
 author: "planner-agent"
 ---

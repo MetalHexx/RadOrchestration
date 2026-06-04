@@ -43,6 +43,21 @@ created: "{ISO-DATE}"
 
 {What problem are we solving? What pain points exist? What opportunity are we exploring? 2-4 sentences.}
 
+## Repo Targets (proposed)
+
+<!--
+  Mandatory. Every brainstorm carries a proposed working repo set.
+  Repos are registry names (see /rad-repo). The (proposed) qualifier marks
+  this as a working hypothesis the planner may refine downstream.
+-->
+
+**Repos involved**: `{repo-a}`, `{repo-b}`
+**Repo-Group** (if applicable): `{repo-group}`
+**Rationale**: {Why each repo is in the set — what part of the work lands where.}
+
+*Note: planner may refine this set during requirements / master-plan work based
+on what surfaces in scoping.*
+
 ## Validated Goals
 
 {Only goals discussed and agreed upon. Each goal has a description, rationale, and key considerations.}

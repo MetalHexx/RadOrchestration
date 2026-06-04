@@ -3,6 +3,8 @@ project: "{PROJECT-NAME}"
 type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name   # optional, provenance only
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
@@ -21,6 +23,7 @@ author: "planner-agent"
 {≤3 sentence phase description: what this phase delivers and why it's its own phase.}
 
 **Requirements:** FR-1, FR-2, AD-1, DD-1
+**Target repos:** app
 
 **Execution order:**
     T01 → T02 → T03
@@ -32,7 +35,8 @@ author: "planner-agent"
 
 **Task type:** code
 **Requirements:** FR-1, DD-1
-**Files:**
+**Target repos:** app
+**Files for app:**
 - Create: `src/components/LoginForm.tsx`
 - Test: `src/components/__tests__/LoginForm.test.tsx`
 
@@ -82,7 +86,8 @@ author: "planner-agent"
 
 **Task type:** doc
 **Requirements:** DD-1
-**Files:**
+**Target repos:** app
+**Files for app:**
 - Modify: `README.md:120-160`
 
 - [ ] **Step 1: Add the login flow section under "Usage"**
