@@ -132,3 +132,72 @@ test('the /api/events route pins the Node runtime and stays dynamic (AD-12)', ()
   assert.match(route, /export\s+const\s+runtime\s*=\s*['"]nodejs['"]/, 'SSE route declares the Node runtime');
   assert.match(route, /export\s+const\s+dynamic\s*=\s*['"]force-dynamic['"]/, 'SSE route stays dynamic / non-cached');
 });
+
+test('a state.json change delivers the full parsed state over the state topic, read once at the hub (FR-1, NFR-5, DD-1)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/p',
+    makeWatcher: () => w as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+    readStateFile: () => JSON.stringify({ project: { name: 'DEMO' }, graph: { nodes: {} } }),
+  });
+  const got: Array<{ type: string; payload: { projectName: string; state: unknown } }> = [];
+  const off = rt.subscribeAllStateTopics((n) => got.push(n));
+  w.emit('change', '/p/DEMO/state.json');
+  clock.flush();
+  assert.equal(got.length, 1, 'one state_change delivered for a DEMO state.json change');
+  assert.equal(got[0].type, 'state_change');
+  assert.equal(got[0].payload.projectName, 'DEMO');
+  assert.deepEqual(got[0].payload.state, { project: { name: 'DEMO' }, graph: { nodes: {} } });
+  off();
+});
+
+test('a burst of state.json writes coalesces to one state_change per project (NFR-4)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/p',
+    makeWatcher: () => w as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+    readStateFile: () => JSON.stringify({ graph: { nodes: {} } }),
+  });
+  const got: string[] = [];
+  const off = rt.subscribeAllStateTopics((n) => got.push(n.payload.projectName));
+  w.emit('change', '/p/DEMO/state.json');
+  w.emit('change', '/p/DEMO/state.json');
+  w.emit('change', '/p/DEMO/state.json');
+  clock.flush();
+  assert.deepEqual(got, ['DEMO'], 'three rapid DEMO writes coalesce to one delivery');
+  off();
+});
+
+test('a project directory created without a state.json fires project_added (FR-3, FR-4, DD-3)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({ projectsRoot: '/p', makeWatcher: () => w as never, coalesceWindowMs: 50, scheduler: clock });
+  const got: Array<{ type: string; payload: { projectName: string }; timestamp?: string }> = [];
+  const off = rt.subscribeLifecycle((n) => got.push(n));
+  w.emit('addDir', '/p/DOCONLY');
+  clock.flush();
+  assert.deepEqual(got, [{ type: 'project_added', payload: { projectName: 'DOCONLY' }, timestamp: got[0]?.timestamp }]);
+  off();
+});
+
+test('a project directory removal fires project_removed (FR-3, DD-3)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({ projectsRoot: '/p', makeWatcher: () => w as never, coalesceWindowMs: 50, scheduler: clock });
+  const got: Array<{ type: string; payload: { projectName: string }; timestamp?: string }> = [];
+  const off = rt.subscribeLifecycle((n) => got.push(n));
+  w.emit('unlinkDir', '/p/OLD');
+  clock.flush();
+  assert.deepEqual(got, [{ type: 'project_removed', payload: { projectName: 'OLD' }, timestamp: got[0]?.timestamp }]);
+  off();
+});
