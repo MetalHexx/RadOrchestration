@@ -55,7 +55,9 @@ Walk the finding list and apply every `action` disposition:
   fix a tag, correct a path, align terminology. Preserve frontmatter
   and `requirement_count` if you add or remove blocks.
 - **Master Plan edits** — add a missing tag, delete a phantom tag,
-  correct a mis-cited ID, fix a heading shape, replace a placeholder
+  correct a mis-cited ID, fix a heading shape (heading-shape fixes
+  include adding the `**Target repos:**` line and per-repo
+  `**Files for <repo>:**` subsections), replace a placeholder
   with concrete content, repair a file path, reshape a `code` task to
   the 4-step RED-GREEN form. Preserve frontmatter and update
   `total_phases` / `total_tasks` if you add or remove phases/tasks.
@@ -89,7 +91,7 @@ Finding dispositions:
   master plan line 214.
 
 Incidentals:
-- Noticed P02-T04 was missing its `**Files:**` block; added it.
+- Noticed P02-T04 was missing its `**Files for <repo>:**` subsection; added it.
 
 Touched files:
 - {NAME}-MASTER-PLAN.md

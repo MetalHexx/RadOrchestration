@@ -28,6 +28,10 @@ This is a **goals document**, not a design document or implementation plan. Capt
 
 **Actionable summary**: The Summary section is the single most important paragraph. It should be clear enough that someone unfamiliar with the conversation could understand what this project is about and begin planning from it. This is the primary handoff to downstream processes.
 
+## Repo Targets
+
+The `## Repo Targets (proposed)` section is **structurally mandatory** — every BRAINSTORMING.md carries it, populated with registry repo names confirmed with the user during the conversation. It is never one of the sections the *Flexibility* guidance below allows skipping. Use the `/rad-repo` skill to help a user register a repository if you sense one is missing before the brainstorm is finalized; never invent an unregistered name, work with the user.
+
 ## Link Generated Visuals
 
 If the session produced any visuals or wireframes (`{PROJECT}-BRAINSTORM.html`, `{PROJECT}-WIREFRAME-{SLUG}.html`, or other artifacts in the project root), link them from the **Visual Artifacts** section using relative paths. They're the richest record of the brainstorm — don't leave them stranded as loose files.
@@ -55,6 +59,7 @@ Before considering the document final, verify:
 - [ ] Related projects are linked (if applicable — see `project-memory.md`)
 - [ ] Generated visuals / wireframes are linked in **Visual Artifacts** (if any were produced)
 - [ ] Series context is included (if applicable — see `project-series.md`)
+- [ ] Repo Targets (proposed) section is present with a confirmed working repo set
 
 ## Flexibility
 

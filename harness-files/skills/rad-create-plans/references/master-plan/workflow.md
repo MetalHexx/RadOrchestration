@@ -80,6 +80,15 @@ becomes task-local and action-oriented.
     relevant tasks under their requirement IDs. Absence of the section means
     no eligible repo skills exist; proceed normally.
 
+2b. When no brainstorming doc and no Requirements `repos:` set are available,
+    invoke the `/rad-repo` skill to read the registry and infer the affected
+    repos from the orchestrator prompt and codebase discovery.
+    When a Requirements `repos:` restate exists, seal it (refining only with
+    cause) into the Master Plan frontmatter. The seal is derived bottom-up and
+    cross-checked against the body's target repos before saving (see Step 8's
+    structural lint pass). If you're absolutely have no clue which repos to check, 
+    abort the operation and ask for help.
+
 3. Decide the phase and task breakdown. Phases group work by natural seam
    (layer boundary, independently deliverable slice). Tasks within a phase are
    the smallest unit a single coder agent will execute end-to-end.
@@ -151,6 +160,7 @@ becomes task-local and action-oriented.
    {≤3 sentence phase description.}
 
    **Requirements:** FR-1, FR-3, AD-2, DD-1
+   **Target repos:** backend, frontend
 
    **Execution order:**
        T01 → T02
@@ -166,6 +176,7 @@ becomes task-local and action-oriented.
    - Phase description: lead with what the phase delivers as a whole — the capability or system state that exists when all tasks complete. No task enumeration or file lists.
    - The `**Requirements:**` line on the phase heading lists the union of
      requirement IDs its tasks address.
+   - The `**Target repos:**` line on the phase heading is the union of the target repos of that phase's tasks, mirroring the placement and plural-form convention of the `**Requirements:**` line. (FR-8, DD-3, AD-4)
    - The execution-order block is an ASCII dependency tree. Use indentation,
      `→`, and parenthetical dependency notes. One block per phase.
 
@@ -177,10 +188,12 @@ becomes task-local and action-oriented.
 
    **Task type:** code
    **Requirements:** FR-1, AD-2
-   **Files:**
+   **Target repos:** backend, frontend
+   **Files for backend:**
    - Create: `exact/path/to/new/file.ts`
-   - Modify: `exact/path/to/existing.ts:45-60`
    - Test: `tests/exact/path.test.ts`
+   **Files for frontend:**
+   - Modify: `exact/path/to/existing.ts:45-60`
 
    - [ ] **Step 1: Write the failing test (FR-1)**
        (exact test code inline)
@@ -203,8 +216,23 @@ becomes task-local and action-oriented.
      `config` | `infra`.
    - `**Requirements:**` is mandatory on every task. Lists IDs the task
      addresses. At least one ID.
-   - `**Files:**` block is mandatory on every task. Sub-bullets use
-     `Create:` | `Modify:` | `Test:` | `Delete:` prefixes.
+   - `**Target repos:**` is mandatory on every task. A comma-separated list
+     of registry repo names on a single line, placed alongside the
+     `**Requirements:**` line (always plural-form, even for one name). This
+     mirrors the `**Requirements:**` convention so the line stays stable and
+     machine-greppable.
+   - One `**Files for <repo>:**` subsection per named repo is mandatory; the
+     task's `**Target repos:**` names every repo for which a subsection
+     exists, and vice versa. Sub-bullets use `Create:` | `Modify:` | `Test:`
+     | `Delete:` prefixes. There is no flat `**Files:**` block — the per-repo
+     subsection is the only valid file-listing shape, uniform even for a
+     single-repo task.
+   - A single-repo task is visually identical to today's plan except the flat
+     `**Files:**` label becomes `**Files for <repo>:**` and a one-name
+     `**Target repos:**` line is added — keeping single-repo plans legible
+     while making the shape uniform. Single-repo execution is unaffected
+     because the new lines are inert body text the explosion script copies
+     verbatim (it parses only `**Requirements:**`).
    - For `code` type: exactly 4 steps in the RED-GREEN shape:
      1. Write the failing test (inline code).
      2. Run the test, confirm it fails (exact command, expected-fail reason
@@ -224,6 +252,14 @@ becomes task-local and action-oriented.
      steps, inline in the description for write steps). This is the YAGNI
      gate — a step that doesn't trace to a requirement shouldn't exist.
 
+7a. **Repo nesting invariants (planner self-check).** These are guidance,
+    not machine-enforced — verify them by hand before saving:
+    - Each task's `**Target repos:**` ⊆ the frontmatter `repos:` seal.
+    - Each phase's `**Target repos:**` = the union of its tasks' target repos.
+    - The frontmatter `repos:` seal = the union of all tasks' target repos.
+    The seal is derived bottom-up from the tasks, not declared top-down.
+    Cross-check the frontmatter against the body before saving.
+
 8. Run a structural lint pass on your own authored text before saving:
    - Every `### {ID}:` task heading matches `### P\d{2}-T\d{2}:`.
    - Every task block carries a `**Task type:**` line.
@@ -232,6 +268,9 @@ becomes task-local and action-oriented.
    - No `TBD`, `TODO`, `FIXME`, `implement later`, `similar to` strings
      appear anywhere in the body.
    - Every requirement ID cited by any task exists in the Requirements doc.
+   - Every `### P\d{2}-T\d{2}:` task carries a `**Target repos:**` line and at least one matching `**Files for <repo>:**` subsection.
+   - Every `## P\d{2}:` phase carries a `**Target repos:**` union line equal to the union of its tasks' target repos.
+   - The frontmatter `repos:` seal is consistent with the body's target repos: it equals the union of every task's `**Target repos:**` value, and no body target-repos value falls outside the seal.
 
 9. Save to `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`.
 
@@ -247,6 +286,8 @@ project: "{PROJECT-NAME}"
 type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
+repos: [repo-a, repo-b]
+repo-group: repo-group-name 
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
@@ -254,6 +295,8 @@ author: "planner-agent"
 ```
 
 - `status`: `draft` | `approved`. Always `draft` at authoring time.
+- `repos`: list of registry repo names — the **sealed, authoritative** repo set for the project. This is the single source of truth the explosion script will read; downstream documents are superseded by this seal.
+- `repo-group`: the repo-group scope for this project.
 - `total_phases`: count of `## P\d{2}:` headings.
 - `total_tasks`: count of `### P\d{2}-T\d{2}:` headings.
 - `author`: exactly `"planner-agent"`.
