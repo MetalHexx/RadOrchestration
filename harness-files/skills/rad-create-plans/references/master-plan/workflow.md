@@ -270,7 +270,6 @@ becomes task-local and action-oriented.
    - Every requirement ID cited by any task exists in the Requirements doc.
    - Every `### P\d{2}-T\d{2}:` task carries a `**Target repos:**` line and at least one matching `**Files for <repo>:**` subsection.
    - Every `## P\d{2}:` phase carries a `**Target repos:**` union line equal to the union of its tasks' target repos.
-   - The frontmatter `repos:` seal equals the union of all tasks' `**Target repos:**`.
    - The frontmatter `repos:` seal is consistent with the body's target repos: it equals the union of every task's `**Target repos:**` value, and no body target-repos value falls outside the seal.
 
 9. Save to `{PROJECT-DIR}/{NAME}-MASTER-PLAN.md`.
