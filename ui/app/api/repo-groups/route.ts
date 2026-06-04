@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     validateSlug(slug);
     const reg = readRegistry({ root });
     validateUniqueName(reg, slug);
-    validateRequired(description, 'description');
+    validateRequired(description, 'description', 'Description');
     const seen = new Set<string>();
     for (const m of members) {
       if (!(m in reg.repos)) throw new RegistryError('NOT_FOUND', `Repo '${m}' does not exist.`, 'members');

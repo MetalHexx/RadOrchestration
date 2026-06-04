@@ -5,7 +5,7 @@ import { EditableCard } from './editable-card';
 import { FieldError } from './field-error';
 
 export interface PathCardCopy {
-  placeholder?: string; helper?: string; warning?: string; isInvalid: boolean;
+  placeholder?: string; warning?: string; isInvalid: boolean;
 }
 
 export function pathCardCopy(state: BindState): PathCardCopy {
@@ -13,7 +13,6 @@ export function pathCardCopy(state: BindState): PathCardCopy {
     case 'unbound':
       return {
         placeholder: 'Paste the local folder path…',
-        helper: 'Point this repo at your local clone — the path stays on this machine.',
         isInvalid: false,
       };
     case 'missing':
@@ -46,7 +45,6 @@ export function LocalPathCard({ state, value, onChange, serverError }: Props) {
         aria-describedby="err-localPath"
         onChange={e => onChange(e.target.value)}
       />
-      {copy.helper && <p className="mt-2 text-xs text-muted-foreground">{copy.helper}</p>}
       {copy.warning && <p className="mt-2 text-xs text-destructive">{copy.warning}</p>}
       <FieldError id="err-localPath" message={serverError} />
     </EditableCard>

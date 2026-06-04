@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { validateRepoDraft, repoDraftFrom } from './repo-save-flow';
+import { validateRepoDraft, validateRepoDraftField, repoDraftFrom } from './repo-save-flow';
 import type { RepoRead } from './types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -23,15 +23,34 @@ test('repoDraftFrom seeds the editable draft from a RepoRead, localPath blank fo
   assert.strictEqual(unbound.localPath, '');
 });
 
-test('client mirror flags empty required fields before save (FR-23, FR-21)', () => {
-  const errs = validateRepoDraft({ remote: '', defaultBranch: 'main', description: 'd', localPath: '', groups: [] });
-  assert.strictEqual(errs.remote, 'remote is required.');
+test('client mirror flags empty required fields before save with Proper-Case labels (FR-23, FR-21)', () => {
+  const errs = validateRepoDraft({ remote: '', defaultBranch: '', description: '', localPath: '', groups: [] });
+  assert.strictEqual(errs.remote, 'Remote is required.');
+  assert.strictEqual(errs.defaultBranch, 'Default Branch is required.');
+  assert.strictEqual(errs.description, 'Description is required.');
   assert.ok(!('localPath' in errs)); // blank localPath = leave bind unchanged, not an error
 });
 
-test('valid draft yields no client errors (FR-23)', () => {
+test('client mirror flags a malformed remote URL (loose check)', () => {
   const errs = validateRepoDraft({ remote: 'r', defaultBranch: 'main', description: 'd', localPath: '', groups: [] });
+  assert.match(errs.remote, /must be a valid URL/);
+});
+
+test('valid draft (incl. scheme-less remote the registry supports) yields no client errors (FR-23)', () => {
+  const errs = validateRepoDraft({ remote: 'github.com/x/a', defaultBranch: 'main', description: 'd', localPath: '', groups: [] });
   assert.deepStrictEqual(errs, {});
+});
+
+test('validateRepoDraftField returns a single field message for on-blur validation', () => {
+  const draft = { remote: '', defaultBranch: 'main', description: 'd', localPath: '', groups: [] };
+  assert.strictEqual(validateRepoDraftField('remote', draft), 'Remote is required.');
+  assert.strictEqual(validateRepoDraftField('description', draft), undefined);
+});
+
+test('detail pane wires per-field onBlur validation on the editable inputs', () => {
+  assert.match(pane, /onBlur=\{\(\) => handleBlur\('remote'\)\}/);
+  assert.match(pane, /onBlur=\{\(\) => handleBlur\('defaultBranch'\)\}/);
+  assert.match(pane, /onBlur=\{\(\) => handleBlur\('description'\)\}/);
 });
 
 test('pane saves via PUT, reconciles response, removes via DELETE with cascade copy (FR-17, FR-19, AD-2, AD-3)', () => {

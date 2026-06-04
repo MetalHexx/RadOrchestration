@@ -19,7 +19,7 @@ import { FormErrorNotice } from './form-error-notice';
 import { LocalPathCard } from './local-path-card';
 import { MembershipPicker } from './membership-picker';
 import { SaveBar } from './save-bar';
-import { repoDraftFrom, validateRepoDraft, type RepoDraft } from './repo-save-flow';
+import { repoDraftFrom, validateRepoDraft, validateRepoDraftField, type RepoDraft } from './repo-save-flow';
 import type { RepoRead, RepoGroupRead, ApiError } from './types';
 
 interface Props {
@@ -47,6 +47,15 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
     setFieldErrors({});
     setFormError(undefined);
   }, []);
+
+  const handleBlur = useCallback((field: string) => {
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      const msg = validateRepoDraftField(field, draft);
+      if (msg) next[field] = msg; else delete next[field];
+      return next;
+    });
+  }, [draft]);
 
   const handleSave = useCallback(async () => {
     clearErrors();
@@ -141,6 +150,7 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
                 aria-invalid={!!fieldErrors.remote}
                 aria-describedby="err-remote"
                 onChange={e => setDraft(prev => ({ ...prev, remote: e.target.value }))}
+                onBlur={() => handleBlur('remote')}
               />
               <FieldError id="err-remote" message={fieldErrors.remote} />
             </div>
@@ -156,6 +166,7 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
                 aria-invalid={!!fieldErrors.defaultBranch}
                 aria-describedby="err-defaultBranch"
                 onChange={e => setDraft(prev => ({ ...prev, defaultBranch: e.target.value }))}
+                onBlur={() => handleBlur('defaultBranch')}
               />
               <FieldError id="err-defaultBranch" message={fieldErrors.defaultBranch} />
             </div>
@@ -170,6 +181,7 @@ export function RepoDetailPane({ repo, groups, upsertRepo, removeRepo, onDeselec
                 aria-invalid={!!fieldErrors.description}
                 aria-describedby="err-description"
                 onChange={e => setDraft(prev => ({ ...prev, description: e.target.value }))}
+                onBlur={() => handleBlur('description')}
               />
               <FieldError id="err-description" message={fieldErrors.description} />
             </div>

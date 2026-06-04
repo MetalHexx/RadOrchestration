@@ -18,7 +18,7 @@ import { FieldError } from './field-error';
 import { FormErrorNotice } from './form-error-notice';
 import { MembershipPicker } from './membership-picker';
 import { SaveBar } from './save-bar';
-import { groupDraftFrom, validateGroupDraft, type GroupDraft } from './group-save-flow';
+import { groupDraftFrom, validateGroupDraft, validateGroupDraftField, type GroupDraft } from './group-save-flow';
 
 interface Props {
   group: RepoGroupRead;
@@ -45,6 +45,15 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
     setFieldErrors({});
     setFormError(undefined);
   }, []);
+
+  const handleBlur = useCallback((field: string) => {
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      const msg = validateGroupDraftField(field, draft);
+      if (msg) next[field] = msg; else delete next[field];
+      return next;
+    });
+  }, [draft]);
 
   const handleSave = useCallback(async () => {
     clearErrors();
@@ -139,6 +148,7 @@ export function GroupDetailPane({ group, repos, upsertGroup, removeGroup, onDese
               aria-invalid={!!fieldErrors.description}
               aria-describedby="err-description"
               onChange={e => setDraft(prev => ({ ...prev, description: e.target.value }))}
+              onBlur={() => handleBlur('description')}
             />
             <FieldError id="err-description" message={fieldErrors.description} />
           </div>

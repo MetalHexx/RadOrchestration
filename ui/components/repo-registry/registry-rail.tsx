@@ -33,12 +33,12 @@ export function RegistryRail({ sections, selected, onSelect, onAddRepo, onAddGro
         </span>
         <button
           type="button"
-          aria-label="Add repo"
+          aria-label="Add Repo"
           onClick={onAddRepo}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         >
           <Plus className="size-3" aria-hidden="true" />
-          Add repo
+          Add Repo
         </button>
       </div>
 

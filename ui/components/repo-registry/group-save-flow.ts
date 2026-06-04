@@ -1,5 +1,5 @@
 import type { RepoGroupRead } from './types';
-import { isRequiredFilled } from './validation-mirror';
+import { isRequiredFilled, requiredMessage } from './validation-mirror';
 
 export interface GroupDraft { description: string; members: string[] }
 
@@ -9,6 +9,10 @@ export function groupDraftFrom(g: RepoGroupRead): GroupDraft {
 
 export function validateGroupDraft(d: GroupDraft): Record<string, string> {
   const errs: Record<string, string> = {};
-  if (!isRequiredFilled(d.description)) errs.description = 'description is required.';
+  if (!isRequiredFilled(d.description)) errs.description = requiredMessage('description');
   return errs;
+}
+
+export function validateGroupDraftField(field: string, d: GroupDraft): string | undefined {
+  return validateGroupDraft(d)[field];
 }

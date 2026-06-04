@@ -16,7 +16,7 @@ import { classifyError, buildGroupCreateBody, NETWORK_ERROR_MESSAGE } from './re
 import { MembershipPicker } from './membership-picker';
 import { FieldError } from './field-error';
 import { FormErrorNotice } from './form-error-notice';
-import { isGroupCreateValid } from './create-validation';
+import { validateGroupCreate, validateGroupCreateField } from './create-validation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface GroupCreateForm {
@@ -66,11 +66,20 @@ export function AddGroupDrawer({ open, repos, onClose, onCreated, onSelect }: Pr
     });
   }, []);
 
-  const handleCreate = useCallback(async () => {
-    setFieldErrors({});
-    setFormError(undefined);
+  const handleBlur = useCallback((field: string) => {
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      const msg = validateGroupCreateField(field, form);
+      if (msg) next[field] = msg; else delete next[field];
+      return next;
+    });
+  }, [form]);
 
-    if (!isGroupCreateValid(form)) return;
+  const handleCreate = useCallback(async () => {
+    setFormError(undefined);
+    const errs = validateGroupCreate(form);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setSaving(true);
     try {
@@ -112,7 +121,6 @@ export function AddGroupDrawer({ open, repos, onClose, onCreated, onSelect }: Pr
     description: r.description,
     bindState: r.bind.state,
   }));
-  const valid = isGroupCreateValid(form);
 
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) handleClose(); }}>
@@ -139,10 +147,8 @@ export function AddGroupDrawer({ open, repos, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.slug}
                   aria-describedby="err-create-group-slug"
                   onChange={e => setForm(prev => ({ ...prev, slug: e.target.value }))}
+                  onBlur={() => handleBlur('slug')}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  lowercase-kebab · immutable · unique across repos and groups
-                </p>
                 <FieldError id="err-create-group-slug" message={fieldErrors.slug} />
               </div>
 
@@ -157,6 +163,7 @@ export function AddGroupDrawer({ open, repos, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.description}
                   aria-describedby="err-create-group-description"
                   onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                  onBlur={() => handleBlur('description')}
                 />
                 <FieldError id="err-create-group-description" message={fieldErrors.description} />
               </div>
@@ -188,7 +195,7 @@ export function AddGroupDrawer({ open, repos, onClose, onCreated, onSelect }: Pr
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!valid || saving}
+            disabled={saving}
           >
             {saving ? 'Creating…' : 'Create group'}
           </Button>

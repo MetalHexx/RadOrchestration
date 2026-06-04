@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { validateGroupDraft, groupDraftFrom } from './group-save-flow';
+import { validateGroupDraft, validateGroupDraftField, groupDraftFrom } from './group-save-flow';
 import type { RepoGroupRead } from './types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -16,9 +16,15 @@ test('groupDraftFrom seeds description + members (FR-9)', () => {
   assert.deepStrictEqual(d.members, ['a', 'b']);
 });
 
-test('client mirror requires a non-empty description (FR-23, FR-21)', () => {
-  assert.deepStrictEqual(validateGroupDraft({ description: '  ', members: [] }), { description: 'description is required.' });
+test('client mirror requires a non-empty description with a Proper-Case label (FR-23, FR-21)', () => {
+  assert.deepStrictEqual(validateGroupDraft({ description: '  ', members: [] }), { description: 'Description is required.' });
   assert.deepStrictEqual(validateGroupDraft({ description: 'd', members: [] }), {});
+});
+
+test('validateGroupDraftField + onBlur wiring on the description input', () => {
+  assert.strictEqual(validateGroupDraftField('description', { description: '', members: [] }), 'Description is required.');
+  assert.strictEqual(validateGroupDraftField('description', { description: 'd', members: [] }), undefined);
+  assert.match(pane, /onBlur=\{\(\) => handleBlur\('description'\)\}/);
 });
 
 test('pane saves via PUT, reconciles, deletes via DELETE with "repos stay" copy (FR-18, FR-20, AD-2, AD-3)', () => {

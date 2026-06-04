@@ -34,11 +34,11 @@ export async function POST(request: Request) {
     validateSlug(slug);
     const reg = readRegistry({ root });
     validateUniqueName(reg, slug);
-    validateRequired(remote, 'remote');
-    validateRequired(defaultBranch, 'defaultBranch');
-    validateRequired(description, 'description');
-    validateRequired(localPath, 'localPath');
-    validateDirectory(localPath, 'localPath');
+    validateRequired(remote, 'remote', 'Remote');
+    validateRequired(defaultBranch, 'defaultBranch', 'Default Branch');
+    validateRequired(description, 'description', 'Description');
+    validateRequired(localPath, 'localPath', 'Local Path');
+    validateDirectory(localPath, 'localPath', 'Local Path');
     for (const g of groups) {
       if (!(g in reg.repoGroups)) {
         throw new RegistryError('NOT_FOUND', `Group '${g}' does not exist.`, 'groups');

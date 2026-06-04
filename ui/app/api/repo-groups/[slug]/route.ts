@@ -46,7 +46,7 @@ export async function PUT(request: Request, { params }: { params: { slug: string
       throw new RegistryError('NOT_FOUND', `Repo-group '${slug}' was not found.`, 'slug');
     }
     const description = String(body.description ?? '');
-    validateRequired(description, 'description');
+    validateRequired(description, 'description', 'Description');
     const desired = Array.isArray(body.members) ? (body.members as string[]) : [];
     for (const m of desired) {
       if (!(m in reg.repos)) throw new RegistryError('NOT_FOUND', `Repo '${m}' does not exist.`, 'members');

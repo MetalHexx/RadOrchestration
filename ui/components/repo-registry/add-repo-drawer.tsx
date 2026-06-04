@@ -16,7 +16,7 @@ import { classifyError, buildRepoCreateBody, NETWORK_ERROR_MESSAGE } from './reg
 import { MembershipPicker } from './membership-picker';
 import { FieldError } from './field-error';
 import { FormErrorNotice } from './form-error-notice';
-import { isRepoCreateValid } from './create-validation';
+import { validateRepoCreate, validateRepoCreateField } from './create-validation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface RepoCreateForm {
@@ -72,11 +72,20 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
     });
   }, []);
 
-  const handleCreate = useCallback(async () => {
-    setFieldErrors({});
-    setFormError(undefined);
+  const handleBlur = useCallback((field: string) => {
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      const msg = validateRepoCreateField(field, form);
+      if (msg) next[field] = msg; else delete next[field];
+      return next;
+    });
+  }, [form]);
 
-    if (!isRepoCreateValid(form)) return;
+  const handleCreate = useCallback(async () => {
+    setFormError(undefined);
+    const errs = validateRepoCreate(form);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setSaving(true);
     try {
@@ -117,7 +126,6 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
   }, [form, checkedGroups, onCreated, onSelect, handleClose]);
 
   const groupOptions = groups.map(g => ({ slug: g.slug, description: g.description }));
-  const valid = isRepoCreateValid(form);
 
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) handleClose(); }}>
@@ -144,10 +152,8 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.slug}
                   aria-describedby="err-create-repo-slug"
                   onChange={e => setForm(prev => ({ ...prev, slug: e.target.value }))}
+                  onBlur={() => handleBlur('slug')}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  lowercase-kebab · immutable · unique across repos and groups
-                </p>
                 <FieldError id="err-create-repo-slug" message={fieldErrors.slug} />
               </div>
 
@@ -164,6 +170,7 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.remote}
                   aria-describedby="err-create-repo-remote"
                   onChange={e => setForm(prev => ({ ...prev, remote: e.target.value }))}
+                  onBlur={() => handleBlur('remote')}
                 />
                 <FieldError id="err-create-repo-remote" message={fieldErrors.remote} />
               </div>
@@ -181,6 +188,7 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.defaultBranch}
                   aria-describedby="err-create-repo-default-branch"
                   onChange={e => setForm(prev => ({ ...prev, defaultBranch: e.target.value }))}
+                  onBlur={() => handleBlur('defaultBranch')}
                 />
                 <FieldError id="err-create-repo-default-branch" message={fieldErrors.defaultBranch} />
               </div>
@@ -196,6 +204,7 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.description}
                   aria-describedby="err-create-repo-description"
                   onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                  onBlur={() => handleBlur('description')}
                 />
                 <FieldError id="err-create-repo-description" message={fieldErrors.description} />
               </div>
@@ -216,6 +225,7 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                   aria-invalid={!!fieldErrors.localPath}
                   aria-describedby="err-create-repo-local-path"
                   onChange={e => setForm(prev => ({ ...prev, localPath: e.target.value }))}
+                  onBlur={() => handleBlur('localPath')}
                   onPaste={e => {
                     e.preventDefault();
                     // Trim clipboard whitespace/newlines so a stray trailing
@@ -224,9 +234,6 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
                     setForm(prev => ({ ...prev, localPath: pasted }));
                   }}
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  required · must be an existing folder on this machine (checked server-side, like the CLI)
-                </p>
                 <FieldError id="err-create-repo-local-path" message={fieldErrors.localPath} />
               </div>
 
@@ -257,7 +264,7 @@ export function AddRepoDrawer({ open, groups, onClose, onCreated, onSelect }: Pr
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!valid || saving}
+            disabled={saving}
           >
             {saving ? 'Adding…' : 'Add repository'}
           </Button>

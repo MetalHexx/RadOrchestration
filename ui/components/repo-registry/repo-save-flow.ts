@@ -1,5 +1,5 @@
 import type { RepoRead } from './types';
-import { isRequiredFilled } from './validation-mirror';
+import { isRequiredFilled, isRemoteUrlValid, requiredMessage, REMOTE_URL_MESSAGE } from './validation-mirror';
 
 export interface RepoDraft {
   remote: string; defaultBranch: string; description: string;
@@ -16,13 +16,19 @@ export function repoDraftFrom(repo: RepoRead): RepoDraft {
   };
 }
 
-// Client mirror: required-non-empty for remote/branch/description.
-// A blank localPath is NOT an error — it means "leave the bind unchanged"
-// (clearing-to-unbind is unsupported). PATH_INVALID is server-only.
+// Client mirror: required-non-empty for remote/branch/description, plus a loose
+// URL-format check on remote. A blank localPath is NOT an error — it means
+// "leave the bind unchanged" (clearing-to-unbind is unsupported). The
+// directory-existence check (PATH_INVALID) is server-only.
 export function validateRepoDraft(d: RepoDraft): Record<string, string> {
   const errs: Record<string, string> = {};
-  if (!isRequiredFilled(d.remote)) errs.remote = 'remote is required.';
-  if (!isRequiredFilled(d.defaultBranch)) errs.defaultBranch = 'default branch is required.';
-  if (!isRequiredFilled(d.description)) errs.description = 'description is required.';
+  if (!isRequiredFilled(d.remote)) errs.remote = requiredMessage('remote');
+  else if (!isRemoteUrlValid(d.remote)) errs.remote = REMOTE_URL_MESSAGE;
+  if (!isRequiredFilled(d.defaultBranch)) errs.defaultBranch = requiredMessage('defaultBranch');
+  if (!isRequiredFilled(d.description)) errs.description = requiredMessage('description');
   return errs;
+}
+
+export function validateRepoDraftField(field: string, d: RepoDraft): string | undefined {
+  return validateRepoDraft(d)[field];
 }
