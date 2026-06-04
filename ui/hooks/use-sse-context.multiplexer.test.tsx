@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import { defaultSSEContextValue } from './use-sse-context';
+import { defaultSSEContextValue, fanOut } from './use-sse-context';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(__dirname, 'use-sse-context.tsx'), 'utf-8');
@@ -32,6 +32,23 @@ async function run() {
   await test('provider still exposes sseStatus and reconnect (FR-11, FR-13, AD-4)', () => {
     assert.strictEqual((defaultSSEContextValue as Record<string, unknown>).sseStatus, 'disconnected');
     assert.strictEqual(typeof (defaultSSEContextValue as Record<string, unknown>).reconnect, 'function');
+  });
+  await test('fanOut isolates a throwing subscriber so siblings still receive the event (multiplexer robustness)', () => {
+    const calls: string[] = [];
+    const listeners = [
+      () => { calls.push('a'); },
+      () => { throw new Error('boom'); },
+      () => { calls.push('c'); },
+    ];
+    const origErr = console.error;
+    console.error = () => {}; // silence the expected isolation log
+    try {
+      assert.doesNotThrow(() => fanOut(listeners, { type: 'connected', payload: {} } as never),
+        'a throwing listener must not bubble out of fanOut into the EventSource callback');
+    } finally {
+      console.error = origErr;
+    }
+    assert.deepStrictEqual(calls, ['a', 'c'], 'the throwing listener must not starve its siblings');
   });
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);

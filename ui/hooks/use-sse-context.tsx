@@ -24,6 +24,25 @@ export const defaultSSEContextValue: SSEContextValue = {
 
 export const SSEContext = createContext<SSEContextValue>(defaultSSEContextValue);
 
+// ─── Fan-out ─────────────────────────────────────────────────────────────────
+
+/**
+ * Deliver one event to every subscriber, isolating failures: a listener that
+ * throws is logged and skipped so it can neither starve the remaining
+ * subscribers nor bubble out through useSSE's EventSource callback (which would
+ * destabilize the single shared connection the whole tab rides). Exported for
+ * direct behavioral testing of the isolation contract.
+ */
+export function fanOut(listeners: Iterable<SSEListener>, event: SSEEvent): void {
+  for (const listener of listeners) {
+    try {
+      listener(event);
+    } catch (err) {
+      console.error("[SSEProvider] subscriber threw while handling SSE event:", err);
+    }
+  }
+}
+
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function SSEProvider({ children }: { children: React.ReactNode }) {
@@ -37,7 +56,7 @@ export function SSEProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const handleEvent = useCallback((event: SSEEvent) => {
-    for (const listener of listenersRef.current) listener(event);
+    fanOut(listenersRef.current, event);
   }, []);
 
   const { status, reconnect } = useSSE({ url: "/api/events", onEvent: handleEvent });
