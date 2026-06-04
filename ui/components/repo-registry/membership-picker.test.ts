@@ -45,3 +45,14 @@ test('member row label opts into min-w-0 so long descriptions truncate instead o
   // the description span already truncates with flex-1 + min-w-0
   assert.match(src, /min-w-0 flex-1 truncate/);
 });
+
+test('pending-remove mirrors pending-add: red row tint + red badge (not dimming/amber)', () => {
+  // add uses a 12% --status-complete (green) tint; remove uses the matching --status-failed (red) tint
+  assert.match(src, /status === 'pending-add' && 'bg-\[color-mix\(in_oklch,var\(--status-complete\)_12%,transparent\)\]'/);
+  assert.match(src, /status === 'pending-remove' && 'bg-\[color-mix\(in_oklch,var\(--status-failed\)_12%,transparent\)\]'/);
+  // the remove row no longer relies on whole-row dimming
+  assert.doesNotMatch(src, /pending-remove' && 'opacity-55'/);
+  // the REMOVE badge is red (token-driven), not amber --color-warning
+  assert.match(src, /color: 'var\(--status-failed\)' \}}>remove</);
+  assert.doesNotMatch(src, /var\(--color-warning\)/);
+});

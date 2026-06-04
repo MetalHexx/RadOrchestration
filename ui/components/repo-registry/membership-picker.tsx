@@ -32,7 +32,7 @@ export function MembershipPicker({ entityType, options, saved, checked, mode, on
             className={cn(
               'flex min-w-0 cursor-pointer items-center gap-2.5 border-b px-3 py-2.5 last:border-b-0 hover:bg-accent/30',
               status === 'pending-add' && 'bg-[color-mix(in_oklch,var(--status-complete)_12%,transparent)]',
-              status === 'pending-remove' && 'opacity-55',
+              status === 'pending-remove' && 'bg-[color-mix(in_oklch,var(--status-failed)_12%,transparent)]',
             )}
           >
             <input
@@ -63,7 +63,7 @@ export function MembershipPicker({ entityType, options, saved, checked, mode, on
               <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={{ color: 'var(--status-complete)' }}>add</span>
             )}
             {status === 'pending-remove' && (
-              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={{ color: 'var(--color-warning)' }}>remove</span>
+              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase" style={{ color: 'var(--status-failed)' }}>remove</span>
             )}
           </label>
         );
