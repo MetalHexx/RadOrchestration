@@ -30,7 +30,7 @@ This is a **goals document**, not a design document or implementation plan. Capt
 
 ## Repo Targets
 
-The `## Repo Targets (proposed)` section is **structurally mandatory** — every BRAINSTORMING.md carries it, populated with registry repo names confirmed with the user during the conversation. It is never one of the sections the *Flexibility* guidance below allows skipping. Repos that are relevant but not yet registered route to `/rad-repo` before the brainstorm is finalized; never invent an unregistered name.
+The `## Repo Targets (proposed)` section is **structurally mandatory** — every BRAINSTORMING.md carries it, populated with registry repo names confirmed with the user during the conversation. It is never one of the sections the *Flexibility* guidance below allows skipping. Use the `/rad-repo` skill to help a user register a repository if you sense one is missing before the brainstorm is finalized; never invent an unregistered name, work with the user.
 
 ## Link Generated Visuals
 
