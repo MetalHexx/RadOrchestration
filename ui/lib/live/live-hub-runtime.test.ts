@@ -246,3 +246,24 @@ test('the local registry override file also fires a nudge; a non-registry file d
   assert.deepEqual(got, ['registry_change'], 'only registry files nudge; orchestration.yml is ignored');
   off();
 });
+
+test('a registry change never reaches an artifact subscriber (AD-1 topic isolation)', () => {
+  __resetLiveRuntimeForTest();
+  const projectsW = fakeWatcher();
+  const registryW = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => projectsW as never,
+    makeRegistryWatcher: () => registryW as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+  });
+  const got: unknown[] = [];
+  const off = rt.subscribeAllArtifactTopics((n) => got.push(n));
+  registryW.emit('change', '/home/.radorc/repo-registry.yml');
+  clock.flush();
+  assert.equal(got.length, 0, 'a registry event must not be delivered to artifact subscribers');
+  off();
+});

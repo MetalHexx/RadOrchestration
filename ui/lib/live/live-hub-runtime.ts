@@ -237,7 +237,12 @@ function build(args: RuntimeArgs) {
       // in every project's artifact topic. The hub still owns coalescing and bounding;
       // we only adapt each delivered event into an SSE-ready notification.
       return hub.subscribeAll((e) => {
-        if (!e.topic.startsWith(STATE_TOPIC_PREFIX) && e.topic !== LIFECYCLE_TOPIC) listener(toNotif(e));
+        if (
+          !e.topic.startsWith(STATE_TOPIC_PREFIX) &&
+          e.topic !== LIFECYCLE_TOPIC &&
+          e.topic !== REGISTRY_TOPIC
+        )
+          listener(toNotif(e));
       });
     },
     subscribeAllStateTopics(listener: (n: StateChangeNotification) => void): () => void {
