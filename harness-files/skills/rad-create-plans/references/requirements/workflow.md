@@ -120,7 +120,7 @@ author: "planner-agent"
 - `approved_at`: `null` at authoring time. Set to `"{ISO-DATE-TIME}"` when a
   human gate approves the doc.
 - `repos`: list of registry repo names — a **non-authoritative restate** the planner may refine from the brainstorm's proposed set. Requirement *bodies* stay repo-agnostic; the repo set lives only in frontmatter.
-- `repo-group`: optional registry repo-group name carried for provenance only.
+- `repo-group`: registry repo-group name.
 - `requirement_count`: total of FR + NFR + AD + DD blocks in the body.
 - `author`: exactly `"planner-agent"`.
 
