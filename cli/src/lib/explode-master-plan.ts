@@ -155,7 +155,7 @@ interface IterationEntry {
   nodes: Record<string, unknown>;
   corrective_tasks: unknown[];
   doc_path?: string | null;
-  commit_hash: string | null;
+  repos: { name: string; commit_hash: string | null }[];
 }
 
 interface ForEachTaskNodeState {
@@ -762,13 +762,14 @@ function seedIterations(
     for (let j = 0; j < phase.tasks.length; j++) {
       const taskFileAbs = emittedTaskFiles[taskFilePointer++] ?? null;
       const taskFile = taskFileAbs !== null ? toRelativeDocPath(taskFileAbs, projectDir) : null;
+      const task = phase.tasks[j]!;
       taskLoopIterations.push({
         index: j,
         status: 'not_started',
         nodes: {},
         corrective_tasks: [],
         doc_path: taskFile,
-        commit_hash: null,
+        repos: task.targetRepos.map(name => ({ name, commit_hash: null })),
       });
     }
     const taskLoop: ForEachTaskNodeState = {
@@ -783,7 +784,7 @@ function seedIterations(
       nodes: { task_loop: taskLoop },
       corrective_tasks: [],
       doc_path: phaseFile,
-      commit_hash: null,
+      repos: [],
     };
     phaseLoop.iterations.push(phaseEntry);
   }
