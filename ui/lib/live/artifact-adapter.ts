@@ -6,6 +6,11 @@ export interface ArtifactSemanticEvent {
   topic: string;
   kind: ArtifactEventKind;
   projectName: string;
+  // Optional generic payload the hub carries alongside the topic so non-artifact
+  // topics (state, lifecycle) can ride the same per-topic coalescing + bounded
+  // queue. Artifact events leave this undefined; state/lifecycle publishers parse
+  // once at the hub and attach the ready-to-deliver notification here.
+  notif?: unknown;
 }
 
 export function topicForProject(projectName: string): string {

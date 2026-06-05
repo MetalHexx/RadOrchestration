@@ -1,24 +1,12 @@
 import { readdir } from 'node:fs/promises';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import chokidar from 'chokidar';
 
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
 import type { ProjectState } from '@/types/state';
 import { getProjectsRoot, getRegistryRoot } from '@/lib/path-resolver';
 import { getLiveRuntime } from '@/lib/live/live-hub-runtime';
-import { wireProjectStateWatcher } from './state-watcher';
-import { wireRegistryWatcher, REGISTRY_SETTLE_WINDOW_MS } from './registry-watcher';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-// Skip project-internal scaffold dirs so the watcher doesn't recurse into a
-// project's own node_modules/.next/.git — on Windows that triggers a stream of
-// EPERM errors and a slow memory leak in chokidar as watcher state piles up,
-// eventually OOM-crashing the Node process. Matches both POSIX and Windows
-// path separators.
-const IGNORED_PROJECT_DIR_RE = /[\\/](node_modules|\.git|\.next|\.cache)([\\/]|$)/;
 
 // ─── SSE Helpers ────────────────────────────────────────────────────────────
 
@@ -43,33 +31,10 @@ export async function GET(request: Request) {
   const encoder = new TextEncoder();
 
   const absoluteProjectsDir = getProjectsRoot();
-  const usePolling = process.env.CHOKIDAR_USEPOLLING === '1';
 
   const stream = new ReadableStream({
     start(controller) {
       let closed = false;
-
-      // ── Per-project debounce ────────────────────────────────────────
-      const debounceTimers = new Map<string, NodeJS.Timeout>();
-
-      function clearAllDebounceTimers(): void {
-        debounceTimers.forEach((timer) => {
-          clearTimeout(timer);
-        });
-        debounceTimers.clear();
-      }
-
-      function debouncedEmit(projectName: string, callback: () => void): void {
-        const existing = debounceTimers.get(projectName);
-        if (existing) clearTimeout(existing);
-        debounceTimers.set(
-          projectName,
-          setTimeout(() => {
-            debounceTimers.delete(projectName);
-            callback();
-          }, 300),
-        );
-      }
 
       // ── Safe enqueue ────────────────────────────────────────────────
       function enqueue(event: SSEEvent): void {
@@ -94,150 +59,59 @@ export async function GET(request: Request) {
           enqueue(createSSEEvent('connected', { projects: [] }));
         });
 
-      // ── 2. Set up the state.json watcher ───────────────────────────
-      // chokidar v4 removed glob support: a glob string like `**​/state.json`
-      // is treated as a literal path and matches nothing. So we watch the
-      // projects directory recursively and the helper filters to `state.json`
-      // basenames itself (mirrors the v4-correct watcher in lib/live/). The
-      // helper owns the add/change/unlink → event mapping; here we translate
-      // each normalized event into the exact SSE event it always produced.
-      const stateWatcher = wireProjectStateWatcher({
-        projectsDir: absoluteProjectsDir,
-        makeWatcher: (watchPath) => {
-          const w = chokidar.watch(watchPath, {
-            usePolling,
-            awaitWriteFinish: {
-              stabilityThreshold: 200,
-              pollInterval: 50,
-            },
-            // v4-safe `ignored`: a function `(path) => boolean`, not a glob
-            // array. Skips proposed/empty sidecar files and heavy scaffold dirs.
-            ignored: (p: string) =>
-              /state\.json\.(proposed|empty)$/.test(p) ||
-              IGNORED_PROJECT_DIR_RE.test(p),
-            ignoreInitial: true,
-          });
-          // error handler — log OS-level watcher errors (CF-B).
-          // v4 types the error callback as `(err: unknown)`.
-          w.on('error', (error: unknown) => {
-            console.error('[SSE] Chokidar watcher error:', error);
-          });
-          return w;
-        },
-        emit: (event) => {
-          const { projectName, filePath } = event;
-          debouncedEmit(projectName, () => {
-            switch (event.type) {
-              case 'state_change':
-                // read, parse, emit v4 state directly
-                readFile(filePath, 'utf-8')
-                  .then((content) => {
-                    const state: ProjectState = JSON.parse(content);
-                    enqueue(
-                      createSSEEvent('state_change', { projectName, state }),
-                    );
-                  })
-                  .catch((err) => {
-                    console.error(
-                      `[SSE] Error reading/parsing ${filePath}:`,
-                      err,
-                    );
-                  });
-                break;
-              case 'project_added':
-                enqueue(createSSEEvent('project_added', { projectName }));
-                break;
-              case 'project_removed':
-                enqueue(createSSEEvent('project_removed', { projectName }));
-                break;
-            }
-          });
-        },
-      });
-
-      // ── 3. Set up shallow directory watcher ───────────────────────
-      const dirWatcher = chokidar.watch(absoluteProjectsDir, {
-        usePolling,
-        depth: 0,
-        ignoreInitial: true,
-        // Defensive: depth:0 already keeps this watcher at the projects-dir top
-        // level so scaffold dirs inside a project aren't reachable today, but
-        // pairing the same ignore list with the state.json watcher above keeps
-        // the two consistent if `depth` ever changes.
-        ignored: [IGNORED_PROJECT_DIR_RE],
-      });
-
-      dirWatcher.on('addDir', (dirPath: string) => {
-        if (dirPath === absoluteProjectsDir) return;
-        const projectName = path.basename(dirPath);
-        debouncedEmit(projectName, () => {
-          enqueue(createSSEEvent('project_added', { projectName }));
-        });
-      });
-
-      dirWatcher.on('unlinkDir', (dirPath: string) => {
-        if (dirPath === absoluteProjectsDir) return;
-        const projectName = path.basename(dirPath);
-        debouncedEmit(projectName, () => {
-          enqueue(createSSEEvent('project_removed', { projectName }));
-        });
-      });
-
-      // v4 types the error callback as `(err: unknown)`; match the state watcher.
-      dirWatcher.on('error', (error: unknown) => {
-        console.error('[SSE] Chokidar dir watcher error:', error);
-      });
-
-      // ── 4. Set up registry-file watcher ──────────────────────────
-      const registryWatcher = wireRegistryWatcher({
-        registryRoot: getRegistryRoot(),
-        makeWatcher: (watchPath) => {
-          const w = chokidar.watch(watchPath, {
-            usePolling, depth: 0, ignoreInitial: true,
-            awaitWriteFinish: { stabilityThreshold: REGISTRY_SETTLE_WINDOW_MS, pollInterval: 50 },
-          });
-          w.on('error', (error: unknown) => console.error('[SSE] Registry watcher error:', error));
-          return w;
-        },
-        emit: () => debouncedEmit('__registry__', () =>
-          enqueue(createSSEEvent('registry_change', {} as Record<string, never>))),
-      });
-
-      // ── 5. Heartbeat interval (30s) ────────────────────────────────
+      // ── 2. Heartbeat interval (30s) ────────────────────────────────
       const heartbeatInterval = setInterval(() => {
         enqueue(createSSEEvent('heartbeat', {} as Record<string, never>));
       }, 30_000);
 
-      // ── 6. Subscribe to the shared artifact hub (O(1) watcher) ─────
+      // ── 3. Subscribe to the shared artifact hub (O(1) watcher) ─────
       // The hub lazily warms a single process-level watcher shared across
       // all SSE connections. Each connection registers a connection-scoped
       // all-topics subscriber that fans in every project's artifact topic.
-      const liveRuntime = getLiveRuntime({ projectsRoot: absoluteProjectsDir });
+      // The route constructs zero watchers of its own — every live event
+      // flows through the process-level singleton hub watches, and the hub
+      // owns coalescing.
+      const liveRuntime = getLiveRuntime({
+        projectsRoot: absoluteProjectsDir,
+        registryRoot: getRegistryRoot(),
+      });
       const unsubArtifacts = liveRuntime.subscribeAllArtifactTopics((n) =>
         enqueue(createSSEEvent('artifact_change', n.payload)),
       );
       const unsubDegraded = liveRuntime.subscribeDegraded((n) =>
         enqueue(createSSEEvent('live_degraded', n.payload)),
       );
+      const unsubState = liveRuntime.subscribeAllStateTopics((n) =>
+        enqueue(
+          createSSEEvent('state_change', {
+            projectName: n.payload.projectName,
+            state: n.payload.state as ProjectState,
+          }),
+        ),
+      );
+      const unsubRegistry = liveRuntime.subscribeRegistry(() =>
+        enqueue(createSSEEvent('registry_change', {} as Record<string, never>)),
+      );
+      const unsubLifecycle = liveRuntime.subscribeLifecycle((n) => {
+        const { projectName } = n.payload;
+        if (n.type === 'project_added') {
+          enqueue(createSSEEvent('project_added', { projectName }));
+        } else {
+          enqueue(createSSEEvent('project_removed', { projectName }));
+        }
+      });
 
-      // ── 7. Cleanup on disconnect ───────────────────────────────────
+      // ── 4. Cleanup on disconnect ───────────────────────────────────
       function cleanup(): void {
         if (closed) return;
         closed = true;
 
         clearInterval(heartbeatInterval);
-        clearAllDebounceTimers();
         unsubArtifacts();
         unsubDegraded();
-        stateWatcher.close().catch((err) => {
-          console.error('[SSE] Error closing watcher:', err);
-        });
-        dirWatcher.close().catch((err) => {
-          console.error('[SSE] Error closing dir watcher:', err);
-        });
-        registryWatcher.close().catch((err) => {
-          console.error('[SSE] Error closing registry watcher:', err);
-        });
+        unsubState();
+        unsubRegistry();
+        unsubLifecycle();
 
         try {
           controller.close();

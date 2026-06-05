@@ -18,6 +18,8 @@ const EVENT_TYPES: SSEEventType[] = [
   "project_removed",
   "heartbeat",
   "registry_change",
+  "artifact_change",
+  "live_degraded",
 ];
 
 // ─── Interfaces ─────────────────────────────────────────────────────────────

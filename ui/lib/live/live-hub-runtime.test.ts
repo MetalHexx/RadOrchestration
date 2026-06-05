@@ -132,3 +132,179 @@ test('the /api/events route pins the Node runtime and stays dynamic (AD-12)', ()
   assert.match(route, /export\s+const\s+runtime\s*=\s*['"]nodejs['"]/, 'SSE route declares the Node runtime');
   assert.match(route, /export\s+const\s+dynamic\s*=\s*['"]force-dynamic['"]/, 'SSE route stays dynamic / non-cached');
 });
+
+test('a state.json change delivers the full parsed state over the state topic, read once at the hub (FR-1, NFR-5, DD-1)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/p',
+    makeWatcher: () => w as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+    readStateFile: () => JSON.stringify({ project: { name: 'DEMO' }, graph: { nodes: {} } }),
+  });
+  const got: Array<{ type: string; payload: { projectName: string; state: unknown } }> = [];
+  const off = rt.subscribeAllStateTopics((n) => got.push(n));
+  w.emit('change', '/p/DEMO/state.json');
+  clock.flush();
+  assert.equal(got.length, 1, 'one state_change delivered for a DEMO state.json change');
+  assert.equal(got[0].type, 'state_change');
+  assert.equal(got[0].payload.projectName, 'DEMO');
+  assert.deepEqual(got[0].payload.state, { project: { name: 'DEMO' }, graph: { nodes: {} } });
+  off();
+});
+
+test('a burst of state.json writes coalesces to one state_change per project (NFR-4)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/p',
+    makeWatcher: () => w as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+    readStateFile: () => JSON.stringify({ graph: { nodes: {} } }),
+  });
+  const got: string[] = [];
+  const off = rt.subscribeAllStateTopics((n) => got.push(n.payload.projectName));
+  w.emit('change', '/p/DEMO/state.json');
+  w.emit('change', '/p/DEMO/state.json');
+  w.emit('change', '/p/DEMO/state.json');
+  clock.flush();
+  assert.deepEqual(got, ['DEMO'], 'three rapid DEMO writes coalesce to one delivery');
+  off();
+});
+
+test('a project directory created without a state.json fires project_added (FR-3, FR-4, DD-3)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({ projectsRoot: '/p', makeWatcher: () => w as never, coalesceWindowMs: 50, scheduler: clock });
+  const got: Array<{ type: string; payload: { projectName: string }; timestamp?: string }> = [];
+  const off = rt.subscribeLifecycle((n) => got.push(n));
+  w.emit('addDir', '/p/DOCONLY');
+  clock.flush();
+  assert.deepEqual(got, [{ type: 'project_added', payload: { projectName: 'DOCONLY' }, timestamp: got[0]?.timestamp }]);
+  off();
+});
+
+test('a project directory removal fires project_removed (FR-3, DD-3)', () => {
+  __resetLiveRuntimeForTest();
+  const w = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({ projectsRoot: '/p', makeWatcher: () => w as never, coalesceWindowMs: 50, scheduler: clock });
+  const got: Array<{ type: string; payload: { projectName: string }; timestamp?: string }> = [];
+  const off = rt.subscribeLifecycle((n) => got.push(n));
+  w.emit('unlinkDir', '/p/OLD');
+  clock.flush();
+  assert.deepEqual(got, [{ type: 'project_removed', payload: { projectName: 'OLD' }, timestamp: got[0]?.timestamp }]);
+  off();
+});
+
+test('a repo-registry.yml change fires an empty registry nudge from the registry watch root (FR-2, AD-2, DD-2)', () => {
+  __resetLiveRuntimeForTest();
+  const projectsW = fakeWatcher();
+  const registryW = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => projectsW as never,
+    makeRegistryWatcher: () => registryW as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+  });
+  const got: Array<{ type: string; payload: Record<string, never> }> = [];
+  const off = rt.subscribeRegistry((n) => got.push(n));
+  registryW.emit('change', '/home/.radorc/repo-registry.yml');
+  clock.flush();
+  assert.equal(got.length, 1, 'one registry nudge delivered');
+  assert.equal(got[0].type, 'registry_change');
+  assert.deepEqual(got[0].payload, {});
+  off();
+});
+
+test('the local registry override file also fires a nudge; a non-registry file does not (FR-2)', () => {
+  __resetLiveRuntimeForTest();
+  const projectsW = fakeWatcher();
+  const registryW = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => projectsW as never,
+    makeRegistryWatcher: () => registryW as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+  });
+  const got: string[] = [];
+  const off = rt.subscribeRegistry((n) => got.push(n.type));
+  registryW.emit('change', '/home/.radorc/repo-registry.local.yml');
+  registryW.emit('change', '/home/.radorc/orchestration.yml');
+  clock.flush();
+  assert.deepEqual(got, ['registry_change'], 'only registry files nudge; orchestration.yml is ignored');
+  off();
+});
+
+test('a registry watcher error restarts the registry watcher, not the projects watcher (NFR-6 registry resilience)', () => {
+  __resetLiveRuntimeForTest();
+  const proj = spyWatcher();
+  const reg1 = spyWatcher();
+  const reg2 = spyWatcher();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => proj as never,
+    makeRegistryWatcher: watcherSequence([reg1, reg2]),
+    coalesceWindowMs: 0,
+    maxRestarts: 1,
+  });
+  void rt;
+  reg1.emit('error', new Error('registry watch died')); // budget allows one registry restart
+  assert.equal(reg1.closeCount, 1, 'the failed registry watcher is closed on its own restart');
+  assert.equal(proj.closeCount, 0, 'a registry error must not restart/close the projects watcher');
+});
+
+test('a registry error does not consume the projects watcher restart budget (independent supervisors, NFR-6)', () => {
+  __resetLiveRuntimeForTest();
+  const proj1 = spyWatcher();
+  const proj2 = spyWatcher();
+  const reg1 = spyWatcher();
+  const reg2 = spyWatcher();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: watcherSequence([proj1, proj2]),
+    makeRegistryWatcher: watcherSequence([reg1, reg2]),
+    coalesceWindowMs: 0,
+    maxRestarts: 1,
+  });
+  const degraded: Array<{ type: string }> = [];
+  rt.subscribeDegraded((n) => degraded.push(n));
+  reg1.emit('error', new Error('registry fail'));   // consumes the REGISTRY budget (restart #1)
+  proj1.emit('error', new Error('projects fail'));  // projects still has its full budget → restarts
+  assert.deepEqual(degraded, [], 'neither surface degraded: each restart drew from its own budget');
+  assert.equal(proj1.closeCount, 1, 'the projects watcher restarted on its own untouched budget');
+});
+
+test('a registry change never reaches an artifact subscriber (AD-1 topic isolation)', () => {
+  __resetLiveRuntimeForTest();
+  const projectsW = fakeWatcher();
+  const registryW = fakeWatcher();
+  const clock = manualClock();
+  const rt = getLiveRuntime({
+    projectsRoot: '/home/.radorc/projects',
+    registryRoot: '/home/.radorc',
+    makeWatcher: () => projectsW as never,
+    makeRegistryWatcher: () => registryW as never,
+    coalesceWindowMs: 50,
+    scheduler: clock,
+  });
+  const got: unknown[] = [];
+  const off = rt.subscribeAllArtifactTopics((n) => got.push(n));
+  registryW.emit('change', '/home/.radorc/repo-registry.yml');
+  clock.flush();
+  assert.equal(got.length, 0, 'a registry event must not be delivered to artifact subscribers');
+  off();
+});

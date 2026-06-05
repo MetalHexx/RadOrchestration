@@ -160,12 +160,19 @@ async function run() {
     );
   });
 
-  await test('Source does not consume useSSEContext for banner (architectural guard)', () => {
-    // The banner must not read status from the separate SSEProvider context,
-    // which tracks a different EventSource and can diverge from actual data flow.
+  await test('Source sources banner sseStatus/reconnect from useProjects, which rides the single shared multiplexed connection (architectural guard)', () => {
+    // The provider now multiplexes one shared EventSource across every consumer,
+    // and useProjects subscribes through it — so the status/reconnect it exposes
+    // describe that one shared connection. The banner reads them from useProjects,
+    // keeping a single source of truth without the page opening its own stream.
     assert.ok(
-      !sourceText.includes('useSSEContext'),
-      'page.tsx must not import or call useSSEContext (banner now sourced from useProjects)'
+      /const\s*\{[^}]*\bsseStatus\b[^}]*\breconnect\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText)
+      || /const\s*\{[^}]*\breconnect\b[^}]*\bsseStatus\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText),
+      'page.tsx must source sseStatus and reconnect from useProjects(), which rides the one shared connection'
+    );
+    assert.ok(
+      sourceText.includes('status={sseStatus}'),
+      'the SSE banner must reflect the single shared connection via status={sseStatus}'
     );
   });
 
