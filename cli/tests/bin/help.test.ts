@@ -153,4 +153,18 @@ describe('radorch program wiring', () => {
     expect(signalHelp).toMatch(/--gate-type/);
     expect(signalHelp).toMatch(/--gate-mode/);
   }, 30_000);
+
+  it('exposes migrate in root help and responds to its own --help with safety-rail flags', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bmigrate\b/);
+    expect(rootHelp).toMatch(/migrate\s+Migrate a project state\.json to the current schema version/);
+    const { stdout: migrateHelp } = await node(['migrate', '--help']);
+    expect(migrateHelp).toMatch(/--project/);
+    expect(migrateHelp).toMatch(/--all/);
+    expect(migrateHelp).toMatch(/--dry-run/);
+  }, 30_000);
 });
