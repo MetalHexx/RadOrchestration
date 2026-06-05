@@ -121,6 +121,39 @@ A finding in §2.4 is severity `high` — deferred Requirements produce
 performative Master Plan tasks that survive through explosion, execution,
 and review.
 
+### 2.5 Repo Registry Membership
+
+Every repo named in the Master Plan's `repos:` seal and every task's
+`**Target repos:**` line must resolve to a real registered repo in the
+registry (consulted via the `rad-repo` registry the audit has in scope).
+A repo named in the plan but absent from the registry is a finding.
+
+> **Architecture note (AD-1):** This registry-coupled check lives
+> exclusively in plan-audit. It is deliberately absent from the explosion
+> transform, which operates only on the plan documents without
+> consulting the registry.
+
+| Check | What to Verify |
+|-------|---------------|
+| **Seal membership** | Every repo slug in the Master Plan frontmatter `repos:` field resolves to a registered repo in the registry. |
+| **Task `**Target repos:**` membership** | Every repo slug named on any task's `**Target repos:**` line resolves to a registered repo in the registry. |
+
+Each unresolved slug is one finding row in the standard finding format.
+
+### 2.6 Repo Shape Consistency
+
+Verify that the set of repos named across the plan is internally
+consistent at every level: task, phase, and plan seal.
+
+| Check | What to Verify |
+|-------|---------------|
+| **Task ⊆ seal** | Each task's `**Target repos:**` is a subset of the sealed `repos:` in the Master Plan frontmatter. A task repo not in the seal is a finding. |
+| **Phase union** | Each phase's `**Target repos:**` equals the union of its tasks' `**Target repos:**` sets. A phase that omits a repo its tasks name, or names a repo no task uses, is a finding. |
+| **Seal union** | The Master Plan `repos:` seal equals the union of all tasks' `**Target repos:**` sets across all phases. A repo in the seal but in no task (or vice-versa) is a finding. |
+| **Files ↔ repos alignment** | Each task's set of `**Files for <repo>:**` subsections names exactly the repos on its `**Target repos:**` line — no extra subsection, none missing. Each mismatch is a finding. |
+
+Each mismatch is one finding row in the standard finding format (FR-8).
+
 ---
 
 ## Part 3: Buildability (Explosion-Readiness)
