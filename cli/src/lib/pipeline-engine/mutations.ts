@@ -425,7 +425,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
       status: 'not_started',
       nodes,
       doc_path: trimmedHandoffPath,
-      commit_hash: null,
+      repos: [],
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected phase corrective task ${entry.index} (changes_requested)`);
@@ -764,7 +764,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       status: 'not_started',
       nodes,
       doc_path: trimmedHandoffPath,
-      commit_hash: null,
+      repos: [],
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected corrective task ${entry.index} (changes_requested, scope=${scope})`);
@@ -896,23 +896,28 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     );
 
     if (activePhaseCorrective) {
-      activePhaseCorrective.commit_hash = commitHash;
-      mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+      // T03 will replace this stub with per-repo tracking. For now push a
+      // single-entry repos array with an empty name so the scalar commit hash
+      // is preserved through the v6 type surface.
+      activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
       return { state: cloned, mutations_applied };
     }
 
-    // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
+    // Write commit hash to per-task IterationEntry or active CorrectiveTaskEntry
     const taskIteration = resolveTaskIteration(cloned, phase, task);
     const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
       (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
     );
 
     if (activeCorrective) {
-      activeCorrective.commit_hash = commitHash;
-      mutations_applied.push(`set corrective_task[${activeCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+      // T03 will replace this stub with per-repo tracking.
+      activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      mutations_applied.push(`set corrective_task[${activeCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
     } else {
-      taskIteration.commit_hash = commitHash;
-      mutations_applied.push(`set task_iteration[${taskIteration.index}].commit_hash = ${commitHash ?? 'null'}`);
+      // T03 will replace this stub with per-repo tracking.
+      taskIteration.repos = [{ name: '', commit_hash: commitHash }];
+      mutations_applied.push(`set task_iteration[${taskIteration.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
     }
 
     return { state: cloned, mutations_applied };

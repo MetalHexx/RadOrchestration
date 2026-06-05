@@ -24,6 +24,7 @@ import type {
 } from './types.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { validateState } from './validator.js';
+import { CURRENT_SCHEMA_VERSION } from './migrations/version.js';
 
 // Canonical user-data projects directory. Mirrors cli/src/lib/upgrade/user-data-paths.ts
 // (userDataPaths().projects); inlined here because the pipeline runtime in
@@ -197,7 +198,7 @@ function scaffoldState(
   }
 
   return {
-    $schema: 'orchestration-state-v5',
+    $schema: CURRENT_SCHEMA_VERSION,
     project: {
       name: projectName,
       created: now,

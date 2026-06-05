@@ -171,12 +171,15 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const taskIters = taskLoop?.iterations ?? [];
       const firstTask = taskIters[0];
       const lastTask = taskIters[taskIters.length - 1];
-      const phase_first_sha = firstTask?.commit_hash ?? null;
+      // repos[] is the per-task commit tracker; first entry's commit_hash (if any) is the base sha.
+      const phase_first_sha = firstTask?.repos[0]?.commit_hash ?? null;
       const lastTaskFinalCorrective = lastTask?.corrective_tasks
         .slice()
         .reverse()
-        .find(ct => ct.commit_hash != null);
-      const phase_head_sha = lastTaskFinalCorrective?.commit_hash ?? lastTask?.commit_hash ?? null;
+        .find(ct => ct.repos.some(r => r.commit_hash != null));
+      const phase_head_sha = lastTaskFinalCorrective?.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash
+        ?? lastTask?.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash
+        ?? null;
 
       const correctiveFields = phaseIter && phaseIter.corrective_tasks.length > 0
         ? { is_correction: true, corrective_index: phaseIter.corrective_tasks.length }
@@ -284,7 +287,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         ct => ct.status === 'in_progress' || ct.status === 'not_started'
       );
       if (activePhaseCorrective) {
-        const head_sha = activePhaseCorrective.commit_hash ?? null;
+        const head_sha = activePhaseCorrective.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash ?? null;
         return {
           ...base,
           head_sha,
@@ -300,8 +303,8 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         ct => ct.status === 'in_progress' || ct.status === 'not_started'
       );
       const head_sha = activeCorrective
-        ? (activeCorrective.commit_hash ?? null)
-        : (taskIter?.commit_hash ?? null);
+        ? (activeCorrective.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash ?? null)
+        : (taskIter?.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash ?? null);
       const correctiveFields = activeCorrective
         ? { is_correction: true, corrective_index: activeCorrective.index }
         : {};
@@ -357,14 +360,20 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIterations = taskLoop?.iterations ?? [];
       for (const taskIter of taskIterations) {
-        if (taskIter.commit_hash != null) commits.push(taskIter.commit_hash);
+        for (const r of taskIter.repos ?? []) {
+          if (r.commit_hash != null) commits.push(r.commit_hash);
+        }
         for (const ct of taskIter.corrective_tasks ?? []) {
-          if (ct.commit_hash != null) commits.push(ct.commit_hash);
+          for (const r of ct.repos ?? []) {
+            if (r.commit_hash != null) commits.push(r.commit_hash);
+          }
         }
       }
       // Phase correctives are appended after task commits because phase_review fires only after all task iterations complete, making phase correctives chronologically last within a phase.
       for (const ct of phaseIter.corrective_tasks ?? []) {
-        if (ct.commit_hash != null) commits.push(ct.commit_hash);
+        for (const r of ct.repos ?? []) {
+          if (r.commit_hash != null) commits.push(r.commit_hash);
+        }
       }
     }
 
