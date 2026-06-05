@@ -44,6 +44,102 @@ export interface StateConfigLimits {
   max_consecutive_review_rejections: number;
 }
 
+// ─── Restored production types (consumed by the MainDashboard sub-tree) ───────
+// These types are still imported by active production components and API routes
+// (the MainDashboard sub-tree, the API event route). They were removed during the
+// v5/v6 migration but their consumers were not, breaking the production build, so
+// they are restored here so every `@/types/state` import resolves again.
+//
+// `ProjectState` and `GateMode` are restored as ALIASES to their current v5
+// equivalents rather than as the original v4 definitions: re-introducing the literal
+// v4 `ProjectState` interface would re-add its retired v4 schema-version string, which
+// the FR-20 regression test `lib/v4-absent.test.ts` asserts must be gone (it scans
+// this file's text for that literal). The remaining types (SourceControl, PlanningState, PlanningStep,
+// ExecutionState, FinalReview, Phase, Task, and their nested doc/review types) have
+// no clean current equivalent and carry no v4 schema literal, so they are restored
+// verbatim from the pre-deletion version (commit 63820b20).
+
+export type GateMode = V5GateMode;
+
+export type ProjectState = ProjectStateV5;
+
+export interface SourceControl {
+  branch: string;
+  base_branch: string;
+  worktree_path: string;
+  auto_commit: 'always' | 'never';
+  auto_pr: 'always' | 'never';
+  remote_url?: string | null;
+  compare_url?: string | null;
+  pr_url?: string | null;
+}
+
+export interface PlanningState {
+  status: PlanningStatus;
+  human_approved: boolean;
+  steps: PlanningStep[];
+}
+
+export interface PlanningStep {
+  name: PlanningStepName;
+  status: PlanningStepStatus;
+  doc_path: string | null;
+}
+
+export interface ExecutionState {
+  status: ExecutionStatus;
+  current_phase: number;    // 1-based; 0 when no phases exist
+  phases: Phase[];
+}
+
+export interface FinalReview {
+  status: FinalReviewStatus;
+  doc_path: string | null;
+  human_approved: boolean;
+}
+
+export interface Phase {
+  name: string;
+  status: PhaseStatus;
+  stage: PhaseStage;
+  current_task: number;     // 1-based; 0 when no tasks exist
+  tasks: Task[];
+  docs: PhaseDocs;
+  review: PhaseReviewResult;
+}
+
+export interface PhaseDocs {
+  phase_plan: string | null;
+  phase_report: string | null;
+  phase_review: string | null;
+}
+
+export interface PhaseReviewResult {
+  verdict: ReviewVerdict | null;
+  action: PhaseReviewAction | null;
+}
+
+export interface Task {
+  name: string;
+  status: TaskStatus;
+  stage: TaskStage;
+  docs: TaskDocs;
+  review: TaskReviewResult;
+  retries: number;
+  commit_hash?: string | null;   // null or missing for pre-feature state files
+  repos?: RepoCommitEntry[];     // multi-repo commit entries; absent on pre-feature state files
+}
+
+export interface TaskDocs {
+  handoff: string | null;
+  review: string | null;
+}
+
+export interface TaskReviewResult {
+  verdict: ReviewVerdict | null;
+  action: TaskReviewAction | null;
+}
+
 // ─── Top-Level Sections ──────────────────────────────────────────────────────
 
 export interface ProjectMeta {

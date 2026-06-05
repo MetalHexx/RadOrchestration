@@ -18,7 +18,7 @@ afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
 
 // State after code_review_started: code_review=in_progress.
 const afterCodeReviewStartedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -40,7 +40,7 @@ const afterCodeReviewStartedState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -51,7 +51,7 @@ const afterCodeReviewStartedState = {
                     index: 0,
                     status: 'in_progress',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'completed', gate_active: true },

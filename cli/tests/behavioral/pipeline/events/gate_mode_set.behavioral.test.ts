@@ -19,7 +19,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 // auto_approve_modes includes [task, phase, autonomous] so gate_mode=task would auto-approve.
 // To reach gate_mode_set, seed with pipeline.gate_mode=null (ask mode) and gate not yet active.
 const afterPlanApprovedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',

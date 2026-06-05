@@ -19,7 +19,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State after master_plan_completed: requirements+master_plan=completed, rest=not_started
 const afterMasterPlanCompletedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',

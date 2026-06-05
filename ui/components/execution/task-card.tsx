@@ -19,7 +19,8 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, taskNumber, maxRetries, onDocClick, remoteUrl = null }: TaskCardProps) {
-  const { commitHash } = firstRepoCommit(task.repos);
+  const { commitHash, isMultiRepo } = firstRepoCommit(task.repos);
+  const repoCount = task.repos?.length ?? 0;
   const commitUrl = remoteUrl && commitHash
     ? `${remoteUrl}/commit/${commitHash}`
     : null;
@@ -41,6 +42,15 @@ export function TaskCard({ task, taskNumber, maxRetries, onDocClick, remoteUrl =
           )}
           {task.retries > 0 && (
             <RetryBadge retries={task.retries} max={maxRetries} />
+          )}
+          {/* DD-4: temporary lossy multi-repo shim — full per-repo display is iteration 7 */}
+          {isMultiRepo && (
+            <span
+              className="text-xs font-medium text-muted-foreground whitespace-nowrap"
+              aria-label={`Multi-repo task spanning ${repoCount} repos`}
+            >
+              Multi-repo ({repoCount} repos)
+            </span>
           )}
           <DocumentLink path={task.docs.handoff} label="Handoff" onDocClick={onDocClick} />
           <DocumentLink path={task.docs.review}  label="Review"  onDocClick={onDocClick} />

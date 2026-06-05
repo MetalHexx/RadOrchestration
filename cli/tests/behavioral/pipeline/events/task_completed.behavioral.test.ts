@@ -17,7 +17,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 
 // State after execution_started: task_executor=in_progress.
 const afterExecutionStartedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -39,7 +39,7 @@ const afterExecutionStartedState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -50,7 +50,7 @@ const afterExecutionStartedState = {
                     index: 0,
                     status: 'in_progress',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'completed', gate_active: true },
