@@ -52,6 +52,22 @@ becomes task-local and action-oriented.
         - `### P{NN}-T{MM}:` heading with a malformed id (e.g. `T-X`, `TX`).
         - Task heading appearing before any phase heading.
         - Task heading whose phase id does not match its enclosing phase.
+        - Task block missing its `**Target repos:**` line entirely — fix by
+          adding a `**Target repos:** <repo>` line immediately after
+          `**Requirements:**`.
+        - Task block has a `**Target repos:**` line that names zero repos (the
+          value is blank or whitespace only) — fix by supplying at least one
+          registry repo name on that line.
+        - Task block names a repo in `**Target repos:**` that is not in the
+          Master Plan's sealed frontmatter `repos:` set — fix by either
+          changing the target repo to one already in the seal, or extending
+          the frontmatter `repos:` seal to include the new repo (and
+          cross-checking all phase-level `**Target repos:**` union lines).
+      These repo-shape failures arrive through the identical structured
+      `{ line, expected, found, message }` parse-error shape and the same
+      hardcoded retry cap as the heading failures above, so apply the same
+      narrow-fix discipline on retries 3+: address only the exact issue
+      identified by `last_parse_error`; do not re-engineer the plan (NFR-8).
     - Re-emit the Master Plan with the correction. Other content stays as
       before unless explicitly impacted by the formatting fix.
     - The recovery loop has a hardcoded cap of 3 retries. After the cap, the
