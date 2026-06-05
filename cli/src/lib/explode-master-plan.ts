@@ -467,6 +467,17 @@ function taskFilename(projectName: string, task: ParsedTask): string {
 
 // ── Emission ──────────────────────────────────────────────────────────────────
 
+function unionTaskRepos(phase: ParsedPhase): string[] {
+  const repos: string[] = [];
+  const seen = new Set<string>();
+  for (const task of phase.tasks) {
+    for (const r of task.targetRepos) {
+      if (!seen.has(r)) { seen.add(r); repos.push(r); }
+    }
+  }
+  return repos;
+}
+
 function buildPhaseFrontmatter(opts: {
   projectName: string;
   phase: ParsedPhase;
@@ -478,6 +489,7 @@ function buildPhaseFrontmatter(opts: {
     title: opts.phase.title,
     status: 'active',
     tasks: opts.phase.tasks.map(t => ({ id: `T${String(t.taskIndex).padStart(2, '0')}`, title: t.title })),
+    repos: unionTaskRepos(opts.phase),
     author: 'explosion-script',
     created: opts.createdIso,
     type: 'phase_plan',

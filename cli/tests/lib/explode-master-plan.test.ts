@@ -55,6 +55,25 @@ describe('explodeMasterPlan core', () => {
   });
 });
 
+describe('explosion derives phase repos as task union (FR-2, AD-2)', () => {
+  it('unions task repos deterministically and ignores the decorative phase-body line', () => {
+    const { projectDir, masterPlanPath } = makeProject();
+    fs.writeFileSync(masterPlanPath,
+      '---\nrepos: [backend, frontend, shared]\n---\n\n' +
+      '## P01: First\n' +
+      '**Target repos:** shared\n\n' +
+      '### P01-T01: A\n**Requirements:** FR-1\n**Target repos:** backend, shared\n**Files for backend:**\n- Create: `a.ts`\n**Files for shared:**\n- Create: `b.ts`\n\n' +
+      '### P01-T02: B\n**Requirements:** FR-1\n**Target repos:** frontend\n**Files for frontend:**\n- Create: `c.ts`\n', 'utf8');
+    const result = explodeMasterPlan({
+      projectDir, masterPlanPath, projectName: 'X', nowIso: '2026-05-22T00:00:00.000Z',
+    });
+    const raw = fs.readFileSync(result.emittedPhaseFiles[0]!, 'utf8');
+    const fm = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/)![1]!;
+    const parsed = parseYaml(fm) as Record<string, unknown>;
+    expect(parsed.repos).toEqual(['backend', 'shared', 'frontend']);
+  });
+});
+
 describe('explosion lifts task target repos (FR-1, FR-3)', () => {
   it('emits a deterministic deduped repos: frontmatter field and leaves Files-for-repo as body text', () => {
     const { projectDir, masterPlanPath } = makeProject();
