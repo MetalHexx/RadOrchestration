@@ -137,3 +137,20 @@ describe('seedIterations — task repos (FR-11, DD-2)', () => {
     ]);
   });
 });
+
+describe('seedIterations — phase repos (FR-12, AD-4)', () => {
+  it('seeds phase iteration repos as the task union (FR-12, AD-4)', () => {
+    const { projectDir, masterPlanPath } = seedStateAndPlan(
+      '---\nrepos: [backend, frontend, shared]\n---\n\n## P01: P\n**Target repos:** shared\n\n' +
+      '### P01-T01: A\n**Requirements:** FR-1\n**Target repos:** backend, shared\n**Files for backend:**\n- Create: `a.ts`\n**Files for shared:**\n- Create: `b.ts`\n\n' +
+      '### P01-T02: B\n**Requirements:** FR-1\n**Target repos:** frontend\n**Files for frontend:**\n- Create: `c.ts`\n');
+    explodeMasterPlan({ projectDir, masterPlanPath, projectName: 'X', nowIso: '2026-05-22T00:00:00.000Z' });
+    const state = JSON.parse(fs.readFileSync(path.join(projectDir, 'state.json'), 'utf8'));
+    const phaseEntry = state.graph.nodes.phase_loop.iterations[0];
+    expect(phaseEntry.repos).toEqual([
+      { name: 'backend', commit_hash: null },
+      { name: 'shared', commit_hash: null },
+      { name: 'frontend', commit_hash: null },
+    ]);
+  });
+});

@@ -784,7 +784,7 @@ function seedIterations(
       nodes: { task_loop: taskLoop },
       corrective_tasks: [],
       doc_path: phaseFile,
-      repos: [],
+      repos: unionTaskRepos(phase).map(name => ({ name, commit_hash: null })),
     };
     phaseLoop.iterations.push(phaseEntry);
   }
