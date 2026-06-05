@@ -15,6 +15,8 @@ export interface ParsedTask {
   title: string;
   /** Requirement tags mentioned in the task body (e.g. ["FR-1", "DD-1"]). */
   requirementTags: string[];
+  /** Target repo names parsed from the task body's "**Target repos:**" line, deduped by first occurrence. */
+  targetRepos: string[];
   /** Raw lines of the task body, preserved for downstream emission. */
   body: string;
 }
@@ -267,6 +269,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
     if (currentTask !== null) {
       currentTask.body = currentBodyLines.join('\n').trimEnd();
       currentTask.requirementTags = extractRequirementTags(currentTask.body);
+      currentTask.targetRepos = extractTargetRepos(currentTask.body);
       currentPhase!.tasks.push(currentTask);
       currentTask = null;
       currentBodyLines = [];
@@ -371,6 +374,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
         taskIndex,
         title: (title ?? '').trim(),
         requirementTags: [],
+        targetRepos: [],
         body: '',
       };
       continue;
@@ -420,6 +424,19 @@ function extractRequirementTags(body: string): string[] {
     for (const item of items) tags.add(item);
   }
   return Array.from(tags);
+}
+
+function extractTargetRepos(body: string): string[] {
+  const repos: string[] = [];
+  const seen = new Set<string>();
+  const lineMatch = body.match(/\*\*Target repos:\*\*\s*([^\n]+)/);
+  if (lineMatch) {
+    const items = (lineMatch[1] ?? '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    for (const item of items) {
+      if (!seen.has(item)) { seen.add(item); repos.push(item); }
+    }
+  }
+  return repos;
 }
 
 // ── Filename helpers ──────────────────────────────────────────────────────────
@@ -479,6 +496,7 @@ function buildTaskFrontmatter(opts: {
     title: opts.task.title,
     status: 'pending',
     requirement_tags: opts.task.requirementTags,
+    repos: opts.task.targetRepos,
     author: 'explosion-script',
     created: opts.createdIso,
     type: 'task_handoff',
