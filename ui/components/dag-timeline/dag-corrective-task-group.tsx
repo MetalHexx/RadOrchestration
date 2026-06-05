@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { NodeStatusBadge } from './node-status-badge';
 import { DocumentLink, ExternalLink } from '@/components/documents';
-import { deriveIterationBadgeLabel, getCommitLinkData, buildCorrectiveItemValue, resolveStageBadge } from './dag-timeline-helpers';
+import { deriveIterationBadgeLabel, getCommitLinkData, firstRepoCommit, buildCorrectiveItemValue, resolveStageBadge } from './dag-timeline-helpers';
 import type { CorrectiveTaskEntry } from '@/types/state';
 
 interface DAGCorrectiveTaskGroupProps {
@@ -59,7 +59,8 @@ function CorrectiveRow({
 }) {
   const itemValue = buildCorrectiveItemValue(parentIterationKey, entry.index);
   const handleFocus = useCallback(() => onFocusChange(itemValue), [itemValue, onFocusChange]);
-  const commitData = getCommitLinkData(entry.commit_hash, repoBaseUrl);
+  const { commitHash: entry_commit_hash } = firstRepoCommit(entry.repos);
+  const commitData = getCommitLinkData(entry_commit_hash, repoBaseUrl);
 
   // The runtime CorrectiveTaskEntry may carry a `corrective_tasks` field for
   // nested correctives (recursive case, FR-9 / FR-10 / DD-8) even though the
@@ -79,7 +80,7 @@ function CorrectiveRow({
       nodes: entry.nodes,
       corrective_tasks: nestedCorrectives,
       doc_path: entry.doc_path ?? null,
-      commit_hash: entry.commit_hash ?? null,
+      repos: entry.repos,
     },
     'for_each_task',
   );
@@ -98,7 +99,7 @@ function CorrectiveRow({
   const codeReviewNode = entry.nodes['code_review'];
   const codeReviewDocPath = (codeReviewNode && 'doc_path' in codeReviewNode) ? codeReviewNode.doc_path : null;
   const hasCodeReview = codeReviewDocPath != null && codeReviewDocPath !== '';
-  const hasCommitLink = commitData !== null && entry.commit_hash != null;
+  const hasCommitLink = commitData !== null && entry_commit_hash != null;
   const hasAnyTrailing = hasHandoff || hasCodeReview || hasCommitLink;
   // FR-9 / FR-10 / DD-8 — chevron is gated on entry.corrective_tasks.length > 0.
   const hasNested = nestedCorrectives.length > 0;
@@ -165,12 +166,12 @@ function CorrectiveRow({
             href={commitData!.href}
             label="Commit"
             icon="github"
-            title={entry.commit_hash!}
+            title={entry_commit_hash!}
           />
         ) : (
           <span
             className="text-xs font-mono text-muted-foreground"
-            title={entry.commit_hash!}
+            title={entry_commit_hash!}
           >
             {commitData!.label}
           </span>

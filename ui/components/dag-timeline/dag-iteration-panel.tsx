@@ -8,7 +8,7 @@ import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
 import { ProgressBar } from '@/components/execution/progress-bar';
 import { NodeStatusBadge } from './node-status-badge';
-import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel, shouldRenderTimelineRow, resolveStageBadge } from './dag-timeline-helpers';
+import { getCommitLinkData, firstRepoCommit, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel, shouldRenderTimelineRow, resolveStageBadge } from './dag-timeline-helpers';
 import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { IterationEntry } from '@/types/state';
 
@@ -58,7 +58,8 @@ export function DAGIterationPanel({
   focusedRowKey,
   onFocusChange,
 }: DAGIterationPanelProps) {
-  const commitData = getCommitLinkData(iteration.commit_hash, repoBaseUrl);
+  const { commitHash: commit_hash } = firstRepoCommit(iteration.repos);
+  const commitData = getCommitLinkData(commit_hash, repoBaseUrl);
   const correctiveGroupParentId = buildCorrectiveGroupParentId(parentNodeId, iterationIndex);
 
   // Derive iteration name from iteration.doc_path (post-unify) with a
@@ -151,7 +152,7 @@ export function DAGIterationPanel({
     // task spine — aligning them with the phase header and bounding the spine
     // line to task-like content.
     const renderableEntries = Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
-      shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
+      shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: commit_hash, prUrl: null })
     );
     const loopIndex = renderableEntries.findIndex(([, n]) => isLoopNode(n));
     const preLoopEntries  = loopIndex === -1 ? renderableEntries : renderableEntries.slice(0, loopIndex);
@@ -353,7 +354,7 @@ export function DAGIterationPanel({
   const codeReviewNode = iteration.nodes['code_review'];
   const codeReviewDocPath = (codeReviewNode && 'doc_path' in codeReviewNode) ? codeReviewNode.doc_path : null;
   const hasCodeReview = codeReviewDocPath != null && codeReviewDocPath !== '';
-  const hasCommitLink = commitData !== null && iteration.commit_hash != null;
+  const hasCommitLink = commitData !== null && commit_hash != null;
   const hasAnyTaskTrailing = hasTaskHandoff || hasCodeReview || hasCommitLink;
   const hasCorrectives = iteration.corrective_tasks.length > 0;
   const isCorrected = iteration.status === 'completed' &&
@@ -423,12 +424,12 @@ export function DAGIterationPanel({
             href={commitData!.href}
             label="Commit"
             icon="github"
-            title={iteration.commit_hash!}
+            title={commit_hash!}
           />
         ) : (
           <span
             className="text-xs font-mono text-muted-foreground"
-            title={iteration.commit_hash!}
+            title={commit_hash!}
           >
             {commitData!.label}
           </span>

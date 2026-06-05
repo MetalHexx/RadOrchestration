@@ -6,6 +6,7 @@ import {
 } from "@/components/badges";
 import { StageBadge } from "@/components/badges/stage-badge";
 import { DocumentLink, ExternalLink } from "@/components/documents";
+import { firstRepoCommit } from "@/components/dag-timeline/dag-timeline-helpers";
 import type { Task } from "@/types/state";
 
 interface TaskCardProps {
@@ -18,8 +19,9 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, taskNumber, maxRetries, onDocClick, remoteUrl = null }: TaskCardProps) {
-  const commitUrl = remoteUrl && task.commit_hash
-    ? `${remoteUrl}/commit/${task.commit_hash}`
+  const { commitHash } = firstRepoCommit(task.repos);
+  const commitUrl = remoteUrl && commitHash
+    ? `${remoteUrl}/commit/${commitHash}`
     : null;
 
   return (

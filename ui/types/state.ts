@@ -137,6 +137,13 @@ export interface PhaseReviewResult {
   action: PhaseReviewAction | null;
 }
 
+// ─── Repo Commit Entry (shared by Task, IterationEntry, CorrectiveTaskEntry) ──
+
+export interface RepoCommitEntry {
+  name: string;
+  commit_hash: string | null;
+}
+
 // ─── Task ────────────────────────────────────────────────────────────────────
 
 export interface Task {
@@ -147,6 +154,7 @@ export interface Task {
   review: TaskReviewResult;
   retries: number;
   commit_hash?: string | null;   // null or missing for pre-feature state files
+  repos?: RepoCommitEntry[];     // multi-repo commit entries; absent on pre-feature state files
 }
 
 export interface TaskDocs {
@@ -262,7 +270,7 @@ export interface IterationEntry {
   nodes: NodesRecord;
   corrective_tasks: CorrectiveTaskEntry[];
   doc_path?: string | null;
-  commit_hash?: string | null;
+  repos: RepoCommitEntry[];
 }
 
 export interface CorrectiveTaskEntry {
@@ -272,7 +280,7 @@ export interface CorrectiveTaskEntry {
   status: NodeStatus;
   nodes: NodesRecord;
   doc_path?: string | null;
-  commit_hash?: string | null;
+  repos: RepoCommitEntry[];
 }
 
 // ─── v5 Source Control ───────────────────────────────────────────────────────
@@ -329,12 +337,28 @@ export interface ProjectStateV5 {
   graph: GraphState;
 }
 
+// ─── v6 State Root ───────────────────────────────────────────────────────────
+
+/** v6 state — structurally identical to v5 but discriminated by $schema */
+export interface ProjectStateV6 {
+  $schema: 'orchestration-state-v6';
+  project: ProjectMeta;
+  config: V5Config;
+  pipeline: V5Pipeline;
+  graph: GraphState;
+}
+
 // ─── Discriminated Union ─────────────────────────────────────────────────────
 
-/** Union of v4 and v5 state — discriminate on $schema */
-export type AnyProjectState = ProjectState | ProjectStateV5;
+/** Union of v4, v5, and v6 state — discriminate on $schema */
+export type AnyProjectState = ProjectState | ProjectStateV5 | ProjectStateV6;
 
 /** Type guard: returns true when the state is v5 */
 export function isV5State(state: AnyProjectState): state is ProjectStateV5 {
   return state.$schema === 'orchestration-state-v5';
+}
+
+/** Type guard: returns true when the state is v6 */
+export function isV6State(state: AnyProjectState): state is ProjectStateV6 {
+  return state.$schema === 'orchestration-state-v6';
 }

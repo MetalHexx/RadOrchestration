@@ -10,7 +10,7 @@
     "build-standalone": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test --import tsx \"lib/**/*.test.ts\" \"lib/**/*.test.mjs\" \"hooks/**/*.test.ts\" \"hooks/**/*.test.tsx\" \"components/**/*.test.ts\" \"components/**/*.test.tsx\" \"app/**/*.test.ts\" \"app/**/*.test.tsx\" \"tests/**/*.test.ts\""
+    "test": "node --test --import tsx \"lib/**/*.test.ts\" \"lib/**/*.test.mjs\" \"hooks/**/*.test.ts\" \"hooks/**/*.test.tsx\" \"components/**/*.test.ts\" \"components/**/*.test.tsx\" \"app/**/*.test.ts\" \"app/**/*.test.tsx\" \"tests/**/*.test.ts\" \"types/**/*.test.ts\""
   },
   "dependencies": {
     "@rad-orchestration/repo-registry": "1.0.0-alpha.9",
