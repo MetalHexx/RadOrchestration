@@ -3,32 +3,10 @@
  * Run with: npx tsx ui/lib/document-ordering.test.ts
  */
 import assert from 'node:assert';
-import { getOrderedDocs, getAdjacentDocs, getOrderedDocsV5 } from './document-ordering';
+import { getAdjacentDocs, getOrderedDocsV5 } from './document-ordering';
 import * as mod from './document-ordering';
-import type { ProjectState, ProjectStateV5, NodesRecord } from '@/types/state';
+import type { ProjectStateV5, NodesRecord } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
-
-function makeState(overrides?: Partial<ProjectState>): ProjectState {
-  return {
-    $schema: 'orchestration-state-v4',
-    project: { name: 'TEST', created: '', updated: '' },
-    pipeline: { current_tier: 'execution', gate_mode: null },
-    planning: {
-      status: 'complete',
-      human_approved: false,
-      steps: [
-        { name: 'research', status: 'not_started', doc_path: null },
-        { name: 'prd', status: 'not_started', doc_path: null },
-        { name: 'design', status: 'not_started', doc_path: null },
-        { name: 'architecture', status: 'not_started', doc_path: null },
-        { name: 'master_plan', status: 'not_started', doc_path: null },
-      ],
-    },
-    execution: { status: 'not_started', current_phase: 0, phases: [] },
-    final_review: { status: 'not_started', doc_path: null, human_approved: false },
-    ...overrides,
-  };
-}
 
 let passed = 0;
 let failed = 0;
@@ -44,317 +22,6 @@ function test(name: string, fn: () => void) {
     failed++;
   }
 }
-
-console.log('getOrderedDocs');
-
-test('returns planning + phase docs in canonical order', () => {
-  const state = makeState({
-    planning: {
-      status: 'complete',
-      human_approved: true,
-      steps: [
-        { name: 'research', status: 'complete', doc_path: 'docs/RESEARCH.md' },
-        { name: 'prd', status: 'complete', doc_path: 'docs/PRD.md' },
-        { name: 'design', status: 'not_started', doc_path: null },
-        { name: 'architecture', status: 'not_started', doc_path: null },
-        { name: 'master_plan', status: 'not_started', doc_path: null },
-      ],
-    },
-    execution: {
-      status: 'in_progress',
-      current_phase: 1,
-      phases: [
-        {
-          name: 'Phase One',
-          status: 'in_progress',
-          stage: 'executing',
-          current_task: 1,
-          tasks: [
-            {
-              name: 'Setup',
-              status: 'complete',
-              stage: 'complete',
-              docs: {
-                handoff: 'tasks/T01.md',
-                review: 'reviews/T01-REVIEW.md',
-              },
-              review: { verdict: 'approved', action: 'advanced' },
-              retries: 0,
-              commit_hash: null,
-            },
-          ],
-          docs: {
-            phase_plan: 'phases/P01-PLAN.md',
-            phase_report: null,
-            phase_review: 'reviews/P01-REVIEW.md',
-          },
-          review: { verdict: null, action: null },
-        },
-      ],
-    },
-  });
-
-  const docs = getOrderedDocs(state, 'TEST');
-  const titles = docs.map((d) => d.title);
-
-  assert.deepStrictEqual(titles, [
-    'Research',
-    'PRD',
-    'Phase 1 Plan',
-    'P1-T1: Setup',
-    'P1-T1 Review',
-    'Phase 1 Review',
-  ]);
-
-  assert.strictEqual(docs[0].category, 'planning');
-  assert.strictEqual(docs[2].category, 'phase');
-  assert.strictEqual(docs[3].category, 'task');
-  assert.strictEqual(docs[4].category, 'review');
-});
-
-test('skips null paths', () => {
-  const state = makeState({
-    planning: {
-      status: 'complete',
-      human_approved: true,
-      steps: [
-        { name: 'research', status: 'complete', doc_path: 'docs/RESEARCH.md' },
-        { name: 'prd', status: 'not_started', doc_path: null },
-        { name: 'design', status: 'not_started', doc_path: null },
-        { name: 'architecture', status: 'not_started', doc_path: null },
-        { name: 'master_plan', status: 'not_started', doc_path: null },
-      ],
-    },
-  });
-
-  const docs = getOrderedDocs(state, 'TEST');
-  assert.strictEqual(docs.length, 1);
-  assert.strictEqual(docs[0].title, 'Research');
-});
-
-test('appends error log from allFiles after final review', () => {
-  const state = makeState({
-    final_review: { status: 'complete', doc_path: 'reviews/FINAL.md', human_approved: true },
-  });
-
-  const allFiles = ['reviews/FINAL.md', 'projects/TEST-ERROR-LOG.md'];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-
-  assert.deepStrictEqual(docs.map((d) => d.title), ['Final Review', 'Error Log']);
-  assert.strictEqual(docs[1].category, 'error-log');
-});
-
-test('includes phase_report between task reviews and phase_review', () => {
-  const state = makeState({
-    execution: {
-      status: 'in_progress',
-      current_phase: 1,
-      phases: [
-        {
-          name: 'Phase One',
-          status: 'in_progress',
-          stage: 'reviewing',
-          current_task: 1,
-          tasks: [
-            {
-              name: 'Setup',
-              status: 'complete',
-              stage: 'complete',
-              docs: { handoff: 'tasks/T01.md', review: 'reviews/T01-REVIEW.md' },
-              review: { verdict: 'approved', action: 'advanced' },
-              retries: 0,
-              commit_hash: null,
-            },
-          ],
-          docs: {
-            phase_plan: 'phases/P01-PLAN.md',
-            phase_report: 'reports/P01-REPORT.md',
-            phase_review: 'reviews/P01-REVIEW.md',
-          },
-          review: { verdict: null, action: null },
-        },
-      ],
-    },
-  });
-
-  const docs = getOrderedDocs(state, 'TEST');
-  const titles = docs.map((d) => d.title);
-
-  assert.deepStrictEqual(titles, [
-    'Phase 1 Plan',
-    'P1-T1: Setup',
-    'P1-T1 Review',
-    'Phase 1 Report',
-    'Phase 1 Review',
-  ]);
-
-  const reportDoc = docs.find((d) => d.title === 'Phase 1 Report')!;
-  assert.strictEqual(reportDoc.category, 'phase');
-  assert.strictEqual(reportDoc.path, 'reports/P01-REPORT.md');
-});
-
-test('skips null phase_report path', () => {
-  const state = makeState({
-    execution: {
-      status: 'in_progress',
-      current_phase: 1,
-      phases: [
-        {
-          name: 'Phase One',
-          status: 'in_progress',
-          stage: 'executing',
-          current_task: 0,
-          tasks: [],
-          docs: { phase_plan: 'phases/P01-PLAN.md', phase_report: null, phase_review: 'reviews/P01-REVIEW.md' },
-          review: { verdict: null, action: null },
-        },
-      ],
-    },
-  });
-
-  const docs = getOrderedDocs(state, 'TEST');
-  const titles = docs.map((d) => d.title);
-  assert.deepStrictEqual(titles, ['Phase 1 Plan', 'Phase 1 Review']);
-  assert.strictEqual(docs.find((d) => d.title === 'Phase 1 Report'), undefined);
-});
-
-test('excludes phase_report from Other Documents', () => {
-  const state = makeState({
-    execution: {
-      status: 'in_progress',
-      current_phase: 1,
-      phases: [
-        {
-          name: 'Phase One',
-          status: 'in_progress',
-          stage: 'reviewing',
-          current_task: 0,
-          tasks: [],
-          docs: {
-            phase_plan: null,
-            phase_report: 'C:/dev/projects/TEST/TEST-PHASE-P01-REPORT.md',
-            phase_review: null,
-          },
-          review: { verdict: null, action: null },
-        },
-      ],
-    },
-  });
-
-  const allFiles = ['TEST-PHASE-P01-REPORT.md', 'EXTRA.md'];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-
-  const otherDocs = docs.filter((d) => d.category === 'other');
-  assert.strictEqual(otherDocs.length, 1, 'Only EXTRA.md should be other');
-  assert.strictEqual(otherDocs[0].title, 'EXTRA');
-});
-
-test('appends other docs sorted alphabetically', () => {
-  const state = makeState();
-  const allFiles = ['docs/ZEBRA.md', 'docs/ALPHA.md', 'image.png'];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-
-  assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
-  assert.strictEqual(docs[0].category, 'other');
-  assert.strictEqual(docs[1].category, 'other');
-});
-
-test('excludes planning docs from Other Documents when state uses absolute paths but allFiles has relative paths', () => {
-  const state = makeState({
-    planning: {
-      status: 'complete',
-      human_approved: true,
-      steps: [
-        { name: 'research', status: 'complete', doc_path: 'C:/dev/projects/TEST/TEST-RESEARCH-FINDINGS.md' },
-        { name: 'prd', status: 'complete', doc_path: 'C:/dev/projects/TEST/TEST-PRD.md' },
-        { name: 'design', status: 'not_started', doc_path: null },
-        { name: 'architecture', status: 'not_started', doc_path: null },
-        { name: 'master_plan', status: 'not_started', doc_path: null },
-      ],
-    },
-  });
-
-  const allFiles = ['TEST-RESEARCH-FINDINGS.md', 'TEST-PRD.md', 'EXTRA-NOTES.md'];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-
-  const otherDocs = docs.filter((d) => d.category === 'other');
-  assert.strictEqual(otherDocs.length, 1, 'Only EXTRA-NOTES.md should be other');
-  assert.strictEqual(otherDocs[0].title, 'EXTRA-NOTES');
-});
-
-test('excludes phase plan docs from Other Documents when state paths differ in format', () => {
-  const state = makeState({
-    execution: {
-      status: 'in_progress',
-      current_phase: 1,
-      phases: [
-        {
-          name: 'Phase One',
-          status: 'in_progress',
-          stage: 'executing',
-          current_task: 0,
-          tasks: [],
-          docs: {
-            phase_plan: 'C:/dev/projects/TEST/phases/TEST-PHASE-P01-PLAN.md',
-            phase_report: null,
-            phase_review: null,
-          },
-          review: { verdict: null, action: null },
-        },
-      ],
-    },
-  });
-
-  const allFiles = ['phases/TEST-PHASE-P01-PLAN.md', 'EXTRA.md'];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-
-  const otherDocs = docs.filter((d) => d.category === 'other');
-  assert.strictEqual(otherDocs.length, 1, 'Only EXTRA.md should be other');
-  assert.strictEqual(otherDocs[0].title, 'EXTRA');
-});
-
-test('excludes task handoff docs from Other Documents when paths differ in format', () => {
-  const state = makeState({
-    execution: {
-      status: 'in_progress',
-      current_phase: 1,
-      phases: [
-        {
-          name: 'Phase One',
-          status: 'in_progress',
-          stage: 'executing',
-          current_task: 1,
-          tasks: [
-            {
-              name: 'Setup',
-              status: 'complete',
-              stage: 'complete',
-              docs: {
-                handoff: 'C:/dev/projects/TEST/tasks/TEST-TASK-P01-T01-SETUP.md',
-                review: null,
-              },
-              review: { verdict: 'approved', action: 'advanced' },
-              retries: 0,
-              commit_hash: null,
-            },
-          ],
-          docs: { phase_plan: null, phase_report: null, phase_review: null },
-          review: { verdict: null, action: null },
-        },
-      ],
-    },
-  });
-
-  const allFiles = [
-    'tasks/TEST-TASK-P01-T01-SETUP.md',
-    'NOTES.md',
-  ];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-
-  const otherDocs = docs.filter((d) => d.category === 'other');
-  assert.strictEqual(otherDocs.length, 1, 'Only NOTES.md should be other');
-  assert.strictEqual(otherDocs[0].title, 'NOTES');
-});
 
 console.log('\ngetAdjacentDocs');
 
@@ -463,7 +130,7 @@ test('for_each_phase iterations produce phase-level documents with correct categ
             phase_review: { kind: 'step', status: 'completed', doc_path: 'reviews/P01-REVIEW.md', retries: 0 },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -497,13 +164,13 @@ test('for_each_task iterations produce task-level documents with correct categor
                     code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-REVIEW.md', retries: 0 },
                   },
                   corrective_tasks: [],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -544,16 +211,16 @@ test('corrective task step nodes append CT suffix with task category', () => {
                       status: 'completed',
                       doc_path: 'tasks/T01-CT1.md',
                       nodes: {},
-                      commit_hash: null,
+                      repos: [],
                     },
                   ],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -593,10 +260,10 @@ test('phase-scope corrective task step nodes emit Phase N CTK labels with correc
               nodes: {
                 code_review: { kind: 'step', status: 'completed', doc_path: 'reports/PROJ-CODE-REVIEW-P01-PHASE-C1.md', retries: 0 },
               },
-              commit_hash: null,
+              repos: [],
             },
           ],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -638,7 +305,7 @@ test('phase-scope corrective docs are sorted by corrective index and interleave 
               status: 'completed',
               doc_path: 'tasks/PROJ-TASK-P01-PHASE-C2.md',
               nodes: {},
-              commit_hash: null,
+              repos: [],
             },
             {
               index: 1,
@@ -647,10 +314,10 @@ test('phase-scope corrective docs are sorted by corrective index and interleave 
               status: 'completed',
               doc_path: 'tasks/PROJ-TASK-P01-PHASE-C1.md',
               nodes: {},
-              commit_hash: null,
+              repos: [],
             },
           ],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -698,10 +365,10 @@ test('FR-4 walk order — task with corrective AND phase with phase-scope correc
                       nodes: {
                         code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T01-CT1-REVIEW.md', retries: 0 },
                       },
-                      commit_hash: null,
+                      repos: [],
                     },
                   ],
-                  commit_hash: null,
+                  repos: [],
                 },
                 {
                   index: 1,
@@ -711,7 +378,7 @@ test('FR-4 walk order — task with corrective AND phase with phase-scope correc
                     code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/T02-REVIEW.md', retries: 0 },
                   },
                   corrective_tasks: [],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
@@ -727,10 +394,10 @@ test('FR-4 walk order — task with corrective AND phase with phase-scope correc
               nodes: {
                 code_review: { kind: 'step', status: 'completed', doc_path: 'reports/P01-PCT1-REVIEW.md', retries: 0 },
               },
-              commit_hash: null,
+              repos: [],
             },
           ],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -852,10 +519,10 @@ test('full integration: planning + phase iteration with task iteration + correct
                       status: 'completed',
                       doc_path: 'tasks/T01-CT1.md',
                       nodes: {},
-                      commit_hash: null,
+                      repos: [],
                     },
                   ],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
@@ -863,7 +530,7 @@ test('full integration: planning + phase iteration with task iteration + correct
             phase_review: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -954,14 +621,14 @@ test('emits phase-plan from iteration.doc_path and task-handoff from taskIter.do
                     code_review: { kind: 'step', status: 'completed', doc_path: 'reviews/PROJ-CODE-REVIEW-P01-T01.md', retries: 0 },
                   },
                   corrective_tasks: [],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
             phase_review: { kind: 'step', status: 'completed', doc_path: 'reports/PROJ-PHASE-REVIEW-P01.md', retries: 0 },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -999,7 +666,7 @@ test('phase-iteration with both iteration.doc_path AND legacy phase_planning chi
             phase_planning: { kind: 'step', status: 'completed', doc_path: 'phase-1-plan.md', retries: 0 },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -1032,13 +699,13 @@ test('task-iteration with both taskIter.doc_path AND legacy task_handoff child e
                     task_handoff: { kind: 'step', status: 'completed', doc_path: 'tasks/T01-handoff.md', retries: 0 },
                   },
                   corrective_tasks: [],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
           },
           corrective_tasks: [],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },
@@ -1075,16 +742,6 @@ test('FR-12 — v5 tail-bucket label keeps name when project prefix is absent', 
   const docs = getOrderedDocsV5(state, 'PROJ', allFiles);
   const titles = docs.filter((d) => d.category === 'other').map((d) => d.title).sort();
   assert.deepStrictEqual(titles, ['Notes', 'Random Thoughts']);
-});
-
-test('NFR-1 — v4 getOrderedDocs tail-bucket labels are unchanged (uppercase bare filenames)', () => {
-  // Regression guard: even after T04 ships the v5 title-cased tail labels,
-  // the v4 helper still produces the legacy uppercase bare-filename titles
-  // because it calls the untouched shared `appendAllFileDocs`.
-  const state = makeState();
-  const allFiles = ['docs/ZEBRA.md', 'docs/ALPHA.md'];
-  const docs = getOrderedDocs(state, 'TEST', allFiles);
-  assert.deepStrictEqual(docs.map((d) => d.title), ['ALPHA', 'ZEBRA']);
 });
 
 test('NFR-2 — no canonical doc emitted by the engine lands in the tail "other" bucket', () => {
@@ -1127,10 +784,10 @@ test('NFR-2 — no canonical doc emitted by the engine lands in the tail "other"
                       nodes: {
                         code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T01-CT1.md', retries: 0 },
                       },
-                      commit_hash: null,
+                      repos: [],
                     },
                   ],
-                  commit_hash: null,
+                  repos: [],
                 },
                 {
                   index: 1,
@@ -1140,7 +797,7 @@ test('NFR-2 — no canonical doc emitted by the engine lands in the tail "other"
                     code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-T02.md', retries: 0 },
                   },
                   corrective_tasks: [],
-                  commit_hash: null,
+                  repos: [],
                 },
               ],
             },
@@ -1156,10 +813,10 @@ test('NFR-2 — no canonical doc emitted by the engine lands in the tail "other"
               nodes: {
                 code_review: { kind: 'step', status: 'completed', doc_path: 'projects/PROJ/reviews/PROJ-CODE-REVIEW-P01-PHASE-C1.md', retries: 0 },
               },
-              commit_hash: null,
+              repos: [],
             },
           ],
-          commit_hash: null,
+          repos: [],
         },
       ],
     },

@@ -59,37 +59,6 @@ function makeV5State(overrides: Record<string, unknown> = {}) {
   });
 }
 
-/** Minimal v4 state.json fixture */
-function makeV4State() {
-  return JSON.stringify({
-    $schema: 'orchestration-state-v4',
-    project: {
-      name: 'v4-project',
-      created: '2026-01-01T00:00:00.000Z',
-      updated: '2026-03-15T10:00:00.000Z',
-    },
-    pipeline: {
-      current_tier: 'planning',
-      gate_mode: null,
-    },
-    planning: {
-      status: 'in_progress',
-      human_approved: false,
-      steps: [],
-    },
-    execution: {
-      status: 'not_started',
-      current_phase: 0,
-      phases: [],
-    },
-    final_review: {
-      status: 'not_started',
-      doc_path: null,
-      human_approved: false,
-    },
-  });
-}
-
 async function setup(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'fs-reader-v5-test-'));
   const projectsDir = path.join(dir, '.radorc', 'projects');
@@ -126,10 +95,6 @@ async function setup(): Promise<string> {
       },
     })
   );
-
-  // v4-project: valid v4 state.json
-  await mkdir(path.join(projectsDir, 'v4-project'));
-  await writeFile(path.join(projectsDir, 'v4-project', 'state.json'), makeV4State());
 
   // no-state-project: directory without state.json
   await mkdir(path.join(projectsDir, 'no-state-project'));
@@ -209,20 +174,6 @@ async function run() {
       assert.strictEqual(p!.tier, 'complete');
     });
 
-    await test('v4 project — schemaVersion is "v4" (no regression)', async () => {
-      const p = projects.find(x => x.name === 'v4-project');
-      assert.ok(p, 'v4-project should be in results');
-      assert.strictEqual(p!.schemaVersion, 'v4');
-    });
-
-    await test('v4 project — tier, planningStatus, executionStatus unchanged (no regression)', async () => {
-      const p = projects.find(x => x.name === 'v4-project');
-      assert.ok(p, 'v4-project should be in results');
-      assert.strictEqual(p!.tier, 'planning');
-      assert.strictEqual(p!.planningStatus, 'in_progress');
-      assert.strictEqual(p!.executionStatus, 'not_started');
-    });
-
     await test('no-state project — hasState: false, schemaVersion undefined (no regression)', async () => {
       const p = projects.find(x => x.name === 'no-state-project');
       assert.ok(p, 'no-state-project should be in results');
@@ -249,12 +200,6 @@ async function run() {
       assert.strictEqual(p!.graphStatus, 'completed');
     });
 
-    await test('v4 project — graphStatus is "not_initialized"', async () => {
-      const p = projects.find(x => x.name === 'v4-project');
-      assert.ok(p, 'v4-project should be in results');
-      assert.strictEqual(p!.graphStatus, 'not_initialized');
-    });
-
     await test('no-state project — graphStatus is "not_initialized"', async () => {
       const p = projects.find(x => x.name === 'no-state-project');
       assert.ok(p, 'no-state-project should be in results');
@@ -275,13 +220,6 @@ async function run() {
       const state = await readProjectState(projectDir);
       assert.ok(state, 'state should not be null');
       assert.strictEqual(state!.$schema, 'orchestration-state-v5');
-    });
-
-    await test('readProjectState — parses v4 state correctly (no regression)', async () => {
-      const projectDir = path.join(projectsDir, 'v4-project');
-      const state = await readProjectState(projectDir);
-      assert.ok(state, 'state should not be null');
-      assert.strictEqual(state!.$schema, 'orchestration-state-v4');
     });
 
     console.log(`\n${passed} passed, ${failed} failed`);

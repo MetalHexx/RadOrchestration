@@ -141,18 +141,7 @@ export async function discoverProjects(): Promise<ProjectSummary[]> {
               graphStatus: state.graph.status,
             };
           }
-          return {
-            name: projectName,
-            tier: state.pipeline.current_tier,
-            hasState: true,
-            hasMalformedState: false,
-            brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
-            planningStatus: state.planning?.status,
-            executionStatus: state.execution?.status,
-            lastUpdated: state.project?.updated,
-            schemaVersion: 'v4',
-            graphStatus: 'not_initialized',
-          };
+          throw new Error(`Unrecognized state schema: ${(state as { $schema?: unknown }).$schema}`);
         } catch (err) {
           const isNotFound =
             err instanceof Error &&
