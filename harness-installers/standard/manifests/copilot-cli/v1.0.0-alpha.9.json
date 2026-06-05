@@ -418,16 +418,6 @@
       "sha256": "fe3b0e1639e948d8b03ac6062d0abec57a40c3148fae305925897faf081e0a09"
     },
     {
-      "bundlePath": "skills/rad-orchestration/schemas/legacy/state-v4.schema.json",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/schemas/legacy/state-v4.schema.json",
-      "sha256": "228cd9756a865eb6c0c902d4e802208132f274840e6ba0f4492a35fbbc831f06"
-    },
-    {
-      "bundlePath": "skills/rad-orchestration/schemas/orchestration-state-v5.schema.json",
-      "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/schemas/orchestration-state-v5.schema.json",
-      "sha256": "d59141b54afb381e5b0943738680973d5371aba593078e4e27e9d71c3b540194"
-    },
-    {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
       "sha256": "5aea2770b1da22ff6ae33e8f9d7602abd1bbf3e77fa8a9284932b9858d913d6f"
