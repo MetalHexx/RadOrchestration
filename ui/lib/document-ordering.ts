@@ -1,5 +1,5 @@
 import { PLANNING_STEP_ORDER, NODE_ID_FINAL_REVIEW } from '@/types/state';
-import type { PlanningStepName, ProjectState, ProjectStateV5 } from '@/types/state';
+import type { PlanningStepName, ProjectState, ProjectStateV5, ProjectStateV6 } from '@/types/state';
 import type { OrderedDoc } from '@/types/components';
 
 const STEP_TITLES: Record<PlanningStepName, string> = {
@@ -247,15 +247,17 @@ export function titleForPhaseCorrectiveChild(childId: string, phaseNum: number, 
 }
 
 /**
- * Derive the canonical document navigation order from a v5 project state.
+ * Derive the canonical document navigation order from a v5 or v6 project state.
  * Recursively walks graph.nodes, iteration entries, and corrective task entries
  * to collect doc_path values from step nodes.
+ *
+ * v6 state is structurally identical to v5; the node-walk is $schema-agnostic.
  *
  * Order: root step nodes → per-phase-iteration (phase step nodes → per-task-iteration
  *        (task step nodes → corrective task step nodes)) → final_review step → error log → other docs.
  */
 export function getOrderedDocsV5(
-  state: ProjectStateV5,
+  state: ProjectStateV5 | ProjectStateV6,
   projectName: string,
   allFiles?: string[],
 ): OrderedDoc[] {

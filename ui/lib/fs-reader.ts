@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 import type { AnyProjectState } from '@/types/state';
-import { isV5State } from '@/types/state';
+import { isV5State, isV6State } from '@/types/state';
 import type { OrchestrationConfig } from '@/types/config';
 import type { ProjectSummary } from '@/types/components';
 
@@ -127,7 +127,7 @@ export async function discoverProjects(): Promise<ProjectSummary[]> {
           hasBrainstorming = await fileExists(brainstormingAbsPath);
           const raw = await readFile(statePath, 'utf-8');
           const state: AnyProjectState = JSON.parse(raw);
-          if (isV5State(state)) {
+          if (isV5State(state) || isV6State(state)) {
             return {
               name: projectName,
               tier: state.graph.status === 'completed' ? 'complete' : state.pipeline.current_tier,
@@ -137,7 +137,7 @@ export async function discoverProjects(): Promise<ProjectSummary[]> {
               planningStatus: derivePlanningStatus(state.graph.nodes, state.graph.status),
               executionStatus: deriveExecutionStatus(state.graph.status, state.graph.nodes),
               lastUpdated: state.project?.updated,
-              schemaVersion: 'v5',
+              schemaVersion: isV6State(state) ? 'v6' : 'v5',
               graphStatus: state.graph.status,
             };
           }

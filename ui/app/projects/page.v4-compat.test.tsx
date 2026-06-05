@@ -15,8 +15,7 @@ test('the standalone /projects-v4 route is fully deleted (FR-14)', () => {
   assert.ok(!existsSync(join(v4dir, 'loading.test.tsx')), 'projects-v4/loading.test.tsx must be deleted');
 });
 
-test('the v4 backward-compat render path is preserved in /projects (FR-15, DD-6)', () => {
-  assert.ok(pageSrc.includes('MainDashboard'), '/projects must still render v4 via MainDashboard');
-  assert.ok(pageSrc.includes('isV5State'), '/projects must keep the isV5State v4/v5 fork');
-  assert.ok(/v4State\s*&&/.test(pageSrc) || pageSrc.includes('v4State'), '/projects must keep a v4State branch');
+test('the v4 render branch is removed from /projects — v4 is no longer a render target (FR-20, AD-8)', () => {
+  assert.ok(!pageSrc.includes('MainDashboard'), '/projects must not render v4 via MainDashboard — v4 is no longer a render target');
+  assert.ok(!(/v4State\s*&&/.test(pageSrc)), '/projects must not keep a v4State render branch');
 });
