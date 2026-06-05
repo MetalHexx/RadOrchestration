@@ -101,3 +101,28 @@ describe('explosion lifts task target repos (FR-1, FR-3)', () => {
     expect(raw).toContain('- Modify: `app/y.ts`');
   });
 });
+
+describe('explosion enforces task repo shape (FR-4, FR-5, FR-6)', () => {
+  const seal = '---\nrepos: [backend, frontend]\n---\n\n';
+  function expectParseError(plan: string) {
+    const { projectDir, masterPlanPath } = makeProject();
+    fs.writeFileSync(masterPlanPath, plan, 'utf8');
+    try {
+      explodeMasterPlan({ projectDir, masterPlanPath, projectName: 'X', nowIso: '2026-05-22T00:00:00.000Z' });
+    } catch (err) {
+      expect(err).toBeInstanceOf(ParseError);
+      expect(Object.keys((err as ParseError).toDetail()).sort()).toEqual(['expected', 'found', 'line', 'message']);
+      return;
+    }
+    throw new Error('expected ParseError');
+  }
+  it('fails on a missing Target repos line (FR-4)', () => {
+    expectParseError(seal + '## P01: P\n\n### P01-T01: A\n**Requirements:** FR-1\nbody only\n');
+  });
+  it('fails on a present-but-empty Target repos line (FR-5)', () => {
+    expectParseError(seal + '## P01: P\n\n### P01-T01: A\n**Requirements:** FR-1\n**Target repos:**\n**Files for backend:**\n- Create: `a.ts`\n');
+  });
+  it('fails on a repo outside the sealed repos (FR-6)', () => {
+    expectParseError(seal + '## P01: P\n\n### P01-T01: A\n**Requirements:** FR-1\n**Target repos:** payments\n**Files for payments:**\n- Create: `a.ts`\n');
+  });
+});

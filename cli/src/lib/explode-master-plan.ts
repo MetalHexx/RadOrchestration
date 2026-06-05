@@ -397,6 +397,45 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
   // End of file — flush whatever is open.
   flushPhase();
 
+  // ── Enforce task repo shape ───────────────────────────────────────────────
+  // Walk every parsed task and verify:
+  //   FR-4: a "**Target repos:**" line is present
+  //   FR-5: the line names at least one repo (not empty)
+  //   FR-6: every named repo is within the sealed repos: [] in the frontmatter
+  // Enforcement is only active when the Master Plan declares a sealed repos list.
+  const sealRaw = Array.isArray(frontmatter.repos) ? (frontmatter.repos as unknown[]) : [];
+  const seal = new Set(sealRaw.map(String));
+  if (seal.size > 0) {
+    for (const phase of phases) {
+      for (const task of phase.tasks) {
+        const hasLine = /\*\*Target repos:\*\*/.test(task.body);
+        if (!hasLine) {
+          throw new ParseError({
+            line: 1, expected: 'a "**Target repos:**" line on every task',
+            found: `task ${task.id} with no Target repos line`,
+            message: `Task ${task.id} is missing its "**Target repos:**" line`,
+          });
+        }
+        if (task.targetRepos.length === 0) {
+          throw new ParseError({
+            line: 1, expected: 'at least one repo name on the "**Target repos:**" line',
+            found: `task ${task.id} with an empty Target repos line`,
+            message: `Task ${task.id} has a present-but-empty "**Target repos:**" line`,
+          });
+        }
+        for (const r of task.targetRepos) {
+          if (!seal.has(r)) {
+            throw new ParseError({
+              line: 1, expected: `each task repo to be within the sealed repos: [${[...seal].join(', ')}]`,
+              found: `task ${task.id} names "${r}"`,
+              message: `Task ${task.id} names repo "${r}" which is not in the Master Plan's sealed repos:`,
+            });
+          }
+        }
+      }
+    }
+  }
+
   if (phases.length === 0) {
     // Point at the first body line (= first file line after frontmatter). For
     // frontmatter-less files this is line 1; for files with frontmatter it's
