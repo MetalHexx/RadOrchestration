@@ -486,6 +486,16 @@ The registry is consulted **once per project per repo at `source_control_init` t
 
 Implication: if the user moves a source clone (e.g., `C:\dev\acme\backend` → `D:\code\backend`), in-flight projects keep running — only the next `source_control_init` cares about the source location.
 
+> **⚠️ Known gap — registry-vs-worktree path resolution (hit live during MULTI-REPO-3 / iteration 3; fix in a later iteration).**
+>
+> This section describes the *target* state: the engine hands each spawn a per-action `repos[]` array carrying convention-derived **worktree** `path` values (see `execute_task` shape below), and agents join relative paths against those. That enrichment lands in **iterations 4–5** (managed worktree lifecycle + `context-enrichment.ts` per-action `repos` arrays). It does **not** exist yet in iteration 3.
+>
+> In the interim, the orchestrator's spawn prompts carry **no worktree path**. When a project runs in a git worktree (e.g. `…/v3-worktrees/MULTI-REPO-3`) but a coder resolves its target repo **by name** — via the `/rad-repo` skill, `radorch repo show`, or reading `repo-registry.local.yml` directly — it gets the registered **canonical main clone** (`rad-orc-source → C:/dev/orchestration/v3`, which `repo add` resolves to *by design* — "main clones, never transient worktrees"). The agent then writes to the main clone on the wrong branch, silently diverging from the branch under execution. It is non-deterministic: an agent that just uses the session CWD lands correctly; one that consults the registry does not.
+>
+> **Real fix:** exactly what this section already specifies — enrichment carries `repos[].path` (worktrees) and the orchestrator inlines them into every spawn prompt (iters 4–5). **Interim workaround (in force now):** the orchestrator hard-codes the worktree path into every spawn prompt (coder, source-control, reviewer) and explicitly forbids touching the main clone. **Next iteration should also consider a guardrail** beyond prose — e.g. `source_control_init` binds the repo to the worktree for the run, or the CLI fails loud when an agent writes outside the project's worktree.
+>
+> Observed instance + remediation: `~/.radorc/projects/MULTI-REPO-3/MULTI-REPO-3-ERROR-LOG.md`, Error 1.
+
 ### Per-action enrichment shape
 
 Every multi-repo-aware action's `data.context` carries per-repo data as a **single `repos` array of objects**. One canonical shape across all actions; entries gain action-specific fields. This is the same convention used everywhere — state.json, agent outputs, result envelopes.
@@ -713,6 +723,7 @@ The following topics were intentionally not revisited in this brainstorming pass
 | Worktree custom-location override | Optional override for users who want worktrees outside `~/.radorc/worktrees/` |
 | Failure-recovery details for PR pass-2 | Whether pass-2 idempotence detection uses placeholder-grep (cheap) or per-PR state tracking (robust) |
 | `preferences.yml` / `preferences.local.yml` | Dropped from this design; will be addressed when `orchestration.yml` is split into team-portable + per-developer (separate concern from multi-repo) |
+| **Registry-vs-worktree path resolution (hit live in MULTI-REPO-3)** | Until enrichment carries `repos[].path` (iters 4–5), an agent that resolves a target repo *by name* via the registry lands in the **canonical main clone**, not the project worktree — wrong branch, silent divergence. See the callout in **Pipeline Data Flow → Path resolution** and `MULTI-REPO-3-ERROR-LOG.md` Error 1. Ensure iter 4/5 closes this with `repos[].path` in every spawn prompt, and add a guardrail beyond prose (bind repo→worktree for the run, or fail-loud on writes outside the worktree). |
 
 ---
 
