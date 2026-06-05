@@ -19,6 +19,8 @@ export interface ParsedTask {
   targetRepos: string[];
   /** Raw lines of the task body, preserved for downstream emission. */
   body: string;
+  /** File-absolute 1-based line number of the task's "### P{NN}-T{MM}:" heading. */
+  startLine: number;
 }
 
 export interface ParsedPhase {
@@ -376,6 +378,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
         requirementTags: [],
         targetRepos: [],
         body: '',
+        startLine: lineNumber,
       };
       continue;
     }
@@ -411,14 +414,14 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
         const hasLine = /\*\*Target repos:\*\*/.test(task.body);
         if (!hasLine) {
           throw new ParseError({
-            line: 1, expected: 'a "**Target repos:**" line on every task',
+            line: task.startLine, expected: 'a "**Target repos:**" line on every task',
             found: `task ${task.id} with no Target repos line`,
             message: `Task ${task.id} is missing its "**Target repos:**" line`,
           });
         }
         if (task.targetRepos.length === 0) {
           throw new ParseError({
-            line: 1, expected: 'at least one repo name on the "**Target repos:**" line',
+            line: task.startLine, expected: 'at least one repo name on the "**Target repos:**" line',
             found: `task ${task.id} with an empty Target repos line`,
             message: `Task ${task.id} has a present-but-empty "**Target repos:**" line`,
           });
@@ -426,7 +429,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
         for (const r of task.targetRepos) {
           if (!seal.has(r)) {
             throw new ParseError({
-              line: 1, expected: `each task repo to be within the sealed repos: [${[...seal].join(', ')}]`,
+              line: task.startLine, expected: `each task repo to be within the sealed repos: [${[...seal].join(', ')}]`,
               found: `task ${task.id} names "${r}"`,
               message: `Task ${task.id} names repo "${r}" which is not in the Master Plan's sealed repos:`,
             });
@@ -468,7 +471,7 @@ function extractRequirementTags(body: string): string[] {
 function extractTargetRepos(body: string): string[] {
   const repos: string[] = [];
   const seen = new Set<string>();
-  const lineMatch = body.match(/\*\*Target repos:\*\*\s*([^\n]+)/);
+  const lineMatch = body.match(/\*\*Target repos:\*\*[ \t]*([^\n]*)/);
   if (lineMatch) {
     const items = (lineMatch[1] ?? '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     for (const item of items) {

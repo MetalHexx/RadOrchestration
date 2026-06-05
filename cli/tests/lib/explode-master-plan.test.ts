@@ -126,3 +126,44 @@ describe('explosion enforces task repo shape (FR-4, FR-5, FR-6)', () => {
     expectParseError(seal + '## P01: P\n\n### P01-T01: A\n**Requirements:** FR-1\n**Target repos:** payments\n**Files for payments:**\n- Create: `a.ts`\n');
   });
 });
+
+describe('explosion repo-shape enforcement precision (FR-5, NFR-8)', () => {
+  const seal = '---\nrepos: [backend, frontend]\n---\n\n';
+
+  it('classifies a present-but-empty Target repos line as the FR-5 empty-line error', () => {
+    const { projectDir, masterPlanPath } = makeProject();
+    fs.writeFileSync(masterPlanPath,
+      seal +
+      '## P01: P\n\n' +
+      '### P01-T01: A\n**Requirements:** FR-1\n**Target repos:**\n' +
+      '**Files for backend:**\n- Create: `a.ts`\n', 'utf8');
+    try {
+      explodeMasterPlan({ projectDir, masterPlanPath, projectName: 'X', nowIso: '2026-05-22T00:00:00.000Z' });
+    } catch (err) {
+      expect(err).toBeInstanceOf(ParseError);
+      const detail = (err as ParseError).toDetail();
+      expect(String(detail.message)).toMatch(/present-but-empty/i);
+      expect(String(detail.found)).toMatch(/empty/i);
+      return;
+    }
+    throw new Error('expected a ParseError for the present-but-empty Target repos line');
+  });
+
+  it('reports the offending task heading line in enforcement errors', () => {
+    const { projectDir, masterPlanPath } = makeProject();
+    const plan =
+      seal +
+      '## P01: P\n\n' +
+      '### P01-T01: A\n**Requirements:** FR-1\n**Target repos:**\n' +
+      '**Files for backend:**\n- Create: `a.ts`\n';
+    fs.writeFileSync(masterPlanPath, plan, 'utf8');
+    const expectedLine = plan.split('\n').findIndex(l => l.startsWith('### P01-T01:')) + 1;
+    try {
+      explodeMasterPlan({ projectDir, masterPlanPath, projectName: 'X', nowIso: '2026-05-22T00:00:00.000Z' });
+    } catch (err) {
+      expect((err as ParseError).toDetail().line).toBe(expectedLine);
+      return;
+    }
+    throw new Error('expected a ParseError reporting the task heading line');
+  });
+});
