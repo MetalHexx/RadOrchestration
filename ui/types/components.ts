@@ -11,8 +11,8 @@ export interface ProjectSummary {
   planningStatus?: PlanningStatus;
   executionStatus?: ExecutionStatus;
   lastUpdated?: string;   // ISO 8601; from state.project.updated; undefined for uninitialized projects
-  /** Schema version: 'v4', 'v5', 'v6', or undefined for uninitialized projects */
-  schemaVersion?: 'v4' | 'v5' | 'v6';
+  /** Schema version: 'v5', 'v6', or undefined for uninitialized projects */
+  schemaVersion?: 'v5' | 'v6';
   // NEW — added for DAG-VIEW-5; consumed by classifyStatus only
   graphStatus?: GraphStatus | 'not_initialized';
 }

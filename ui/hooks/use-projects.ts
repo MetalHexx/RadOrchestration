@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ProjectSummary } from "@/types/components";
 import type { AnyProjectState } from "@/types/state";
-import { isV5State } from "@/types/state";
+import { isV6State } from "@/types/state";
 import type { SSEEvent, SSEConnectionStatus } from "@/types/events";
 import { derivePlanningStatus, deriveExecutionStatus } from "@/lib/status-derivation";
 import { useSSEContext } from "@/hooks/use-sse-context";
@@ -63,17 +63,21 @@ export function useProjects(): UseProjectsReturn {
         case "state_change": {
           const payload = event.payload as { projectName: string; state: AnyProjectState };
 
-          // Unconditionally patch the projects array (sidebar reactivity)
-          if (isV5State(payload.state)) {
-            const v5state = payload.state;
+          // Unconditionally patch the projects array (sidebar reactivity).
+          // v5 and v6 are structurally identical (both have .graph/.pipeline/
+          // .project), so derive from the graph uniformly and discriminate only
+          // the reported schemaVersion. AnyProjectState is exactly v5|v6, so no
+          // other branch is needed.
+          {
+            const state = payload.state;
             const tier =
-              v5state.graph.status === 'completed'
+              state.graph.status === 'completed'
                 ? 'complete'
-                : v5state.pipeline.current_tier;
-            const planningStatus = derivePlanningStatus(v5state.graph.nodes, v5state.graph.status);
+                : state.pipeline.current_tier;
+            const planningStatus = derivePlanningStatus(state.graph.nodes, state.graph.status);
             const executionStatus = deriveExecutionStatus(
-              v5state.graph.status,
-              v5state.graph.nodes,
+              state.graph.status,
+              state.graph.nodes,
             );
             setProjects(prev =>
               prev.map(p =>
@@ -83,26 +87,9 @@ export function useProjects(): UseProjectsReturn {
                       tier,
                       planningStatus,
                       executionStatus,
-                      lastUpdated: v5state.project?.updated,
-                      schemaVersion: 'v5' as const,
-                      graphStatus: v5state.graph.status,
-                    }
-                  : p
-              )
-            );
-          } else {
-            const v4state = payload.state;
-            setProjects(prev =>
-              prev.map(p =>
-                p.name === payload.projectName
-                  ? {
-                      ...p,
-                      tier: v4state.pipeline.current_tier,
-                      planningStatus: v4state.planning?.status,
-                      executionStatus: v4state.execution?.status,
-                      lastUpdated: v4state.project?.updated,
-                      schemaVersion: 'v4' as const,
-                      graphStatus: 'not_initialized' as const,
+                      lastUpdated: state.project?.updated,
+                      schemaVersion: isV6State(state) ? 'v6' as const : 'v5' as const,
+                      graphStatus: state.graph.status,
                     }
                   : p
               )
