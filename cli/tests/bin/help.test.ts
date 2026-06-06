@@ -25,7 +25,7 @@ describe('radorch program wiring', () => {
     const { stdout: rootHelp } = await node(['--help']);
     expect(rootHelp).toMatch(/\bgit\b/);
     const { stdout: gitHelp } = await node(['git', '--help']);
-    expect(gitHelp).toMatch(/commit\s+Commit changes in the worktree and push to origin/);
+    expect(gitHelp).toMatch(/commit\s+Commit changes in the worktree and push to origin when a\s+remote is configured/);
     expect(gitHelp).toMatch(/pr\s+Open a GitHub pull request for the worktree branch/);
     const { stdout: commitHelp } = await node(['git', 'commit', '--help']);
     expect(commitHelp).toMatch(/--worktree-path/);

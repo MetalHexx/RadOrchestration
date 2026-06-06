@@ -35,6 +35,15 @@ export function gitCommit(opts: GitCommitOptions): GitCommitResult {
       errorType: isNothing ? 'nothing_to_commit' : 'commit_failed',
     };
   }
+  let hasOrigin = true;
+  try {
+    exec('git', ['remote', 'get-url', 'origin'], { cwd: opts.worktreePath, encoding: 'utf8' });
+  } catch {
+    hasOrigin = false;
+  }
+  if (!hasOrigin) {
+    return { committed: true, pushed: false, commitHash, upstreamConfigured: false, error: null, errorType: null };
+  }
   try {
     exec('git', ['push'], { cwd: opts.worktreePath, encoding: 'utf8' });
   } catch (e) {
@@ -66,7 +75,7 @@ interface Args { 'worktree-path'?: string; message?: string }
 
 export const gitCommitCommand = defineCommand({
   name: 'git-commit',
-  description: 'Commit changes in the worktree and push to origin',
+  description: 'Commit changes in the worktree and push to origin when a remote is configured',
   args: {
     'worktree-path': { description: 'Absolute path to the worktree to commit from', required: true },
     message: { description: 'Commit message body (used as the -m argument to git commit)', required: true },
