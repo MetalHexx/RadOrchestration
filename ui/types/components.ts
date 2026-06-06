@@ -13,6 +13,7 @@ export interface ProjectSummary {
   lastUpdated?: string;   // ISO 8601; from state.project.updated; undefined for uninitialized projects
   /** Schema version: 'v5', 'v6', or undefined for uninitialized projects */
   schemaVersion?: 'v5' | 'v6';
+  project_type?: 'standard' | 'side-project';
   // NEW — added for DAG-VIEW-5; consumed by classifyStatus only
   graphStatus?: GraphStatus | 'not_initialized';
 }

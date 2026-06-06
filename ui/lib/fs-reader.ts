@@ -139,6 +139,7 @@ export async function discoverProjects(): Promise<ProjectSummary[]> {
               lastUpdated: state.project?.updated,
               schemaVersion: isV6State(state) ? 'v6' : 'v5',
               graphStatus: state.graph.status,
+              project_type: state.project?.project_type,
             };
           }
           throw new Error(`Unrecognized state schema: ${(state as { $schema?: unknown }).$schema}`);

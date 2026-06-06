@@ -152,6 +152,7 @@ function ProjectsPageContent({
             sourceControl={null}
             followMode={false}
             onToggleFollowMode={() => {}}
+            projectType={selected.project_type}
           />
           <div className="flex flex-col">
             <HaltReasonBanner
@@ -182,6 +183,7 @@ function ProjectsPageContent({
             sourceControl={v5State.pipeline.source_control}
             followMode={followMode}
             onToggleFollowMode={toggleFollowMode}
+            projectType={selected.project_type}
           />
           <div className="flex flex-col">
             <HaltReasonBanner

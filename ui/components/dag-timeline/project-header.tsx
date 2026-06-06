@@ -15,6 +15,7 @@ import type {
   ExecutionStatus,
 } from '@/types/state';
 import { GateModeBadge } from '@/components/badges/gate-mode-badge';
+import { ProjectKindBadge } from '@/components/badges/project-kind-badge';
 
 function gateModeTooltip(mode: GateMode | null): string {
   if (mode === null) {
@@ -88,9 +89,10 @@ export interface ProjectHeaderProps {
   sourceControl: V5SourceControlState | null;
   followMode: boolean;
   onToggleFollowMode: () => void;
+  projectType?: 'standard' | 'side-project';
 }
 
-export function ProjectHeader({ projectName, tier, planningStatus, executionStatus, graphStatus, gateMode, currentPhaseName, progress, sourceControl, followMode, onToggleFollowMode }: ProjectHeaderProps) {
+export function ProjectHeader({ projectName, tier, planningStatus, executionStatus, graphStatus, gateMode, currentPhaseName, progress, sourceControl, followMode, onToggleFollowMode, projectType }: ProjectHeaderProps) {
   const branch = sourceControl?.branch;
   const compare_url = sourceControl?.compare_url ?? null;
   const auto_commit = sourceControl?.auto_commit;
@@ -111,6 +113,7 @@ export function ProjectHeader({ projectName, tier, planningStatus, executionStat
               executionStatus={executionStatus}
             />
           )}
+          <ProjectKindBadge projectType={projectType} />
           {gateMode !== undefined && (
             <Tooltip>
               <TooltipTrigger render={<GateModeBadge mode={gateMode} />} />
