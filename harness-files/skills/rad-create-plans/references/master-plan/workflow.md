@@ -67,7 +67,7 @@ becomes task-local and action-oriented.
       `{ line, expected, found, message }` parse-error shape and the same
       hardcoded retry cap as the heading failures above, so apply the same
       narrow-fix discipline on retries 3+: address only the exact issue
-      identified by `last_parse_error`; do not re-engineer the plan (NFR-8).
+      identified by `last_parse_error`; do not re-engineer the plan.
     - Re-emit the Master Plan with the correction. Other content stays as
       before unless explicitly impacted by the formatting fix.
     - The recovery loop has a hardcoded cap of 3 retries. After the cap, the
