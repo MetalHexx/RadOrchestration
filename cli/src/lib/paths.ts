@@ -8,6 +8,7 @@ export interface UserDataPaths {
   readonly ui: string;
   readonly templates: string;
   readonly projects: string;
+  readonly sideProjects: string;
   readonly logs: string;
   readonly runtime: string;
   readonly bootstrapLock: string;
@@ -23,6 +24,7 @@ export function userDataPaths(): UserDataPaths {
     ui: path.join(root, 'ui'),
     templates: path.join(root, 'templates'),
     projects: path.join(root, 'projects'),
+    sideProjects: path.join(root, 'side-projects'),
     logs: path.join(root, 'logs'),
     runtime: path.join(root, 'runtime'),
     bootstrapLock: path.join(root, 'runtime', 'bootstrap.lock'),

@@ -1,4 +1,4 @@
-export { readRegistry, writeIdentity, writeLocal, ensureLocalGitignored } from './io.js';
+export { readRegistry, writeIdentity, writeLocal, ensureGitignored, ensureLocalGitignored } from './io.js';
 export type { RepoIdentity, RepoGroup, Registry, RootOpts } from './types.js';
 export { isSlug, assertUniqueName } from './validate.js';
 export { resolveRepoPath } from './resolve.js';
