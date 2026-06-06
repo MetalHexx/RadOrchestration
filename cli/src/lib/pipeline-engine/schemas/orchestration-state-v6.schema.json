@@ -33,6 +33,12 @@
           "title": "Updated Timestamp",
           "description": "ISO 8601 timestamp of the last state mutation.",
           "type": "string"
+        },
+        "project_type": {
+          "title": "Project Type",
+          "description": "Project kind enum. Absent means standard (a project predating the field). standard = ordinary registered-repo project; side-project = local-only side-project.",
+          "type": "string",
+          "enum": ["standard", "side-project"]
         }
       }
     },
