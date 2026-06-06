@@ -21,6 +21,19 @@ are out of scope for this audit.
    is ground truth for §2.5 (Repo Registry Membership): use it to
    resolve every repo slug named in the plan.
 
+   > **Side-project §2.5 exemption:** Before consulting the registry for
+   > §2.5, read `project-type` from the Master-Plan frontmatter. When
+   > `(project-type ?? 'standard') === 'side-project'`, skip the §2.5
+   > membership check for the project's own repo (slug
+   > `[<project-name>]`) — that repo is intentionally unregistered.
+   > All other slugs are still checked. This is the only runtime context
+   > where the auditor reads `project-type` directly from Master-Plan
+   > frontmatter rather than via the cheaper `project context` / state
+   > path; every launch skill uses the state path, but the plan auditor
+   > is doc-scoped and already holds the Master Plan, making the direct
+   > read natural and consistent. §2.6 repo-shape checks are **not**
+   > exempted and must pass regardless of `project-type`.
+
 ## Authority
 
 You are a reporter, not an editor. You do **not** modify the Requirements

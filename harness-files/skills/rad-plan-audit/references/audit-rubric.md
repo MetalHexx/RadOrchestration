@@ -133,10 +133,22 @@ A repo named in the plan but absent from the registry is a finding.
 > transform, which operates only on the plan documents without
 > consulting the registry.
 
+> **Side-project kind-gate:** The auditor reads `project-type` from the
+> Master-Plan frontmatter (the auditor is doc-scoped and already reads
+> the Master Plan, so this does not depend on `state.json`). When
+> `(project-type ?? 'standard') === 'side-project'`, the §2.5
+> seal-membership and task `**Target repos:**` membership checks are
+> **skipped for the project's own repo** (identified by the slug
+> `[<project-name>]`), which is intentionally unregistered. All other
+> repos named in the plan are still checked against the registry. This
+> exemption applies **only** to §2.5 — §2.6 repo-shape checks still
+> apply in full (see §2.6 note below). For a `standard` project (or
+> when `project-type` is absent), §2.5 is enforced without exception.
+
 | Check | What to Verify |
 |-------|---------------|
-| **Seal membership** | Every repo slug in the Master Plan frontmatter `repos:` field resolves to a registered repo in the registry. |
-| **Task `**Target repos:**` membership** | Every repo slug named on any task's `**Target repos:**` line resolves to a registered repo in the registry. |
+| **Seal membership** | Every repo slug in the Master Plan frontmatter `repos:` field resolves to a registered repo in the registry. (Side-project exemption: the project's own repo slug is skipped.) |
+| **Task `**Target repos:**` membership** | Every repo slug named on any task's `**Target repos:**` line resolves to a registered repo in the registry. (Side-project exemption: the project's own repo slug is skipped.) |
 
 Each unresolved slug is one finding row in the standard finding format.
 
@@ -144,6 +156,14 @@ Each unresolved slug is one finding row in the standard finding format.
 
 Verify that the set of repos named across the plan is internally
 consistent at every level: task, phase, and plan seal.
+
+> **Side-project shape note:** §2.6 checks apply in full to a
+> `side-project` — the §2.5 registry-membership exemption does **not**
+> extend here. For a side-project the expected shape is: the seal is
+> exactly `[<project-name>]`, every task's `**Target repos:**` names
+> that single repo, and each task has exactly one
+> `**Files for <project-name>:**` subsection. Any deviation from this
+> shape is a finding, regardless of `project-type`.
 
 | Check | What to Verify |
 |-------|---------------|
