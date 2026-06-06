@@ -47,7 +47,7 @@ export function migrateProject(opts: MigrateProjectOptions): MigrateProjectResul
   }
 
   // Walk the migration ladder from the state's version to the current version
-  let fromVersion = currentSchema;
+  const fromVersion = currentSchema;
   let value: unknown = state;
 
   // Find the starting index in the ladder

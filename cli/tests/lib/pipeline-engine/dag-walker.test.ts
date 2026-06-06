@@ -138,6 +138,7 @@ describe('for_each_phase / for_each_task iteration entry shape (FR-27, AD-4)', (
     walkDAG(st, tpl, CFG, readDoc);
     const phaseLoop = st.graph.nodes['phase_loop'];
     expect(phaseLoop.kind).toBe('for_each_phase');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const phaseEntry = (phaseLoop as any).iterations[0];
     expect(Array.isArray(phaseEntry.repos)).toBe(true);
     expect('commit_hash' in phaseEntry).toBe(false);

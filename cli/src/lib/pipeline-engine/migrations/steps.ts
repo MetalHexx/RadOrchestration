@@ -21,16 +21,21 @@ export function migrateV5ToV6(input: unknown): { $schema: string } & Record<stri
     throw new Error('migrate v5→v6: input does not validate against the archived v5 schema');
   }
   const s = structuredClone(input) as Record<string, unknown>;
-  const phaseLoop = (s['graph'] as any)?.nodes?.phase_loop;
-  for (const phaseIter of phaseLoop?.iterations ?? []) {
-    wrapEntry(phaseIter as Record<string, unknown>);
-    for (const ct of (phaseIter.corrective_tasks ?? []) as Record<string, unknown>[]) {
+  const graph = s['graph'] as Record<string, unknown> | undefined;
+  const nodes = graph?.['nodes'] as Record<string, unknown> | undefined;
+  const phaseLoop = nodes?.['phase_loop'] as Record<string, unknown> | undefined;
+  const phaseIters = (phaseLoop?.['iterations'] ?? []) as Record<string, unknown>[];
+  for (const phaseIter of phaseIters) {
+    wrapEntry(phaseIter);
+    for (const ct of (phaseIter['corrective_tasks'] ?? []) as Record<string, unknown>[]) {
       wrapEntry(ct);
     }
-    const taskLoop = (phaseIter as any).nodes?.task_loop;
-    for (const taskIter of taskLoop?.iterations ?? []) {
-      wrapEntry(taskIter as Record<string, unknown>);
-      for (const ct of (taskIter.corrective_tasks ?? []) as Record<string, unknown>[]) {
+    const taskNodes = phaseIter['nodes'] as Record<string, unknown> | undefined;
+    const taskLoop = taskNodes?.['task_loop'] as Record<string, unknown> | undefined;
+    const taskIters = (taskLoop?.['iterations'] ?? []) as Record<string, unknown>[];
+    for (const taskIter of taskIters) {
+      wrapEntry(taskIter);
+      for (const ct of (taskIter['corrective_tasks'] ?? []) as Record<string, unknown>[]) {
         wrapEntry(ct);
       }
     }
