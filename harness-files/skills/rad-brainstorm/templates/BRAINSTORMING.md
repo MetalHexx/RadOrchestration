@@ -49,8 +49,15 @@ created: "{ISO-DATE}"
   Mandatory. Every brainstorm carries a proposed working repo set.
   Repos are registry names (see /rad-repo). The (proposed) qualifier marks
   this as a working hypothesis the planner may refine downstream.
+
+  project-type:
+    standard    — touches one or more registered repos (the common case)
+    side-project — touches no registered repo; the project is self-contained
+                   at ~/.radorc/side-projects/<project-name>/. Repo-group is
+                   null and "Repos involved" lists the project's own name only.
 -->
 
+**project-type**: `{standard | side-project}`
 **Repos involved**: `{repo-a}`, `{repo-b}`
 **Repo-Group** (if applicable): `{repo-group}`
 **Rationale**: {Why each repo is in the set — what part of the work lands where.}
