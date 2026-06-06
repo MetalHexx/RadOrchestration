@@ -365,7 +365,7 @@
     {
       "bundlePath": "skills/rad-execute-parallel/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/SKILL.md",
-      "sha256": "5c072bd359bebf91eace4333262e5d7f30e25aa9fba53dbf7d59b8aa098743be"
+      "sha256": "4d3fd68ea85dc14531bec41fc174f964320c99c90e1a6bde5abb5c1d609762ee"
     },
     {
       "bundlePath": "skills/rad-execute-parallel/references/workflow-guide.md",
@@ -420,7 +420,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "e9a053072a031775ad41f210ee0015b000280cd4450be6a50ab36f03cffe797d"
+      "sha256": "94bf0fdcc039a4bcb4ba92b50932b2189427a9e97d26350178102a2dbec60b30"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
