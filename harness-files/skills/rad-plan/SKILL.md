@@ -149,7 +149,7 @@ When `task_size_preference` is a `Custom: …` string, the prose flows through v
 > "No brainstorming document exists for this project. The user supplied this project description directly: <project_context_prose>. Treat this prose as the authoritative project-goals input for the Requirements ledger."
 
 ## Step 5: Audit the plan
-- Dispatch a fresh subagent with the `rad-plan-audit` skill (full-audit
+- Dispatch the `planner` subagent with the `rad-plan-audit` skill (full-audit
   mode) to audit the Requirements doc and the Master Plan. Give the
   subagent both doc paths and instruct it to follow
   `${SKILLS_ROOT}/rad-plan-audit/references/full-audit.md`. The subagent
