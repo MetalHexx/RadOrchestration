@@ -16,7 +16,7 @@ Before the first pipeline tick, ensure `pipeline.source_control` is populated in
 
 1. Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {PROJECT_NAME}` and parse fields from the envelope's `data` block. `{PROJECT_NAME}` comes from the /rad-execute argument or conversation context.
 2. **If `sourceControlInitialized === true`, skip to step 4** — resume is ceremony-free.
-3. Otherwise, follow [`references/source-control-init.md`](references/source-control-init.md) to resolve each init field (prompting only when needed) and fire the `source_control_init` pipeline event.
+3. Read `data.projectType` from the envelope. Detection is frontmatter/state-only via `project context` — never load the master-plan body to determine the kind. Evaluate `(projectType ?? 'standard') === 'side-project'` to select the branch: if `true`, follow the **Side-project branch** in [`references/source-control-init.md`](references/source-control-init.md); otherwise follow the standard registered-repo branch. Then fire the `source_control_init` pipeline event.
 4. Proceed with execution.
 
 ## Step 4: Execute Plan
