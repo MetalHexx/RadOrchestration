@@ -296,14 +296,34 @@ becomes task-local and action-oriented.
 
 **Frontmatter**:
 
+Standard project example:
+
 ```yaml
 ---
 project: "{PROJECT-NAME}"
 type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
+project-type: standard
 repos: [repo-a, repo-b]
-repo-group: repo-group-name 
+repo-group: repo-group-name
+total_phases: {N}
+total_tasks: {N}
+author: "planner-agent"
+---
+```
+
+Side-project example:
+
+```yaml
+---
+project: "{PROJECT-NAME}"
+type: master_plan
+status: "draft"
+created: "{YYYY-MM-DD}"
+project-type: side-project
+repos: ["{PROJECT-NAME}"]
+repo-group: null
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
@@ -311,8 +331,18 @@ author: "planner-agent"
 ```
 
 - `status`: `draft` | `approved`. Always `draft` at authoring time.
-- `repos`: list of registry repo names — the **sealed, authoritative** repo set for the project. This is the single source of truth the explosion script will read; downstream documents are superseded by this seal.
-- `repo-group`: the repo-group scope for this project.
+- `project-type`: `standard` | `side-project`. Carry the value from the Requirements doc's
+  `project-type` field. Absence means a doc predating this field and is treated as `standard`.
+  For `standard` projects, stamp `project-type: standard` and derive `repos`/`repo-group` from
+  the registry seal (see Step 2b). For `side-project`, stamp `project-type: side-project` and
+  seal `repos: [<project-name>]` with `repo-group: null` — derived from the kind, not a registry
+  lookup. The existing seal-vs-body lint still applies: the single `[<project-name>]` seal must
+  equal the union of all tasks' `**Target repos:**` values in the body.
+- `repos`: for `standard` projects, the **sealed, authoritative** list of registry repo names —
+  the single source of truth the explosion script will read; downstream documents are superseded
+  by this seal. For `side-project`, sealed as `[<project-name>]` — a single entry equal to the
+  project name.
+- `repo-group`: the repo-group scope for `standard` projects; `null` for `side-project`.
 - `total_phases`: count of `## P\d{2}:` headings.
 - `total_tasks`: count of `### P\d{2}-T\d{2}:` headings.
 - `author`: exactly `"planner-agent"`.

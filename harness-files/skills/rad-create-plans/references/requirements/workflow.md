@@ -52,9 +52,31 @@ prompt says, no more.
     rules, or error-handling patterns the eligible skill defines.
     Absence of the section means no eligible repo skills exist; proceed normally.
 
-1c. Even when a brainstorming doc is present, or spawn prompt is present, invoke the `/rad-repo` skill to read the
-    registry.  Record the inferred set in the `repos:` frontmatter. When a brainstorm IS present, use this as
-    a guiding post for exploration, not the final set.  
+1c. **Determine the project kind before touching the registry.** Set `project-type` using the closed
+    set `standard` | `side-project` based on the orchestrator prompt and brainstorming content:
+
+    - **`standard`** — an ordinary project that maps to one or more registered repos. Stamp
+      `project-type: standard` in the frontmatter and proceed to the registry lookup below.
+    - **`side-project`** — a project with no registered repo (a standalone script, experiment, or
+      personal tool). Stamp `project-type: side-project`, **skip the registry lookup entirely**,
+      and seal `repos: [<project-name>]` with `repo-group: null`. The convention-resolved local
+      directory *is* the named repo, so the name is correct rather than invented.
+
+    **Mutual-exclusion rule** (validate during authoring for `side-project`):
+    - A `side-project` must have exactly one entry in `repos` equal to the project name.
+    - A `side-project` must have `repo-group: null`.
+    - Any registered repo name in `repos`, a non-null `repo-group`, or more than one `repos`
+      entry is a validation error — surface it immediately rather than saving a malformed doc.
+
+    **Absence of `project-type`** means a doc predating this field; treat it as `standard`.
+    A future project kind is a new *value* in this closed set, never a new field.
+
+    If the kind is `standard`, continue to the registry lookup below. If `side-project`, skip it.
+
+1d. **Registry lookup (`standard` projects only).** Even when a brainstorming doc is present, or
+    spawn prompt is present, invoke the `/rad-repo` skill to read the registry. Record the inferred
+    set in the `repos:` frontmatter. When a brainstorm IS present, use this as a guiding post for
+    exploration, not the final set.
 
 2. Decide the four ID ranges. Count roughly how many FRs, NFRs, ADs, and DDs
    the project needs. Use four separate sequences:
@@ -109,6 +131,7 @@ type: requirements
 status: "draft"
 approved_at: null
 created: "{YYYY-MM-DD}"
+project-type: standard
 repos: [repo-a, repo-b]
 repo-group: repo-group-name
 requirement_count: {N}
@@ -119,8 +142,14 @@ author: "planner-agent"
 - `status`: `draft` | `approved` | `frozen`. Always `draft` at authoring time.
 - `approved_at`: `null` at authoring time. Set to `"{ISO-DATE-TIME}"` when a
   human gate approves the doc.
-- `repos`: list of registry repo names — a **non-authoritative restate** the planner may refine from the brainstorm's proposed set. Requirement *bodies* stay repo-agnostic; the repo set lives only in frontmatter.
-- `repo-group`: registry repo-group name.
+- `project-type`: `standard` | `side-project`. Always stamp this field; see Step 1c.
+  Absence means a doc predating this field and is treated as `standard`.
+- `repos`: for `standard` projects, list of registry repo names — a **non-authoritative
+  restate** the planner may refine from the brainstorm's proposed set. For `side-project`,
+  sealed as `[<project-name>]` — a single entry equal to the project name, derived from
+  the kind rather than a registry lookup. Requirement *bodies* stay repo-agnostic; the
+  repo set lives only in frontmatter.
+- `repo-group`: registry repo-group name for `standard` projects; `null` for `side-project`.
 - `requirement_count`: total of FR + NFR + AD + DD blocks in the body.
 - `author`: exactly `"planner-agent"`.
 
