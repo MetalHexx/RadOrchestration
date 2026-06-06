@@ -205,27 +205,27 @@
     {
       "bundlePath": "agents/brainstormer.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/brainstormer.agent.md",
-      "sha256": "ebabd60d59dcb861d34b876d431472494e4a7026451623b6f0f153595fec7b72"
+      "sha256": "cc816d3a83131dbebfa961ff12019aba34fdf09b4bdeb5f944b5aa77a8f3b7ca"
     },
     {
       "bundlePath": "agents/coder-junior.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/coder-junior.agent.md",
-      "sha256": "dcd5a47bcee879c9e9bc15dbd43e90a4d43fa17a20bb6b3878755a580c76b11d"
+      "sha256": "172271555bed2f913b6bfc383802c578f3d8df545e903257c7bc64858489d6aa"
     },
     {
       "bundlePath": "agents/coder-senior.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/coder-senior.agent.md",
-      "sha256": "b0173821c80fe2609dd151da3858da39c73a9b1d98ec8571f918d1050ab0ed4f"
+      "sha256": "c1b948e17a946637ccec1d71102978dd31de338c3a713a331845d8a9148acf59"
     },
     {
       "bundlePath": "agents/coder.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/coder.agent.md",
-      "sha256": "99795814aa1aa5c1682c09ce91e1945cd7d3e8dd7c8e42cf36da3ca2605f73af"
+      "sha256": "52d859521255c8ec6803b582b074721802363f587bcb14d8a20a91dea9513a63"
     },
     {
       "bundlePath": "agents/orchestrator.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/orchestrator.agent.md",
-      "sha256": "b82a3bcffa0cf44dbaed839bfcf95159c5d441ac650bb0b9358c0a6f2ef5809b"
+      "sha256": "b3cda7d2eee91c8b5836e3c502ff0d2b3bce7a8d1a2e92dcb03151ebc23ab3a6"
     },
     {
       "bundlePath": "agents/planner.agent.md",
@@ -235,12 +235,12 @@
     {
       "bundlePath": "agents/reviewer.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/reviewer.agent.md",
-      "sha256": "aba59aeca8ddbc2525a01f424e7c95ad3d4902080c52c9ac6852d39a0eb99027"
+      "sha256": "06fe79290a968ab50006ff7f8cdc593ea3fd37b8f6612376fcfb32349f525ebe"
     },
     {
       "bundlePath": "agents/source-control.agent.md",
       "destinationPath": "${HARNESS_ROOT}/agents/source-control.agent.md",
-      "sha256": "a69afbbdd2e58b7dbe84bf9c52e2301a027629e9788d860123736f6ccb3f9089"
+      "sha256": "b8392b2f0e3d6f8201dc309e715624d341599e2cc7a9d6ff522ada00defc5f21"
     },
     {
       "bundlePath": "hooks/session-preamble.mjs",

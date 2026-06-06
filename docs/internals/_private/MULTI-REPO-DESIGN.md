@@ -206,7 +206,7 @@ This subsection supersedes the earlier "infer-hard, last-path-segment name, one-
 
 ### Ambient awareness
 
-Every supported AI harness fires a **session-start hook** that injects the registered repos and repo-groups directly into the agent's context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined repo-groups:
+Every supported AI harness fires a **session-start hook** that injects the registered repos and repo-groups directly into the **primary (interactive) session agent's** context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined repo-groups:
 
 ```
 ## radorc — Repo Registry
@@ -224,6 +224,8 @@ Use the `/rad-repo` skill to add, edit, remove, or otherwise manage repos and re
 ```
 
 The trailing instruction line is contractual — every emitted hook payload ends with the same `/rad-repo` pointer so any agent reading the block knows where to go for management operations without having to discover the skill some other way.
+
+> **Empirical scope (corrected).** The session-start hook reaches **only the primary interactive-session agent** — it does **not** propagate into spawned subagents (verified: a freshly spawned subagent had zero registry awareness). Subagents therefore have no ambient repo channel; one that genuinely needs registry identity (e.g. the `planner`) must obtain it another way. This is why the `planner` retains the `/rad-repo` skill while the worktree-operating subagents do not — see **Agent + Skill Updates**.
 
 **Per-harness wrapping** is handled by the existing install-adapters layer:
 
@@ -626,9 +628,13 @@ See **Pipeline Data Flow** above. Per-repo branch, base_branch, remote_url, comp
 
 Multi-repo awareness ripples through several skills and agent definitions. The skill / CLI / registry surfaces themselves are covered in **The Repo Registry**; this section names the *behavioral* changes to skills and agents that consume the multi-repo contracts.
 
-### Every agent's definition
+### Agent definitions — `/rad-repo` (revised: worktree-write footgun)
 
-All agent markdown files (`harness-files/agents/*.md` — orchestrator, planner, coder, reviewer, source-control, brainstormer) gain `/rad-repo` in their **Skills** section. Each agent thus inherits repo-awareness as part of its skillset and can answer registry questions or assist with worktree operations when prompted, even outside a structured pipeline action.
+Originally every agent definition gained `/rad-repo` in its **Skills** section. That was walked back. A subagent operating inside a project worktree could resolve its target repo *by name* through the registry, get the canonical **main-clone** path (the `.local.yml` mapping points at main clones, never transient worktrees), and write to the wrong working tree — see the MULTI-REPO-3 error log, **Error 1** (a coder wrote its task output to the main clone on `main` instead of the project worktree).
+
+`/rad-repo` is therefore **removed from every agent except the `planner`** — `coder{,-junior,-senior}`, `reviewer`, `source-control`, `orchestrator`, and `brainstormer` — pulled from both their `.md` **Skills** sections and their `.{claude,copilot-cli,copilot-vscode}.yml` `skills:` lists. (The skill stays **user-invocable**; only the agents are de-armed.)
+
+The `planner` **retains** `/rad-repo`: as a spawned subagent it has no ambient registry awareness (see **Ambient awareness**) yet still needs registry *identity* to author the `repos:` set. Its proper replacement — a worktree-aware `## Project Repos Available` spawn block that carries each repo's resolved (convention-derived) path into the planner prompt, mirroring `repository_skills_block` — is **deferred** to a later iteration.
 
 ### `/rad-brainstorm`
 
