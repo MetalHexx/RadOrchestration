@@ -16,6 +16,12 @@ The plan for `project_name` has been approved. I'll help you start execution.
 
 ## Step 1: Choose execution branch
 - Greet the user briefly, confirming `project_name`.
+
+**Kind check (run before presenting any options):**
+Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {project_name}` and read `data.projectType`. Detection reads `state.json` via `project context` — never the master-plan body. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
+
+For all other kinds (`standard` or unset), present the two-option fork below.
+
 - Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan:
 - Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
   - **Current branch**: Invoke the `/rad-execute` skill and follow its workflow start-to-finish without skipping or improvising from this skill's context. Source Control Initialization (rad-execute Step 3) is mandatory for fresh projects and MUST prompt the user for any `auto_commit` or `auto_pr` value set to `"ask"` in `orchestration.yml` (the default).
