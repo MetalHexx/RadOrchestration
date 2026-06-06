@@ -171,6 +171,7 @@ interface ForEachPhaseNodeState {
 }
 
 interface PipelineState {
+  project?: { project_type?: string; [k: string]: unknown };
   graph: {
     nodes: Record<string, unknown>;
   };
@@ -704,6 +705,9 @@ export function explodeMasterPlan(opts: ExplodeOptions): ExplodeResult {
   // 6. Seed state.json iterations if a state.json exists for the project.
   const state = readState(projectDir);
   if (state !== null) {
+    const fmType = parsed.frontmatter['project-type'];
+    const projectType = fmType === 'side-project' ? 'side-project' : 'standard';
+    state.project = { ...(state.project ?? {}), project_type: projectType };
     seedIterations(state, parsed, projectName, emittedPhaseFiles, emittedTaskFiles, projectDir);
     writeState(projectDir, state);
   }
