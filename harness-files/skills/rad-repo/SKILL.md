@@ -24,7 +24,6 @@ Blindness (missing relevant repos) and distraction (drowning in irrelevant ones)
 - **Capture the *true* home, and interview on ambiguity.** Register a repo's durable main clone — never a throwaway worktree or a subdirectory you happen to be in. The CLI resolves the deterministic facts (the main clone, the remote, the default branch); *you* resolve the judgment calls (the slug, which remote, the description, "is this even the repo they mean?"). Run `repo add --dry-run` first to see what the CLI detected, then confirm with the user before writing.
 - **Descriptions are required and load-bearing.** Every repo and repo-group must carry a real "what is this and why would I look here." Never write a placeholder — a description-less map is a blind one.
 - **Confirm before anything destructive** (`repo remove`, `repo-group delete`); run everything else directly.
-- **Side-projects live outside the registry.** Personal, local-only projects (`side_project: true`, auto-provisioned at `~/.radorc/side-projects/<name>/`, never pushed) are intentionally **not** registered — the registry is the team's shared map of durable, remote-backed repos. Don't register them; they won't appear in `repo list`.
 
 # Commands & references
 
