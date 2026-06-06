@@ -52,9 +52,11 @@ created: "{ISO-DATE}"
 
   project-type:
     standard    — touches one or more registered repos (the common case)
-    side-project — touches no registered repo; the project is self-contained
-                   at ~/.radorc/side-projects/<project-name>/. Repo-group is
-                   null and "Repos involved" lists the project's own name only.
+    side-project — touches no registered repo. Repo-group is null and
+                   "Repos involved" lists the project's own name only.
+                   Docs (incl. this file) go to ~/.radorc/projects/<name>/ like
+                   every project; only the CODE repo lands in
+                   ~/.radorc/side-projects/<name>/ (provisioned at execution).
 -->
 
 **project-type**: `{standard | side-project}`

@@ -255,7 +255,7 @@
     {
       "bundlePath": "skills/rad-brainstorm/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/SKILL.md",
-      "sha256": "1fae3ddbc45e9ac1db9f5e55f5332a888d70e8a31f686e2a2ee304e99c8da206"
+      "sha256": "21a04a38b230cfbc543d66ffb29f855676a5d361a1c4ba2772105ea67068ed33"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/architecture-visuals.md",
@@ -270,7 +270,7 @@
     {
       "bundlePath": "skills/rad-brainstorm/references/document-writing.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/references/document-writing.md",
-      "sha256": "b232526b021590c2ce530ad934ca78ed6e6959351af5c17df87fa7146e2b98c7"
+      "sha256": "73483bb312f73cf71e171d058813630de6c78f836df17647bb1d23ea8bb46242"
     },
     {
       "bundlePath": "skills/rad-brainstorm/references/generate-mockup.md",
@@ -295,7 +295,7 @@
     {
       "bundlePath": "skills/rad-brainstorm/templates/BRAINSTORMING.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-brainstorm/templates/BRAINSTORMING.md",
-      "sha256": "4cf0b3184f6023e05f4febee8921fa356f7840548e3a2886320f8caeea17bcb3"
+      "sha256": "90d0e69875ca603bfbf2b15adc5db0683a80c89f8301809c4409fe1a9c09ab83"
     },
     {
       "bundlePath": "skills/rad-code-review/SKILL.md",
