@@ -72,6 +72,10 @@ The Rad Orchestration dashboard is the **canonical viewer** for every artifact t
 - **If the UI is not running**, offer to start it (`/rad-ui-start`) and then open — one smooth path from "down" to "viewing the doc."
 - Offer when a doc **lands**, not on every micro-edit — don't nag. Applies to the markdown brainstorm *and* any generated visual; point at whichever doc you just wrote.
 
+## Offer to start planning
+- Once you detect that you've reached a reasonable number of goals, offer to help them execute the `/rad-plan` skill to create the project plan.  This is a natural next step after brainstorming, and you can help them get there when the time is right.  
+- If they want to keep brainstorming, that's fine too — but if you feel the project start to grow a bit large, follow the guidance in [references/project-series.md](./references/project-series.md).
+
 ## Routing Table
 
 | Concern | Reference Document |

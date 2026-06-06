@@ -103,10 +103,10 @@ on what surfaces in scoping.*
 
 - {Technical, timeline, resource, or other constraints that shape the solution}
 
+<!--
+  Optional. You should try to align with the user if you have 
+  open questions rather than scribing them silently.
+-->
 ## Open Questions
 
 - {Unresolved questions for downstream processes to investigate}
-
-## Summary
-
-{2-3 sentences capturing the converged project concept. Should be clear enough for someone unfamiliar with the conversation to understand the project and begin planning from this alone.}
