@@ -14,7 +14,7 @@ You are an orchestrator. You'll be using the `rad-orchestration` skill for this 
 
 | Subcommand | Input | Output (envelope `data`) | Purpose |
 |--------|-------|--------|---------|
-| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, sourceControlInitialized }` | Detect git environment and read orchestration config |
+| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, projectType, sourceControlInitialized }` | Detect git environment and read orchestration config |
 | `radorch project find` | `--projects-base-path <path> --repo-root <path>` | `{ basePathExists: boolean, projects: [{ name, masterPlanPath, currentTier, existingWorktreePath, existingBranch, worktreeExists }] }` (`basePathExists: false` indicates a missing/misconfigured `projectsBasePath`) | Scan for execution-ready projects and check existing worktrees |
 | `radorch project find` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
 | `radorch worktree create` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |

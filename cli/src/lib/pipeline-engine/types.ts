@@ -250,6 +250,7 @@ export interface PipelineState {
     name: string;
     created: string;   // ISO 8601
     updated: string;   // ISO 8601
+    project_type?: 'standard' | 'side-project';
   };
   config: {
     gate_mode: string;

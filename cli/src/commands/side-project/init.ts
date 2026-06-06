@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import type { CommandContext } from '../../framework/context.js';
-import { userDataPaths } from '../../lib/paths.js';
+import { userDataPaths, SIDE_PROJECTS_DIRNAME } from '../../lib/paths.js';
 import { ensureGitignored as defaultEnsure } from '@rad-orchestration/repo-registry';
 
 export type SideProjectInitErrorType = 'init_failed' | 'commit_failed' | 'missing_args' | null;
@@ -24,7 +24,7 @@ export function sideProjectInit(opts: SideProjectInitOptions): SideProjectInitRe
   const exec = opts.exec ?? ((f, a, o) => execFileSync(f, a, { ...o, stdio: ['ignore', 'pipe', 'pipe'] }) as unknown as string);
   const ensure = opts.ensureGitignored ?? defaultEnsure;
   const mkdirp = opts.mkdirp ?? ((dir: string) => fs.mkdirSync(dir, { recursive: true }));
-  const repoPath = path.join(opts.root, 'side-projects', opts.project);
+  const repoPath = path.join(opts.root, SIDE_PROJECTS_DIRNAME, opts.project);
   try {
     mkdirp(repoPath);
     exec('git', ['init', '-b', 'main'], { cwd: repoPath, encoding: 'utf8' });

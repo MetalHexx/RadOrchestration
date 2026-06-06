@@ -15,6 +15,8 @@ export interface UserDataPaths {
   readonly actionEvents: string;
 }
 
+export const SIDE_PROJECTS_DIRNAME = 'side-projects';
+
 export function userDataPaths(): UserDataPaths {
   const root = path.join(os.homedir(), '.radorc');
   return {
@@ -24,7 +26,7 @@ export function userDataPaths(): UserDataPaths {
     ui: path.join(root, 'ui'),
     templates: path.join(root, 'templates'),
     projects: path.join(root, 'projects'),
-    sideProjects: path.join(root, 'side-projects'),
+    sideProjects: path.join(root, SIDE_PROJECTS_DIRNAME),
     logs: path.join(root, 'logs'),
     runtime: path.join(root, 'runtime'),
     bootstrapLock: path.join(root, 'runtime', 'bootstrap.lock'),
