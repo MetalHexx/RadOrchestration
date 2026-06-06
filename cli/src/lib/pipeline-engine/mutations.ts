@@ -896,10 +896,15 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     );
 
     if (activePhaseCorrective) {
-      // T03 will replace this stub with per-repo tracking. For now push a
-      // single-entry repos array with an empty name so the scalar commit hash
-      // is preserved through the v6 type surface.
-      activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      // Preserve existing repo names seeded by explode-master-plan; only set the
+      // commit hash on the first entry. If no entries exist yet (empty/absent),
+      // fall back to a blank-name stub. Per-repo commit attribution for multi-repo
+      // tasks remains future work (T03), but names are no longer dropped.
+      if (activePhaseCorrective.repos && activePhaseCorrective.repos.length > 0) {
+        activePhaseCorrective.repos[0].commit_hash = commitHash;
+      } else {
+        activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      }
       mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
       return { state: cloned, mutations_applied };
     }
@@ -911,12 +916,24 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     );
 
     if (activeCorrective) {
-      // T03 will replace this stub with per-repo tracking.
-      activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      // Preserve existing repo names; only set the commit hash on the first entry.
+      // If no entries exist yet, fall back to a blank-name stub.
+      if (activeCorrective.repos && activeCorrective.repos.length > 0) {
+        activeCorrective.repos[0].commit_hash = commitHash;
+      } else {
+        activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      }
       mutations_applied.push(`set corrective_task[${activeCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
     } else {
-      // T03 will replace this stub with per-repo tracking.
-      taskIteration.repos = [{ name: '', commit_hash: commitHash }];
+      // Preserve existing repo names seeded by explode-master-plan; only set the
+      // commit hash on the first entry. If no entries exist yet, fall back to a
+      // blank-name stub. Per-repo commit attribution for multi-repo tasks remains
+      // future work, but names are no longer dropped.
+      if (taskIteration.repos && taskIteration.repos.length > 0) {
+        taskIteration.repos[0].commit_hash = commitHash;
+      } else {
+        taskIteration.repos = [{ name: '', commit_hash: commitHash }];
+      }
       mutations_applied.push(`set task_iteration[${taskIteration.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
     }
 
