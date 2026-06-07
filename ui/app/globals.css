@@ -345,6 +345,15 @@
 }
 .live-pulse-stage { animation: live-pulse-stage-kf 1.4s ease-in-out infinite; }
 
+/* Tuned size-morph for maximize/minimize. Overrides only the TRANSITION
+   duration/curve; the className keeps duration-200 for the enter/exit zoom
+   animation and its 200ms unmount-timer parity. */
+.artifact-modal-panel {
+  transition-property: width, height, max-width, border-radius;
+  transition-duration: 320ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse {
     animation: none;
