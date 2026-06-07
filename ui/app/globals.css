@@ -379,7 +379,7 @@
     animation: none;
     box-shadow: inset 0 0 26px 4px color-mix(in srgb, var(--live) 25%, transparent);
   }
-  /* Neutralize the new modal enter/exit + size morph animations (added by another agent). */
+  /* Neutralize the modal enter/exit + size-morph animations under reduced motion. */
   .artifact-modal-overlay,
   .artifact-modal-panel {
     animation: none !important;

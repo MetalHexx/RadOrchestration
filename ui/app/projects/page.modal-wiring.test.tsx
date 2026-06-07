@@ -91,6 +91,18 @@ test('the modal identity is the URL document and navigation drives the router (U
     'page derives urlDoc from the slug');
 });
 
+test('slug segments are read as-is (useParams already decodes) — no double-decode URIError (PR #115)', () => {
+  // The write side encodes exactly once (`/docs/${encodeURIComponent(...)}`) and Next's
+  // useParams() decodes once, so a manual decodeURIComponent on a slug segment double-
+  // decodes and throws URIError on names containing '%'. Pin the single round-trip.
+  assert.ok(!/decodeURIComponent\(\s*slug\[/.test(pageSrc),
+    'urlProject/urlDoc must NOT manually decode slug segments — useParams already decodes them');
+  assert.ok(/urlProject\s*=\s*slug\s*&&\s*slug\.length\s*>\s*0\s*\?\s*slug\[0\]\s*:/.test(pageSrc),
+    'urlProject reads slug[0] directly');
+  assert.ok(/slug\[1\]\s*===\s*'docs'\s*\?\s*slug\[2\]\s*:/.test(pageSrc),
+    'urlDoc reads slug[2] directly when the second segment is "docs"');
+});
+
 test('a missing document shows a load-gated not-found state, never while still loading', () => {
   assert.ok(pageSrc.includes('filesLoaded && !artifacts.some((a) => a.fileName === modal.activeFileName)'),
     'not-found state is gated on filesLoaded and a filename-absence check');

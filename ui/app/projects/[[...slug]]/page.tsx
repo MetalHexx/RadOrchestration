@@ -290,8 +290,11 @@ function ProjectsPageContent({
 export default function ProjectsPage() {
   const params = useParams<{ slug?: string[] }>();
   const slug = params.slug;
-  const urlProject = slug && slug.length > 0 ? decodeURIComponent(slug[0]) : null;
-  const urlDoc = slug && slug.length >= 3 && slug[1] === 'docs' ? decodeURIComponent(slug[2]) : null;
+  // useParams() already URL-decodes route segments, and the deep link writes them
+  // with a single encodeURIComponent (see `navigate`), so read the segments as-is.
+  // A manual decode here would double-decode and throw URIError on names with '%'.
+  const urlProject = slug && slug.length > 0 ? slug[0] : null;
+  const urlDoc = slug && slug.length >= 3 && slug[1] === 'docs' ? slug[2] : null;
   const router = useRouter();
 
   const {
