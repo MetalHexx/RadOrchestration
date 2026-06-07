@@ -90,3 +90,10 @@ test('the modal identity is the URL document and navigation drives the router (U
   assert.ok(/const\s+urlDoc\s*=/.test(pageSrc),
     'page derives urlDoc from the slug');
 });
+
+test('a missing document shows a load-gated not-found state, never while still loading', () => {
+  assert.ok(pageSrc.includes('filesLoaded && !artifacts.some((a) => a.fileName === modal.activeFileName)'),
+    'not-found state is gated on filesLoaded and a filename-absence check');
+  assert.ok(pageSrc.includes('Document not found'),
+    'a client-rendered document-not-found notice is present');
+});

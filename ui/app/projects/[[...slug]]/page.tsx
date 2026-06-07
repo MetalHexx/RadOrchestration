@@ -269,6 +269,18 @@ function ProjectsPageContent({
           mtimes={live.mtimes}
         />
       )}
+
+      {modal.open && filesLoaded && !artifacts.some((a) => a.fileName === modal.activeFileName) && (
+        <div role="alert" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-card p-6 text-card-foreground shadow-lg">
+            <p className="text-sm text-muted-foreground">Document not found.</p>
+            <button type="button" onClick={() => navigate(null, 'replace')}
+              className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
