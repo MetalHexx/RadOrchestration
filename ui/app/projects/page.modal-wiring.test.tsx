@@ -81,3 +81,12 @@ test('the markdown fetch effect resolves its path from the active filename (FR-1
   assert.equal(markdownPathForActive(arts, 'DEMO-BRAINSTORMING.md'), 'DEMO-BRAINSTORMING.md');
   assert.equal(markdownPathForActive(arts, 'DEMO-BRAINSTORM.html'), null);
 });
+
+test('the modal identity is the URL document and navigation drives the router (URL source of truth)', () => {
+  assert.ok(pageSrc.includes('useArtifactModal(getArtifacts, urlDoc, navigate)'),
+    'modal is constructed from the URL document and a navigate fn');
+  assert.ok(pageSrc.includes('/docs/${encodeURIComponent('),
+    'navigate builds an encoded document deep link');
+  assert.ok(/const\s+urlDoc\s*=/.test(pageSrc),
+    'page derives urlDoc from the slug');
+});

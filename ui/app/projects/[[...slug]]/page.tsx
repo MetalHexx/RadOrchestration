@@ -51,6 +51,7 @@ interface ProjectsPageContentProps {
   setPendingDelete: (a: import("@/lib/artifact-model").Artifact | null) => void;
   onActiveFileNameChange: (fileName: string | null) => void;
   registerOnDeleted: (fn: () => void) => void;
+  urlDoc: string | null;
 }
 
 function ProjectsPageContent({
@@ -69,12 +70,19 @@ function ProjectsPageContent({
   setPendingDelete,
   onActiveFileNameChange,
   registerOnDeleted,
+  urlDoc,
 }: ProjectsPageContentProps) {
   const live = useArtifactLive();
   const artifacts = live.artifacts;
 
   const getArtifacts = useCallback(() => artifacts, [artifacts]);
-  const modal = useArtifactModal(getArtifacts);
+  const router = useRouter();
+  const navigate = useCallback((fileName: string | null) => {
+    if (!selectedProject) return;
+    const base = `/projects/${encodeURIComponent(selectedProject)}`;
+    router.push(fileName ? `${base}/docs/${encodeURIComponent(fileName)}` : base);
+  }, [router, selectedProject]);
+  const modal = useArtifactModal(getArtifacts, urlDoc, navigate);
   const openArtifactModal = modal.openByName;
 
   React.useEffect(() => {
@@ -269,6 +277,7 @@ export default function ProjectsPage() {
   const params = useParams<{ slug?: string[] }>();
   const slug = params.slug;
   const urlProject = slug && slug.length > 0 ? decodeURIComponent(slug[0]) : null;
+  const urlDoc = slug && slug.length >= 3 && slug[1] === 'docs' ? decodeURIComponent(slug[2]) : null;
   const router = useRouter();
 
   const {
@@ -452,6 +461,7 @@ export default function ProjectsPage() {
                 setPendingDelete={setPendingDelete}
                 onActiveFileNameChange={setActiveFileName}
                 registerOnDeleted={registerOnDeleted}
+                urlDoc={urlDoc}
               />
             </ArtifactLiveProvider>
           ) : (
