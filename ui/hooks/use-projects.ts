@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import type { ProjectSummary } from "@/types/components";
 import type { AnyProjectState } from "@/types/state";
 import { isV6State } from "@/types/state";
@@ -30,6 +31,8 @@ interface UseProjectsReturn {
 }
 
 export function useProjects(initialProject?: string | null): UseProjectsReturn {
+  const router = useRouter();
+  const pathname = usePathname();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [projectState, setProjectState] =
@@ -167,18 +170,13 @@ export function useProjects(initialProject?: string | null): UseProjectsReturn {
     }
   }, []);
 
-  const selectProject = useCallback(
-    (name: string) => {
-      setSelectedProject(name);
-      try {
-        localStorage.setItem(STORAGE_KEY, name);
-      } catch {
-        // localStorage may be unavailable
-      }
-      fetchProjectState(name);
-    },
-    [fetchProjectState]
-  );
+  const selectProject = useCallback((name: string) => {
+    setSelectedProject(name);
+    try { localStorage.setItem(STORAGE_KEY, name); } catch { /* unavailable */ }
+    const target = `/projects/${encodeURIComponent(name)}`;
+    if (pathname !== target) router.push(target);
+    fetchProjectState(name);
+  }, [fetchProjectState, router, pathname]);
 
   // Fetch project list on mount
   useEffect(() => {

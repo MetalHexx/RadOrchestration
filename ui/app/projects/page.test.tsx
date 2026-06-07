@@ -296,6 +296,13 @@ async function run() {
       'page must derive urlProject from the slug');
   });
 
+  await test('Source degrades an unknown project to a load-gated not-found notice', () => {
+    assert.ok(sourceText.includes("router.replace('/projects')"),
+      'unknown project must fall back to bare /projects');
+    assert.ok(/notFoundName/.test(sourceText),
+      'page must track a client-rendered not-found name');
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }

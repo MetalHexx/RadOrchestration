@@ -47,7 +47,9 @@ export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = []
 
         <nav aria-label="Main navigation" className="flex items-center gap-1">
           {navLinks.map((link) => {
-            const isActive = pathname === link.href;
+            const isActive = link.href === "/"
+              ? pathname === "/"
+              : pathname === link.href || pathname.startsWith(link.href + "/");
             return (
               <Link
                 key={link.href}

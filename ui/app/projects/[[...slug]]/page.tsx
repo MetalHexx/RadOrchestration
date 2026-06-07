@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -269,6 +269,7 @@ export default function ProjectsPage() {
   const params = useParams<{ slug?: string[] }>();
   const slug = params.slug;
   const urlProject = slug && slug.length > 0 ? decodeURIComponent(slug[0]) : null;
+  const router = useRouter();
 
   const {
     projects,
@@ -281,11 +282,21 @@ export default function ProjectsPage() {
     reconnect,
   } = useProjects(urlProject);
 
+  const [notFoundName, setNotFoundName] = useState<string | null>(null);
+
   useEffect(() => {
     if (urlProject && urlProject !== selectedProject && projects.some((p) => p.name === urlProject)) {
       selectProject(urlProject);
     }
   }, [urlProject, selectedProject, projects, selectProject]);
+
+  useEffect(() => {
+    if (!urlProject) { setNotFoundName(null); return; }
+    if (!isLoading && projects.length > 0 && !projects.some((p) => p.name === urlProject)) {
+      setNotFoundName(urlProject);
+      router.replace('/projects');
+    }
+  }, [urlProject, isLoading, projects, router]);
 
   const {
     isOpen,
@@ -416,6 +427,12 @@ export default function ProjectsPage() {
               <div className="max-w-md text-center">
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
+            </div>
+          ) : notFoundName && !selected ? (
+            <div className="flex h-full items-center justify-center p-6">
+              <p className="text-sm text-muted-foreground" role="alert">
+                Project &ldquo;{notFoundName}&rdquo; was not found.
+              </p>
             </div>
           ) : selected ? (
             <ArtifactLiveProvider projectName={selectedProject} activeFileName={activeFileName}>
