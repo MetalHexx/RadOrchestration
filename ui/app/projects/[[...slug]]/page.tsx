@@ -77,10 +77,12 @@ function ProjectsPageContent({
 
   const getArtifacts = useCallback(() => artifacts, [artifacts]);
   const router = useRouter();
-  const navigate = useCallback((fileName: string | null) => {
+  const navigate = useCallback((fileName: string | null, mode: 'push' | 'replace' | 'back') => {
     if (!selectedProject) return;
+    if (mode === 'back') { router.back(); return; }
     const base = `/projects/${encodeURIComponent(selectedProject)}`;
-    router.push(fileName ? `${base}/docs/${encodeURIComponent(fileName)}` : base);
+    const url = fileName ? `${base}/docs/${encodeURIComponent(fileName)}` : base;
+    if (mode === 'replace') router.replace(url); else router.push(url);
   }, [router, selectedProject]);
   const modal = useArtifactModal(getArtifacts, urlDoc, navigate);
   const openArtifactModal = modal.openByName;
