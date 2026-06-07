@@ -174,3 +174,8 @@ test('shows a loading spinner while markdown content is unresolved (Extras)', ()
   assert.ok(html.includes('role="status"'), 'markdown loading spinner present');
   assert.ok(html.includes('aria-label="Loading document"'), 'spinner is labelled');
 });
+
+test('renders a Share control on the shared ghost button in the header', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  assert.ok(html.includes('aria-label="Share / copy link"'), 'share control present and labelled');
+});

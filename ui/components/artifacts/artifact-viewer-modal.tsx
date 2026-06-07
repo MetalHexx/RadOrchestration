@@ -1,7 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { buildDocDeepLink } from "@/lib/deep-link";
 import { IframePreview } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
 import { BufferedStage } from "./buffered-stage";
@@ -58,6 +61,15 @@ export function ArtifactViewerModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onPrev, onNext, onClose]);
 
+  const [shareState, setShareState] = React.useState<'idle' | 'copied' | 'failed'>('idle');
+  const handleShare = React.useCallback(async () => {
+    if (!activeFileName) return;
+    const url = buildDocDeepLink(window.location.origin, projectName, activeFileName);
+    const ok = await copyTextToClipboard(url);
+    setShareState(ok ? 'copied' : 'failed');
+    setTimeout(() => setShareState('idle'), 2000);
+  }, [projectName, activeFileName]);
+
   if (!active) return null;
   const friendly = active.title ?? active.label;
 
@@ -81,6 +93,10 @@ export function ArtifactViewerModal({
           <span className="text-sm font-medium text-foreground">{friendly}</span>
           <span title={active.fileName} className="truncate text-xs text-muted-foreground">{active.fileName}</span>
           <div className="ml-auto flex items-center gap-1">
+            <Button variant="ghost" size="icon" aria-label="Share / copy link"
+              className="cursor-pointer" onClick={handleShare}>
+              <Share2 className="size-4" aria-hidden="true" />
+            </Button>
             <button type="button" aria-label="Full screen" onClick={onToggleFullScreen}
               className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-foreground">
               <Maximize2 className="size-4" aria-hidden="true" />
@@ -91,6 +107,12 @@ export function ArtifactViewerModal({
             </button>
           </div>
         </header>
+        {shareState !== 'idle' && (
+          <div role="status" aria-live="polite"
+            className="absolute right-4 top-12 z-10 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md">
+            {shareState === 'copied' ? 'Link copied' : 'Copy failed'}
+          </div>
+        )}
 
         <div className="relative flex-1 overflow-hidden bg-muted">
           <BufferedStage
