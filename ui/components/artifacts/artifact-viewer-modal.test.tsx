@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import React, { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ArtifactViewerModal } from './artifact-viewer-modal';
@@ -193,4 +195,17 @@ test('delete stays a corner overlay and the footer holds only the filmstrip', ()
   const footerStart = html.indexOf('<footer');
   assert.ok(footerStart >= 0 && html.indexOf('aria-label="Delete artifact"') < footerStart,
     'delete is outside the footer (corner overlay), not crammed into the filmstrip row');
+});
+
+test('share feedback timer is captured in a ref and cleared on unmount (FR-6, NFR-1)', () => {
+  const src = readFileSync(
+    path.join(process.cwd(), 'components', 'artifacts', 'artifact-viewer-modal.tsx'),
+    'utf-8',
+  );
+  assert.match(src, /\b(\w+Ref)\s*=\s*(?:React\.)?useRef\b/,
+    'a ref is declared to hold the share-feedback timer handle');
+  assert.match(src, /(\w+Ref)\.current\s*=\s*setTimeout\(/,
+    'the setTimeout handle is stored in the ref instead of being fire-and-forget');
+  assert.match(src, /clearTimeout\(\s*\w+Ref\.current\s*\)/,
+    'an unmount cleanup clears the captured timer');
 });

@@ -62,13 +62,18 @@ export function ArtifactViewerModal({
   }, [onPrev, onNext, onClose]);
 
   const [shareState, setShareState] = React.useState<'idle' | 'copied' | 'failed'>('idle');
+  const shareTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleShare = React.useCallback(async () => {
     if (!activeFileName) return;
     const url = buildDocDeepLink(window.location.origin, projectName, activeFileName);
     const ok = await copyTextToClipboard(url);
     setShareState(ok ? 'copied' : 'failed');
-    setTimeout(() => setShareState('idle'), 2000);
+    if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
+    shareTimerRef.current = setTimeout(() => setShareState('idle'), 2000);
   }, [projectName, activeFileName]);
+  React.useEffect(() => () => {
+    if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
+  }, []);
 
   if (!active) return null;
   const friendly = active.title ?? active.label;
