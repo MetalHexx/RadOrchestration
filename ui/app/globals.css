@@ -95,6 +95,9 @@
     --status-not-started: hsl(215, 14%, 43%);
     --status-failed: hsl(0, 84%, 45%);
     --status-halted: hsl(0, 84%, 45%);
+
+    /* ── Project Kind Colors ── */
+    --kind-side-project: hsl(217, 91%, 45%);
     --status-skipped: hsl(215, 14%, 43%);
 
     /* ── Review Verdict Colors (WCAG AA corrected for light mode) ── */
@@ -197,6 +200,9 @@
     --status-not-started: hsl(215, 14%, 63%);
     --status-failed: hsl(0, 84%, 60%);
     --status-halted: hsl(0, 84%, 60%);
+
+    /* ── Project Kind Colors ── */
+    --kind-side-project: hsl(217, 91%, 60%);
     --status-skipped: hsl(215, 14%, 63%);
 
     /* ── Review Verdict Colors (dark mode — unchanged, already pass) ── */

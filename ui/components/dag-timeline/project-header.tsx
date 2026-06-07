@@ -113,7 +113,14 @@ export function ProjectHeader({ projectName, tier, planningStatus, executionStat
               executionStatus={executionStatus}
             />
           )}
-          <ProjectKindBadge projectType={projectType} />
+          {(projectType ?? 'standard') === 'side-project' && (
+            <Tooltip>
+              <TooltipTrigger render={<ProjectKindBadge projectType={projectType} />} />
+              <TooltipContent>
+                Side-project: a local-only git repo under ~/.radorc/side-projects/. Commits stay on your machine — never pushed, no PR.
+              </TooltipContent>
+            </Tooltip>
+          )}
           {gateMode !== undefined && (
             <Tooltip>
               <TooltipTrigger render={<GateModeBadge mode={gateMode} />} />
