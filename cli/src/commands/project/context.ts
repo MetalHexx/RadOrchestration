@@ -18,6 +18,7 @@ export interface ProjectContextResult {
   remoteUrl: string;
   projectDir: string | null;
   sourceControlInitialized: boolean | null;
+  projectType: 'standard' | 'side-project';
 }
 
 type Exec = (file: string, args: string[], opts?: { cwd?: string; encoding: 'utf8' }) => string;
@@ -57,6 +58,11 @@ function isSourceControlInitialized(state: unknown): boolean {
   return !!sc && typeof sc === 'object' && !Array.isArray(sc)
     && typeof sc.auto_commit === 'string' && sc.auto_commit !== ''
     && typeof sc.auto_pr === 'string' && sc.auto_pr !== '';
+}
+
+function readProjectType(state: unknown): 'standard' | 'side-project' {
+  const pt = (state as { project?: { project_type?: unknown } } | undefined)?.project?.project_type;
+  return pt === 'side-project' ? 'side-project' : 'standard';
 }
 
 export function projectContext(opts: ProjectContextOptions = {}): ProjectContextResult {
@@ -101,11 +107,16 @@ export function projectContext(opts: ProjectContextOptions = {}): ProjectContext
 
   let projectDir: string | null = null;
   let sourceControlInitialized: boolean | null = null;
+  let projectType: 'standard' | 'side-project' = 'standard';
   if (opts.projectName) {
     projectDir = path.join(projectsBasePath, opts.projectName);
     const stateJson = path.join(projectDir, 'state.json');
     if (fs.existsSync(stateJson)) {
-      try { sourceControlInitialized = isSourceControlInitialized(JSON.parse(fs.readFileSync(stateJson, 'utf8'))); }
+      try {
+        const parsed = JSON.parse(fs.readFileSync(stateJson, 'utf8'));
+        sourceControlInitialized = isSourceControlInitialized(parsed);
+        projectType = readProjectType(parsed);
+      }
       catch { sourceControlInitialized = false; }
     } else {
       sourceControlInitialized = false;
@@ -115,7 +126,7 @@ export function projectContext(opts: ProjectContextOptions = {}): ProjectContext
   return {
     repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform,
     projectsBasePath, configAutoCommit, configAutoPr, remoteUrl,
-    projectDir, sourceControlInitialized,
+    projectDir, sourceControlInitialized, projectType,
   };
 }
 

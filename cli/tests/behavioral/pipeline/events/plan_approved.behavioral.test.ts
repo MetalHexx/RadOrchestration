@@ -21,7 +21,7 @@ const MASTER_PLAN_DOC_CONTENTS = `---\ntotal_phases: 2\ntotal_tasks: 4\n---\nMas
 // State after explosion_completed: all planning steps completed, gate pending with gate_active=true.
 // master_plan.doc_path is set so plan_approved can derive it via pre-read.
 const afterExplosionCompletedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',

@@ -206,7 +206,7 @@ This subsection supersedes the earlier "infer-hard, last-path-segment name, one-
 
 ### Ambient awareness
 
-Every supported AI harness fires a **session-start hook** that injects the registered repos and repo-groups directly into the agent's context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined repo-groups:
+Every supported AI harness fires a **session-start hook** that injects the registered repos and repo-groups directly into the **primary (interactive) session agent's** context. Content is the full inline registry — names, descriptions, remotes, default branches, paths, plus any defined repo-groups:
 
 ```
 ## radorc — Repo Registry
@@ -224,6 +224,8 @@ Use the `/rad-repo` skill to add, edit, remove, or otherwise manage repos and re
 ```
 
 The trailing instruction line is contractual — every emitted hook payload ends with the same `/rad-repo` pointer so any agent reading the block knows where to go for management operations without having to discover the skill some other way.
+
+> **Empirical scope (corrected).** The session-start hook reaches **only the primary interactive-session agent** — it does **not** propagate into spawned subagents (verified: a freshly spawned subagent had zero registry awareness). Subagents therefore have no ambient repo channel; one that genuinely needs registry identity (e.g. the `planner`) must obtain it another way. This is why the `planner` retains the `/rad-repo` skill while the worktree-operating subagents do not — see **Agent + Skill Updates**.
 
 **Per-harness wrapping** is handled by the existing install-adapters layer:
 
@@ -486,6 +488,16 @@ The registry is consulted **once per project per repo at `source_control_init` t
 
 Implication: if the user moves a source clone (e.g., `C:\dev\acme\backend` → `D:\code\backend`), in-flight projects keep running — only the next `source_control_init` cares about the source location.
 
+> **⚠️ Known gap — registry-vs-worktree path resolution (hit live during MULTI-REPO-3 / iteration 3; fix in a later iteration).**
+>
+> This section describes the *target* state: the engine hands each spawn a per-action `repos[]` array carrying convention-derived **worktree** `path` values (see `execute_task` shape below), and agents join relative paths against those. That enrichment lands in **iterations 4–5** (managed worktree lifecycle + `context-enrichment.ts` per-action `repos` arrays). It does **not** exist yet in iteration 3.
+>
+> In the interim, the orchestrator's spawn prompts carry **no worktree path**. When a project runs in a git worktree (e.g. `…/v3-worktrees/MULTI-REPO-3`) but a coder resolves its target repo **by name** — via the `/rad-repo` skill, `radorch repo show`, or reading `repo-registry.local.yml` directly — it gets the registered **canonical main clone** (`rad-orc-source → C:/dev/orchestration/v3`, which `repo add` resolves to *by design* — "main clones, never transient worktrees"). The agent then writes to the main clone on the wrong branch, silently diverging from the branch under execution. It is non-deterministic: an agent that just uses the session CWD lands correctly; one that consults the registry does not.
+>
+> **Real fix:** exactly what this section already specifies — enrichment carries `repos[].path` (worktrees) and the orchestrator inlines them into every spawn prompt (iters 4–5). **Interim workaround (in force now):** the orchestrator hard-codes the worktree path into every spawn prompt (coder, source-control, reviewer) and explicitly forbids touching the main clone. **Next iteration should also consider a guardrail** beyond prose — e.g. `source_control_init` binds the repo to the worktree for the run, or the CLI fails loud when an agent writes outside the project's worktree.
+>
+> Observed instance + remediation: `~/.radorc/projects/MULTI-REPO-3/MULTI-REPO-3-ERROR-LOG.md`, Error 1.
+
 ### Per-action enrichment shape
 
 Every multi-repo-aware action's `data.context` carries per-repo data as a **single `repos` array of objects**. One canonical shape across all actions; entries gain action-specific fields. This is the same convention used everywhere — state.json, agent outputs, result envelopes.
@@ -616,9 +628,13 @@ See **Pipeline Data Flow** above. Per-repo branch, base_branch, remote_url, comp
 
 Multi-repo awareness ripples through several skills and agent definitions. The skill / CLI / registry surfaces themselves are covered in **The Repo Registry**; this section names the *behavioral* changes to skills and agents that consume the multi-repo contracts.
 
-### Every agent's definition
+### Agent definitions — `/rad-repo` (revised: worktree-write footgun)
 
-All agent markdown files (`harness-files/agents/*.md` — orchestrator, planner, coder, reviewer, source-control, brainstormer) gain `/rad-repo` in their **Skills** section. Each agent thus inherits repo-awareness as part of its skillset and can answer registry questions or assist with worktree operations when prompted, even outside a structured pipeline action.
+Originally every agent definition gained `/rad-repo` in its **Skills** section. That was walked back. A subagent operating inside a project worktree could resolve its target repo *by name* through the registry, get the canonical **main-clone** path (the `.local.yml` mapping points at main clones, never transient worktrees), and write to the wrong working tree — see the MULTI-REPO-3 error log, **Error 1** (a coder wrote its task output to the main clone on `main` instead of the project worktree).
+
+`/rad-repo` is therefore **removed from every agent except the `planner`** — `coder{,-junior,-senior}`, `reviewer`, `source-control`, `orchestrator`, and `brainstormer` — pulled from both their `.md` **Skills** sections and their `.{claude,copilot-cli,copilot-vscode}.yml` `skills:` lists. (The skill stays **user-invocable**; only the agents are de-armed.)
+
+The `planner` **retains** `/rad-repo`: as a spawned subagent it has no ambient registry awareness (see **Ambient awareness**) yet still needs registry *identity* to author the `repos:` set. Its proper replacement — a worktree-aware `## Project Repos Available` spawn block that carries each repo's resolved (convention-derived) path into the planner prompt, mirroring `repository_skills_block` — is **deferred** to a later iteration.
 
 ### `/rad-brainstorm`
 
@@ -681,6 +697,8 @@ This design is too large to ship as one project. Practical delivery order, super
 
 3. **Explosion + state v6** (project `MULTI-REPO-3`). `cli/src/lib/explode-master-plan.ts` gains the **strict** `extractTargetRepos` parse (throws `ParseError` on a missing `**Target repos:**`), derives the exploded phase/task frontmatter `repos:` (phase = union of its tasks), and seeds `TaskIterationEntry.repos`; the state schema bumps `v5 → v6`. This is where the authored multi-repo shape first becomes **machine-enforced** and runtime-visible, and the home for the real subset/union/registry validation `/rad-plan-audit` deferred in iteration 2. After this, an authored multi-repo plan explodes into per-repo handoffs + per-repo state. Because the v6 shape lands here, iteration 3 also carries a **minimal engine shim** — the commit-write mutation and review-SHA enrichment move onto the `repos[]` array but handle only the single-repo case (`repos[0]`), and corrective-task entries collapse alongside task entries; rich multi-repo enrichment (and removal of this shim) is iteration 5.
 
+   **Follow-up — `MULTI-REPO-3-SIDE-PROJECTS` (typed `project-type` + local-only side-projects).** Surfaced during iteration 3: a self-contained project that touches *no registered repo* (a trial `MULTI-REPO-3-TEST` run) had no graceful way to declare itself, so the planner fabricated the project name as a repo and `/rad-plan-audit` flagged it (§2.5/§2.6). Decision: introduce a typed **`project-type`** frontmatter field — an enum applied to *every* project, with `standard` the default kind (absent ⇒ `standard`, so existing projects need no migration) and `side-project` the first specialized value (extensible to future kinds, e.g. `follow-up`). A **side-project** is an **auto-provisioned, local-only git repo** at `~/.radorc/side-projects/<project>/` — a **third convention-resolved location-kind** beside registered repos (`.local.yml` lookup) and worktrees, **unregistered by design** (the registry is the team's shared, versioned map; side-projects are personal). `repos:` carries the project's own name — a *real* local repo, so the original "fabrication" becomes correct — with `repo-group: null`, mutually exclusive with registered repos; the project's planning docs + state still live under `~/.radorc/projects/<project>/` like any project (only the code repo lives under `side-projects/`, so the dashboard discovers it for free). Execution rides the **ordinary single-repo path** with kind-gated overrides: a new **`radorch side-project init`** command (mirroring `worktree create`) runs `git init` + a seed commit at the convention path and feeds `worktree_path` into `source-control init`; `auto_commit: always`, `auto_pr: never`; and `radorch git commit` **auto-skips the push when there is no `origin` remote** (a clean `pushed:false`, distinct from `push_failed`). Touch-points: the launch skills (`rad-plan` Step 6, `rad-approve-plan`, `rad-execute` Step 3, `rad-execute-parallel`) gate their git-strategy prompts on `project-type`, read via `radorch project context` (extended to surface the field — never the master-plan body); the planner (`rad-create-plans`) stamps the kind on every plan and seals a side-project's `repos: [<name>]` / `repo-group: null` without a registry lookup; the auditor skips registry-membership for a side-project's own repo; `project_type` is an **additive optional** field on `state.project` in the v6 schema (non-breaking, no migration), seeded during explosion; `side-projects/` is **sacred + gitignored** (nested repos); `/rad-brainstorm` and `/rad-repo` gain side-project awareness and `rad-source-control` notes the clean local-only commit; the dashboard adds a "Local · side-project" badge; and the new command ships with `--help` at all depths plus a help-shape regression-test block. Additive overall — normal multi-repo plans are untouched. Branches off iteration 3.
+
 4. **Worktree + source-control init** — `radorch worktree` CLI, `worktree_name` field, managed-worktree lifecycle, `radorch source-control init` reframed as a real CLI doing the work + state mutation directly. After this, multi-repo projects can be initialized end-to-end on disk.
 
 5. **Pipeline + coder + reviewer** — `context-enrichment.ts` produces per-action `repos` arrays, catalog `.md` bodies updated, coder consumes per-repo `**Files for <repo>:**` + `repos[N].path`, reviewer iterates per-repo SHAs per scope (task / phase / final), **removing the iteration-3 engine shim** (single-repo `repos[0]` handling becomes fully per-repo). End-to-end execution works minus commit/PR fan-out.
@@ -713,6 +731,7 @@ The following topics were intentionally not revisited in this brainstorming pass
 | Worktree custom-location override | Optional override for users who want worktrees outside `~/.radorc/worktrees/` |
 | Failure-recovery details for PR pass-2 | Whether pass-2 idempotence detection uses placeholder-grep (cheap) or per-PR state tracking (robust) |
 | `preferences.yml` / `preferences.local.yml` | Dropped from this design; will be addressed when `orchestration.yml` is split into team-portable + per-developer (separate concern from multi-repo) |
+| **Registry-vs-worktree path resolution (hit live in MULTI-REPO-3)** | Until enrichment carries `repos[].path` (iters 4–5), an agent that resolves a target repo *by name* via the registry lands in the **canonical main clone**, not the project worktree — wrong branch, silent divergence. See the callout in **Pipeline Data Flow → Path resolution** and `MULTI-REPO-3-ERROR-LOG.md` Error 1. Ensure iter 4/5 closes this with `repos[].path` in every spawn prompt, and add a guardrail beyond prose (bind repo→worktree for the run, or fail-loud on writes outside the worktree). |
 
 ---
 

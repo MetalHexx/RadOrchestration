@@ -18,7 +18,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 // State for task_gate_approved: phase_loop[0].task_loop[0].task_gate is not_started with gate_active=true.
 // gate_mode_selection is completed; phase[0] is in_progress; task[0] is in_progress; task_gate is pending.
 const afterTaskGateActiveState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -40,7 +40,7 @@ const afterTaskGateActiveState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -51,7 +51,7 @@ const afterTaskGateActiveState = {
                     index: 0,
                     status: 'in_progress',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'not_started', gate_active: true },
@@ -75,7 +75,7 @@ const afterTaskGateActiveState = {
 
 // State for phase_gate_approved: task_loop completed; phase_gate is pending.
 const afterTaskLoopCompletedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -97,7 +97,7 @@ const afterTaskLoopCompletedState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -108,7 +108,7 @@ const afterTaskLoopCompletedState = {
                     index: 0,
                     status: 'completed',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'completed', gate_active: true },

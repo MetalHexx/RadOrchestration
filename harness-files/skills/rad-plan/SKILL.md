@@ -149,7 +149,7 @@ When `task_size_preference` is a `Custom: …` string, the prose flows through v
 > "No brainstorming document exists for this project. The user supplied this project description directly: <project_context_prose>. Treat this prose as the authoritative project-goals input for the Requirements ledger."
 
 ## Step 5: Audit the plan
-- Dispatch a fresh subagent with the `rad-plan-audit` skill (full-audit
+- Dispatch the `planner` subagent with the `rad-plan-audit` skill (full-audit
   mode) to audit the Requirements doc and the Master Plan. Give the
   subagent both doc paths and instruct it to follow
   `${SKILLS_ROOT}/rad-plan-audit/references/full-audit.md`. The subagent
@@ -186,6 +186,12 @@ When `task_size_preference` is a `Custom: …` string, the prose flows through v
 - Single pass, no re-audit after corrections.
 
 ## Step 6: Finalize the plan
+
+**Kind check (run first, before presenting any options):**
+Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {PROJECT_NAME}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
+
+For all other kinds (`standard` or unset), present the two-option fork below.
+
 - Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan:
 - Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
   - **Current branch**: Invoke the `/rad-execute` skill and follow its workflow start-to-finish without skipping or improvising from this skill's context. Source Control Initialization (rad-execute Step 3) is mandatory for fresh projects and MUST prompt the user for any `auto_commit` or `auto_pr` value set to `"ask"` in `orchestration.yml` (the default).

@@ -25,7 +25,7 @@ describe('radorch program wiring', () => {
     const { stdout: rootHelp } = await node(['--help']);
     expect(rootHelp).toMatch(/\bgit\b/);
     const { stdout: gitHelp } = await node(['git', '--help']);
-    expect(gitHelp).toMatch(/commit\s+Commit changes in the worktree and push to origin/);
+    expect(gitHelp).toMatch(/commit\s+Commit changes in the worktree and push to origin when a\s+remote is configured/);
     expect(gitHelp).toMatch(/pr\s+Open a GitHub pull request for the worktree branch/);
     const { stdout: commitHelp } = await node(['git', 'commit', '--help']);
     expect(commitHelp).toMatch(/--worktree-path/);
@@ -152,5 +152,32 @@ describe('radorch program wiring', () => {
     expect(signalHelp).toMatch(/--verdict/);
     expect(signalHelp).toMatch(/--gate-type/);
     expect(signalHelp).toMatch(/--gate-mode/);
+  }, 30_000);
+
+  it('exposes side-project init at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/side-project/);
+    const { stdout: nounHelp } = await node(['side-project', '--help']);
+    expect(nounHelp).toMatch(/init\s+Provision a local-only side-project git repo/);
+    const { stdout: initHelp } = await node(['side-project', 'init', '--help']);
+    expect(initHelp).toMatch(/--project/);
+  }, 30_000);
+
+  it('exposes migrate in root help and responds to its own --help with safety-rail flags', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bmigrate\b/);
+    expect(rootHelp).toMatch(/migrate\s+Migrate a project state\.json to the current schema version/);
+    const { stdout: migrateHelp } = await node(['migrate', '--help']);
+    expect(migrateHelp).toMatch(/--project/);
+    expect(migrateHelp).toMatch(/--all/);
+    expect(migrateHelp).toMatch(/--dry-run/);
   }, 30_000);
 });

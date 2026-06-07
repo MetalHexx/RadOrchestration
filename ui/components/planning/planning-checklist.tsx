@@ -2,7 +2,18 @@
 
 import { SpinnerBadge } from "@/components/badges";
 import { DocumentLink } from "@/components/documents";
-import type { PlanningStep, PlanningStepName, PlanningStepStatus } from "@/types/state";
+import type { PlanningStepName, PlanningStepStatus } from "@/types/state";
+
+/**
+ * Per-step shape consumed by this checklist. Formerly the shared `PlanningStep`
+ * type, which was removed with the legacy section-based renderer; this component
+ * is the last consumer, so the shape is declared locally.
+ */
+interface PlanningStep {
+  name: PlanningStepName;
+  status: PlanningStepStatus;
+  doc_path: string | null;
+}
 
 interface PlanningChecklistProps {
   steps: PlanningStep[];

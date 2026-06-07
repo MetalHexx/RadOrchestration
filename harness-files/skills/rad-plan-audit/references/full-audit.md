@@ -17,6 +17,22 @@ are out of scope for this audit.
    backward from plan citations.
 2. **Existing source files** — files the docs claim already exist.
    These are ground truth for Part 1.
+3. **Repo registry** — the `rad-repo` registry available in scope. This
+   is ground truth for §2.5 (Repo Registry Membership): use it to
+   resolve every repo slug named in the plan.
+
+   > **Side-project §2.5 exemption:** Before consulting the registry for
+   > §2.5, read `project-type` from the Master-Plan frontmatter. When
+   > `(project-type ?? 'standard') === 'side-project'`, skip the §2.5
+   > membership check for the project's own repo (slug
+   > `[<project-name>]`) — that repo is intentionally unregistered.
+   > All other slugs are still checked. This is the only runtime context
+   > where the auditor reads `project-type` directly from Master-Plan
+   > frontmatter rather than via the cheaper `project context` / state
+   > path; every launch skill uses the state path, but the plan auditor
+   > is doc-scoped and already holds the Master Plan, making the direct
+   > read natural and consistent. §2.6 repo-shape checks are **not**
+   > exempted and must pass regardless of `project-type`.
 
 ## Authority
 
@@ -64,6 +80,15 @@ Apply [rubric Part 2](./audit-rubric.md#part-2-cross-document-cohesion-docs-vs-d
   paths, and frozen contracts match across both docs.
 - §2.3 Terminology Consistency — named artifacts are spelled and cased
   identically.
+- §2.5 Repo Registry Membership — every repo slug in the Master Plan
+  `repos:` seal and every task's `**Target repos:**` line resolves to a
+  registered repo in the registry (consulted via the `rad-repo` registry
+  from Step 2, input 3). An unresolved slug is a finding.
+- §2.6 Repo Shape Consistency — each task's `**Target repos:**` is a
+  subset of the seal; each phase's `**Target repos:**` equals the union
+  of its tasks'; the seal equals the union of all tasks'; and each
+  task's `**Files for <repo>:**` subsections align exactly with its
+  `**Target repos:**` line. Each mismatch is a finding.
 
 ### Step 4.5: Buildability checks — Part 3
 

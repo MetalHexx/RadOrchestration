@@ -1,5 +1,5 @@
 import { Ajv, type ValidateFunction, type ErrorObject } from 'ajv';
-import schemaJson from './schemas/orchestration-state-v5.schema.json' with { type: 'json' };
+import schemaJson from './schemas/orchestration-state-v6.schema.json' with { type: 'json' };
 import type { PipelineState } from './types.js';
 
 let validateFn: ValidateFunction | null = null;
@@ -65,7 +65,7 @@ function formatSchemaError(error: ErrorObject): string {
       path = basePath ? `${basePath}.${additionalProp}` : additionalProp;
       problem = 'unexpected field';
       if (additionalProp === 'commit_hash' && basePath.startsWith('pipeline.source_control')) {
-        problem += ' — global commit_hash was removed in v5; per-task commit_hash is now recorded on each IterationEntry';
+        problem += ' — global commit_hash was removed in v5; per-repo commit_hash is now recorded in the repos array on each IterationEntry (v6)';
       }
       break;
     }
@@ -84,7 +84,7 @@ function formatSchemaError(error: ErrorObject): string {
 }
 
 /**
- * Validates a PipelineState object against the v5 JSON Schema.
+ * Validates a PipelineState object against the v6 JSON Schema.
  * Returns an array of error strings with [schema] prefix, or empty array if valid.
  * Uses lazy-initialized singleton Ajv instance for schema compilation.
  */

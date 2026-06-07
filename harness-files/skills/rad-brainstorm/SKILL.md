@@ -20,7 +20,8 @@ Some projects can span multiple repositories.  If you don't remember the repos a
 - **Surface from the registry.** When domain hints land in conversation (e.g. the user mentions "the checkout flow" or "the dashboard"), draw on the registered repos and their descriptions to propose a candidate set — "sounds like `backend` plus `frontend`, confirm?". You own the *how*: infer from conversation and registry descriptions when you can, and ask freely when you're unsure.
 - **Scope to the repos and repo-groups when exploring** When working with the user, try to scope your exploration to a given repo-group.  The user might have repos from multiple-different domains (repo-groups) and we don't want to get out of control hunting every single repo in the registry.  Scope yourself.  If you're not sure, ask the user.
 - **Confirm before writing.** At convergence, explicitly confirm the working repo set with the user before writing the `## Repo Targets (proposed)` section. No brainstorm ships without that section.  See the `document-writing.md` for more info.
-- **Register Unregistered Repos.** If you detect the user is referring to a repo that is not yet registered, help them out using the `rad-repo` skill. 
+- **Register Unregistered Repos.** If you detect the user is referring to a repo that is not yet registered, help them out using the `rad-repo` skill.
+- **Recognize repo-less work and stamp the kind.** If the project touches no registered repo at all — it lives entirely on its own, with no dependency on team-shared code — it is a *side-project*. Stamp `project-type: side-project` in the `## Repo Targets (proposed)` section. For all other projects, stamp `project-type: standard`. The kind travels downstream through planning; downstream tools use it to skip registry steps that don't apply. Stamping the kind does **not** change where docs go — the brainstorm and all planning docs always land in `~/.radorc/projects/<project-name>/`; only a side-project's code repo lands in `/side-projects/<name>/`, provisioned later at execution.
 
 ## Scoping and Splitting Work
 It's easy to let a project get out of control and too large.  If the user is describing something that seems too big for a single project, or if they mention stages, phases, or incremental delivery, consider recommending a split into a project series.  Think about the blast radius of the project and help them think about that.  See `project-series.md` for guidance on when and how to propose a split.  This is important, but most relevant when you're close to aligning on some goals.
@@ -71,6 +72,10 @@ The Rad Orchestration dashboard is the **canonical viewer** for every artifact t
 - **After the document is written**, offer to open it in the dashboard at its deep link: `<base>/projects/<PROJECT-NAME>/docs/<DOC-FILE-NAME>`, where `<base>` is the URL `/rad-ui-status` reports. This opens the app straight to that document in the viewer modal.
 - **If the UI is not running**, offer to start it (`/rad-ui-start`) and then open — one smooth path from "down" to "viewing the doc."
 - Offer when a doc **lands**, not on every micro-edit — don't nag. Applies to the markdown brainstorm *and* any generated visual; point at whichever doc you just wrote.
+
+## Offer to start planning
+- Once you detect that you've reached a reasonable number of goals, offer to help them execute the `/rad-plan` skill to create the project plan.  This is a natural next step after brainstorming, and you can help them get there when the time is right.  
+- If they want to keep brainstorming, that's fine too — but if you feel the project start to grow a bit large, follow the guidance in [references/project-series.md](./references/project-series.md).
 
 ## Routing Table
 

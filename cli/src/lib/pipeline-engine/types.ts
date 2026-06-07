@@ -174,6 +174,11 @@ export interface ParallelNodeState extends BaseNodeState {
   nodes: Record<string, NodeState>;
 }
 
+export interface RepoCommitEntry {
+  name: string;               // repo slug (may be blank for migrated v5 state)
+  commit_hash: string | null; // per-repo commit hash, null until committed
+}
+
 export interface CorrectiveTaskEntry {
   index: number;              // 1-based corrective attempt number
   reason: string;             // human-readable injection reason
@@ -181,7 +186,7 @@ export interface CorrectiveTaskEntry {
   status: NodeStatus;
   nodes: Record<string, NodeState>;
   doc_path?: string | null;   // corrective task handoff doc (authored pre-injection)
-  commit_hash: string | null; // per-corrective-task commit hash, set by COMMIT_COMPLETED mutation
+  repos: RepoCommitEntry[];   // per-repo commit tracking, set by COMMIT_COMPLETED mutation
 }
 
 export interface IterationEntry {
@@ -190,7 +195,7 @@ export interface IterationEntry {
   nodes: Record<string, NodeState>;
   corrective_tasks: CorrectiveTaskEntry[];
   doc_path?: string | null;   // iteration doc (phase plan or task handoff)
-  commit_hash: string | null; // per-task commit hash, set by COMMIT_COMPLETED mutation
+  repos: RepoCommitEntry[];   // per-repo commit tracking, set by COMMIT_COMPLETED mutation
 }
 
 export interface ForEachPhaseNodeState extends BaseNodeState {
@@ -240,11 +245,12 @@ export interface PipelineSection {
 }
 
 export interface PipelineState {
-  $schema: 'orchestration-state-v5';
+  $schema: 'orchestration-state-v6';
   project: {
     name: string;
     created: string;   // ISO 8601
     updated: string;   // ISO 8601
+    project_type?: 'standard' | 'side-project';
   };
   config: {
     gate_mode: string;

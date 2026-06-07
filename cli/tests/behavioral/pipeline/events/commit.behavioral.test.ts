@@ -11,6 +11,9 @@ import { useRealCatalog } from '../helpers/catalog.js';
 import { assertPromptForEnvelopeAction } from '../helpers/prompt.js';
 import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.js';
 import { runCommand } from '../../../../src/framework/command.js';
+import { getMutation } from '../../../../src/lib/pipeline-engine/mutations.js';
+import { makeV6State } from '../../../helpers/state-factory.js';
+import type { PipelineState, OrchestrationConfig, PipelineTemplate, EventContext } from '../../../../src/lib/pipeline-engine/types.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
@@ -106,8 +109,9 @@ nodes:
 `;
 
 // State with commit in_progress (ready for commit_completed).
+// v6 schema: iterations carry repos[] instead of the removed commit_hash scalar.
 const afterCommitStartedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -143,7 +147,7 @@ const afterCommitStartedState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -154,7 +158,7 @@ const afterCommitStartedState = {
                     index: 0,
                     status: 'in_progress',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'completed', gate_active: true },
@@ -177,11 +181,67 @@ const afterCommitStartedState = {
   },
 };
 
+// ── Lightweight mutation-level helpers (FR-25, AD-10) ────────────────────────
+// These helpers drive the COMMIT_COMPLETED mutation directly against a seeded
+// v6 state, bypassing filesystem IO. Used by the per-repo hash tests below.
+
+function seedSingleRepoTask(repoName: string): Record<string, unknown> {
+  const base = makeV6State({ taskRepos: [{ name: repoName, commit_hash: null }] });
+  // Mark phase and task iterations as in_progress and seed the commit step node
+  // so the COMMIT_COMPLETED mutation can resolve the node and write the hash.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const phaseIter = (base as any).graph.nodes.phase_loop.iterations[0];
+  phaseIter.status = 'in_progress';
+  const taskIter = phaseIter.nodes.task_loop.iterations[0];
+  taskIter.status = 'in_progress';
+  taskIter.nodes['commit'] = { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 };
+  return base;
+}
+
+function drive(
+  state: Record<string, unknown>,
+  opts: { event: string; commit_hash: string; phase: number; task: number },
+): Record<string, unknown> {
+  const mut = getMutation(opts.event);
+  if (!mut) throw new Error(`No mutation registered for event: ${opts.event}`);
+  const ctx: EventContext = {
+    event: opts.event,
+    project_dir: '',
+    config_path: '',
+    commit_hash: opts.commit_hash,
+    phase: opts.phase,
+    task: opts.task,
+  };
+  const minimalConfig = {
+    limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
+    gate_mode: 'task',
+    source_control: { auto_commit: 'never', auto_pr: 'never' },
+  } as unknown as OrchestrationConfig;
+  const minimalTemplate = { id: '', version: '', description: '', nodes: [] } as unknown as PipelineTemplate;
+  const result = mut(state as unknown as PipelineState, ctx, minimalConfig, minimalTemplate);
+  return result.state as unknown as Record<string, unknown>;
+}
+
+function firstTaskIteration(state: Record<string, unknown>): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const g = (state as any).graph.nodes.phase_loop;
+  return g.iterations[0].nodes.task_loop.iterations[0] as Record<string, unknown>;
+}
+
 // Per FR-11, `commit_started` is no longer accepted as an event; step
 // transition to in_progress now happens via the optimistic write in
 // processEvent (FR-10). The behavioral arm for that signal was deleted with
 // the event identifier itself; the completed arm below carries the remaining
 // behavior coverage for the commit step.
+
+describe('commit_completed — per-repo hash write (FR-25, AD-10)', () => {
+  it('writes the commit hash into repos[0] for a single-repo task (FR-25, AD-10)', () => {
+    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', phase: 1, task: 1 });
+    const taskIter = firstTaskIteration(after);
+    expect(taskIter.repos[0].commit_hash).toBe('abc1234');
+    expect('commit_hash' in taskIter).toBe(false);
+  });
+});
 
 describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
   it('commit_completed marks commit.status = completed and writes commit_hash onto task iteration', async () => {
@@ -212,10 +272,10 @@ describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
       state: { graph: { template_id: 'syn-exec-commit' } },
       sideFiles: [],
     });
-    // Assert commit_hash written onto task iteration via direct state.json read.
+    // Assert commit_hash written onto task iteration.repos[0] via direct state.json read (v6 schema).
     const onDisk = JSON.parse(fs.readFileSync(path.join(w.projectDir, 'state.json'), 'utf8'));
     const taskIteration = onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0];
-    expect(taskIteration.commit_hash, 'task_iteration[0].commit_hash').toBe('abc1234');
+    expect(taskIteration.repos[0].commit_hash, 'task_iteration[0].repos[0].commit_hash').toBe('abc1234');
     // FR-4, FR-23 — after commit_completed the walker advances to the next
     // step (spawn_code_reviewer per the template); the composed prompt
     // carries that action's completion event from the real catalog.

@@ -20,7 +20,7 @@ export interface SSEEvent<T extends SSEEventType = SSEEventType> {
 export interface SSEPayloadMap {
   state_change: {
     projectName: string;
-    state: AnyProjectState;   // was ProjectState — now accepts both v4 and v5
+    state: AnyProjectState;   // was ProjectState — now accepts both v5 and v6
   };
   project_added: {
     projectName: string;

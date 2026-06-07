@@ -1,6 +1,10 @@
 /**
- * Tests for SSE state_change lastUpdated patching logic in use-projects hook.
+ * Tests for SSE state_change sidebar-patching logic in use-projects hook.
  * Run with: npx tsx ui/hooks/use-projects.test.ts
+ *
+ * v5 and v6 states are structurally identical; the handler derives sidebar
+ * fields from the graph uniformly and only discriminates the reported
+ * schemaVersion. These tests mirror that uniform mapping.
  */
 import assert from 'node:assert';
 
@@ -28,17 +32,8 @@ interface ProjectSummary {
   planningStatus?: PlanningStatus;
   executionStatus?: ExecutionStatus;
   lastUpdated?: string;
-  schemaVersion?: 'v4' | 'v5';
+  schemaVersion?: 'v5' | 'v6';
   graphStatus?: GraphStatus | 'not_initialized';
-}
-
-// v4 state shape (minimal fields used by the handler)
-interface V4State {
-  $schema: 'orchestration-state-v4';
-  pipeline: { current_tier: PipelineTier };
-  planning?: { status?: PlanningStatus };
-  execution?: { status?: ExecutionStatus };
-  project?: { name: string; created: string; updated: string };
 }
 
 // v5 state shape (minimal fields used by the handler)
@@ -49,11 +44,19 @@ interface V5State {
   project?: { name: string; created: string; updated: string };
 }
 
-type AnyState = V4State | V5State;
+// v6 state shape — structurally identical to v5, discriminated by $schema
+interface V6State {
+  $schema: 'orchestration-state-v6';
+  pipeline: { current_tier: V5PipelineTier };
+  graph: { status: GraphStatus; nodes: NodesRecord };
+  project?: { name: string; created: string; updated: string };
+}
+
+type AnyState = V5State | V6State;
 
 // Inline type guard matching ui/types/state.ts
-function isV5State(state: AnyState): state is V5State {
-  return state.$schema === 'orchestration-state-v5';
+function isV6State(state: AnyState): state is V6State {
+  return state.$schema === 'orchestration-state-v6';
 }
 
 // Inline planning/execution derivation matching ui/lib/status-derivation.ts
@@ -79,62 +82,28 @@ function deriveExecutionStatus(graphStatus: GraphStatus, nodes: NodesRecord): Ex
   return 'not_started';
 }
 
-// The SSE state_change mapping logic replicated from ui/hooks/use-projects.ts (v4 path)
+// The uniform SSE state_change mapping logic replicated from
+// ui/hooks/use-projects.ts. v5 and v6 are handled identically via graph-based
+// derivation; only the reported schemaVersion differs.
 function applyStateChange(
-  p: ProjectSummary,
-  payload: {
-    projectName: string;
-    state: {
-      pipeline: { current_tier: PipelineTier };
-      planning?: { status?: PlanningStatus };
-      execution?: { status?: ExecutionStatus };
-      project?: { name: string; created: string; updated: string };
-    };
-  }
-): ProjectSummary {
-  if (p.name !== payload.projectName) return p;
-  return {
-    ...p,
-    tier: payload.state.pipeline.current_tier,
-    planningStatus: payload.state.planning?.status,
-    executionStatus: payload.state.execution?.status,
-    lastUpdated: payload.state.project?.updated,
-    schemaVersion: 'v4',
-    graphStatus: 'not_initialized',
-  };
-}
-
-// The v5-aware SSE state_change mapping logic replicated from ui/hooks/use-projects.ts
-function applyStateChangeV5(
   p: ProjectSummary,
   payload: { projectName: string; state: AnyState }
 ): ProjectSummary {
   if (p.name !== payload.projectName) return p;
-  if (isV5State(payload.state)) {
-    const tier: PipelineTier =
-      payload.state.graph.status === 'completed'
-        ? 'complete'
-        : payload.state.pipeline.current_tier;
-    return {
-      ...p,
-      tier,
-      planningStatus: derivePlanningStatus(payload.state.graph.nodes),
-      executionStatus: deriveExecutionStatus(payload.state.graph.status, payload.state.graph.nodes),
-      lastUpdated: payload.state.project?.updated,
-      schemaVersion: 'v5',
-      graphStatus: payload.state.graph.status,
-    };
-  } else {
-    return {
-      ...p,
-      tier: payload.state.pipeline.current_tier,
-      planningStatus: payload.state.planning?.status,
-      executionStatus: payload.state.execution?.status,
-      lastUpdated: payload.state.project?.updated,
-      schemaVersion: 'v4',
-      graphStatus: 'not_initialized',
-    };
-  }
+  const state = payload.state;
+  const tier: PipelineTier =
+    state.graph.status === 'completed'
+      ? 'complete'
+      : state.pipeline.current_tier;
+  return {
+    ...p,
+    tier,
+    planningStatus: derivePlanningStatus(state.graph.nodes),
+    executionStatus: deriveExecutionStatus(state.graph.status, state.graph.nodes),
+    lastUpdated: state.project?.updated,
+    schemaVersion: isV6State(state) ? 'v6' : 'v5',
+    graphStatus: state.graph.status,
+  };
 }
 
 let passed = 0;
@@ -153,7 +122,7 @@ async function test(name: string, fn: () => Promise<void>) {
 }
 
 async function run() {
-  console.log('use-projects — SSE state_change lastUpdated patching');
+  console.log('use-projects — SSE state_change sidebar patching');
 
   await test('(d) matching project — lastUpdated equals payload.state.project.updated', async () => {
     const p: ProjectSummary = {
@@ -163,20 +132,17 @@ async function run() {
       hasMalformedState: false,
       lastUpdated: undefined,
     };
-    const payload = {
-      projectName: 'test',
-      state: {
-        pipeline: { current_tier: 'execution' as PipelineTier },
-        planning: { status: 'complete' as PlanningStatus },
-        execution: { status: 'in_progress' as ExecutionStatus },
-        project: {
-          name: 'test',
-          created: '2026-01-01T00:00:00Z',
-          updated: '2026-04-06T14:30:00.000Z',
-        },
+    const state: V5State = {
+      $schema: 'orchestration-state-v5',
+      pipeline: { current_tier: 'execution' },
+      graph: { status: 'in_progress', nodes: {} },
+      project: {
+        name: 'test',
+        created: '2026-01-01T00:00:00Z',
+        updated: '2026-04-06T14:30:00.000Z',
       },
     };
-    const result = applyStateChange(p, payload);
+    const result = applyStateChange(p, { projectName: 'test', state });
     assert.strictEqual(result.lastUpdated, '2026-04-06T14:30:00.000Z');
   });
 
@@ -188,44 +154,46 @@ async function run() {
       hasMalformedState: false,
       lastUpdated: '2026-01-01T00:00:00.000Z',
     };
-    const payload = {
-      projectName: 'test',
-      state: {
-        pipeline: { current_tier: 'execution' as PipelineTier },
-        planning: { status: 'complete' as PlanningStatus },
-        execution: { status: 'in_progress' as ExecutionStatus },
-        project: {
-          name: 'test',
-          created: '2026-01-01T00:00:00Z',
-          updated: '2026-04-06T14:30:00.000Z',
-        },
+    const state: V5State = {
+      $schema: 'orchestration-state-v5',
+      pipeline: { current_tier: 'execution' },
+      graph: { status: 'in_progress', nodes: {} },
+      project: {
+        name: 'test',
+        created: '2026-01-01T00:00:00Z',
+        updated: '2026-04-06T14:30:00.000Z',
       },
     };
-    const result = applyStateChange(p, payload);
+    const result = applyStateChange(p, { projectName: 'test', state });
     assert.strictEqual(result, p);
     assert.strictEqual(result.lastUpdated, '2026-01-01T00:00:00.000Z');
   });
 
-  // v4 schemaVersion test
-  await test('(f) v4 state_change — schemaVersion is "v4"', async () => {
+  // v6 state — handled uniformly via graph derivation, labeled "v6"
+  await test('(f) v6 state_change — schemaVersion is "v6", statuses graph-derived', async () => {
     const p: ProjectSummary = {
       name: 'proj',
       tier: 'not_initialized',
       hasState: false,
       hasMalformedState: false,
     };
-    const state: V4State = {
-      $schema: 'orchestration-state-v4',
+    const state: V6State = {
+      $schema: 'orchestration-state-v6',
       pipeline: { current_tier: 'planning' },
-      planning: { status: 'in_progress' },
-      execution: { status: 'not_started' },
+      graph: {
+        status: 'in_progress',
+        nodes: {
+          research: { status: 'in_progress' },
+        },
+      },
       project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-10T00:00:00Z' },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
-    assert.strictEqual(result.schemaVersion, 'v4');
+    const result = applyStateChange(p, { projectName: 'proj', state });
+    assert.strictEqual(result.schemaVersion, 'v6');
     assert.strictEqual(result.tier, 'planning');
     assert.strictEqual(result.planningStatus, 'in_progress');
     assert.strictEqual(result.executionStatus, 'not_started');
+    assert.strictEqual(result.graphStatus, 'in_progress');
   });
 
   // v5 completed graph — tier becomes 'complete'
@@ -252,7 +220,7 @@ async function run() {
       },
       project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-12T10:00:00Z' },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    const result = applyStateChange(p, { projectName: 'proj', state });
     assert.strictEqual(result.schemaVersion, 'v5');
     assert.strictEqual(result.tier, 'complete');
     assert.strictEqual(result.planningStatus, 'complete');
@@ -284,7 +252,7 @@ async function run() {
       },
       project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-12T11:00:00Z' },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    const result = applyStateChange(p, { projectName: 'proj', state });
     assert.strictEqual(result.schemaVersion, 'v5');
     assert.strictEqual(result.tier, 'execution');
     assert.strictEqual(result.planningStatus, 'complete');
@@ -306,7 +274,7 @@ async function run() {
       pipeline: { current_tier: 'execution' },
       graph: { status: 'in_progress', nodes: {} },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    const result = applyStateChange(p, { projectName: 'proj', state });
     assert.strictEqual(result, p);
     assert.strictEqual(result.lastUpdated, '2026-01-01T00:00:00Z');
   });
@@ -335,7 +303,7 @@ async function run() {
       },
       project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-16T00:00:00Z' },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    const result = applyStateChange(p, { projectName: 'proj', state });
     assert.strictEqual(result.graphStatus, 'in_progress');
   });
 
@@ -363,26 +331,26 @@ async function run() {
       },
       project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-16T00:00:00Z' },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
+    const result = applyStateChange(p, { projectName: 'proj', state });
     assert.strictEqual(result.graphStatus, 'completed');
   });
 
-  await test('(l) v4 state_change — graphStatus is "not_initialized"', async () => {
+  await test('(l) v6 state_change — graphStatus mirrors payload graph.status', async () => {
     const p: ProjectSummary = {
       name: 'proj',
       tier: 'not_initialized',
       hasState: false,
       hasMalformedState: false,
     };
-    const state: V4State = {
-      $schema: 'orchestration-state-v4',
+    const state: V6State = {
+      $schema: 'orchestration-state-v6',
       pipeline: { current_tier: 'planning' },
-      planning: { status: 'in_progress' },
-      execution: { status: 'not_started' },
+      graph: { status: 'in_progress', nodes: { research: { status: 'in_progress' } } },
       project: { name: 'proj', created: '2026-01-01T00:00:00Z', updated: '2026-04-16T00:00:00Z' },
     };
-    const result = applyStateChangeV5(p, { projectName: 'proj', state });
-    assert.strictEqual(result.graphStatus, 'not_initialized');
+    const result = applyStateChange(p, { projectName: 'proj', state });
+    assert.strictEqual(result.graphStatus, 'in_progress');
+    assert.strictEqual(result.schemaVersion, 'v6');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

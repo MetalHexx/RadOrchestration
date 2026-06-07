@@ -18,7 +18,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 // State for source_control_init: pipeline is in_progress, gate_mode_selection done,
 // phase_loop has no iterations yet (source_control not yet set).
 const beforeSourceControlInitState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',

@@ -41,6 +41,10 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" git commit --
 
 A partial-success commit (commit landed but push failed) is still envelope-success (`ok: true`); the failure surfaces via `data.pushed=false` and `data.errorType="push_failed"`. Treat it as a commit success in your block.
 
+A remote-less repo (such as a side-project) also returns `ok: true` with `data.pushed=false`, but carries **no** `errorType`. This is expected — the commit succeeded and there is simply no remote to push to. Do not treat it as a failure. The distinction: `push_failed` always sets `errorType`; a clean remote-less result does not.
+
+PR Mode is never invoked for a side-project (`auto_pr: never`). A side-project has no remote and therefore no pull-request surface; skip the PR step entirely when the project kind is `side-project`.
+
 ---
 
 ## PR Mode

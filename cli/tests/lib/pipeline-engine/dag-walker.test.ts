@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { walkDAG } from '../../../src/lib/pipeline-engine/dag-walker.js';
 import { NODE_STATUSES } from '../../../src/lib/pipeline-engine/constants.js';
-import type { PipelineState, PipelineTemplate, OrchestrationConfig, StepNodeDef, StepNodeState } from '../../../src/lib/pipeline-engine/types.js';
+import type { PipelineState, PipelineTemplate, OrchestrationConfig, StepNodeDef, StepNodeState, ForEachPhaseNodeDef, ForEachTaskNodeDef, ForEachPhaseNodeState } from '../../../src/lib/pipeline-engine/types.js';
 
 const CFG: OrchestrationConfig = {
   limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
@@ -38,6 +38,73 @@ function makeStateWithStatuses(a: string, b: string): PipelineState {
   } as PipelineState;
 }
 
+function makeUnseededPhaseLoop(): { tpl: PipelineTemplate; st: PipelineState; readDoc: (p: string) => { frontmatter: Record<string, unknown> } | null } {
+  const taskStepDef: StepNodeDef = {
+    id: 'task_executor',
+    kind: 'step',
+    label: 'Execute Task',
+    action: 'execute_task',
+    events: { completed: 'task_completed' },
+    depends_on: [],
+  };
+  const taskLoopDef: ForEachTaskNodeDef = {
+    id: 'task_loop',
+    kind: 'for_each_task',
+    source_doc_ref: '$.nodes.phase_plan.doc_path',
+    tasks_field: 'tasks',
+    body: [taskStepDef],
+    depends_on: [],
+  };
+  const phaseLoopDef: ForEachPhaseNodeDef = {
+    id: 'phase_loop',
+    kind: 'for_each_phase',
+    source_doc_ref: '$.nodes.master_plan.doc_path',
+    total_field: 'total_phases',
+    body: [taskLoopDef],
+    depends_on: [],
+  };
+
+  const tpl: PipelineTemplate = {
+    template: { id: 't-phase', version: '1.0.0', description: 'phase loop test' },
+    nodes: [phaseLoopDef],
+  };
+
+  // State with empty iterations — walker expands via readDocument (non-explosion path)
+  const st: PipelineState = {
+    $schema: 'orchestration-state-v6',
+    project: { name: 'p', created: 'x', updated: 'x' },
+    config: {
+      gate_mode: 'task',
+      limits: CFG.limits,
+      source_control: { auto_commit: 'never', auto_pr: 'never' },
+    },
+    pipeline: { gate_mode: null, source_control: null, current_tier: 'planning', halt_reason: null },
+    graph: {
+      template_id: 't-phase',
+      status: 'in_progress',
+      current_node_path: null,
+      nodes: {
+        master_plan: { kind: 'step', status: 'completed', doc_path: 'master_plan.md', retries: 0 } as StepNodeState,
+        phase_plan: { kind: 'step', status: 'completed', doc_path: 'phase1/phase_plan.md', retries: 0 } as StepNodeState,
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: 'not_started',
+          iterations: [],  // empty — triggers walker-driven expansion
+        } as ForEachPhaseNodeState,
+      },
+    },
+  };
+
+  // readDocument stub: master_plan.md returns total_phases=1; phase_plan.md returns tasks=[{}]
+  const readDoc = (docPath: string): { frontmatter: Record<string, unknown> } | null => {
+    if (docPath.includes('master_plan')) return { frontmatter: { total_phases: 1 } };
+    if (docPath.includes('phase_plan') || docPath.includes('phase1')) return { frontmatter: { tasks: [{}] } };
+    return null;
+  };
+
+  return { tpl, st, readDoc };
+}
+
 describe('walkNodes step in_progress mutation', () => {
   it('flips a not_started step node to in_progress on the same walk that returns its action', () => {
     const tpl = makeFlatTwoStepTemplate();
@@ -62,5 +129,21 @@ describe('walkNodes step in_progress mutation', () => {
     walkDAG(st, tpl, CFG);
     // b is still not_started; only the resolved step (a) was flipped.
     expect(st.graph.nodes['b']!.status).toBe(NODE_STATUSES.NOT_STARTED);
+  });
+});
+
+describe('for_each_phase / for_each_task iteration entry shape (FR-27, AD-4)', () => {
+  it('seeds expanded iteration entries with a repos[] array, not commit_hash (FR-27, AD-4)', () => {
+    const { tpl, st, readDoc } = makeUnseededPhaseLoop();
+    walkDAG(st, tpl, CFG, readDoc);
+    const phaseLoop = st.graph.nodes['phase_loop'];
+    expect(phaseLoop.kind).toBe('for_each_phase');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const phaseEntry = (phaseLoop as any).iterations[0];
+    expect(Array.isArray(phaseEntry.repos)).toBe(true);
+    expect('commit_hash' in phaseEntry).toBe(false);
+    const taskEntry = phaseEntry.nodes.task_loop.iterations[0];
+    expect(Array.isArray(taskEntry.repos)).toBe(true);
+    expect('commit_hash' in taskEntry).toBe(false);
   });
 });

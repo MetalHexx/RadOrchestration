@@ -21,7 +21,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 // before the coder finished. `start` must re-emit `execute_task` so resume is
 // a true frontier query — per references/pipeline-guide.md lines 32 and 128.
 const taskExecutorInProgressState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -43,7 +43,7 @@ const taskExecutorInProgressState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -54,7 +54,7 @@ const taskExecutorInProgressState = {
                     index: 0,
                     status: 'in_progress',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'completed', gate_active: true },
@@ -96,7 +96,7 @@ describe('start event (FR-3, DD-2)', () => {
     assertEnvelopeStateSideFiles(env, {
       projectDir: w.projectDir,
       envelope: { ok: true, data: { action: 'spawn_requirements' } },
-      state: { graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'in_progress' } } } },
+      state: { $schema: 'orchestration-state-v6', graph: { template_id: 'syn-planning', nodes: { requirements: { status: 'in_progress' } } } },
       sideFiles: [],
     });
     // FR-4, FR-23 — engine composes the spawn_requirements prompt with

@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Orchestration State v5",
-  "description": "Canonical schema for the orchestration system's v5 state format.",
+  "$id": "orchestration-state-v6",
+  "title": "Orchestration State v6",
+  "description": "Canonical schema for the orchestration system's v6 state format.",
   "type": "object",
   "additionalProperties": false,
   "required": ["$schema", "project", "config", "pipeline", "graph"],
   "properties": {
     "$schema": {
       "title": "Schema Version",
-      "description": "Schema version identifier. Must be orchestration-state-v5.",
-      "const": "orchestration-state-v5"
+      "description": "Schema version identifier. Must be orchestration-state-v6.",
+      "const": "orchestration-state-v6"
     },
     "project": {
       "title": "Project Metadata",
@@ -32,6 +33,12 @@
           "title": "Updated Timestamp",
           "description": "ISO 8601 timestamp of the last state mutation.",
           "type": "string"
+        },
+        "project_type": {
+          "title": "Project Type",
+          "description": "Project kind enum. Absent means standard (a project predating the field). standard = ordinary registered-repo project; side-project = local-only side-project.",
+          "type": "string",
+          "enum": ["standard", "side-project"]
         }
       }
     },
@@ -360,7 +367,7 @@
       "description": "State for a single phase or task iteration within a for-each node.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["index", "status", "nodes", "corrective_tasks", "commit_hash"],
+      "required": ["index", "status", "nodes", "corrective_tasks", "repos"],
       "properties": {
         "index": {
           "title": "Iteration Index",
@@ -393,13 +400,19 @@
           "description": "Relative path to the authoring doc for this iteration (phase plan or task handoff). Optional; absent on iterations that have not yet been authored.",
           "type": ["string", "null"]
         },
-        "commit_hash": {
-          "title": "Commit Hash",
-          "description": "Per-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this iteration.",
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ]
+        "repos": {
+          "title": "Per-Repo Commit Entries",
+          "description": "One entry per repo this iteration touches. name is the repo slug (possibly blank for migrated v5 state); commit_hash is the per-repo commit, null until committed.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "commit_hash"],
+            "properties": {
+              "name": { "type": "string" },
+              "commit_hash": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+          }
         }
       }
     },
@@ -408,7 +421,7 @@
       "description": "State for a corrective task injected into the pipeline after a review rejection.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["index", "reason", "injected_after", "status", "nodes", "commit_hash"],
+      "required": ["index", "reason", "injected_after", "status", "nodes", "repos"],
       "properties": {
         "index": {
           "title": "Corrective Task Index",
@@ -441,13 +454,19 @@
           "description": "Relative path to the corrective task handoff doc. Optional; absent on entries that have not yet been authored.",
           "type": ["string", "null"]
         },
-        "commit_hash": {
-          "title": "Commit Hash",
-          "description": "Per-corrective-task commit hash set by the COMMIT_COMPLETED mutation, or null if no commit has been made for this corrective task.",
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ]
+        "repos": {
+          "title": "Per-Repo Commit Entries",
+          "description": "One entry per repo this corrective task touches. name is the repo slug (possibly blank for migrated v5 state); commit_hash is the per-repo commit, null until committed.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "commit_hash"],
+            "properties": {
+              "name": { "type": "string" },
+              "commit_hash": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+          }
         }
       }
     },

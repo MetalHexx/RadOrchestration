@@ -15,8 +15,12 @@ export interface ParsedTask {
   title: string;
   /** Requirement tags mentioned in the task body (e.g. ["FR-1", "DD-1"]). */
   requirementTags: string[];
+  /** Target repo names parsed from the task body's "**Target repos:**" line, deduped by first occurrence. */
+  targetRepos: string[];
   /** Raw lines of the task body, preserved for downstream emission. */
   body: string;
+  /** File-absolute 1-based line number of the task's "### P{NN}-T{MM}:" heading. */
+  startLine: number;
 }
 
 export interface ParsedPhase {
@@ -151,7 +155,7 @@ interface IterationEntry {
   nodes: Record<string, unknown>;
   corrective_tasks: unknown[];
   doc_path?: string | null;
-  commit_hash: string | null;
+  repos: { name: string; commit_hash: string | null }[];
 }
 
 interface ForEachTaskNodeState {
@@ -167,6 +171,7 @@ interface ForEachPhaseNodeState {
 }
 
 interface PipelineState {
+  project?: { project_type?: string; [k: string]: unknown };
   graph: {
     nodes: Record<string, unknown>;
   };
@@ -267,6 +272,7 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
     if (currentTask !== null) {
       currentTask.body = currentBodyLines.join('\n').trimEnd();
       currentTask.requirementTags = extractRequirementTags(currentTask.body);
+      currentTask.targetRepos = extractTargetRepos(currentTask.body);
       currentPhase!.tasks.push(currentTask);
       currentTask = null;
       currentBodyLines = [];
@@ -371,7 +377,9 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
         taskIndex,
         title: (title ?? '').trim(),
         requirementTags: [],
+        targetRepos: [],
         body: '',
+        startLine: lineNumber,
       };
       continue;
     }
@@ -392,6 +400,45 @@ export function parseMasterPlan(masterPlanPath: string): ParsedMasterPlan {
 
   // End of file — flush whatever is open.
   flushPhase();
+
+  // ── Enforce task repo shape ───────────────────────────────────────────────
+  // Walk every parsed task and verify:
+  //   FR-4: a "**Target repos:**" line is present
+  //   FR-5: the line names at least one repo (not empty)
+  //   FR-6: every named repo is within the sealed repos: [] in the frontmatter
+  // Enforcement is only active when the Master Plan declares a sealed repos list.
+  const sealRaw = Array.isArray(frontmatter.repos) ? (frontmatter.repos as unknown[]) : [];
+  const seal = new Set(sealRaw.map(String));
+  if (seal.size > 0) {
+    for (const phase of phases) {
+      for (const task of phase.tasks) {
+        const hasLine = /\*\*Target repos:\*\*/.test(task.body);
+        if (!hasLine) {
+          throw new ParseError({
+            line: task.startLine, expected: 'a "**Target repos:**" line on every task',
+            found: `task ${task.id} with no Target repos line`,
+            message: `Task ${task.id} is missing its "**Target repos:**" line`,
+          });
+        }
+        if (task.targetRepos.length === 0) {
+          throw new ParseError({
+            line: task.startLine, expected: 'at least one repo name on the "**Target repos:**" line',
+            found: `task ${task.id} with an empty Target repos line`,
+            message: `Task ${task.id} has a present-but-empty "**Target repos:**" line`,
+          });
+        }
+        for (const r of task.targetRepos) {
+          if (!seal.has(r)) {
+            throw new ParseError({
+              line: task.startLine, expected: `each task repo to be within the sealed repos: [${[...seal].join(', ')}]`,
+              found: `task ${task.id} names "${r}"`,
+              message: `Task ${task.id} names repo "${r}" which is not in the Master Plan's sealed repos:`,
+            });
+          }
+        }
+      }
+    }
+  }
 
   if (phases.length === 0) {
     // Point at the first body line (= first file line after frontmatter). For
@@ -422,6 +469,19 @@ function extractRequirementTags(body: string): string[] {
   return Array.from(tags);
 }
 
+function extractTargetRepos(body: string): string[] {
+  const repos: string[] = [];
+  const seen = new Set<string>();
+  const lineMatch = body.match(/\*\*Target repos:\*\*[ \t]*([^\n]*)/);
+  if (lineMatch) {
+    const items = (lineMatch[1] ?? '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    for (const item of items) {
+      if (!seen.has(item)) { seen.add(item); repos.push(item); }
+    }
+  }
+  return repos;
+}
+
 // ── Filename helpers ──────────────────────────────────────────────────────────
 
 /**
@@ -450,6 +510,17 @@ function taskFilename(projectName: string, task: ParsedTask): string {
 
 // ── Emission ──────────────────────────────────────────────────────────────────
 
+function unionTaskRepos(phase: ParsedPhase): string[] {
+  const repos: string[] = [];
+  const seen = new Set<string>();
+  for (const task of phase.tasks) {
+    for (const r of task.targetRepos) {
+      if (!seen.has(r)) { seen.add(r); repos.push(r); }
+    }
+  }
+  return repos;
+}
+
 function buildPhaseFrontmatter(opts: {
   projectName: string;
   phase: ParsedPhase;
@@ -461,6 +532,7 @@ function buildPhaseFrontmatter(opts: {
     title: opts.phase.title,
     status: 'active',
     tasks: opts.phase.tasks.map(t => ({ id: `T${String(t.taskIndex).padStart(2, '0')}`, title: t.title })),
+    repos: unionTaskRepos(opts.phase),
     author: 'explosion-script',
     created: opts.createdIso,
     type: 'phase_plan',
@@ -479,6 +551,7 @@ function buildTaskFrontmatter(opts: {
     title: opts.task.title,
     status: 'pending',
     requirement_tags: opts.task.requirementTags,
+    repos: opts.task.targetRepos,
     author: 'explosion-script',
     created: opts.createdIso,
     type: 'task_handoff',
@@ -632,6 +705,9 @@ export function explodeMasterPlan(opts: ExplodeOptions): ExplodeResult {
   // 6. Seed state.json iterations if a state.json exists for the project.
   const state = readState(projectDir);
   if (state !== null) {
+    const fmType = parsed.frontmatter['project-type'];
+    const projectType = fmType === 'side-project' ? 'side-project' : 'standard';
+    state.project = { ...(state.project ?? {}), project_type: projectType };
     seedIterations(state, parsed, projectName, emittedPhaseFiles, emittedTaskFiles, projectDir);
     writeState(projectDir, state);
   }
@@ -690,13 +766,14 @@ function seedIterations(
     for (let j = 0; j < phase.tasks.length; j++) {
       const taskFileAbs = emittedTaskFiles[taskFilePointer++] ?? null;
       const taskFile = taskFileAbs !== null ? toRelativeDocPath(taskFileAbs, projectDir) : null;
+      const task = phase.tasks[j]!;
       taskLoopIterations.push({
         index: j,
         status: 'not_started',
         nodes: {},
         corrective_tasks: [],
         doc_path: taskFile,
-        commit_hash: null,
+        repos: task.targetRepos.map(name => ({ name, commit_hash: null })),
       });
     }
     const taskLoop: ForEachTaskNodeState = {
@@ -711,7 +788,7 @@ function seedIterations(
       nodes: { task_loop: taskLoop },
       corrective_tasks: [],
       doc_path: phaseFile,
-      commit_hash: null,
+      repos: unionTaskRepos(phase).map(name => ({ name, commit_hash: null })),
     };
     phaseLoop.iterations.push(phaseEntry);
   }

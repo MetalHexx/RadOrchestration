@@ -14,7 +14,7 @@ You are an orchestrator. You'll be using the `rad-orchestration` skill for this 
 
 | Subcommand | Input | Output (envelope `data`) | Purpose |
 |--------|-------|--------|---------|
-| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, sourceControlInitialized }` | Detect git environment and read orchestration config |
+| `radorch project context` | *(none — auto-detects)* | `{ repoRoot, repoName, repoParent, currentBranch, defaultBranch, platform, projectsBasePath, configAutoCommit, configAutoPr, remoteUrl, projectDir, projectType, sourceControlInitialized }` | Detect git environment and read orchestration config |
 | `radorch project find` | `--projects-base-path <path> --repo-root <path>` | `{ basePathExists: boolean, projects: [{ name, masterPlanPath, currentTier, existingWorktreePath, existingBranch, worktreeExists }] }` (`basePathExists: false` indicates a missing/misconfigured `projectsBasePath`) | Scan for execution-ready projects and check existing worktrees |
 | `radorch project find` | `--projects-base-path <path> --repo-root <path> --project-name <name>` | Same shape, single-project lookup | Look up one project by name (worktree + master plan info) |
 | `radorch worktree create` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
@@ -29,6 +29,9 @@ Follow these steps in order. Run steps 1–2 silently — do not narrate or disp
 1. **Gather context** — Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context`. Parse fields from the envelope's `data` block.
 
 2. **Identify project** — Check the conversation, open files, and the argument passed to this prompt for a project name (`SCREAMING-CASE`) or master plan path. If found, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project find --projects-base-path "{data.projectsBasePath}" --repo-root "{data.repoRoot}" --project-name {name}` to get worktree info. If not found, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project find --projects-base-path "{data.projectsBasePath}" --repo-root "{data.repoRoot}"` (scan mode) to get all execution-ready candidates.
+
+   **Kind guard (run immediately after the project is identified):**
+   Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {projectName}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, redirect to `/rad-execute` and stop — do not continue to steps 3–7. The entire parallel/worktree path (`project_name`, `branch_from`, `post_action`, `worktree create`, `worktree launch`) applies only to `standard` projects. Tell the user briefly that this is a side-project and has been routed to `/rad-execute` instead.
 
 3. **Ask questions** — Before building the `askQuestions` call, greet the user with a short opening message. Keep it warm and one or two sentences — e.g. *"I'll set up an isolated worktree for this project and get orchestration running inside it. Only projects that have been fully planned and approved will appear in the list below."* Then build one `askQuestions` call with only the applicable questions. Read [references/workflow-guide.md](./references/workflow-guide.md) for the exact question schemas and conditions.
 

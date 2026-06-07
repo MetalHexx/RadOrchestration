@@ -27,8 +27,8 @@ export interface NotStartedPaneV5Props {
 
 /**
  * v5 Not-Started pane — renders the project-specific right-pane card for a
- * Not-Started project. Visual reference is the v4 NotInitializedView but
- * with v5 Button primitives and conditional two-state button row.
+ * Not-Started project, with v5 Button primitives and a conditional
+ * two-state button row.
  */
 export function NotStartedPaneV5({
   projectName,

@@ -277,13 +277,13 @@ test('taskLoopIterationWithCorrective corrective task carries doc_path directly'
   assert.strictEqual(correctiveTask.doc_path, 'tasks/t1-fix.md');
 });
 
-test('taskLoopIterationWithCorrective corrective task commit_hash is null', () => {
+test('taskLoopIterationWithCorrective corrective task repos is empty (no commit)', () => {
   const entries = Object.entries(taskLoopIterationWithCorrective.nodes);
   const found = entries.find(([, n]) => isLoopNode(n));
   assert.ok(found !== undefined);
   const forEachTask = found[1] as ForEachTaskNodeState;
   const correctiveTask = forEachTask.iterations[0].corrective_tasks[0];
-  assert.strictEqual(correctiveTask.commit_hash, null);
+  assert.deepStrictEqual(correctiveTask.repos, []);
 });
 
 // ─── Phase-scope corrective forwarding ──────────────────────────────────────

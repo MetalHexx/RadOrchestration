@@ -37,10 +37,14 @@ export function writeLocal({ root, localPaths }: { root: string; localPaths: Rec
   ensureLocalGitignored({ root });
 }
 
-export function ensureLocalGitignored({ root }: { root: string }): void {
+export function ensureGitignored({ root, entry }: { root: string; entry: string }): void {
   const gi = path.join(root, '.gitignore');
   const existing = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
-  if (existing.split(/\r?\n/).includes(LOCAL)) return;
-  const next = existing && !existing.endsWith('\n') ? existing + '\n' + LOCAL + '\n' : existing + LOCAL + '\n';
+  if (existing.split(/\r?\n/).includes(entry)) return;
+  const next = existing && !existing.endsWith('\n') ? existing + '\n' + entry + '\n' : existing + entry + '\n';
   atomicWrite(gi, next);
+}
+
+export function ensureLocalGitignored({ root }: { root: string }): void {
+  ensureGitignored({ root, entry: LOCAL });
 }

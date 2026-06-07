@@ -20,7 +20,7 @@ beforeEach(() => { cleanups.push(useRealCatalog()); });
 // State at plan_approval_gate (plan ready for approval or rejection).
 // Uses the planning template which defines master_plan and plan_approval_gate.
 const atPlanApprovalGateState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -43,7 +43,7 @@ const atPlanApprovalGateState = {
 
 // State at final_approval_gate (final review done, awaiting approval or rejection).
 const atFinalApprovalGateState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -66,7 +66,7 @@ const atFinalApprovalGateState = {
 
 // State mid-execution for gate_rejected (task gate active, about to be rejected).
 const atTaskGateActiveState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -88,7 +88,7 @@ const atTaskGateActiveState = {
             index: 0,
             status: 'in_progress',
             doc_path: null,
-            commit_hash: null,
+            repos: [],
             corrective_tasks: [],
             nodes: {
               task_loop: {
@@ -99,7 +99,7 @@ const atTaskGateActiveState = {
                     index: 0,
                     status: 'in_progress',
                     doc_path: null,
-                    commit_hash: null,
+                    repos: [],
                     corrective_tasks: [],
                     nodes: {
                       task_gate:     { kind: 'gate', status: 'not_started', gate_active: true },

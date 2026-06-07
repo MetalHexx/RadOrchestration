@@ -8,7 +8,7 @@ import { useConfigEditor } from "@/hooks/use-config-editor";
 import { useConfigClickContext } from "@/hooks/use-config-click-context";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProjectSidebar } from "@/components/sidebar";
-import { MainDashboard, LaunchScreen } from "@/components/layout";
+import { LaunchScreen } from "@/components/layout";
 import { useStartAction } from "@/hooks/use-start-action";
 import { deleteArtifact } from "@/hooks/use-project-artifacts";
 import { DocumentDrawer } from "@/components/documents";
@@ -16,9 +16,9 @@ import { ConfirmApprovalDialog } from "@/components/dashboard";
 import { ConfigEditorPanel } from "@/components/config";
 import { DAGTimeline, DAGTimelineSkeleton, ProjectHeader, HaltReasonBanner, BrainstormingSection, deriveCurrentPhase, derivePhaseProgress, deriveRepoBaseUrl } from "@/components/dag-timeline";
 import { SSEStatusBanner } from "@/components/badges";
-import { getOrderedDocs, getOrderedDocsV5 } from "@/lib/document-ordering";
-import { isV5State } from "@/types/state";
-import type { ProjectState, ProjectStateV5, GraphStatus, GateMode, NodeStatus } from "@/types/state";
+import { getOrderedDocsV5 } from "@/lib/document-ordering";
+import { isV5State, isV6State } from "@/types/state";
+import type { ProjectStateV5, ProjectStateV6, GraphStatus, GateMode, NodeStatus } from "@/types/state";
 import type { SSEConnectionStatus } from "@/types/events";
 import type { ProjectSummary } from "@/types/components";
 import { ArtifactViewerModal } from "@/components/artifacts";
@@ -30,8 +30,7 @@ import { ArtifactLiveProvider, useArtifactLive } from "@/hooks/use-artifact-live
 interface ProjectsPageContentProps {
   selectedProject: string | null;
   selected: ProjectSummary | undefined;
-  v5State: ProjectStateV5 | null;
-  v4State: ProjectState | null;
+  v5State: ProjectStateV5 | ProjectStateV6 | null;
   v5Derivations: {
     graphStatus: GraphStatus | undefined;
     gateMode: GateMode | null | undefined;
@@ -57,7 +56,6 @@ function ProjectsPageContent({
   selectedProject,
   selected,
   v5State,
-  v4State,
   v5Derivations,
   followMode,
   toggleFollowMode,
@@ -144,7 +142,7 @@ function ProjectsPageContent({
 
   return (
     <>
-      {selected && selected.schemaVersion === 'v5' && !v5State && !v4State ? (
+      {selected && (selected.schemaVersion === 'v5' || selected.schemaVersion === 'v6') && !v5State ? (
         <div className="overflow-auto">
           <ProjectHeader
             projectName={selected.name}
@@ -154,6 +152,7 @@ function ProjectsPageContent({
             sourceControl={null}
             followMode={false}
             onToggleFollowMode={() => {}}
+            projectType={selected.project_type}
           />
           <div className="flex flex-col">
             <HaltReasonBanner
@@ -184,6 +183,7 @@ function ProjectsPageContent({
             sourceControl={v5State.pipeline.source_control}
             followMode={followMode}
             onToggleFollowMode={toggleFollowMode}
+            projectType={selected.project_type}
           />
           <div className="flex flex-col">
             <HaltReasonBanner
@@ -223,13 +223,7 @@ function ProjectsPageContent({
             )}
           </div>
         </div>
-      ) : selected && v4State ? (
-        <MainDashboard
-          projectState={v4State}
-          project={selected}
-          onDocClick={openDocument}
-        />
-      ) : selected && selected.tier === 'not_initialized' && !v5State && !v4State && !selected.hasMalformedState ? (
+      ) : selected && selected.tier === 'not_initialized' && !v5State && !selected.hasMalformedState ? (
         <LaunchScreen
           projectName={selected.name}
           artifacts={artifacts}
@@ -297,8 +291,11 @@ export default function ProjectsPage() {
   const [fileList, setFileList] = useState<string[]>([]);
   const [filesLoaded, setFilesLoaded] = useState(false);
 
-  const v5State: ProjectStateV5 | null =
-    projectState && isV5State(projectState) ? projectState : null;
+  const v6State: ProjectStateV6 | null =
+    projectState && isV6State(projectState) ? projectState : null;
+
+  const v5State: ProjectStateV5 | ProjectStateV6 | null =
+    projectState && isV5State(projectState) ? projectState : v6State;
 
   const nodesForFollowMode = v5State ? v5State.graph.nodes : null;
   const { followMode, expandedLoopIds, onAccordionChange, toggleFollowMode } = useFollowMode(nodesForFollowMode, selectedProject);
@@ -314,11 +311,6 @@ export default function ProjectsPage() {
   const selected: ProjectSummary | undefined = useMemo(
     () => projects.find((p) => p.name === selectedProject),
     [projects, selectedProject],
-  );
-
-  const v4State: ProjectState | null = useMemo(
-    () => (projectState && !isV5State(projectState) ? projectState : null),
-    [projectState],
   );
 
   const [pendingDelete, setPendingDelete] = useState<import("@/lib/artifact-model").Artifact | null>(null);
@@ -348,11 +340,8 @@ export default function ProjectsPage() {
     if (v5State && selectedProject) {
       return getOrderedDocsV5(v5State, selectedProject, fileList);
     }
-    if (v4State && selectedProject) {
-      return getOrderedDocs(v4State, selectedProject, fileList);
-    }
     return [];
-  }, [v5State, v4State, selectedProject, fileList]);
+  }, [v5State, selectedProject, fileList]);
 
   // Reset the files-loaded gate on project change ONLY (not on fileRefetch),
   // so deleting an artifact — which bumps fileRefetch — doesn't flash the
@@ -423,7 +412,6 @@ export default function ProjectsPage() {
                 selectedProject={selectedProject}
                 selected={selected}
                 v5State={v5State}
-                v4State={v4State}
                 v5Derivations={v5Derivations}
                 followMode={followMode}
                 toggleFollowMode={toggleFollowMode}

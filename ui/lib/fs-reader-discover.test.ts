@@ -18,35 +18,33 @@ async function setup(): Promise<string> {
   const projectsDir = path.join(dir, '.radorc', 'projects');
   await mkdir(projectsDir, { recursive: true });
 
-  // (a) initialized-project: valid state.json with project.updated set
+  // (a) initialized-project: valid v5 state.json with project.updated set
   await mkdir(path.join(projectsDir, 'initialized-project'));
   await writeFile(
     path.join(projectsDir, 'initialized-project', 'state.json'),
     JSON.stringify({
-      $schema: 'orchestration-state-v4',
+      $schema: 'orchestration-state-v5',
       project: {
         name: 'initialized-project',
         created: '2026-01-01T00:00:00.000Z',
         updated: '2026-04-06T12:00:00.000Z',
       },
+      config: {
+        gate_mode: 'task',
+        limits: { max_phases: 10, max_tasks_per_phase: 20, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
+        source_control: { auto_commit: 'always', auto_pr: 'never' },
+      },
       pipeline: {
+        gate_mode: 'task',
+        source_control: null,
         current_tier: 'execution',
-        gate_mode: null,
+        halt_reason: null,
       },
-      planning: {
-        status: 'complete',
-        human_approved: true,
-        steps: [],
-      },
-      execution: {
-        status: 'not_started',
-        current_phase: 0,
-        phases: [],
-      },
-      final_review: {
-        status: 'not_started',
-        doc_path: null,
-        human_approved: false,
+      graph: {
+        template_id: 'extra-high',
+        status: 'in_progress',
+        current_node_path: null,
+        nodes: {},
       },
     })
   );
@@ -103,10 +101,10 @@ async function run() {
     });
 
     // graphStatus assertions
-    await test('(a2) v4 initialized project — graphStatus is "not_initialized"', async () => {
+    await test('(a2) v5 initialized project — graphStatus reflects graph.status', async () => {
       const p = projects.find(x => x.name === 'initialized-project');
       assert.ok(p, 'initialized-project should be in results');
-      assert.strictEqual(p!.graphStatus, 'not_initialized');
+      assert.strictEqual(p!.graphStatus, 'in_progress');
     });
 
     await test('(b2) no-state project — graphStatus is "not_initialized"', async () => {

@@ -425,7 +425,7 @@ mutationRegistry.set(EVENTS.PHASE_REVIEW_COMPLETED, (state, context, config, tem
       status: 'not_started',
       nodes,
       doc_path: trimmedHandoffPath,
-      commit_hash: null,
+      repos: [],
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected phase corrective task ${entry.index} (changes_requested)`);
@@ -764,7 +764,7 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
       status: 'not_started',
       nodes,
       doc_path: trimmedHandoffPath,
-      commit_hash: null,
+      repos: [],
     };
     iteration.corrective_tasks.push(entry);
     mutations_applied.push(`injected corrective task ${entry.index} (changes_requested, scope=${scope})`);
@@ -896,23 +896,45 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     );
 
     if (activePhaseCorrective) {
-      activePhaseCorrective.commit_hash = commitHash;
-      mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+      // Preserve existing repo names seeded by explode-master-plan; only set the
+      // commit hash on the first entry. If no entries exist yet (empty/absent),
+      // fall back to a blank-name stub. Per-repo commit attribution for multi-repo
+      // tasks remains future work (T03), but names are no longer dropped.
+      if (activePhaseCorrective.repos && activePhaseCorrective.repos.length > 0) {
+        activePhaseCorrective.repos[0].commit_hash = commitHash;
+      } else {
+        activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      }
+      mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
       return { state: cloned, mutations_applied };
     }
 
-    // Write commit_hash to per-task IterationEntry or active CorrectiveTaskEntry
+    // Write commit hash to per-task IterationEntry or active CorrectiveTaskEntry
     const taskIteration = resolveTaskIteration(cloned, phase, task);
     const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
       (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
     );
 
     if (activeCorrective) {
-      activeCorrective.commit_hash = commitHash;
-      mutations_applied.push(`set corrective_task[${activeCorrective.index}].commit_hash = ${commitHash ?? 'null'}`);
+      // Preserve existing repo names; only set the commit hash on the first entry.
+      // If no entries exist yet, fall back to a blank-name stub.
+      if (activeCorrective.repos && activeCorrective.repos.length > 0) {
+        activeCorrective.repos[0].commit_hash = commitHash;
+      } else {
+        activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
+      }
+      mutations_applied.push(`set corrective_task[${activeCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
     } else {
-      taskIteration.commit_hash = commitHash;
-      mutations_applied.push(`set task_iteration[${taskIteration.index}].commit_hash = ${commitHash ?? 'null'}`);
+      // Preserve existing repo names seeded by explode-master-plan; only set the
+      // commit hash on the first entry. If no entries exist yet, fall back to a
+      // blank-name stub. Per-repo commit attribution for multi-repo tasks remains
+      // future work, but names are no longer dropped.
+      if (taskIteration.repos && taskIteration.repos.length > 0) {
+        taskIteration.repos[0].commit_hash = commitHash;
+      } else {
+        taskIteration.repos = [{ name: '', commit_hash: commitHash }];
+      }
+      mutations_applied.push(`set task_iteration[${taskIteration.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
     }
 
     return { state: cloned, mutations_applied };

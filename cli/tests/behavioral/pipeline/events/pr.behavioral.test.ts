@@ -105,7 +105,7 @@ nodes:
 
 // State with final_pr ready for pr_requested: pipeline complete up to final_approval_gate.
 const afterFinalApprovedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',
@@ -143,7 +143,7 @@ const afterFinalApprovedState = {
 
 // State with final_pr in_progress (ready for pr_created).
 const afterPrRequestedState = {
-  $schema: 'orchestration-state-v5',
+  $schema: 'orchestration-state-v6',
   project: { name: 'cli-behavioral', created: '2024-01-01T00:00:00.000Z', updated: '2024-01-01T00:00:00.000Z' },
   config: {
     gate_mode: 'task',

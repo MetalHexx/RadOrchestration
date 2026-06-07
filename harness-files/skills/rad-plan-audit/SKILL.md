@@ -27,7 +27,7 @@ counts as a finding. The calibration clause governs severity.
 | Mode | When to use | Workflow |
 |------|-------------|----------|
 | **Self-Review** | You are a planning agent creating or revising one of the two docs | [self-review.md](./references/self-review.md) |
-| **Full Audit** | Reviewing both docs after creation | [full-audit.md](./references/full-audit.md) |
+| **Full Audit** | You are the planner subagent dispatched to review both docs after creation | [full-audit.md](./references/full-audit.md) |
 | **Corrections** | You are the planner subagent dispatched to apply an `issues_found` audit report | [corrections-workflow.md](./references/corrections-workflow.md) |
 
 Load the appropriate workflow document and follow it.

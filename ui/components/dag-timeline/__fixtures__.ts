@@ -68,7 +68,7 @@ export const baseCorrectiveTask: CorrectiveTaskEntry = {
   status: 'not_started',
   nodes: {},
   doc_path: 'tasks/t1-fix.md',
-  commit_hash: null,
+  repos: [],
 };
 
 export const taskLoopIteration: IterationEntry = {
@@ -91,7 +91,7 @@ export const taskLoopIteration: IterationEntry = {
             task_gate: { kind: 'gate', status: 'completed', gate_active: false },
           },
           corrective_tasks: [],
-          commit_hash: 'def5678abc1234',
+          repos: [{ name: '', commit_hash: 'def5678abc1234' }],
         },
       ],
     } satisfies ForEachTaskNodeState,
@@ -100,7 +100,7 @@ export const taskLoopIteration: IterationEntry = {
     phase_gate: gateNode,
   },
   corrective_tasks: [],
-  commit_hash: 'abc1234def5678',
+  repos: [{ name: '', commit_hash: 'abc1234def5678' }],
 };
 
 /** Simplified task loop iteration with a corrective task — omits commit_gate to focus on corrective-task structure */
@@ -130,17 +130,17 @@ export const taskLoopIterationWithCorrective: IterationEntry = {
               status: 'completed',
               nodes: {},
               doc_path: 'tasks/t1-fix.md',
-              commit_hash: null,
+              repos: [],
             },
           ],
-          commit_hash: 'aaa1111bbb2222',
+          repos: [{ name: '', commit_hash: 'aaa1111bbb2222' }],
         },
       ],
     } satisfies ForEachTaskNodeState,
     phase_gate: gateNode,
   },
   corrective_tasks: [],
-  commit_hash: 'ccc3333ddd4444',
+  repos: [{ name: '', commit_hash: 'ccc3333ddd4444' }],
 };
 
 /** Compound node IDs used in getDisplayName tests */

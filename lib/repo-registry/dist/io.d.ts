@@ -11,6 +11,10 @@ export declare function writeLocal({ root, localPaths }: {
     root: string;
     localPaths: Record<string, string>;
 }): void;
+export declare function ensureGitignored({ root, entry }: {
+    root: string;
+    entry: string;
+}): void;
 export declare function ensureLocalGitignored({ root }: {
     root: string;
 }): void;

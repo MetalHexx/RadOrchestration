@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
-import type { ProjectState } from '@/types/state';
+import type { AnyProjectState } from '@/types/state';
 import { getProjectsRoot, getRegistryRoot } from '@/lib/path-resolver';
 import { getLiveRuntime } from '@/lib/live/live-hub-runtime';
 
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         enqueue(
           createSSEEvent('state_change', {
             projectName: n.payload.projectName,
-            state: n.payload.state as ProjectState,
+            state: n.payload.state as AnyProjectState,
           }),
         ),
       );

@@ -52,6 +52,22 @@ becomes task-local and action-oriented.
         - `### P{NN}-T{MM}:` heading with a malformed id (e.g. `T-X`, `TX`).
         - Task heading appearing before any phase heading.
         - Task heading whose phase id does not match its enclosing phase.
+        - Task block missing its `**Target repos:**` line entirely — fix by
+          adding a `**Target repos:** <repo>` line immediately after
+          `**Requirements:**`.
+        - Task block has a `**Target repos:**` line that names zero repos (the
+          value is blank or whitespace only) — fix by supplying at least one
+          registry repo name on that line.
+        - Task block names a repo in `**Target repos:**` that is not in the
+          Master Plan's sealed frontmatter `repos:` set — fix by either
+          changing the target repo to one already in the seal, or extending
+          the frontmatter `repos:` seal to include the new repo (and
+          cross-checking all phase-level `**Target repos:**` union lines).
+      These repo-shape failures arrive through the identical structured
+      `{ line, expected, found, message }` parse-error shape and the same
+      hardcoded retry cap as the heading failures above, so apply the same
+      narrow-fix discipline on retries 3+: address only the exact issue
+      identified by `last_parse_error`; do not re-engineer the plan.
     - Re-emit the Master Plan with the correction. Other content stays as
       before unless explicitly impacted by the formatting fix.
     - The recovery loop has a hardcoded cap of 3 retries. After the cap, the
@@ -280,14 +296,34 @@ becomes task-local and action-oriented.
 
 **Frontmatter**:
 
+Standard project example:
+
 ```yaml
 ---
 project: "{PROJECT-NAME}"
 type: master_plan
 status: "draft"
 created: "{YYYY-MM-DD}"
+project-type: standard
 repos: [repo-a, repo-b]
-repo-group: repo-group-name 
+repo-group: repo-group-name
+total_phases: {N}
+total_tasks: {N}
+author: "planner-agent"
+---
+```
+
+Side-project example:
+
+```yaml
+---
+project: "{PROJECT-NAME}"
+type: master_plan
+status: "draft"
+created: "{YYYY-MM-DD}"
+project-type: side-project
+repos: ["{PROJECT-NAME}"]
+repo-group: null
 total_phases: {N}
 total_tasks: {N}
 author: "planner-agent"
@@ -295,8 +331,18 @@ author: "planner-agent"
 ```
 
 - `status`: `draft` | `approved`. Always `draft` at authoring time.
-- `repos`: list of registry repo names — the **sealed, authoritative** repo set for the project. This is the single source of truth the explosion script will read; downstream documents are superseded by this seal.
-- `repo-group`: the repo-group scope for this project.
+- `project-type`: `standard` | `side-project`. Carry the value from the Requirements doc's
+  `project-type` field. Absence means a doc predating this field and is treated as `standard`.
+  For `standard` projects, stamp `project-type: standard` and derive `repos`/`repo-group` from
+  the registry seal (see Step 2b). For `side-project`, stamp `project-type: side-project` and
+  seal `repos: [<project-name>]` with `repo-group: null` — derived from the kind, not a registry
+  lookup. The existing seal-vs-body lint still applies: the single `[<project-name>]` seal must
+  equal the union of all tasks' `**Target repos:**` values in the body.
+- `repos`: for `standard` projects, the **sealed, authoritative** list of registry repo names —
+  the single source of truth the explosion script will read; downstream documents are superseded
+  by this seal. For `side-project`, sealed as `[<project-name>]` — a single entry equal to the
+  project name.
+- `repo-group`: the repo-group scope for `standard` projects; `null` for `side-project`.
 - `total_phases`: count of `## P\d{2}:` headings.
 - `total_tasks`: count of `### P\d{2}-T\d{2}:` headings.
 - `author`: exactly `"planner-agent"`.
