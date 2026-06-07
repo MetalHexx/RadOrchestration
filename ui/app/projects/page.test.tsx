@@ -6,13 +6,13 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
-import ProjectsPage from './page';
+import ProjectsPage from './[[...slug]]/page';
 
 // ─── Source text helper ───────────────────────────────────────────────────────
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const sourceText = readFileSync(join(__dirname, 'page.tsx'), 'utf-8');
+const sourceText = readFileSync(join(__dirname, '[[...slug]]', 'page.tsx'), 'utf-8');
 
 // ─── Test runner ─────────────────────────────────────────────────────────────
 
@@ -154,8 +154,8 @@ async function run() {
     const useProjectsCallIdx = sourceText.indexOf('useProjects(');
     assert.ok(useProjectsCallIdx >= 0, 'page.tsx must call useProjects(');
     assert.ok(
-      /const\s*\{[^}]*\bsseStatus\b[^}]*\breconnect\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText)
-      || /const\s*\{[^}]*\breconnect\b[^}]*\bsseStatus\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText),
+      /const\s*\{[^}]*\bsseStatus\b[^}]*\breconnect\b[^}]*\}\s*=\s*useProjects\([^)]*\)/.test(sourceText)
+      || /const\s*\{[^}]*\breconnect\b[^}]*\bsseStatus\b[^}]*\}\s*=\s*useProjects\([^)]*\)/.test(sourceText),
       'page.tsx must destructure sseStatus and reconnect from useProjects()'
     );
   });
@@ -166,8 +166,8 @@ async function run() {
     // describe that one shared connection. The banner reads them from useProjects,
     // keeping a single source of truth without the page opening its own stream.
     assert.ok(
-      /const\s*\{[^}]*\bsseStatus\b[^}]*\breconnect\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText)
-      || /const\s*\{[^}]*\breconnect\b[^}]*\bsseStatus\b[^}]*\}\s*=\s*useProjects\(\)/.test(sourceText),
+      /const\s*\{[^}]*\bsseStatus\b[^}]*\breconnect\b[^}]*\}\s*=\s*useProjects\([^)]*\)/.test(sourceText)
+      || /const\s*\{[^}]*\breconnect\b[^}]*\bsseStatus\b[^}]*\}\s*=\s*useProjects\([^)]*\)/.test(sourceText),
       'page.tsx must source sseStatus and reconnect from useProjects(), which rides the one shared connection'
     );
     assert.ok(
@@ -240,6 +240,7 @@ async function run() {
     const importSpecifiers = Array.from(sourceText.matchAll(/from\s+["']([^"']+)["']/g)).map(m => m[1]);
     const knownImports = new Set([
       'react',
+      'next/navigation',
       '@/hooks/use-projects',
       '@/hooks/use-document-drawer',
       '@/hooks/use-follow-mode',
@@ -284,6 +285,22 @@ async function run() {
       !bandRegion.includes('aria-live'),
       'Status band container must not carry aria-live (live regions belong to banner components T02/T03)'
     );
+  });
+
+  await test('Source reads the project slug from usePathname and feeds it to useProjects (URL precedence)', () => {
+    assert.ok(/import\s*\{[^}]*\busePathname\b[^}]*\}\s*from\s*["']next\/navigation["']/.test(sourceText),
+      'page must import usePathname from next/navigation (it tracks shallow history.pushState; useParams does not)');
+    assert.ok(sourceText.includes('useProjects(urlProject)'),
+      'page must pass the URL-named project into useProjects so it wins over the localStorage restore');
+    assert.ok(/const\s+urlProject\s*=/.test(sourceText),
+      'page must derive urlProject from the slug');
+  });
+
+  await test('Source degrades an unknown project to a load-gated not-found notice', () => {
+    assert.ok(sourceText.includes("router.replace('/projects')"),
+      'unknown project must fall back to bare /projects');
+    assert.ok(/notFoundName/.test(sourceText),
+      'page must track a client-rendered not-found name');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

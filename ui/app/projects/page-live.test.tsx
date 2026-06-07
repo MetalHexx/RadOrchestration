@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const SRC = readFileSync(path.join(process.cwd(), 'app', 'projects', 'page.tsx'), 'utf-8');
+const SRC = readFileSync(path.join(process.cwd(), 'app', 'projects', '[[...slug]]', 'page.tsx'), 'utf-8');
 
 test('projects page mounts ArtifactLiveProvider (AD-8)', () => {
   assert.ok(SRC.includes('ArtifactLiveProvider'), 'provider imported and mounted');

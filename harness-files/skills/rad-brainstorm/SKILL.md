@@ -46,15 +46,25 @@ If the user references past work, related projects, or a known domain, consider 
 If the user offers documentation that could help with planning, offer to link it to the "Related Projects" section of the BRAINSTORMING.md.  This could include design docs, images, architecture diagrams, product requirement documents, or any other relevant materials.  The goal is to create a rich context for the project that planners can refer to when they start working on it.
 
 ## Making It Visual
-A brainstorm doesn't have to be words on a page.  When the user wants to *see* their thinking — a visual summary of the goals, a diagram, or a polished recap of the session — offer to generate one: a self-contained HTML companion to the brainstorm.  Follow [make-it-visual.md](./references/make-it-visual.md).
+A brainstorm doesn't have to be words on a page.  Whenever the conversation surfaces a visual surface — goals, UI flows, summaries — **proactively offer** to generate a visual companion. Offer rather than impose; if the user declines, follow their lead. Never auto-generate.  When the user wants to *see* their thinking — a visual summary of the goals, a diagram, or a polished recap of the session — offer to generate one: a self-contained HTML companion to the brainstorm.  Follow [make-it-visual.md](./references/make-it-visual.md).
 
 **Name the brainstorm visual exactly `{PROJECT}-BRAINSTORM.html`** — no `-VISUAL` or other suffix, `SCREAMING-CASE` project prefix.  The dashboard keys off this exact name to fill the project's **Brainstorm Visual** slot; a misnamed file still appears (the dashboard surfaces any root `.html`) but lands as a *generic* visual instead of filling that slot.  One brainstorm visual per project — regenerating overwrites it.  Other creative or supporting HTML docs are welcome — give *those* their own descriptive names and reserve `{PROJECT}-BRAINSTORM.html` for the brainstorm visual.
 
 ## Generating Mockups & Wireframes
-If the project has a UI, UX, or any visual surface, offer to mock it up.  A wireframe makes an abstract idea concrete and often surfaces details the user hadn't considered yet — exactly the kind of thinking this skill exists to provoke.  Follow [generate-mockup.md](./references/generate-mockup.md), which writes `{PROJECT}-WIREFRAME-{SLUG}.html` (one file per screen — a project may have several) to the project root.
+If the project has a UI, UX, or any visual surface, **proactively offer** to mock it up — don't wait for the user to ask.  A wireframe makes an abstract idea concrete and often surfaces details the user hadn't considered yet — exactly the kind of thinking this skill exists to provoke.  Offer rather than impose; follow their lead, and never auto-generate.  Follow [generate-mockup.md](./references/generate-mockup.md), which writes `{PROJECT}-WIREFRAME-{SLUG}.html` (one file per screen — a project may have several) to the project root.
+
+When offering or generating a mockup, use the **fidelity ladder** to match the user's needs:
+
+| Level | What it looks like | When to use |
+|---|---|---|
+| **Low** (default) | Paper-napkin wireframe — dark mode, rough shapes, minimal labels | Quick alignment; early-stage thinking; when the user hasn't specified |
+| **Medium** | Cleaner layout — grayscale, realistic labels, approximate spacing | When structure and flow need to be clear; ready to share with stakeholders |
+| **High** | Close to the real app — brand hints, design tokens, polished components | When presenting a near-final UI vision or validating a specific design direction |
+
+**Default to low fidelity** unless the user specifies otherwise.
 
 ## Visualizing Architecture & Technical Discussions
-When talk turns technical — architecture, data/control flow, state, sequences — **offer a diagram** (never auto), and **ground it in the real code** (boxes = actual files; verify they exist). A subagent renders it as self-contained HTML → `{PROJECT}-TECH-DIAGRAM-{SLUG}.html`. Flow/sequence diagrams especially: **render and eyeball the result — never trust a self-reported "no overlaps."** Follow [architecture-visuals.md](./references/architecture-visuals.md).
+When talk turns technical — architecture, data/control flow, state, sequences — **proactively offer a diagram** the moment a technical structure is in play (never auto-generate; follow their lead).  Ground it in the real code (boxes = actual files; verify they exist). A subagent renders it as self-contained HTML → `{PROJECT}-TECH-DIAGRAM-{SLUG}.html`. Flow/sequence diagrams especially: **render and eyeball the result — never trust a self-reported "no overlaps."** Follow [architecture-visuals.md](./references/architecture-visuals.md).
 
 ## Delegate Visual Generation to a Subagent
 Always hand visual generation off to a subagent rather than producing it inline — it keeps the brainstorming thread focused and lets the visual work happen in its own context.  Choose the mode deliberately:
@@ -68,10 +78,9 @@ BRAINSTORMING.md and any visuals or wireframes must always stay in lockstep — 
 ## View Scribed Docs in the Dashboard
 The Rad Orchestration dashboard is the **canonical viewer** for every artifact this skill produces — the BRAINSTORMING.md, visuals, wireframes, and diagrams. Route the user *into* it; **never** open a document as a `file://` page in a separate browser tab unless the user asks.
 
-- **Before scribing** any document, **silently** check whether the dashboard is running with `/rad-ui-status`.
-- **After the document is written**, offer to open it in the dashboard at its deep link: `<base>/projects/<PROJECT-NAME>/docs/<DOC-FILE-NAME>`, where `<base>` is the URL `/rad-ui-status` reports. This opens the app straight to that document in the viewer modal.
-- **If the UI is not running**, offer to start it (`/rad-ui-start`) and then open — one smooth path from "down" to "viewing the doc."
-- Offer when a doc **lands**, not on every micro-edit — don't nag. Applies to the markdown brainstorm *and* any generated visual; point at whichever doc you just wrote.
+- **After a document lands**, offer to open it in the dashboard. On yes, call `/rad-ui-start` — it is idempotent (a no-op if the UI is already running) — and build the deep link from the `data.url` it returns: `<base>/projects/<PROJECT-NAME>/docs/<DOC-FILE-NAME>`, where `<base>` is that returned `data.url`. Never hard-code a host or port.
+- Offer once per **distinct document that lands** — not on micro-edits, not repeatedly. Applies to the markdown brainstorm *and* any generated visual; point at whichever doc you just wrote.
+- The standalone `rad-ui-status` skill/command remains available for the user to check UI status directly, but nothing in this skill depends on it programmatically.
 
 ## Offer to start planning
 - Once you detect that you've reached a reasonable number of goals, offer to help them execute the `/rad-plan` skill to create the project plan.  This is a natural next step after brainstorming, and you can help them get there when the time is right.  

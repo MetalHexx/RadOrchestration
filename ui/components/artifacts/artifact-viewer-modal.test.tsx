@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import React, { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ArtifactViewerModal } from './artifact-viewer-modal';
@@ -173,4 +175,44 @@ test('shows a loading spinner while markdown content is unresolved (Extras)', ()
   const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md', markdownContent: null });
   assert.ok(html.includes('role="status"'), 'markdown loading spinner present');
   assert.ok(html.includes('aria-label="Loading document"'), 'spinner is labelled');
+});
+
+test('renders a Share control on the shared ghost button in the header', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  assert.ok(html.includes('aria-label="Share / copy link"'), 'share control present and labelled');
+});
+
+test('header controls use the shared button slot while preserving their labels', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  const slots = (html.match(/data-slot="button"/g) ?? []).length;
+  assert.ok(slots >= 3, 'Share, Full screen, and Close all render on the shared Button');
+  assert.ok(html.includes('aria-label="Full screen"'), 'Full screen label preserved');
+  assert.ok(html.includes('aria-label="Close"'), 'Close label preserved');
+});
+test('delete stays a corner overlay and the footer holds only the filmstrip', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  assert.ok(html.includes('aria-label="Delete artifact"'), 'delete control still present');
+  const footerStart = html.indexOf('<footer');
+  assert.ok(footerStart >= 0 && html.indexOf('aria-label="Delete artifact"') < footerStart,
+    'delete is outside the footer (corner overlay), not crammed into the filmstrip row');
+});
+
+test('overflow edge fades are non-interactive and end chevrons are labelled', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  assert.ok(html.includes('aria-label="Scroll filmstrip left"'), 'left paging chevron present');
+  assert.ok(html.includes('aria-label="Scroll filmstrip right"'), 'right paging chevron present');
+  assert.ok(html.includes('pointer-events-none'), 'edge fades do not block cell interaction');
+});
+
+test('share feedback timer is captured in a ref and cleared on unmount (FR-6, NFR-1)', () => {
+  const src = readFileSync(
+    path.join(process.cwd(), 'components', 'artifacts', 'artifact-viewer-modal.tsx'),
+    'utf-8',
+  );
+  assert.match(src, /\b(\w+Ref)\s*=\s*(?:React\.)?useRef\b/,
+    'a ref is declared to hold the share-feedback timer handle');
+  assert.match(src, /(\w+Ref)\.current\s*=\s*setTimeout\(/,
+    'the setTimeout handle is stored in the ref instead of being fire-and-forget');
+  assert.match(src, /clearTimeout\(\s*\w+Ref\.current\s*\)/,
+    'an unmount cleanup clears the captured timer');
 });

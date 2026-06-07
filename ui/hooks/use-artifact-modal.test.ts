@@ -8,6 +8,8 @@ import {
   markdownPathForActive,
   fileNameAtOffset,
   fileNameAfterDelete,
+  openNavMode,
+  closeNavMode,
 } from './use-artifact-modal';
 import type { Artifact } from '@/lib/artifact-model';
 
@@ -121,4 +123,14 @@ test('fileNameAfterDelete returns null when the only file is removed so the moda
 
 test('fileNameAfterDelete returns null when the active filename is absent', () => {
   assert.equal(fileNameAfterDelete(arts, 'GONE.md'), null);
+});
+
+test('openNavMode pushes when opening from closed and replaces when switching', () => {
+  assert.equal(openNavMode(false), 'push');
+  assert.equal(openNavMode(true), 'replace');
+});
+
+test('closeNavMode goes back when the open pushed an entry, else replaces to the project route', () => {
+  assert.equal(closeNavMode(true), 'back');
+  assert.equal(closeNavMode(false), 'replace');
 });

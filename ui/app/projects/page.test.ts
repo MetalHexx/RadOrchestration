@@ -11,7 +11,7 @@ import path from 'node:path';
 
 async function run() {
   const src = await readFile(
-    path.resolve(__dirname, 'page.tsx'), 'utf-8',
+    path.resolve(__dirname, '[[...slug]]', 'page.tsx'), 'utf-8',
   );
 
   assert.ok(

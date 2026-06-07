@@ -1,7 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { buildDocDeepLink } from "@/lib/deep-link";
+import { centerScrollLeft, pageScrollDelta, shouldHijackWheel } from "@/lib/filmstrip-scroll";
 import { IframePreview } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
 import { BufferedStage } from "./buffered-stage";
@@ -58,6 +62,40 @@ export function ArtifactViewerModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onPrev, onNext, onClose]);
 
+  const [shareState, setShareState] = React.useState<'idle' | 'copied' | 'failed'>('idle');
+  const shareTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleShare = React.useCallback(async () => {
+    if (!activeFileName) return;
+    const url = buildDocDeepLink(window.location.origin, projectName, activeFileName);
+    const ok = await copyTextToClipboard(url);
+    setShareState(ok ? 'copied' : 'failed');
+    if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
+    shareTimerRef.current = setTimeout(() => setShareState('idle'), 2000);
+  }, [projectName, activeFileName]);
+  React.useEffect(() => () => {
+    if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
+  }, []);
+
+  const stripRef = React.useRef<HTMLDivElement | null>(null);
+  const activeCellRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const c = stripRef.current, cell = activeCellRef.current;
+    if (!c || !cell) return;
+    c.scrollLeft = centerScrollLeft(c.clientWidth, cell.offsetLeft, cell.clientWidth);
+  }, [activeFileName]);
+
+  React.useEffect(() => {
+    const c = stripRef.current;
+    if (!c) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!shouldHijackWheel(e.deltaX, e.deltaY, c.scrollWidth, c.clientWidth)) return;
+      e.preventDefault();
+      c.scrollLeft += e.deltaY;
+    };
+    c.addEventListener('wheel', onWheel, { passive: false });
+    return () => c.removeEventListener('wheel', onWheel);
+  }, []);
+
   if (!active) return null;
   const friendly = active.title ?? active.label;
 
@@ -81,16 +119,24 @@ export function ArtifactViewerModal({
           <span className="text-sm font-medium text-foreground">{friendly}</span>
           <span title={active.fileName} className="truncate text-xs text-muted-foreground">{active.fileName}</span>
           <div className="ml-auto flex items-center gap-1">
-            <button type="button" aria-label="Full screen" onClick={onToggleFullScreen}
-              className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" aria-label="Share / copy link"
+              className="cursor-pointer" onClick={handleShare}>
+              <Share2 className="size-4" aria-hidden="true" />
+            </Button>
+            <Button variant="ghost" size="icon" aria-label="Full screen" className="cursor-pointer" onClick={onToggleFullScreen}>
               <Maximize2 className="size-4" aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Close" onClick={onClose}
-              className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-foreground">
+            </Button>
+            <Button variant="ghost" size="icon" aria-label="Close" className="cursor-pointer" onClick={onClose}>
               <X className="size-4" aria-hidden="true" />
-            </button>
+            </Button>
           </div>
         </header>
+        {shareState !== 'idle' && (
+          <div role="status" aria-live="polite"
+            className="absolute right-4 top-12 z-10 rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-md">
+            {shareState === 'copied' ? 'Link copied' : 'Copy failed'}
+          </div>
+        )}
 
         <div className="relative flex-1 overflow-hidden bg-muted">
           <BufferedStage
@@ -122,13 +168,27 @@ export function ArtifactViewerModal({
           </button>
         </div>
 
-        <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
+        <footer className="relative border-t border-border px-4 py-3">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-card to-transparent" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-card to-transparent" aria-hidden="true" />
+          <Button variant="ghost" size="icon-sm" aria-label="Scroll filmstrip left"
+            className="absolute left-1 top-1/2 z-20 -translate-y-1/2 cursor-pointer"
+            onClick={() => { const c = stripRef.current; if (c) c.scrollBy({ left: -pageScrollDelta(c.clientWidth) }); }}>
+            <ChevronLeft className="size-4" aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Scroll filmstrip right"
+            className="absolute right-1 top-1/2 z-20 -translate-y-1/2 cursor-pointer"
+            onClick={() => { const c = stripRef.current; if (c) c.scrollBy({ left: pageScrollDelta(c.clientWidth) }); }}>
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Button>
+          <div ref={stripRef as React.RefObject<HTMLDivElement>} className="flex items-end gap-2 overflow-x-auto px-8">
           {artifacts.map((artifact) => {
             const pulsing = activePulse?.has(artifact.fileName) ?? false;
             return (
             <ActivePulse key={artifact.fileName} active={pulsing} variant="frame" className="rounded-md">
             <div
               data-filmstrip-cell
+              ref={artifact.fileName === activeFileName ? activeCellRef : undefined}
               role="button"
               tabIndex={0}
               aria-label={`View ${artifact.title ?? artifact.label}`}
@@ -175,6 +235,7 @@ export function ArtifactViewerModal({
             </ActivePulse>
             );
           })}
+          </div>
         </footer>
       </div>
     </div>

@@ -4,9 +4,10 @@ When a brainstorm turns technical — architecture, data flow, component relatio
 
 ## When to Offer
 
-Watch for the conversation shifting from *what / why* to *how it's built*: the user starts reasoning about components, services, data movement, request/response flows, lifecycles and states, schemas, or deployment. At those moments, **proactively offer** a diagram — *"want me to sketch this as a quick architecture diagram so we can see how it fits together?"* — and **generate only on confirmation**.
+The moment a technical structure enters the conversation — components, services, data movement, request/response flows, lifecycles and states, schemas, or deployment — **proactively offer a diagram** without waiting for the user to ask: *"want me to sketch this as a quick architecture diagram so we can see how it fits together?"*  Generate only on confirmation.
 
-- **Offer, don't impose.** Never auto-generate, and never push the conversation technical before the user is ready (follow their lead — the skill's default stance is high-level first).
+- **Offer, don't impose.** Never auto-generate. Follow their lead — if they decline, return to prose.
+- **Never push the conversation technical** before the user is ready; the skill's default stance is high-level first.
 - **Altitude test:** if you're about to describe a system in three or more paragraphs of prose, a diagram is probably the better artifact.
 
 ## The Menu — Offer the Right Type

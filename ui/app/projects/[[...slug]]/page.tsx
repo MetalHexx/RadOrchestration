@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -50,6 +51,7 @@ interface ProjectsPageContentProps {
   setPendingDelete: (a: import("@/lib/artifact-model").Artifact | null) => void;
   onActiveFileNameChange: (fileName: string | null) => void;
   registerOnDeleted: (fn: () => void) => void;
+  urlDoc: string | null;
 }
 
 function ProjectsPageContent({
@@ -68,12 +70,27 @@ function ProjectsPageContent({
   setPendingDelete,
   onActiveFileNameChange,
   registerOnDeleted,
+  urlDoc,
 }: ProjectsPageContentProps) {
   const live = useArtifactLive();
   const artifacts = live.artifacts;
 
   const getArtifacts = useCallback(() => artifacts, [artifacts]);
-  const modal = useArtifactModal(getArtifacts);
+  // In-modal doc switching mutates the URL with the History API, NOT the Next router.
+  // router.push/replace remounts this page (App Router re-keys the [[...slug]] segment on a
+  // param change), which would reset isFullScreen, throw away the BufferedStage cross-fade,
+  // and refetch — i.e. the "full page reload" jank. window.history.{push,replace}State updates
+  // the address bar without a navigation, so the page only re-renders: fullscreen and the
+  // cross-fade survive. usePathname() (read side, outer component) tracks these shallow updates.
+  const navigate = useCallback((fileName: string | null, mode: 'push' | 'replace' | 'back') => {
+    if (!selectedProject) return;
+    if (mode === 'back') { window.history.back(); return; }
+    const base = `/projects/${encodeURIComponent(selectedProject)}`;
+    const url = fileName ? `${base}/docs/${encodeURIComponent(fileName)}` : base;
+    if (mode === 'replace') window.history.replaceState(null, '', url);
+    else window.history.pushState(null, '', url);
+  }, [selectedProject]);
+  const modal = useArtifactModal(getArtifacts, urlDoc, navigate);
   const openArtifactModal = modal.openByName;
 
   React.useEffect(() => {
@@ -258,6 +275,18 @@ function ProjectsPageContent({
           mtimes={live.mtimes}
         />
       )}
+
+      {modal.open && filesLoaded && !artifacts.some((a) => a.fileName === modal.activeFileName) && (
+        <div role="alert" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-card p-6 text-card-foreground shadow-lg">
+            <p className="text-sm text-muted-foreground">Document not found.</p>
+            <button type="button" onClick={() => navigate(null, 'replace')}
+              className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -265,6 +294,21 @@ function ProjectsPageContent({
 // ─── Outer component — mounts ArtifactLiveProvider ───────────────────────────
 
 export default function ProjectsPage() {
+  const pathname = usePathname();
+  // Read the route from usePathname() (not useParams()) because in-modal navigation now
+  // mutates the URL with window.history.{push,replace}State — a shallow update that Next 14.1+
+  // reflects in usePathname() but NOT in useParams(). usePathname() returns the ENCODED path,
+  // so decode each segment exactly once (the write side encodes once — see `navigate`). A guard
+  // keeps a malformed '%' from throwing URIError; it falls through to the not-found state.
+  const segs = pathname.split('/').filter(Boolean); // ["projects", <project?>, "docs", <doc?>]
+  const decodeSeg = (s: string | undefined): string | null => {
+    if (s === undefined) return null;
+    try { return decodeURIComponent(s); } catch { return s; }
+  };
+  const urlProject = segs.length >= 2 ? decodeSeg(segs[1]) : null;
+  const urlDoc = segs.length >= 4 && segs[2] === 'docs' ? decodeSeg(segs[3]) : null;
+  const router = useRouter();
+
   const {
     projects,
     selectedProject,
@@ -274,7 +318,23 @@ export default function ProjectsPage() {
     error,
     sseStatus,
     reconnect,
-  } = useProjects();
+  } = useProjects(urlProject);
+
+  const [notFoundName, setNotFoundName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlProject && urlProject !== selectedProject && projects.some((p) => p.name === urlProject)) {
+      selectProject(urlProject);
+    }
+  }, [urlProject, selectedProject, projects, selectProject]);
+
+  useEffect(() => {
+    if (!urlProject) { setNotFoundName(null); return; }
+    if (!isLoading && projects.length > 0 && !projects.some((p) => p.name === urlProject)) {
+      setNotFoundName(urlProject);
+      router.replace('/projects');
+    }
+  }, [urlProject, isLoading, projects, router]);
 
   const {
     isOpen,
@@ -406,6 +466,12 @@ export default function ProjectsPage() {
                 <p className="text-sm text-destructive" role="alert">{error}</p>
               </div>
             </div>
+          ) : notFoundName && !selected ? (
+            <div className="flex h-full items-center justify-center p-6">
+              <p className="text-sm text-muted-foreground" role="alert">
+                Project &ldquo;{notFoundName}&rdquo; was not found.
+              </p>
+            </div>
           ) : selected ? (
             <ArtifactLiveProvider projectName={selectedProject} activeFileName={activeFileName}>
               <ProjectsPageContent
@@ -424,6 +490,7 @@ export default function ProjectsPage() {
                 setPendingDelete={setPendingDelete}
                 onActiveFileNameChange={setActiveFileName}
                 registerOnDeleted={registerOnDeleted}
+                urlDoc={urlDoc}
               />
             </ArtifactLiveProvider>
           ) : (

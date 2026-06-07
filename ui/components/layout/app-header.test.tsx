@@ -113,7 +113,7 @@ function findByHref(element: unknown, href: string): NavLinkElement | null {
  * the component can be called as a plain function (no React renderer needed).
  * tsx compiles imports to CJS require(), so require.cache is accessible.
  */
-function loadAppHeaderWithMockedNav(): typeof AppHeader {
+function loadAppHeaderWithMockedNav(pathname = '/'): typeof AppHeader {
   const req = require as NodeRequire & { cache: Record<string, { exports: unknown }> };
   const navPath = req.resolve('next/navigation');
   const headerPath = req.resolve('./app-header');
@@ -123,7 +123,7 @@ function loadAppHeaderWithMockedNav(): typeof AppHeader {
   // Replace next/navigation exports so the re-loaded app-header gets the mock.
   const mock = Object.create(origNavExports as object) as Record<string, unknown>;
   Object.defineProperty(mock, 'usePathname', {
-    value: () => '/',
+    value: () => pathname,
     writable: true,
     enumerable: true,
     configurable: true,
@@ -256,6 +256,15 @@ async function run() {
       sourceText.includes('text-muted-foreground/60'),
       'app-header.tsx must style the version span with text-muted-foreground/60'
     );
+  });
+
+  await test('Projects tab stays highlighted on a deep project URL (prefix match)', () => {
+    const AppHeaderMocked = loadAppHeaderWithMockedNav('/projects/DEMO');
+    const navLinks = [{ label: 'Home', href: '/' }, { label: 'Projects', href: '/projects' }];
+    const tree = AppHeaderMocked({ sseStatus: 'connected', onReconnect: () => {}, onConfigClick: () => {}, navLinks });
+    const projectsLink = findByHref(tree, '/projects');
+    assert.notStrictEqual(projectsLink, null, 'Expected to find link with href="/projects"');
+    assert.strictEqual(projectsLink!.props?.['aria-current'], 'page', 'deep project URL keeps the Projects tab active');
   });
 
   await test('nav links include Instruction Editor between Process Editor and Config (DD-12)', async () => {

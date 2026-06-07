@@ -20,7 +20,7 @@ const arts: Artifact[] = [
   { fileName: 'DEMO-WIREFRAME-X.html', kind: 'wireframe', label: 'Wireframe', title: 'X', isMarkdown: false },
 ];
 
-const pageSrc = readFileSync(path.join(process.cwd(), 'app', 'projects', 'page.tsx'), 'utf-8');
+const pageSrc = readFileSync(path.join(process.cwd(), 'app', 'projects', '[[...slug]]', 'page.tsx'), 'utf-8');
 
 test('open converts the child index to a filename at the call site (open-by-filename)', () => {
   // BrainstormingSection/LaunchScreen still hand up an index; the page turns it
@@ -80,4 +80,48 @@ test('the markdown fetch effect resolves its path from the active filename (FR-1
   // And the helper returns the md path only for a markdown active file.
   assert.equal(markdownPathForActive(arts, 'DEMO-BRAINSTORMING.md'), 'DEMO-BRAINSTORMING.md');
   assert.equal(markdownPathForActive(arts, 'DEMO-BRAINSTORM.html'), null);
+});
+
+test('the modal identity is the URL document and navigation drives the URL (URL source of truth)', () => {
+  assert.ok(pageSrc.includes('useArtifactModal(getArtifacts, urlDoc, navigate)'),
+    'modal is constructed from the URL document and a navigate fn');
+  assert.ok(pageSrc.includes('/docs/${encodeURIComponent('),
+    'navigate builds an encoded document deep link');
+  assert.ok(/const\s+urlDoc\s*=/.test(pageSrc),
+    'page derives urlDoc from the slug');
+});
+
+test('in-modal navigation mutates the URL shallowly via the History API, not the Next router (smooth swap, no remount)', () => {
+  // router.push/replace remounts the App Router page (it re-keys the [[...slug]] segment on a
+  // param change), which reset isFullScreen and threw away the BufferedStage cross-fade — the
+  // "full page reload" jank. The fix drives the URL with window.history.{push,replace}State so
+  // the page only re-renders. Pin the mechanism so nobody reverts to router-based doc nav.
+  assert.ok(/window\.history\.pushState\(/.test(pageSrc), 'navigate pushes via window.history.pushState');
+  assert.ok(/window\.history\.replaceState\(/.test(pageSrc), 'navigate replaces via window.history.replaceState');
+  assert.ok(/window\.history\.back\(\)/.test(pageSrc), 'navigate back uses window.history.back()');
+  const navIdx = pageSrc.indexOf('const navigate = useCallback');
+  const navBody = pageSrc.slice(navIdx, pageSrc.indexOf('}, [selectedProject])', navIdx));
+  assert.ok(navIdx >= 0 && !/router\.(push|replace|back)\(/.test(navBody),
+    'navigate must NOT call router.push/replace/back for in-modal doc switching (would remount the page)');
+});
+
+test('the route is read from usePathname and each segment is decoded exactly once (shallow-aware, no double-decode URIError)', () => {
+  // usePathname() tracks shallow history.pushState (useParams does NOT) and returns the ENCODED
+  // path, so each segment is decoded exactly once — the write side encodes once. A single guarded
+  // decodeURIComponent round-trips names with spaces/'%' without throwing URIError (cf. PR #115).
+  assert.ok(/const\s+pathname\s*=\s*usePathname\(\)/.test(pageSrc),
+    'page derives the route from usePathname(), not useParams()');
+  assert.ok(/pathname\.split\(['"]\/['"]\)\.filter\(Boolean\)/.test(pageSrc),
+    'pathname is split into non-empty segments');
+  assert.ok(/try\s*\{\s*return decodeURIComponent\([^)]*\)\s*;?\s*\}\s*catch/.test(pageSrc),
+    'segments are decoded exactly once, guarded against malformed % (no URIError crash)');
+  assert.ok(/const\s+urlProject\s*=/.test(pageSrc) && /const\s+urlDoc\s*=/.test(pageSrc),
+    'urlProject and urlDoc are derived from the decoded segments');
+});
+
+test('a missing document shows a load-gated not-found state, never while still loading', () => {
+  assert.ok(pageSrc.includes('filesLoaded && !artifacts.some((a) => a.fileName === modal.activeFileName)'),
+    'not-found state is gated on filesLoaded and a filename-absence check');
+  assert.ok(pageSrc.includes('Document not found'),
+    'a client-rendered document-not-found notice is present');
 });

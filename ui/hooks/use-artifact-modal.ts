@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef } from "react";
 import type { Artifact } from "@/lib/artifact-model";
 
 export function markdownPathForActive(artifacts: Artifact[], fileName: string | null): string | null {
@@ -68,32 +68,39 @@ export function fileNameAfterDelete(artifacts: Artifact[], current: string | nul
   return remaining[Math.min(i, remaining.length - 1)]?.fileName ?? null;
 }
 
+export function openNavMode(isOpen: boolean): 'push' | 'replace' { return isOpen ? 'replace' : 'push'; }
+export function closeNavMode(openedViaPush: boolean): 'back' | 'replace' { return openedViaPush ? 'back' : 'replace'; }
+
 /**
  * Modal identity is anchored to a FILENAME, not an array index. The artifact
  * list can reorder/insert/delete at runtime (live file changes); pinning to
  * `activeFileName` keeps focus on the same document across those mutations.
  *
- * @param getArtifacts getter for the CURRENT ordered list — read at navigation
- *                     time so prev/next/onDeleted operate on live positions.
+ * @param getArtifacts   getter for the CURRENT ordered list — read at navigation
+ *                       time so prev/next/onDeleted operate on live positions.
+ * @param activeFileName the URL-derived active filename (source of truth).
+ * @param navigate       callback to push a new filename (or null to close) into
+ *                       the router — the caller owns URL → modal wiring.
  */
-export function useArtifactModal(getArtifacts: () => Artifact[]) {
-  const [activeFileName, setActiveFileName] = useState<string | null>(null);
+export function useArtifactModal(
+  getArtifacts: () => Artifact[],
+  activeFileName: string | null,
+  navigate: (fileName: string | null, mode: 'push' | 'replace' | 'back') => void,
+) {
   const open = activeFileName !== null;
-
-  const openByName = useCallback((fileName: string) => { setActiveFileName(fileName); }, []);
-  const close = useCallback(() => { setActiveFileName(null); }, []);
-
-  const goNext = useCallback(() => {
-    setActiveFileName((current) => fileNameAtOffset(getArtifacts(), current, 1));
-  }, [getArtifacts]);
-
-  const goPrev = useCallback(() => {
-    setActiveFileName((current) => fileNameAtOffset(getArtifacts(), current, -1));
-  }, [getArtifacts]);
-
-  const onDeleted = useCallback(() => {
-    setActiveFileName((current) => fileNameAfterDelete(getArtifacts(), current));
-  }, [getArtifacts]);
-
+  const pushedRef = useRef(false);
+  const openByName = useCallback((fileName: string) => {
+    const mode = openNavMode(open);
+    if (mode === 'push') pushedRef.current = true;
+    navigate(fileName, mode);
+  }, [open, navigate]);
+  const close = useCallback(() => {
+    const mode = closeNavMode(pushedRef.current);
+    pushedRef.current = false;
+    navigate(null, mode);
+  }, [navigate]);
+  const goNext = useCallback(() => navigate(fileNameAtOffset(getArtifacts(), activeFileName, 1), 'replace'), [getArtifacts, activeFileName, navigate]);
+  const goPrev = useCallback(() => navigate(fileNameAtOffset(getArtifacts(), activeFileName, -1), 'replace'), [getArtifacts, activeFileName, navigate]);
+  const onDeleted = useCallback(() => navigate(fileNameAfterDelete(getArtifacts(), activeFileName), 'replace'), [getArtifacts, activeFileName, navigate]);
   return { activeFileName, open, openByName, close, goNext, goPrev, onDeleted };
 }
