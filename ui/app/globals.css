@@ -336,12 +336,8 @@
    is clipped to invisible — the stage must pulse with an inset shadow instead. Shown only
    while the open document is being written (bounded by the JS hold), never persistently. */
 @keyframes live-pulse-stage-kf {
-  0%, 100% { box-shadow: inset 0 0 0 0 transparent, inset 0 0 0 0 transparent; }
-  50% {
-    box-shadow:
-      inset 0 0 0 2px color-mix(in srgb, var(--live) 55%, transparent),
-      inset 0 0 30px 4px color-mix(in srgb, var(--live) 30%, transparent);
-  }
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; }
+  50% { box-shadow: inset 0 0 30px 4px color-mix(in srgb, var(--live) 30%, transparent); }
 }
 .live-pulse-stage { animation: live-pulse-stage-kf 1.4s ease-in-out infinite; }
 
@@ -381,9 +377,7 @@
   }
   .live-pulse-stage {
     animation: none;
-    box-shadow:
-      inset 0 0 0 2px color-mix(in srgb, var(--live) 50%, transparent),
-      inset 0 0 26px 4px color-mix(in srgb, var(--live) 25%, transparent);
+    box-shadow: inset 0 0 26px 4px color-mix(in srgb, var(--live) 25%, transparent);
   }
   /* Neutralize the new modal enter/exit + size morph animations (added by another agent). */
   .artifact-modal-overlay,
