@@ -68,10 +68,9 @@ BRAINSTORMING.md and any visuals or wireframes must always stay in lockstep — 
 ## View Scribed Docs in the Dashboard
 The Rad Orchestration dashboard is the **canonical viewer** for every artifact this skill produces — the BRAINSTORMING.md, visuals, wireframes, and diagrams. Route the user *into* it; **never** open a document as a `file://` page in a separate browser tab unless the user asks.
 
-- **Before scribing** any document, **silently** check whether the dashboard is running with `/rad-ui-status`.
-- **After the document is written**, offer to open it in the dashboard at its deep link: `<base>/projects/<PROJECT-NAME>/docs/<DOC-FILE-NAME>`, where `<base>` is the URL `/rad-ui-status` reports. This opens the app straight to that document in the viewer modal.
-- **If the UI is not running**, offer to start it (`/rad-ui-start`) and then open — one smooth path from "down" to "viewing the doc."
-- Offer when a doc **lands**, not on every micro-edit — don't nag. Applies to the markdown brainstorm *and* any generated visual; point at whichever doc you just wrote.
+- **After a document lands**, offer to open it in the dashboard. On yes, call `/rad-ui-start` — it is idempotent (a no-op if the UI is already running) — and build the deep link from the `data.url` it returns: `<base>/projects/<PROJECT-NAME>/docs/<DOC-FILE-NAME>`, where `<base>` is that returned `data.url`. Never hard-code a host or port.
+- Offer once per **distinct document that lands** — not on micro-edits, not repeatedly. Applies to the markdown brainstorm *and* any generated visual; point at whichever doc you just wrote.
+- The standalone `rad-ui-status` skill/command remains available for the user to check UI status directly, but nothing in this skill depends on it programmatically.
 
 ## Offer to start planning
 - Once you detect that you've reached a reasonable number of goals, offer to help them execute the `/rad-plan` skill to create the project plan.  This is a natural next step after brainstorming, and you can help them get there when the time is right.  

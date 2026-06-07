@@ -86,9 +86,7 @@ Add more detail — icon placeholders (SVG outlines), micro-copy, hover state an
 
 Save to the resolved output folder with the correct filename.
 
-Then point the user *into the dashboard* — **never** open the file as a `file://` page in a separate browser tab. Follow *View Scribed Docs in the Dashboard* in the main SKILL.md: silently check `/rad-ui-status`, then offer to open the mockup at its deep link `<base>/projects/<PROJECT-NAME>/docs/<filename>` (offer `/rad-ui-start` first if the UI is down).
-
-Confirm: **"Mockup saved: `<output-folder>\<filename>`"**, then make the open-in-dashboard offer.
+Confirm: **"Mockup saved: `<output-folder>\<filename>`"**, then offer to open it in the dashboard — **never** open the file as a `file://` page in a separate browser tab. On yes, call `/rad-ui-start` (idempotent — a no-op if the UI is already running) and build the deep link from the `data.url` it returns: `<base>/projects/<PROJECT-NAME>/docs/<filename>`. Never hard-code a host or port.
 
 Tell the user: *"Open it in the dashboard? Come back with changes or say 'looks good' to proceed."*
 
