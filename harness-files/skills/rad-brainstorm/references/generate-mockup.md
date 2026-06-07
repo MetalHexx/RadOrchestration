@@ -26,11 +26,12 @@ Generally, try to infer as much context as possible from the user's input.  But 
    - Mobile (390px default)
    - Custom — provide width × height in px
 3. **Do you have a screenshot or existing design to base this on?** If yes, attach it. I'll treat it as a structural reference — not a copy.
-4. **Any style override?** Default is grayscale wireframe. Options:
-   - Grayscale (default)
-   - Add a brand color hint (specify hex)
-   - If its for a UI they're working, see if you can find design tokens to use.
-   - High-fidelity (more detail, still no real assets)
+4. **Fidelity level?** Default is **low** (dark-mode paper-napkin wireframe) unless the user specifies:
+   - **Low** (default) — dark mode, rough shapes, minimal labels; quick alignment and early-stage thinking
+   - **Medium** — grayscale, realistic labels, approximate spacing; ready for stakeholder sharing
+   - **High** — brand hints, design tokens, polished components; close to the real app
+   - **Brand color hint** — provide a hex value to tint interactive elements (can combine with any fidelity level)
+   - If the UI has a design system, look for design tokens to use at medium or high fidelity.
 
 ---
 
@@ -49,9 +50,24 @@ Before generating, determine the target surface from the brief:
 
 ### Step 3 — Generate the Wireframe
 
-#### Design Principles (apply always)
+Apply the fidelity level chosen in Step 1 question 4. **Default to low when unspecified.**
 
-**Color palette (grayscale default):**
+#### Fidelity — Low (default)
+
+Dark-mode paper-napkin style. Fast, rough, early-stage.
+
+```css
+body background:       #1A1A1A
+panel / card:          #2A2A2A   border: 1px solid #3A3A3A
+primary text:          #E0E0E0
+secondary text:        #888888
+interactive elements:  background #444444  text #CCCCCC
+annotation labels:     color #666666  font-size: 11px
+```
+
+#### Fidelity — Medium
+
+Clean grayscale. Realistic labels, approximate spacing, ready for stakeholders.
 
 ```css
 body background:       #F5F5F5
@@ -61,6 +77,17 @@ secondary text:        #888888
 interactive elements:  background #DDDDDD  text #555555
 annotation labels:     color #999999  font-size: 11px
 ```
+
+#### Fidelity — High
+
+Close to the real app. Brand hints, design tokens, polished components.
+
+- Apply any available design tokens for the project's design system.
+- Replace grayscale interactive fills with the brand color (or `#4A90E2` as a neutral stand-in).
+- Add icon placeholders (SVG outlines), micro-copy, hover-state annotations, and spacing guides.
+- Still no real assets — SVG placeholders only.
+
+#### Design Principles (apply at all fidelity levels)
 
 **Rules:**
 - No real images — use SVG placeholders: `<rect>` + diagonal `<line>` cross.
@@ -75,10 +102,7 @@ annotation labels:     color #999999  font-size: 11px
 - Fully self-contained single file.
 
 **Color hint (if requested):**
-Replace `#DDDDDD` interactive element fills with the provided brand hex. Keep everything else grayscale.
-
-**High-fidelity override:**
-Add more detail — icon placeholders (SVG outlines), micro-copy, hover state annotations, spacing guides. Still no real assets.
+Replace interactive element fills with the provided brand hex. Keep everything else at the current fidelity palette.
 
 ---
 
