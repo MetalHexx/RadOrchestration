@@ -29,7 +29,7 @@ interface UseProjectsReturn {
   reconnect: () => void;
 }
 
-export function useProjects(): UseProjectsReturn {
+export function useProjects(initialProject?: string | null): UseProjectsReturn {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [projectState, setProjectState] =
@@ -207,52 +207,27 @@ export function useProjects(): UseProjectsReturn {
 
         setProjects(fetchedProjects);
 
-        // Restore selected project from localStorage
-        let restored: string | null = null;
-        try {
-          restored = localStorage.getItem(STORAGE_KEY);
-        } catch {
-          // localStorage may be unavailable
+        // A project named in the URL wins over the localStorage restore so a deep
+        // link neither double-fetches nor lands on the wrong initial selection.
+        let target: string | null = null;
+        if (initialProject && fetchedProjects.some((p) => p.name === initialProject)) {
+          target = initialProject;
+        } else {
+          let restored: string | null = null;
+          try { restored = localStorage.getItem(STORAGE_KEY); } catch { /* unavailable */ }
+          if (restored && fetchedProjects.some((p) => p.name === restored)) target = restored;
         }
-
-        if (
-          restored &&
-          fetchedProjects.some((p) => p.name === restored)
-        ) {
-          setSelectedProject(restored);
-          // Fetch the state for the restored project
+        if (target) {
+          setSelectedProject(target);
           try {
-            const stateRes = await fetch(
-              `/api/projects/${encodeURIComponent(restored)}/state`
-            );
-
+            const stateRes = await fetch(`/api/projects/${encodeURIComponent(target)}/state`);
             if (cancelled) return;
-
-            if (stateRes.ok) {
-              const stateData = await stateRes.json();
-              setProjectState(stateData.state);
-            } else if (stateRes.status === 404) {
-              setProjectState(null);
-            } else if (stateRes.status === 422) {
-              const stateData = await stateRes.json();
-              setProjectState(null);
-              setError(stateData.error ?? "Malformed state.json");
-            } else {
-              const stateData = await stateRes
-                .json()
-                .catch(() => ({ error: "Unknown error" }));
-              setError(
-                stateData.error ?? `Unexpected error (${stateRes.status})`
-              );
-            }
+            if (stateRes.ok) { const stateData = await stateRes.json(); setProjectState(stateData.state); }
+            else if (stateRes.status === 404) { setProjectState(null); }
+            else if (stateRes.status === 422) { const d = await stateRes.json(); setProjectState(null); setError(d.error ?? "Malformed state.json"); }
+            else { const d = await stateRes.json().catch(() => ({ error: "Unknown error" })); setError(d.error ?? `Unexpected error (${stateRes.status})`); }
           } catch (err) {
-            if (!cancelled) {
-              setError(
-                err instanceof Error
-                  ? err.message
-                  : "Failed to fetch project state"
-              );
-            }
+            if (!cancelled) setError(err instanceof Error ? err.message : "Failed to fetch project state");
           }
         }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -265,6 +266,10 @@ function ProjectsPageContent({
 // ─── Outer component — mounts ArtifactLiveProvider ───────────────────────────
 
 export default function ProjectsPage() {
+  const params = useParams<{ slug?: string[] }>();
+  const slug = params.slug;
+  const urlProject = slug && slug.length > 0 ? decodeURIComponent(slug[0]) : null;
+
   const {
     projects,
     selectedProject,
@@ -274,7 +279,13 @@ export default function ProjectsPage() {
     error,
     sseStatus,
     reconnect,
-  } = useProjects();
+  } = useProjects(urlProject);
+
+  useEffect(() => {
+    if (urlProject && urlProject !== selectedProject && projects.some((p) => p.name === urlProject)) {
+      selectProject(urlProject);
+    }
+  }, [urlProject, selectedProject, projects, selectProject]);
 
   const {
     isOpen,

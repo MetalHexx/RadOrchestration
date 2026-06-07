@@ -20,7 +20,7 @@ const arts: Artifact[] = [
   { fileName: 'DEMO-WIREFRAME-X.html', kind: 'wireframe', label: 'Wireframe', title: 'X', isMarkdown: false },
 ];
 
-const pageSrc = readFileSync(path.join(process.cwd(), 'app', 'projects', 'page.tsx'), 'utf-8');
+const pageSrc = readFileSync(path.join(process.cwd(), 'app', 'projects', '[[...slug]]', 'page.tsx'), 'utf-8');
 
 test('open converts the child index to a filename at the call site (open-by-filename)', () => {
   // BrainstormingSection/LaunchScreen still hand up an index; the page turns it
