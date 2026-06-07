@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/use-projects";
 import { useDocumentDrawer } from "@/hooks/use-document-drawer";
 import { useFollowMode } from "@/hooks/use-follow-mode";
@@ -76,14 +76,20 @@ function ProjectsPageContent({
   const artifacts = live.artifacts;
 
   const getArtifacts = useCallback(() => artifacts, [artifacts]);
-  const router = useRouter();
+  // In-modal doc switching mutates the URL with the History API, NOT the Next router.
+  // router.push/replace remounts this page (App Router re-keys the [[...slug]] segment on a
+  // param change), which would reset isFullScreen, throw away the BufferedStage cross-fade,
+  // and refetch — i.e. the "full page reload" jank. window.history.{push,replace}State updates
+  // the address bar without a navigation, so the page only re-renders: fullscreen and the
+  // cross-fade survive. usePathname() (read side, outer component) tracks these shallow updates.
   const navigate = useCallback((fileName: string | null, mode: 'push' | 'replace' | 'back') => {
     if (!selectedProject) return;
-    if (mode === 'back') { router.back(); return; }
+    if (mode === 'back') { window.history.back(); return; }
     const base = `/projects/${encodeURIComponent(selectedProject)}`;
     const url = fileName ? `${base}/docs/${encodeURIComponent(fileName)}` : base;
-    if (mode === 'replace') router.replace(url); else router.push(url);
-  }, [router, selectedProject]);
+    if (mode === 'replace') window.history.replaceState(null, '', url);
+    else window.history.pushState(null, '', url);
+  }, [selectedProject]);
   const modal = useArtifactModal(getArtifacts, urlDoc, navigate);
   const openArtifactModal = modal.openByName;
 
@@ -288,13 +294,19 @@ function ProjectsPageContent({
 // ─── Outer component — mounts ArtifactLiveProvider ───────────────────────────
 
 export default function ProjectsPage() {
-  const params = useParams<{ slug?: string[] }>();
-  const slug = params.slug;
-  // useParams() already URL-decodes route segments, and the deep link writes them
-  // with a single encodeURIComponent (see `navigate`), so read the segments as-is.
-  // A manual decode here would double-decode and throw URIError on names with '%'.
-  const urlProject = slug && slug.length > 0 ? slug[0] : null;
-  const urlDoc = slug && slug.length >= 3 && slug[1] === 'docs' ? slug[2] : null;
+  const pathname = usePathname();
+  // Read the route from usePathname() (not useParams()) because in-modal navigation now
+  // mutates the URL with window.history.{push,replace}State — a shallow update that Next 14.1+
+  // reflects in usePathname() but NOT in useParams(). usePathname() returns the ENCODED path,
+  // so decode each segment exactly once (the write side encodes once — see `navigate`). A guard
+  // keeps a malformed '%' from throwing URIError; it falls through to the not-found state.
+  const segs = pathname.split('/').filter(Boolean); // ["projects", <project?>, "docs", <doc?>]
+  const decodeSeg = (s: string | undefined): string | null => {
+    if (s === undefined) return null;
+    try { return decodeURIComponent(s); } catch { return s; }
+  };
+  const urlProject = segs.length >= 2 ? decodeSeg(segs[1]) : null;
+  const urlDoc = segs.length >= 4 && segs[2] === 'docs' ? decodeSeg(segs[3]) : null;
   const router = useRouter();
 
   const {
