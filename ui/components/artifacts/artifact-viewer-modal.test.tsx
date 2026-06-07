@@ -197,6 +197,13 @@ test('delete stays a corner overlay and the footer holds only the filmstrip', ()
     'delete is outside the footer (corner overlay), not crammed into the filmstrip row');
 });
 
+test('overflow edge fades are non-interactive and end chevrons are labelled', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  assert.ok(html.includes('aria-label="Scroll filmstrip left"'), 'left paging chevron present');
+  assert.ok(html.includes('aria-label="Scroll filmstrip right"'), 'right paging chevron present');
+  assert.ok(html.includes('pointer-events-none'), 'edge fades do not block cell interaction');
+});
+
 test('share feedback timer is captured in a ref and cleared on unmount (FR-6, NFR-1)', () => {
   const src = readFileSync(
     path.join(process.cwd(), 'components', 'artifacts', 'artifact-viewer-modal.tsx'),

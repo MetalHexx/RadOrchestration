@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText, Share2 } fro
 import { Button } from "@/components/ui/button";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { buildDocDeepLink } from "@/lib/deep-link";
-import { centerScrollLeft } from "@/lib/filmstrip-scroll";
+import { centerScrollLeft, pageScrollDelta } from "@/lib/filmstrip-scroll";
 import { IframePreview } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
 import { BufferedStage } from "./buffered-stage";
@@ -76,7 +76,7 @@ export function ArtifactViewerModal({
     if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
   }, []);
 
-  const stripRef = React.useRef<HTMLElement | null>(null);
+  const stripRef = React.useRef<HTMLDivElement | null>(null);
   const activeCellRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     const c = stripRef.current, cell = activeCellRef.current;
@@ -156,7 +156,20 @@ export function ArtifactViewerModal({
           </button>
         </div>
 
-        <footer ref={stripRef} className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
+        <footer className="relative border-t border-border px-4 py-3">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-card to-transparent" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-card to-transparent" aria-hidden="true" />
+          <Button variant="ghost" size="icon-sm" aria-label="Scroll filmstrip left"
+            className="absolute left-1 top-1/2 z-20 -translate-y-1/2 cursor-pointer"
+            onClick={() => { const c = stripRef.current; if (c) c.scrollBy({ left: -pageScrollDelta(c.clientWidth) }); }}>
+            <ChevronLeft className="size-4" aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="icon-sm" aria-label="Scroll filmstrip right"
+            className="absolute right-1 top-1/2 z-20 -translate-y-1/2 cursor-pointer"
+            onClick={() => { const c = stripRef.current; if (c) c.scrollBy({ left: pageScrollDelta(c.clientWidth) }); }}>
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Button>
+          <div ref={stripRef as React.RefObject<HTMLDivElement>} className="flex items-end gap-2 overflow-x-auto px-8">
           {artifacts.map((artifact) => {
             const pulsing = activePulse?.has(artifact.fileName) ?? false;
             return (
@@ -210,6 +223,7 @@ export function ArtifactViewerModal({
             </ActivePulse>
             );
           })}
+          </div>
         </footer>
       </div>
     </div>
