@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText, Share2 } fro
 import { Button } from "@/components/ui/button";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { buildDocDeepLink } from "@/lib/deep-link";
+import { centerScrollLeft } from "@/lib/filmstrip-scroll";
 import { IframePreview } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
 import { BufferedStage } from "./buffered-stage";
@@ -74,6 +75,14 @@ export function ArtifactViewerModal({
   React.useEffect(() => () => {
     if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
   }, []);
+
+  const stripRef = React.useRef<HTMLElement | null>(null);
+  const activeCellRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const c = stripRef.current, cell = activeCellRef.current;
+    if (!c || !cell) return;
+    c.scrollLeft = centerScrollLeft(c.clientWidth, cell.offsetLeft, cell.clientWidth);
+  }, [activeFileName]);
 
   if (!active) return null;
   const friendly = active.title ?? active.label;
@@ -147,13 +156,14 @@ export function ArtifactViewerModal({
           </button>
         </div>
 
-        <footer className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
+        <footer ref={stripRef} className="flex items-end gap-2 overflow-x-auto border-t border-border px-4 py-3">
           {artifacts.map((artifact) => {
             const pulsing = activePulse?.has(artifact.fileName) ?? false;
             return (
             <ActivePulse key={artifact.fileName} active={pulsing} variant="frame" className="rounded-md">
             <div
               data-filmstrip-cell
+              ref={artifact.fileName === activeFileName ? activeCellRef : undefined}
               role="button"
               tabIndex={0}
               aria-label={`View ${artifact.title ?? artifact.label}`}
