@@ -97,14 +97,12 @@ export function ArtifactViewerModal({
               className="cursor-pointer" onClick={handleShare}>
               <Share2 className="size-4" aria-hidden="true" />
             </Button>
-            <button type="button" aria-label="Full screen" onClick={onToggleFullScreen}
-              className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" aria-label="Full screen" className="cursor-pointer" onClick={onToggleFullScreen}>
               <Maximize2 className="size-4" aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Close" onClick={onClose}
-              className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:text-foreground">
+            </Button>
+            <Button variant="ghost" size="icon" aria-label="Close" className="cursor-pointer" onClick={onClose}>
               <X className="size-4" aria-hidden="true" />
-            </button>
+            </Button>
           </div>
         </header>
         {shareState !== 'idle' && (

@@ -179,3 +179,18 @@ test('renders a Share control on the shared ghost button in the header', () => {
   const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
   assert.ok(html.includes('aria-label="Share / copy link"'), 'share control present and labelled');
 });
+
+test('header controls use the shared button slot while preserving their labels', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  const slots = (html.match(/data-slot="button"/g) ?? []).length;
+  assert.ok(slots >= 3, 'Share, Full screen, and Close all render on the shared Button');
+  assert.ok(html.includes('aria-label="Full screen"'), 'Full screen label preserved');
+  assert.ok(html.includes('aria-label="Close"'), 'Close label preserved');
+});
+test('delete stays a corner overlay and the footer holds only the filmstrip', () => {
+  const html = render({ ...base, activeFileName: 'DEMO-BRAINSTORMING.md' });
+  assert.ok(html.includes('aria-label="Delete artifact"'), 'delete control still present');
+  const footerStart = html.indexOf('<footer');
+  assert.ok(footerStart >= 0 && html.indexOf('aria-label="Delete artifact"') < footerStart,
+    'delete is outside the footer (corner overlay), not crammed into the filmstrip row');
+});
