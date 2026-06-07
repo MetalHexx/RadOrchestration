@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Maximize2, Trash2, X, FileText, Share2 } fro
 import { Button } from "@/components/ui/button";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { buildDocDeepLink } from "@/lib/deep-link";
-import { centerScrollLeft, pageScrollDelta } from "@/lib/filmstrip-scroll";
+import { centerScrollLeft, pageScrollDelta, shouldHijackWheel } from "@/lib/filmstrip-scroll";
 import { IframePreview } from "./iframe-preview";
 import { ActivePulse } from "./active-pulse";
 import { BufferedStage } from "./buffered-stage";
@@ -83,6 +83,18 @@ export function ArtifactViewerModal({
     if (!c || !cell) return;
     c.scrollLeft = centerScrollLeft(c.clientWidth, cell.offsetLeft, cell.clientWidth);
   }, [activeFileName]);
+
+  React.useEffect(() => {
+    const c = stripRef.current;
+    if (!c) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!shouldHijackWheel(e.deltaX, e.deltaY, c.scrollWidth, c.clientWidth)) return;
+      e.preventDefault();
+      c.scrollLeft += e.deltaY;
+    };
+    c.addEventListener('wheel', onWheel, { passive: false });
+    return () => c.removeEventListener('wheel', onWheel);
+  }, []);
 
   if (!active) return null;
   const friendly = active.title ?? active.label;
