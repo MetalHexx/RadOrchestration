@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { Edge, GraphDTO, Group, Node, NodeId, NodeStatus, Project, StoredGraph, WorktreeRef } from './types.js';
+import type { Edge, EdgeType, GraphDTO, Group, Node, NodeId, NodeStatus, Project, StoredGraph, WorktreeRef } from './types.js';
 import { PROJECTION_SCHEMA } from './types.js';
 import { GraphIndex } from './store.js';
 import { WorkGraph } from './graph.js';
@@ -7,6 +7,7 @@ import { listProjectNames, projectExists, deriveProject } from './derive/project
 import { resolveWorktrees as deriveWorktrees, type GitExec } from './derive/worktrees.js';
 import { groupId } from './ids.js';
 import { validateNewEdge, validateNewGroupId, GraphValidationError } from './validate.js';
+import { pruneEdges } from './reconcile.js';
 
 export interface ServiceOpts { root: string; exec?: GitExec; }
 
@@ -126,5 +127,22 @@ export class WorkGraphService {
     stored.edges = stored.edges.filter((e) => !(e.type === edge.type && e.from === edge.from && e.to === edge.to));
     const next = this.index.write(stored, stored.rev);
     return { rev: next.rev };
+  }
+
+  link(from: NodeId, to: NodeId, type: EdgeType): { edge: Edge; rev: number } {
+    return this.addEdge({ type, from, to });
+  }
+
+  unlink(from: NodeId, to: NodeId, type: EdgeType): { rev: number } {
+    return this.removeEdge({ type, from, to });
+  }
+
+  prune(): { removed: Edge[]; rev: number } {
+    const stored = this.index.read();
+    const { kept, removed } = pruneEdges(stored.edges, (id) => this.nodeExists(id));
+    if (removed.length === 0) return { removed: [], rev: stored.rev };
+    stored.edges = kept;
+    const next = this.index.write(stored, stored.rev);
+    return { removed, rev: next.rev };
   }
 }
