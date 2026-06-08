@@ -16,6 +16,7 @@ import { groupCreateCommand as pgGroupCreateCommand, groupEditCommand as pgGroup
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 import { sessionContextCommand } from './commands/session-context/index.js';
 import { graphShowCommand, graphLinkCommand, graphUnlinkCommand, graphPruneCommand } from './commands/graph/index.js';
+import { configCommand } from './commands/config/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -48,6 +49,16 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(3);
       await runCommand(sessionContextCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  program
+    .command('config')
+    .description(configCommand.description)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(3);
+      await runCommand(configCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const ui = program.command('ui').description('UI server lifecycle');
