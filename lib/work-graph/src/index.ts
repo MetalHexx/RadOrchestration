@@ -13,3 +13,5 @@ export type { GitExec, ResolveDeps } from './derive/worktrees.js';
 export { WorkGraph } from './graph.js';
 export { validateNewEdge, validateNewGroupId, GraphValidationError } from './validate.js';
 export type { ValidationContext } from './validate.js';
+export { pruneEdges } from './reconcile.js';
+export type { PruneResult } from './reconcile.js';
