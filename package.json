@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "lib/repo-registry",
+    "lib/work-graph",
     "cli",
     "ui",
     "harness-adapters/engine",
