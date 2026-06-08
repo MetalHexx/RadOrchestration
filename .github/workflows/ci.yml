@@ -40,6 +40,25 @@ jobs:
         working-directory: ui
         run: node --test --import tsx "app/api/registry-smoke/route.test.ts"
 
+  work-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies (root workspace)
+        run: npm install
+
+      - name: Build lib/work-graph
+        run: npm run build -w @rad-orchestration/work-graph
+
+      - name: Test lib/work-graph
+        run: npm test -w @rad-orchestration/work-graph
+
   adapters:
     runs-on: ubuntu-latest
     steps:
