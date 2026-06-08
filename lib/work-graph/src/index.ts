@@ -10,3 +10,4 @@ export type { DeriveDeps } from './derive/projects.js';
 export { mapStatus, combineStatuses, rollupProjectStatus } from './derive/status.js';
 export { resolveWorktrees } from './derive/worktrees.js';
 export type { GitExec, ResolveDeps } from './derive/worktrees.js';
+export { WorkGraph } from './graph.js';
