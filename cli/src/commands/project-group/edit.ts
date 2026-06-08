@@ -24,14 +24,12 @@ export function runGroupEdit({ root, group, name, description }: GroupEditOption
   if (description !== undefined && !description.trim()) {
     throw new UserError('--description cannot be empty');
   }
-  try {
-    const patch: { name?: string; description?: string } = {};
-    if (name !== undefined) patch.name = name;
-    if (description !== undefined) patch.description = description.trim();
-    return new WorkGraphService({ root }).updateGroup(group, patch);
-  } catch (e) {
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const patch: { name?: string; description?: string } = {};
+  if (name !== undefined) patch.name = name;
+  if (description !== undefined) patch.description = description.trim();
+  const r = new WorkGraphService({ root }).updateGroup(group, patch);
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 interface Args { group?: string }

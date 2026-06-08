@@ -2,7 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { WorkGraphService, GraphValidationError } from '../src/index.js';
+import { WorkGraphService } from '../src/index.js';
+import type { Result } from '../src/index.js';
+
+function unwrap<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(`expected ok, got error ${r.error.code}: ${r.error.message}`);
+  return r.data;
+}
 
 let root: string;
 beforeEach(() => {
@@ -17,24 +23,31 @@ describe('WorkGraphService structure writes', () => {
   const svc = () => new WorkGraphService({ root, exec: () => '' });
   it('creates a group with a derived id and bumps rev, rejecting an empty description', () => {
     const s = svc();
-    const out = s.createGroup({ name: 'Multi Repo', description: 'the initiative' });
+    const out = unwrap(s.createGroup({ name: 'Multi Repo', description: 'the initiative' }));
     expect(out.node.id).toBe('group:multi-repo');
     expect(out.rev).toBe(1);
-    expect(() => s.createGroup({ name: 'X', description: '  ' })).toThrow(/description/i);
+    const bad = s.createGroup({ name: 'X', description: '  ' });
+    expect(bad.ok).toBe(false);
+    if (bad.ok) throw new Error('expected a validation failure');
+    expect(bad.error.code).toBe('validation');
+    expect(bad.error.message).toMatch(/description/i);
   });
   it('adds a member via a contains edge and rejects a member that is not a real node', () => {
     const s = svc();
-    s.createGroup({ name: 'MR', description: 'd' });
-    const out = s.addMember('group:mr', 'MR-1');
+    unwrap(s.createGroup({ name: 'MR', description: 'd' }));
+    const out = unwrap(s.addMember('group:mr', 'MR-1'));
     expect(out.rev).toBe(2);
     expect(s.getNode('group:mr') && s.listProjects({ groupId: 'group:mr' }).map((p) => p.id)).toEqual(['MR-1']);
-    expect(() => s.addMember('group:mr', 'GHOST')).toThrow(GraphValidationError);
+    const ghost = s.addMember('group:mr', 'GHOST');
+    expect(ghost.ok).toBe(false);
+    if (ghost.ok) throw new Error('expected a validation failure');
+    expect(ghost.error.code).toBe('validation');
   });
   it('deletes a group, cascading its contains edges and never deleting projects', () => {
     const s = svc();
-    s.createGroup({ name: 'MR', description: 'd' });
-    s.addMember('group:mr', 'MR-1');
-    s.deleteGroup('group:mr');
+    unwrap(s.createGroup({ name: 'MR', description: 'd' }));
+    unwrap(s.addMember('group:mr', 'MR-1'));
+    unwrap(s.deleteGroup('group:mr'));
     expect(s.getNode('group:mr')).toBeNull();
     expect(s.getNode('MR-1')?.kind).toBe('project'); // project survives
   });

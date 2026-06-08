@@ -1,7 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { WorkGraphService, GraphValidationError } from '@rad-orchestration/work-graph';
+import { WorkGraphService } from '@rad-orchestration/work-graph';
 import type { GraphDTO } from '@rad-orchestration/work-graph';
 import type { CommandContext } from '../../framework/context.js';
 
@@ -15,12 +15,26 @@ export interface GraphShowResult {
   data: GraphDTO;
 }
 
+/**
+ * Parse the raw `--depth` flag into a non-negative integer.
+ *
+ * FR-10/DD-4: a non-numeric or negative `--depth` previously coerced to `NaN`
+ * and silently degraded to an unbounded traversal. Reject it with a clean
+ * UserError instead so the user learns their input was ignored.
+ */
+export function parseDepth(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  if (!/^\d+$/.test(raw.trim())) {
+    throw new UserError('--depth must be a non-negative number');
+  }
+  return Number(raw.trim());
+}
+
 export function runGraphShow({ root, rootId, depth }: GraphShowOptions): GraphShowResult {
   try {
     const svc = new WorkGraphService({ root });
     return { data: svc.getGraph({ rootId, depth }) };
   } catch (e) {
-    if (e instanceof GraphValidationError) throw new UserError(e.message);
     throw new UserError(e instanceof Error ? e.message : String(e));
   }
 }
@@ -37,7 +51,7 @@ export const graphShowCommand = defineCommand({
   },
   handler: async ({ flags, ctx: _ctx }: { args: Record<string, never>; flags: ShowFlags; ctx: CommandContext }) => {
     const { root } = userDataPaths();
-    const depth = flags.depth !== undefined ? parseInt(flags.depth, 10) : undefined;
+    const depth = parseDepth(flags.depth);
     return runGraphShow({ root, rootId: flags.root, depth });
   },
 });

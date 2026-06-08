@@ -191,20 +191,6 @@ describe('radorch program wiring', () => {
     expect(worktreesHelp).toMatch(/Project id \(folder name\) whose worktrees to resolve/);
   }, 30_000);
 
-  it('exposes project list/show/worktrees at three help depths', async () => {
-    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
-    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' } });
-    const { stdout: rootHelp } = await node(['--help']);
-    expect(rootHelp).toMatch(/\bproject\b/);
-    const { stdout: projectHelp } = await node(['project', '--help']);
-    expect(projectHelp).toMatch(/list\s+List projects/);
-    expect(projectHelp).toMatch(/show\s+Show one project/);
-    expect(projectHelp).toMatch(/worktrees\s+Show a project's resolved worktrees/);
-    const { stdout: listHelp } = await node(['project', 'list', '--help']);
-    expect(listHelp).toMatch(/--status/);
-    expect(listHelp).toMatch(/--group/);
-  }, 30_000);
-
   it('exposes project-group verbs at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' } });

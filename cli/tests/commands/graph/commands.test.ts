@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runGraphLink, runGraphUnlink, runGraphShow, runGraphPrune } from '../../../src/commands/graph/index.js';
+import { runGraphLink, runGraphUnlink, runGraphShow, runGraphPrune, parseDepth } from '../../../src/commands/graph/index.js';
+import { UserError } from '../../../src/framework/errors.js';
 
 let root: string;
 beforeEach(() => {
@@ -30,5 +31,15 @@ describe('graph commands', () => {
   it('prune reports removed dangling edges', () => {
     // no dangling edges present → nothing removed
     expect(runGraphPrune({ root }).removed).toEqual([]);
+  });
+  it('rejects a non-numeric --depth with a clean user error instead of silently degrading', () => {
+    expect(() => parseDepth('abc')).toThrow(UserError);
+    expect(() => parseDepth('abc')).toThrow('--depth must be a non-negative number');
+    expect(() => parseDepth('-1')).toThrow('--depth must be a non-negative number');
+  });
+  it('parses a valid non-negative --depth and passes undefined through unchanged', () => {
+    expect(parseDepth('0')).toBe(0);
+    expect(parseDepth('3')).toBe(3);
+    expect(parseDepth(undefined)).toBeUndefined();
   });
 });

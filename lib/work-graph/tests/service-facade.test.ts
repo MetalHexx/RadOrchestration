@@ -2,7 +2,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { WorkGraphService, GraphIndex, GraphValidationError } from '../src/index.js';
+import { WorkGraphService } from '../src/index.js';
+import { GraphIndex } from '../src/store.js';
+import type { Result } from '../src/index.js';
+
+function unwrap<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(`expected ok, got error ${r.error.code}: ${r.error.message}`);
+  return r.data;
+}
 
 let root: string;
 beforeEach(() => {
@@ -18,10 +25,13 @@ beforeEach(() => {
 afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
 
 describe('WorkGraphService facade — deleteGroup guard (AD-4)', () => {
-  it('throws GraphValidationError for a non-existent group and leaves rev unchanged', () => {
+  it('returns a validation error for a non-existent group and leaves rev unchanged', () => {
     const s = new WorkGraphService({ root, exec: () => '' });
     const revBefore = new GraphIndex(root).read().rev;
-    expect(() => s.deleteGroup('group:does-not-exist')).toThrow(GraphValidationError);
+    const r = s.deleteGroup('group:does-not-exist');
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error('expected a validation failure');
+    expect(r.error.code).toBe('validation');
     const revAfter = new GraphIndex(root).read().rev;
     expect(revAfter).toBe(revBefore);
   });
@@ -30,11 +40,11 @@ describe('WorkGraphService facade — deleteGroup guard (AD-4)', () => {
 describe('WorkGraphService facade — coverage (FR-4, FR-6, NFR-5)', () => {
   it('updateGroup patches name and description and bumps rev', () => {
     const s = new WorkGraphService({ root, exec: () => '' });
-    const { rev: revCreate } = s.createGroup({ name: 'Multi Repo', description: 'original desc' });
-    const { node, rev: revUpdate } = s.updateGroup('group:multi-repo', {
+    const { rev: revCreate } = unwrap(s.createGroup({ name: 'Multi Repo', description: 'original desc' }));
+    const { node, rev: revUpdate } = unwrap(s.updateGroup('group:multi-repo', {
       name: 'Multi Repo Updated',
       description: 'updated desc',
-    });
+    }));
     expect(node.name).toBe('Multi Repo Updated');
     expect(node.description).toBe('updated desc');
     expect(revUpdate).toBeGreaterThan(revCreate);
@@ -42,9 +52,9 @@ describe('WorkGraphService facade — coverage (FR-4, FR-6, NFR-5)', () => {
 
   it('removeMember removes the contains edge and bumps rev', () => {
     const s = new WorkGraphService({ root, exec: () => '' });
-    s.createGroup({ name: 'MR', description: 'the group' });
-    s.addMember('group:mr', 'MR-1');
-    const { rev } = s.removeMember('group:mr', 'MR-1');
+    unwrap(s.createGroup({ name: 'MR', description: 'the group' }));
+    unwrap(s.addMember('group:mr', 'MR-1'));
+    const { rev } = unwrap(s.removeMember('group:mr', 'MR-1'));
     const stored = new GraphIndex(root).read();
     const containsEdge = stored.edges.find(
       (e) => e.type === 'contains' && e.from === 'group:mr' && e.to === 'MR-1',
@@ -55,8 +65,8 @@ describe('WorkGraphService facade — coverage (FR-4, FR-6, NFR-5)', () => {
 
   it('listGroups returns the seeded groups by id', () => {
     const s = new WorkGraphService({ root, exec: () => '' });
-    s.createGroup({ name: 'Alpha', description: 'first group' });
-    s.createGroup({ name: 'Beta', description: 'second group' });
+    unwrap(s.createGroup({ name: 'Alpha', description: 'first group' }));
+    unwrap(s.createGroup({ name: 'Beta', description: 'second group' }));
     const groups = s.listGroups();
     const ids = groups.map((g) => g.id).sort();
     expect(ids).toContain('group:alpha');
@@ -71,8 +81,8 @@ describe('WorkGraphService facade — coverage (FR-4, FR-6, NFR-5)', () => {
 
   it('getGraph({ rootId, depth }) returns only the root group and its depth-1 descendant', () => {
     const s = new WorkGraphService({ root, exec: () => '' });
-    s.createGroup({ name: 'Scoped', description: 'scoped group' });
-    s.addMember('group:scoped', 'MR-1');
+    unwrap(s.createGroup({ name: 'Scoped', description: 'scoped group' }));
+    unwrap(s.addMember('group:scoped', 'MR-1'));
     const dto = s.getGraph({ rootId: 'group:scoped', depth: 1 });
     const ids = dto.nodes.map((n) => n.id).sort();
     expect(ids).toEqual(['MR-1', 'group:scoped'].sort());

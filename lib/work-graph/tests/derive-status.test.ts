@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapStatus, combineStatuses, rollupProjectStatus } from '../src/index.js';
+import { mapStatus, combineStatuses, rollupProjectStatus } from '../src/derive/status.js';
 
 describe('status mapping and rollup', () => {
   it('maps raw state.json node statuses into the closed vocabulary', () => {

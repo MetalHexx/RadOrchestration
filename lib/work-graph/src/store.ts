@@ -1,17 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
-import type { StoredGraph } from './types.js';
+import type { Result, StoredGraph } from './types.js';
 
 const STORE_FILE = 'work-graph.yml';
 const CURRENT_VERSION = 1;
-
-export class StaleRevisionError extends Error {
-  constructor(public readonly expected: number, public readonly actual: number) {
-    super(`stale revision: expected ${expected} but store is at ${actual}`);
-    this.name = 'StaleRevisionError';
-  }
-}
 
 export class GraphIndex {
   constructor(private readonly root: string) {}
@@ -33,9 +26,14 @@ export class GraphIndex {
     };
   }
 
-  write(graph: StoredGraph, expectedRev: number): StoredGraph {
+  // A stale `expectedRev` is an anticipated compare-and-swap conflict, so it is returned as a
+  // value (and nothing is written). Genuine fs faults (temp write / rename) still throw — no
+  // caller can recover from them.
+  write(graph: StoredGraph, expectedRev: number): Result<StoredGraph> {
     const current = this.read();
-    if (current.rev !== expectedRev) throw new StaleRevisionError(expectedRev, current.rev);
+    if (current.rev !== expectedRev) {
+      return { ok: false, error: { code: 'stale_revision', message: `stale revision: expected ${expectedRev} but store is at ${current.rev}` } };
+    }
     const next: StoredGraph = {
       version: CURRENT_VERSION,
       rev: expectedRev + 1,
@@ -49,6 +47,6 @@ export class GraphIndex {
       { indent: 2, lineWidth: 80, noRefs: true },
     ), 'utf8');
     fs.renameSync(tmp, this.file);
-    return next;
+    return { ok: true, data: next };
   }
 }

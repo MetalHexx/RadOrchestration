@@ -19,11 +19,9 @@ export interface GroupCreateResult {
 
 export function runGroupCreate({ root, name, description, parent }: GroupCreateOptions): GroupCreateResult {
   if (!description?.trim()) throw new UserError('a non-empty --description is required to create a project-group');
-  try {
-    return new WorkGraphService({ root }).createGroup({ name, description, parentId: parent });
-  } catch (e) {
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).createGroup({ name, description, parentId: parent });
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 interface Args { name?: string }
@@ -40,7 +38,7 @@ export const groupCreateCommand = defineCommand({
   handler: async ({ args, flags, ctx }: { args: Args; flags: Flags; ctx: CommandContext }) => {
     if (!args.name) throw new UserError('--name is required');
     const out = runGroupCreate({ root: userDataPaths().root, name: args.name, description: flags.description, parent: flags.parent });
-    if (!ctx.ux.json) ctx.stderr.write(`created ${out.node.id} (rev ${out.rev})\n`);
+    if (!ctx.ux.json) ctx.stderr.write(`✓ created ${out.node.id} (rev ${out.rev})\n`);
     return out;
   },
 });

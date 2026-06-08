@@ -1,7 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { WorkGraphService, GraphValidationError } from '@rad-orchestration/work-graph';
+import { WorkGraphService } from '@rad-orchestration/work-graph';
 import type { Edge } from '@rad-orchestration/work-graph';
 import type { CommandContext } from '../../framework/context.js';
 
@@ -15,12 +15,9 @@ export interface GraphPruneResult {
 }
 
 export function runGraphPrune({ root }: GraphPruneOptions): GraphPruneResult {
-  try {
-    return new WorkGraphService({ root }).prune();
-  } catch (e) {
-    if (e instanceof GraphValidationError) throw new UserError(e.message);
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).prune();
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 export const graphPruneCommand = defineCommand({

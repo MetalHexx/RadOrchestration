@@ -29,13 +29,20 @@ export function resolveWorktrees(projectName: string, deps: ResolveDeps): Worktr
   let sc: any;
   try { sc = JSON.parse(fs.readFileSync(statePath, 'utf8'))?.pipeline?.source_control; } catch { return []; }
   if (!sc || typeof sc !== 'object') return [];
-  const worktreeName = projectName; // defaults to project name
+  // FR-3: worktree reuse is derived from a shared `worktree_name` read from
+  // state.pipeline.source_control, never stored. It defaults to the project name;
+  // a child running inside a parent's worktree carries the parent's name here.
+  const sharedName = typeof sc.worktree_name === 'string' && sc.worktree_name !== '' ? sc.worktree_name : null;
+  const worktreeName = sharedName ?? projectName;
+  // Genuine reuse: the shared name came from source_control and differs from the folder name.
+  const repoResolvedVia: WorktreeRef['resolvedVia'] =
+    sharedName !== null && sharedName !== projectName ? 'shared-worktree-name' : 'convention';
   if (Array.isArray(sc.repos) && sc.repos.length > 0) {
     return sc.repos.map((r: { name: string }) => {
       const wtPath = path.join(deps.worktreesDir, worktreeName, r.name);
       const live = listWorktrees(exec, wtPath);
       const key = path.resolve(wtPath);
-      return { repo: r.name, path: wtPath, branch: live.get(key) ?? null, exists: live.has(key), resolvedVia: 'convention' as const };
+      return { repo: r.name, path: wtPath, branch: live.get(key) ?? null, exists: live.has(key), resolvedVia: repoResolvedVia };
     });
   }
   const wtPath = typeof sc.worktree_path === 'string' ? sc.worktree_path : null;

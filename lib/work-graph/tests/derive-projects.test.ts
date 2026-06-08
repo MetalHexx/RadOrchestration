@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { listProjectNames, deriveProject } from '../src/index.js';
+import { listProjectNames, deriveProject } from '../src/derive/projects.js';
 
 let root: string;
 let projectsDir: string;

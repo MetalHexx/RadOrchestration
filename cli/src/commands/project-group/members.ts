@@ -27,19 +27,15 @@ export interface GroupRemoveResult {
 }
 
 export function runGroupAdd({ root, group, member }: GroupAddOptions): GroupAddResult {
-  try {
-    return new WorkGraphService({ root }).addMember(group, member);
-  } catch (e) {
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).addMember(group, member);
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 export function runGroupRemove({ root, group, member }: GroupRemoveOptions): GroupRemoveResult {
-  try {
-    return new WorkGraphService({ root }).removeMember(group, member);
-  } catch (e) {
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).removeMember(group, member);
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 interface AddArgs { group?: string; member?: string }

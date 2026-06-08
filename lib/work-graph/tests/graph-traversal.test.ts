@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WorkGraph } from '../src/index.js';
+import { WorkGraph } from '../src/graph.js';
 import type { Node, Edge } from '../src/index.js';
 
 const grp = (id: string): Node => ({ id, kind: 'group', name: id, status: 'unknown' });

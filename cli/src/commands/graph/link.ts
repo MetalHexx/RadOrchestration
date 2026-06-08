@@ -1,7 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import { userDataPaths } from '../../lib/paths.js';
-import { WorkGraphService, GraphValidationError } from '@rad-orchestration/work-graph';
+import { WorkGraphService } from '@rad-orchestration/work-graph';
 import type { Edge } from '@rad-orchestration/work-graph';
 import type { CommandContext } from '../../framework/context.js';
 
@@ -29,21 +29,15 @@ export interface GraphUnlinkResult {
 }
 
 export function runGraphLink({ root, from, to, type }: GraphLinkOptions): GraphLinkResult {
-  try {
-    return new WorkGraphService({ root }).link(from, to, type);
-  } catch (e) {
-    if (e instanceof GraphValidationError) throw new UserError(e.message);
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).link(from, to, type);
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 export function runGraphUnlink({ root, from, to, type }: GraphUnlinkOptions): GraphUnlinkResult {
-  try {
-    return new WorkGraphService({ root }).unlink(from, to, type);
-  } catch (e) {
-    if (e instanceof GraphValidationError) throw new UserError(e.message);
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).unlink(from, to, type);
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 interface Args { from?: string; to?: string }
@@ -62,7 +56,7 @@ export const graphLinkCommand = defineCommand({
   handler: async ({ args, flags, ctx }: { args: Args; flags: Flags; ctx: CommandContext }) => {
     if (!args.from || !args.to || !flags.type) throw new UserError('--from, --to, and --type are required');
     const out = runGraphLink({ root: userDataPaths().root, from: args.from, to: args.to, type: flags.type });
-    if (!ctx.ux.json) ctx.stderr.write(`linked ${out.edge.from} -[${out.edge.type}]-> ${out.edge.to} (rev ${out.rev})\n`);
+    if (!ctx.ux.json) ctx.stderr.write(`✓ linked ${out.edge.from} -[${out.edge.type}]-> ${out.edge.to} (rev ${out.rev})\n`);
     return out;
   },
 });

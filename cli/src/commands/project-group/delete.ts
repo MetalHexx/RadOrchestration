@@ -14,11 +14,9 @@ export interface GroupDeleteResult {
 }
 
 export function runGroupDelete({ root, group }: GroupDeleteOptions): GroupDeleteResult {
-  try {
-    return new WorkGraphService({ root }).deleteGroup(group);
-  } catch (e) {
-    throw new UserError(e instanceof Error ? e.message : String(e));
-  }
+  const r = new WorkGraphService({ root }).deleteGroup(group);
+  if (!r.ok) throw new UserError(r.error.message);
+  return r.data;
 }
 
 interface Args { group?: string }

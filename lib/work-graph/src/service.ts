@@ -1,12 +1,12 @@
 import path from 'node:path';
-import type { Edge, EdgeType, GraphDTO, Group, Node, NodeId, NodeStatus, Project, StoredGraph, WorktreeRef } from './types.js';
+import type { Edge, EdgeType, GraphDTO, Group, Node, NodeId, NodeStatus, Project, Result, StoredGraph, WorktreeRef } from './types.js';
 import { PROJECTION_SCHEMA } from './types.js';
 import { GraphIndex } from './store.js';
 import { WorkGraph } from './graph.js';
 import { listProjectNames, projectExists, deriveProject } from './derive/projects.js';
 import { resolveWorktrees as deriveWorktrees, type GitExec } from './derive/worktrees.js';
 import { groupId } from './ids.js';
-import { validateNewEdge, validateNewGroupId, GraphValidationError } from './validate.js';
+import { validateNewEdge, validateNewGroupId } from './validate.js';
 import { pruneEdges } from './reconcile.js';
 
 export interface ServiceOpts { root: string; exec?: GitExec; }
@@ -72,78 +72,87 @@ export class WorkGraphService {
     return { groups: stored.groups, edges: stored.edges, nodeExists: (id: NodeId) => this.nodeExists(id) };
   }
 
-  createGroup(input: { name: string; description: string; parentId?: NodeId }): { node: Group; rev: number } {
-    if (!input.description?.trim()) throw new GraphValidationError('a non-empty description is required');
+  createGroup(input: { name: string; description: string; parentId?: NodeId }): Result<{ node: Group; rev: number }> {
+    if (!input.description?.trim()) return { ok: false, error: { code: 'validation', message: 'a non-empty description is required' } };
     const stored = this.index.read();
     const id = groupId(input.name);
-    validateNewGroupId(this.validationCtx(stored), id);
+    const idError = validateNewGroupId(this.validationCtx(stored), id);
+    if (idError) return { ok: false, error: idError };
     stored.groups[id] = { name: input.name, description: input.description.trim() };
     if (input.parentId) {
       const edge: Edge = { type: 'contains', from: input.parentId, to: id };
-      validateNewEdge({ groups: stored.groups, edges: stored.edges, nodeExists: (x) => x === id || this.nodeExists(x) }, edge);
+      const edgeError = validateNewEdge({ groups: stored.groups, edges: stored.edges, nodeExists: (x) => x === id || this.nodeExists(x) }, edge);
+      if (edgeError) return { ok: false, error: edgeError };
       stored.edges.push(edge);
     }
-    const next = this.index.write(stored, stored.rev);
-    return { node: { id, kind: 'group', name: input.name, description: input.description.trim(), status: 'unknown' }, rev: next.rev };
+    const written = this.index.write(stored, stored.rev);
+    if (!written.ok) return written;
+    return { ok: true, data: { node: { id, kind: 'group', name: input.name, description: input.description.trim(), status: 'unknown' }, rev: written.data.rev } };
   }
 
-  updateGroup(id: NodeId, patch: { name?: string; description?: string }): { node: Group; rev: number } {
+  updateGroup(id: NodeId, patch: { name?: string; description?: string }): Result<{ node: Group; rev: number }> {
     const stored = this.index.read();
     const g = stored.groups[id];
-    if (!g) throw new GraphValidationError(`group '${id}' does not exist`);
+    if (!g) return { ok: false, error: { code: 'validation', message: `group '${id}' does not exist` } };
     if (patch.name !== undefined) g.name = patch.name;
     if (patch.description !== undefined) g.description = patch.description.trim();
-    const next = this.index.write(stored, stored.rev);
-    return { node: { id, kind: 'group', name: g.name, description: g.description, status: 'unknown' }, rev: next.rev };
+    const written = this.index.write(stored, stored.rev);
+    if (!written.ok) return written;
+    return { ok: true, data: { node: { id, kind: 'group', name: g.name, description: g.description, status: 'unknown' }, rev: written.data.rev } };
   }
 
-  deleteGroup(id: NodeId): { rev: number } {
+  deleteGroup(id: NodeId): Result<{ rev: number }> {
     const stored = this.index.read();
-    if (!stored.groups[id]) throw new GraphValidationError(`group '${id}' does not exist`);
+    if (!stored.groups[id]) return { ok: false, error: { code: 'validation', message: `group '${id}' does not exist` } };
     // Cascade the group's own contains edges (and any edge touching it); projects are never deleted.
     delete stored.groups[id];
     stored.edges = stored.edges.filter((e) => e.from !== id && e.to !== id);
-    const next = this.index.write(stored, stored.rev);
-    return { rev: next.rev };
+    const written = this.index.write(stored, stored.rev);
+    if (!written.ok) return written;
+    return { ok: true, data: { rev: written.data.rev } };
   }
 
-  addMember(groupId_: NodeId, nodeId: NodeId): { edge: Edge; rev: number } {
+  addMember(groupId_: NodeId, nodeId: NodeId): Result<{ edge: Edge; rev: number }> {
     return this.addEdge({ type: 'contains', from: groupId_, to: nodeId });
   }
 
-  removeMember(groupId_: NodeId, nodeId: NodeId): { rev: number } {
+  removeMember(groupId_: NodeId, nodeId: NodeId): Result<{ rev: number }> {
     return this.removeEdge({ type: 'contains', from: groupId_, to: nodeId });
   }
 
-  private addEdge(edge: Edge): { edge: Edge; rev: number } {
+  private addEdge(edge: Edge): Result<{ edge: Edge; rev: number }> {
     const stored = this.index.read();
-    validateNewEdge(this.validationCtx(stored), edge);
+    const error = validateNewEdge(this.validationCtx(stored), edge);
+    if (error) return { ok: false, error };
     stored.edges.push(edge);
-    const next = this.index.write(stored, stored.rev);
-    return { edge, rev: next.rev };
+    const written = this.index.write(stored, stored.rev);
+    if (!written.ok) return written;
+    return { ok: true, data: { edge, rev: written.data.rev } };
   }
 
-  private removeEdge(edge: Edge): { rev: number } {
+  private removeEdge(edge: Edge): Result<{ rev: number }> {
     const stored = this.index.read();
     stored.edges = stored.edges.filter((e) => !(e.type === edge.type && e.from === edge.from && e.to === edge.to));
-    const next = this.index.write(stored, stored.rev);
-    return { rev: next.rev };
+    const written = this.index.write(stored, stored.rev);
+    if (!written.ok) return written;
+    return { ok: true, data: { rev: written.data.rev } };
   }
 
-  link(from: NodeId, to: NodeId, type: EdgeType): { edge: Edge; rev: number } {
+  link(from: NodeId, to: NodeId, type: EdgeType): Result<{ edge: Edge; rev: number }> {
     return this.addEdge({ type, from, to });
   }
 
-  unlink(from: NodeId, to: NodeId, type: EdgeType): { rev: number } {
+  unlink(from: NodeId, to: NodeId, type: EdgeType): Result<{ rev: number }> {
     return this.removeEdge({ type, from, to });
   }
 
-  prune(): { removed: Edge[]; rev: number } {
+  prune(): Result<{ removed: Edge[]; rev: number }> {
     const stored = this.index.read();
     const { kept, removed } = pruneEdges(stored.edges, (id) => this.nodeExists(id));
-    if (removed.length === 0) return { removed: [], rev: stored.rev };
+    if (removed.length === 0) return { ok: true, data: { removed: [], rev: stored.rev } };
     stored.edges = kept;
-    const next = this.index.write(stored, stored.rev);
-    return { removed, rev: next.rev };
+    const written = this.index.write(stored, stored.rev);
+    if (!written.ok) return written;
+    return { ok: true, data: { removed, rev: written.data.rev } };
   }
 }

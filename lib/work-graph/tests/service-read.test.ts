@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { WorkGraphService, GraphIndex } from '../src/index.js';
+import { WorkGraphService } from '../src/index.js';
+import { GraphIndex } from '../src/store.js';
 
 let root: string;
 beforeEach(() => {

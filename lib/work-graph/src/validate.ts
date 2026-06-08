@@ -1,8 +1,4 @@
-import type { Edge, NodeId, StoredGroup } from './types.js';
-
-export class GraphValidationError extends Error {
-  constructor(message: string) { super(message); this.name = 'GraphValidationError'; }
-}
+import type { Edge, NodeId, StoredGroup, WorkGraphError } from './types.js';
 
 export interface ValidationContext {
   groups: Record<string, StoredGroup>;
@@ -28,22 +24,26 @@ function wouldCreateCycle(edges: Edge[], edge: Edge): boolean {
   return false;
 }
 
-export function validateNewEdge(ctx: ValidationContext, edge: Edge): void {
-  if (!ctx.nodeExists(edge.from)) throw new GraphValidationError(`edge 'from' references a missing node: ${edge.from}`);
-  if (!ctx.nodeExists(edge.to)) throw new GraphValidationError(`edge 'to' references a missing node: ${edge.to}`);
+/** Returns a validation error describing the rejection, or `null` when the edge is acceptable. */
+export function validateNewEdge(ctx: ValidationContext, edge: Edge): WorkGraphError | null {
+  if (!ctx.nodeExists(edge.from)) return { code: 'validation', message: `edge 'from' references a missing node: ${edge.from}` };
+  if (!ctx.nodeExists(edge.to)) return { code: 'validation', message: `edge 'to' references a missing node: ${edge.to}` };
   if (ctx.edges.some((e) => e.type === edge.type && e.from === edge.from && e.to === edge.to)) {
-    throw new GraphValidationError(`duplicate edge ${edge.type} ${edge.from}->${edge.to}`);
+    return { code: 'validation', message: `duplicate edge ${edge.type} ${edge.from}->${edge.to}` };
   }
   if (edge.type === 'contains') {
     if (ctx.edges.some((e) => e.type === 'contains' && e.to === edge.to)) {
-      throw new GraphValidationError(`node '${edge.to}' already has a parent (single-parent containment)`);
+      return { code: 'validation', message: `node '${edge.to}' already has a parent (single-parent containment)` };
     }
     if (wouldCreateCycle(ctx.edges, edge)) {
-      throw new GraphValidationError(`containment edge ${edge.from}->${edge.to} would create a cycle`);
+      return { code: 'validation', message: `containment edge ${edge.from}->${edge.to} would create a cycle` };
     }
   }
+  return null;
 }
 
-export function validateNewGroupId(ctx: ValidationContext, id: NodeId): void {
-  if (ctx.groups[id]) throw new GraphValidationError(`group id '${id}' already exists`);
+/** Returns a validation error when the group id already exists, or `null` when it is free. */
+export function validateNewGroupId(ctx: ValidationContext, id: NodeId): WorkGraphError | null {
+  if (ctx.groups[id]) return { code: 'validation', message: `group id '${id}' already exists` };
+  return null;
 }

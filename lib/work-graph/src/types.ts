@@ -41,6 +41,10 @@ export interface StoredGraph {
   edges: Edge[];
 }
 
+export type WorkGraphErrorCode = 'validation' | 'stale_revision';
+export interface WorkGraphError { code: WorkGraphErrorCode; message: string; }
+export type Result<T> = { ok: true; data: T } | { ok: false; error: WorkGraphError };
+
 export const PROJECTION_SCHEMA = 'work-graph/v1' as const;
 export interface GraphDTO {
   schema: typeof PROJECTION_SCHEMA;

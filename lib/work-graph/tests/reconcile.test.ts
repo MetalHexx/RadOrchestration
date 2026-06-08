@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { WorkGraph, pruneEdges } from '../src/index.js';
+import { WorkGraph } from '../src/graph.js';
+import { pruneEdges } from '../src/reconcile.js';
 import type { Node, Edge } from '../src/index.js';
 
 const prj = (id: string): Node => ({ id, kind: 'project', name: id, status: 'done' });

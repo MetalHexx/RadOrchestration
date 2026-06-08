@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { slugify, groupId, isGroupId } from '../src/index.js';
+import { slugify, groupId, isGroupId } from '../src/ids.js';
 
 describe('node id derivation', () => {
   it('kebab-cases a group name into a group:<slug> id', () => {
