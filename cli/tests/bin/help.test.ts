@@ -167,6 +167,55 @@ describe('radorch program wiring', () => {
     expect(initHelp).toMatch(/--project/);
   }, 30_000);
 
+  it('exposes project list, show, and worktrees subcommands at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    // noun depth: project --help lists all three read verbs with their descriptions
+    const { stdout: projectHelp } = await node(['project', '--help']);
+    expect(projectHelp).toMatch(/list\s+List projects/);
+    expect(projectHelp).toMatch(/show\s+Show one project/);
+    expect(projectHelp).toMatch(/worktrees\s+Show a project/);
+    // verb depth: project list --help exposes --status and --group flags
+    const { stdout: listHelp } = await node(['project', 'list', '--help']);
+    expect(listHelp).toMatch(/--status/);
+    expect(listHelp).toMatch(/--group/);
+    // verb depth: project show --help exposes the id option and its description
+    const { stdout: showHelp } = await node(['project', 'show', '--help']);
+    expect(showHelp).toMatch(/--id/);
+    expect(showHelp).toMatch(/Project id \(folder name\) to show/);
+    // verb depth: project worktrees --help exposes the id option and its description
+    const { stdout: worktreesHelp } = await node(['project', 'worktrees', '--help']);
+    expect(worktreesHelp).toMatch(/--id/);
+    expect(worktreesHelp).toMatch(/Project id \(folder name\) whose worktrees to resolve/);
+  }, 30_000);
+
+  it('exposes project-group verbs at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' } });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bproject-group\b/);
+    const { stdout: pgHelp } = await node(['project-group', '--help']);
+    expect(pgHelp).toMatch(/create\s+Create a project-group/);
+    expect(pgHelp).toMatch(/add\s+Add a project or sub-group/);
+    const { stdout: createHelp } = await node(['project-group', 'create', '--help']);
+    expect(createHelp).toMatch(/--description/);
+  }, 30_000);
+
+  it('exposes graph verbs with rich link leaf help at three depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], { cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' } });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bgraph\b/);
+    const { stdout: graphHelp } = await node(['graph', '--help']);
+    expect(graphHelp).toMatch(/link\s+Add a relationship edge/);
+    expect(graphHelp).toMatch(/prune\s+/);
+    const { stdout: linkHelp } = await node(['graph', 'link', '--help']);
+    expect(linkHelp).toMatch(/spawned-from/);
+    expect(linkHelp).toMatch(/Unknown types are accepted/);
+  }, 30_000);
+
   it('exposes migrate in root help and responds to its own --help with safety-rail flags', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {

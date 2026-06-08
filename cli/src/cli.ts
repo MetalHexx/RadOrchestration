@@ -4,7 +4,7 @@ import { doctorCommand } from './commands/doctor/index.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { repoAddCommand, repoBindCommand, repoEditCommand, repoListCommand, repoRemoveCommand, repoShowCommand } from './commands/repo/index.js';
-import { projectContextCommand, projectFindCommand } from './commands/project/index.js';
+import { projectContextCommand, projectFindCommand, projectListCommand, projectShowCommand, projectWorktreesCommand } from './commands/project/index.js';
 import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
 import { sideProjectInitCommand } from './commands/side-project/index.js';
 import { planExplodeCommand } from './commands/plan/index.js';
@@ -12,8 +12,10 @@ import { migrateCommand } from './commands/migrate/index.js';
 import { skillListCommand } from './commands/skill/index.js';
 import { pipelineSignalCommand } from './commands/pipeline/index.js';
 import { groupCreateCommand, groupEditCommand, groupAddCommand, groupRemoveCommand, groupDeleteCommand, groupListCommand, groupShowCommand } from './commands/repo-group/index.js';
+import { groupCreateCommand as pgGroupCreateCommand, groupEditCommand as pgGroupEditCommand, groupAddCommand as pgGroupAddCommand, groupRemoveCommand as pgGroupRemoveCommand, groupDeleteCommand as pgGroupDeleteCommand, groupListCommand as pgGroupListCommand, groupShowCommand as pgGroupShowCommand } from './commands/project-group/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 import { sessionContextCommand } from './commands/session-context/index.js';
+import { graphShowCommand, graphLinkCommand, graphUnlinkCommand, graphPruneCommand } from './commands/graph/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -233,6 +235,120 @@ export function buildProgram(version: string): Command {
       await runCommand(groupEditCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
+  const projectGroup = program.command('project-group').description('Project-group structure operations');
+  projectGroup
+    .command('create')
+    .description(pgGroupCreateCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupCreateCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  projectGroup
+    .command('add')
+    .description(pgGroupAddCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupAddCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  projectGroup
+    .command('remove')
+    .description(pgGroupRemoveCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupRemoveCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  projectGroup
+    .command('delete')
+    .description(pgGroupDeleteCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupDeleteCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  projectGroup
+    .command('list')
+    .description(pgGroupListCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  projectGroup
+    .command('show')
+    .description(pgGroupShowCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  projectGroup
+    .command('edit')
+    .description(pgGroupEditCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(pgGroupEditCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const graph = program.command('graph').description('Work-graph structure, relationships, and upkeep');
+  graph
+    .command('show')
+    .description(graphShowCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  graph
+    .command('link')
+    .description(graphLinkCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphLinkCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  graph
+    .command('unlink')
+    .description(graphUnlinkCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphUnlinkCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  graph
+    .command('prune')
+    .description(graphPruneCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphPruneCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
   const project = program.command('project').description('Project state read operations');
   project
     .command('context')
@@ -253,6 +369,36 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(projectFindCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  project
+    .command('list')
+    .description(projectListCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(projectListCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  project
+    .command('show')
+    .description(projectShowCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(projectShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  project
+    .command('worktrees')
+    .description(projectWorktreesCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(projectWorktreesCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const worktree = program.command('worktree').description('Worktree lifecycle operations');
