@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, `radorch plan ...`, `radorch skill ...`, `radorch pipeline ...`, plus the top-level `radorch doctor` and `radorch where`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
+This folder is the `radorch` CLI — a single Node/TypeScript binary that provides every user-facing helper invoked by the canonical skills. Subcommands live under noun groups (`radorch ui ...`, `radorch git ...`, `radorch gate ...`, `radorch project ...`, `radorch worktree ...`, `radorch plan ...`, `radorch skill ...`, `radorch pipeline ...`, plus the top-level `radorch doctor`). Every subcommand emits a single JSON envelope of the shape `{ ok, data, error }` on stdout, accepts the same UX flags (`--non-interactive`, `--json`, `--no-color`, `--log-level`), and routes through the same logger and prompter surface.
 
 The CLI bundle is built once per harness by `emitCliBundle` in `harness-installers/shared/build-helpers/` and shipped to `${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs`. Skills invoke it via the `${PLUGIN_ROOT}` token, which expands at install time to the harness root.
 
@@ -11,9 +11,9 @@ The CLI bundle is built once per harness by `emitCliBundle` in `harness-installe
 Layered structure:
 
 - `cli/src/bin/radorch.ts` — process entry point. Reads argv, builds the commander program via `buildProgram`, and invokes it.
-- `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `where`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
+- `cli/src/cli.ts` — the commander program builder. Wires every top-level noun (`doctor`, `ui`, `git`, `gate`) and delegates to per-subcommand modules.
 - `cli/src/framework/` — framework primitives: `defineCommand`/`runCommand`, the envelope `emit`/`validateEnvelope` surface, the logger, prompter, theme, and exit-code map.
-- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`, `pipeline`, plus the top-level `doctor` and `where`.
+- `cli/src/commands/<noun>/` — one folder per noun. Each subcommand exports a `defineCommand({ ... })` value and a pure core function (test-injectable) that does the actual work. Existing nouns: `ui`, `git`, `gate`, `project`, `worktree`, `plan`, `skill`, `pipeline`, plus the top-level `doctor`.
 - `cli/src/lib/` — small, cross-command utilities (paths, install.json shape, fs helpers, yaml).
 - `cli/tests/` — vitest suite. Mirrors the `src/` tree (`tests/commands/<noun>/<name>.test.ts`).
 
