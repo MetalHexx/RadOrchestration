@@ -1,6 +1,7 @@
 import { defineCommand } from '../../framework/command.js';
 import { userDataPaths } from '../../lib/paths.js';
 import { WorkGraphService } from '@rad-orchestration/work-graph';
+import type { NodeStatus } from '@rad-orchestration/work-graph';
 import type { CommandContext } from '../../framework/context.js';
 import { renderProjectTable } from './lean.js';
 
@@ -15,7 +16,7 @@ export const projectListCommand = defineCommand({
   },
   handler: async ({ flags, ctx }: { args: Record<string, never>; flags: Flags; ctx: CommandContext }) => {
     const svc = new WorkGraphService({ root: userDataPaths().root });
-    const projects = svc.listProjects({ status: flags.status as any, groupId: flags.group });
+    const projects = svc.listProjects({ status: flags.status as NodeStatus | undefined, groupId: flags.group });
     if (!ctx.ux.json) ctx.stderr.write(renderProjectTable(projects) + '\n');
     return { projects: projects.map((p) => ({ name: p.name, status: p.status, tier: p.tier, sourceControlInitialized: p.sourceControlInitialized })) };
   },

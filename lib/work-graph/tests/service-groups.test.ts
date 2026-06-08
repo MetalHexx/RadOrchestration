@@ -43,6 +43,26 @@ describe('WorkGraphService structure writes', () => {
     if (ghost.ok) throw new Error('expected a validation failure');
     expect(ghost.error.code).toBe('validation');
   });
+  it('updateGroup rejects an all-whitespace description without mutating the group or bumping rev', () => {
+    const s = svc();
+    const created = unwrap(s.createGroup({ name: 'Multi Repo', description: 'original description' }));
+    const id = created.node.id;
+    const revBefore = created.rev;
+    const bad = s.updateGroup(id, { description: '   ' });
+    expect(bad.ok).toBe(false);
+    if (bad.ok) throw new Error('expected a validation failure');
+    expect(bad.error.code).toBe('validation');
+    expect(bad.error.message).toBe('a non-empty description is required');
+    // description must be unchanged
+    const g = s.getNode(id) as import('../src/index.js').Group;
+    expect(g.description).toBe('original description');
+    // rev must not have bumped
+    const stored = s.listGroups().find((x) => x.id === id);
+    expect(stored?.description).toBe('original description');
+    // confirm rev did not bump by checking another write still returns revBefore+1
+    const ok = unwrap(s.updateGroup(id, { name: 'Updated Name' }));
+    expect(ok.rev).toBe(revBefore + 1);
+  });
   it('deletes a group, cascading its contains edges and never deleting projects', () => {
     const s = svc();
     unwrap(s.createGroup({ name: 'MR', description: 'd' }));

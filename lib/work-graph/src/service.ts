@@ -94,6 +94,7 @@ export class WorkGraphService {
     const stored = this.index.read();
     const g = stored.groups[id];
     if (!g) return { ok: false, error: { code: 'validation', message: `group '${id}' does not exist` } };
+    if (patch.description !== undefined && !patch.description.trim()) return { ok: false, error: { code: 'validation', message: 'a non-empty description is required' } };
     if (patch.name !== undefined) g.name = patch.name;
     if (patch.description !== undefined) g.description = patch.description.trim();
     const written = this.index.write(stored, stored.rev);
