@@ -1,6 +1,9 @@
 import { defineCommand } from '../../framework/command.js';
 import { userDataPaths } from '../../lib/paths.js';
+import { WorkGraphService } from '@rad-orchestration/work-graph';
+import { readConfig } from '../config/index.js';
 import { renderPreamble } from './render.js';
+import { resolveYouAreIn } from './resolve.js';
 
 export const sessionContextCommand = defineCommand({
   name: 'session-context',
@@ -8,6 +11,13 @@ export const sessionContextCommand = defineCommand({
   args: {},
   flags: {},
   handler: async () => {
-    return { preamble: renderPreamble({ root: userDataPaths().root }) };
+    const root = userDataPaths().root;
+    const svc = new WorkGraphService({ root });
+    const projects = svc.listProjects({ status: 'in_progress' });
+    const active = projects.map((p) => ({ name: p.name, tier: p.tier }));
+    const withWorktrees = projects.map((p) => ({ name: p.name, worktrees: svc.resolveWorktrees(p.id) }));
+    const youAreIn = resolveYouAreIn({ cwd: process.cwd(), active: withWorktrees });
+    const config = readConfig({ root });
+    return { preamble: renderPreamble({ root, active, config, youAreIn }) };
   },
 });
