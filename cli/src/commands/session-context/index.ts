@@ -12,7 +12,10 @@ export const sessionContextCommand = defineCommand({
   flags: {},
   handler: async () => {
     const root = userDataPaths().root;
-    const svc = new WorkGraphService({ root });
+    // Worktree *paths* are derived from state.json + the worktree-name convention; only
+    // branch/existence need git. The preamble uses paths only (for the "you're in" hint),
+    // so pass a no-op exec to avoid spawning `git worktree list` per repo at session start.
+    const svc = new WorkGraphService({ root, exec: () => '' });
     const projects = svc.listProjects({ status: 'in_progress' });
     const active = projects.map((p) => ({ name: p.name, tier: p.tier }));
     const withWorktrees = projects.map((p) => ({ name: p.name, worktrees: svc.resolveWorktrees(p.id) }));

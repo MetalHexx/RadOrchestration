@@ -2,37 +2,38 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { defineCommand } from '../../framework/command.js';
 import { userDataPaths } from '../../lib/paths.js';
+import { parseYaml } from '../../lib/yaml.js';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface ConfigResult { autoCommit: string; autoPr: string; }
 export interface ReadConfigOpts { root: string; }
 
-function readScalar(content: string, group: string, key: string): string | null {
-  const lines = content.split('\n');
-  let inGroup = false;
-  for (const raw of lines) {
-    if (raw.trim() === '' || raw.trim().startsWith('#')) continue;
-    const indent = raw.search(/\S/);
-    const trimmed = raw.trim();
-    if (indent === 0) inGroup = trimmed === `${group}:`;
-    else if (inGroup) {
-      const m = trimmed.match(/^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/);
-      if (m && m[1] === key) return (m[2] ?? '').replace(/\s+#.*$/, '').replace(/^["'](.*)["']$/, '$1').trim() || null;
-    }
-  }
-  return null;
+interface OrchestrationConfig {
+  source_control?: { auto_commit?: unknown; auto_pr?: unknown };
+}
+
+function scalar(value: unknown, fallback: string): string {
+  return value === undefined || value === null ? fallback : String(value);
 }
 
 export function readConfig({ root }: ReadConfigOpts): ConfigResult {
+  const defaults: ConfigResult = { autoCommit: 'ask', autoPr: 'ask' };
   const configPath = path.join(root, 'orchestration.yml');
-  let autoCommit = 'ask';
-  let autoPr = 'ask';
-  if (fs.existsSync(configPath)) {
-    const content = fs.readFileSync(configPath, 'utf8');
-    autoCommit = readScalar(content, 'source_control', 'auto_commit') ?? autoCommit;
-    autoPr = readScalar(content, 'source_control', 'auto_pr') ?? autoPr;
+  if (!fs.existsSync(configPath)) return defaults;
+  let parsed: OrchestrationConfig | undefined;
+  try {
+    // Use the shared js-yaml loader so config semantics match the rest of the CLI.
+    // Guard the parse: a malformed orchestration.yml must degrade to defaults, never throw
+    // (this feeds the session-start preamble hook, which must not break the session).
+    parsed = parseYaml<OrchestrationConfig>(fs.readFileSync(configPath, 'utf8'));
+  } catch {
+    return defaults;
   }
-  return { autoCommit, autoPr };
+  const sc = (parsed && typeof parsed === 'object' ? parsed.source_control : undefined) ?? {};
+  return {
+    autoCommit: scalar(sc.auto_commit, defaults.autoCommit),
+    autoPr: scalar(sc.auto_pr, defaults.autoPr),
+  };
 }
 
 export const configCommand = defineCommand({
