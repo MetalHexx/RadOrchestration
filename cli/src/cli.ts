@@ -15,6 +15,7 @@ import { groupCreateCommand, groupEditCommand, groupAddCommand, groupRemoveComma
 import { groupCreateCommand as pgGroupCreateCommand, groupEditCommand as pgGroupEditCommand, groupAddCommand as pgGroupAddCommand, groupRemoveCommand as pgGroupRemoveCommand, groupDeleteCommand as pgGroupDeleteCommand, groupListCommand as pgGroupListCommand, groupShowCommand as pgGroupShowCommand } from './commands/project-group/index.js';
 import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 import { sessionContextCommand } from './commands/session-context/index.js';
+import { graphShowCommand, graphLinkCommand, graphUnlinkCommand, graphPruneCommand } from './commands/graph/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -304,6 +305,48 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(pgGroupEditCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const graph = program.command('graph').description('Work-graph structure, relationships, and upkeep');
+  graph
+    .command('show')
+    .description(graphShowCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  graph
+    .command('link')
+    .description(graphLinkCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphLinkCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  graph
+    .command('unlink')
+    .description(graphUnlinkCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphUnlinkCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  graph
+    .command('prune')
+    .description(graphPruneCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(graphPruneCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const project = program.command('project').description('Project state read operations');
