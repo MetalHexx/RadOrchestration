@@ -11,3 +11,5 @@ export { mapStatus, combineStatuses, rollupProjectStatus } from './derive/status
 export { resolveWorktrees } from './derive/worktrees.js';
 export type { GitExec, ResolveDeps } from './derive/worktrees.js';
 export { WorkGraph } from './graph.js';
+export { validateNewEdge, validateNewGroupId, GraphValidationError } from './validate.js';
+export type { ValidationContext } from './validate.js';
