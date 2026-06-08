@@ -4,3 +4,4 @@ export type {
   Project, EdgeType, Edge, StoredGroup, StoredGraph, GraphDTO,
 } from './types.js';
 export { PROJECTION_SCHEMA } from './types.js';
+export { GraphIndex, StaleRevisionError } from './store.js';
