@@ -8,3 +8,5 @@ export { GraphIndex, StaleRevisionError } from './store.js';
 export { listProjectNames, projectExists, deriveProject } from './derive/projects.js';
 export type { DeriveDeps } from './derive/projects.js';
 export { mapStatus, combineStatuses, rollupProjectStatus } from './derive/status.js';
+export { resolveWorktrees } from './derive/worktrees.js';
+export type { GitExec, ResolveDeps } from './derive/worktrees.js';
