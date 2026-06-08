@@ -13,7 +13,6 @@ import { skillListCommand } from './commands/skill/index.js';
 import { pipelineSignalCommand } from './commands/pipeline/index.js';
 import { groupCreateCommand, groupEditCommand, groupAddCommand, groupRemoveCommand, groupDeleteCommand, groupListCommand, groupShowCommand } from './commands/repo-group/index.js';
 import { groupCreateCommand as pgGroupCreateCommand, groupEditCommand as pgGroupEditCommand, groupAddCommand as pgGroupAddCommand, groupRemoveCommand as pgGroupRemoveCommand, groupDeleteCommand as pgGroupDeleteCommand, groupListCommand as pgGroupListCommand, groupShowCommand as pgGroupShowCommand } from './commands/project-group/index.js';
-import { runWhere, whereHelpText, WHERE_DESCRIPTION } from './commands/where.js';
 import { sessionContextCommand } from './commands/session-context/index.js';
 import { graphShowCommand, graphLinkCommand, graphUnlinkCommand, graphPruneCommand } from './commands/graph/index.js';
 import { configCommand } from './commands/config/index.js';
@@ -30,15 +29,6 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(3);
       await runCommand(doctorCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
-    });
-
-  program
-    .command('where [name]')
-    .description(WHERE_DESCRIPTION)
-    .addHelpText('after', '\n' + whereHelpText())
-    .action(async (name?: string) => {
-      const code = await runWhere({ name, stdout: process.stdout, stderr: process.stderr, env: process.env });
-      process.exit(code);
     });
 
   program
@@ -525,11 +515,6 @@ export function buildProgram(version: string): Command {
       const argv = process.argv.slice(4);
       await runCommand(composeCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
-
-  program.addHelpText(
-    'after',
-    "\nTip: use 'radorch where <name>' to resolve any radorch path (projects, registry, config, ...). 'radorch where' with no arg lists them all.",
-  );
 
   return program;
 }

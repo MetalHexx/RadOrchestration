@@ -6,15 +6,15 @@ const execP = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 describe('radorch program wiring', () => {
-  it('exposes doctor and where subcommands in --help', async () => {
+  it('exposes doctor subcommand in --help (where removed)', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const { stdout } = await execP('node', ['dist/bin/radorch.js', '--help'], {
       cwd: repoRoot,
       env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     expect(stdout).toMatch(/doctor/);
-    expect(stdout).toMatch(/where/);
-    expect(stdout).toMatch(/Tip: use 'radorch where <name>'/);
+    expect(stdout).not.toMatch(/\bwhere\b/);
+    expect(stdout).not.toMatch(/radorch where/);
   }, 30_000);
 
   it('exposes git commit and git pr subcommands at three help depths', async () => {
