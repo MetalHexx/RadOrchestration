@@ -15,3 +15,5 @@ export { validateNewEdge, validateNewGroupId, GraphValidationError } from './val
 export type { ValidationContext } from './validate.js';
 export { pruneEdges } from './reconcile.js';
 export type { PruneResult } from './reconcile.js';
+export { WorkGraphService } from './service.js';
+export type { ServiceOpts } from './service.js';
