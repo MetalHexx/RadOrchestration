@@ -27,22 +27,22 @@ Build **one** `askQuestions` call. Include only the questions whose condition is
     {
       "label": "{projects[0].name}",
       "recommended": true,
-      "description": "{projects[0].masterPlanPath}"
+      "description": "{projects[0].dir}/{projects[0].docs.masterPlan}"
     },
     {
       "label": "{projects[1].name}",
-      "description": "{projects[1].masterPlanPath}"
+      "description": "{projects[1].dir}/{projects[1].docs.masterPlan}"
     }
   ],
   "allowFreeformInput": true
 }
 ```
 
-Build one option per project from `radorch project find` output. Mark the first as `recommended`. Always include a Custom option at the end. If no projects were found, show only Custom.
+Build one option per project from `radorch project list` output (tier-filtered to `tier === 'execution'`). Each row carries `{ name, status, tier, sourceControlInitialized }` — run `radorch project show --id {name}` to obtain `dir` and `docs.masterPlan` for the description. Mark the first as `recommended`. Always include a Custom option at the end. If no projects were found, show only Custom.
 
 **Resolve:** Named option → `projectName` = that label. Path ending `.md` → treat as `masterPlanPath`, derive `projectName` from parent folder. Otherwise → treat as `projectName`.
 
-After resolving, if the worktree check was not already done, run `radorch project find --projects-base-path "{data.projectsBasePath}" --repo-root "{data.repoRoot}" --project-name {projectName}` to get existing worktree info.
+After resolving, if the worktree check was not already done, run `radorch project show --id {projectName}` and `radorch project worktrees --id {projectName}` to get project and existing worktree info.
 
 ---
 
@@ -154,8 +154,8 @@ After all answers are returned, derive these values:
 | Value | Source |
 |---|---|
 | `projectName` | From conversation context or `project_name` answer |
-| `masterPlanPath` | From context or `radorch project find` output |
-| `projectDir` | `{projectsBasePath}/{projectName}` |
+| `masterPlanPath` | Compose from `project show --id {projectName}`: `{data.dir}/{data.docs.masterPlan}` |
+| `projectDir` | `data.dir` from `project show --id {projectName}` |
 | `branchName` | `{projectName}` |
 | `worktreePath` | `{repoParent}/{repoName}-worktrees/{projectName}` |
 | `baseBranch` | `branch_from` answer |
