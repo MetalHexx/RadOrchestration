@@ -1,10 +1,12 @@
 import path from 'node:path';
-import type { GraphDTO, Group, Node, NodeId, NodeStatus, Project, WorktreeRef } from './types.js';
+import type { Edge, GraphDTO, Group, Node, NodeId, NodeStatus, Project, StoredGraph, WorktreeRef } from './types.js';
 import { PROJECTION_SCHEMA } from './types.js';
 import { GraphIndex } from './store.js';
 import { WorkGraph } from './graph.js';
 import { listProjectNames, projectExists, deriveProject } from './derive/projects.js';
 import { resolveWorktrees as deriveWorktrees, type GitExec } from './derive/worktrees.js';
+import { groupId } from './ids.js';
+import { validateNewEdge, validateNewGroupId, GraphValidationError } from './validate.js';
 
 export interface ServiceOpts { root: string; exec?: GitExec; }
 
@@ -63,5 +65,66 @@ export class WorkGraphService {
   }
   protected nodeExists(id: NodeId): boolean {
     return this.index.read().groups[id] !== undefined || projectExists(this.projectsDir(), id);
+  }
+
+  private validationCtx(stored: StoredGraph) {
+    return { groups: stored.groups, edges: stored.edges, nodeExists: (id: NodeId) => this.nodeExists(id) };
+  }
+
+  createGroup(input: { name: string; description: string; parentId?: NodeId }): { node: Group; rev: number } {
+    if (!input.description?.trim()) throw new GraphValidationError('a non-empty description is required');
+    const stored = this.index.read();
+    const id = groupId(input.name);
+    validateNewGroupId(this.validationCtx(stored), id);
+    stored.groups[id] = { name: input.name, description: input.description.trim() };
+    if (input.parentId) {
+      const edge: Edge = { type: 'contains', from: input.parentId, to: id };
+      validateNewEdge({ groups: stored.groups, edges: stored.edges, nodeExists: (x) => x === id || this.nodeExists(x) }, edge);
+      stored.edges.push(edge);
+    }
+    const next = this.index.write(stored, stored.rev);
+    return { node: { id, kind: 'group', name: input.name, description: input.description.trim(), status: 'unknown' }, rev: next.rev };
+  }
+
+  updateGroup(id: NodeId, patch: { name?: string; description?: string }): { node: Group; rev: number } {
+    const stored = this.index.read();
+    const g = stored.groups[id];
+    if (!g) throw new GraphValidationError(`group '${id}' does not exist`);
+    if (patch.name !== undefined) g.name = patch.name;
+    if (patch.description !== undefined) g.description = patch.description.trim();
+    const next = this.index.write(stored, stored.rev);
+    return { node: { id, kind: 'group', name: g.name, description: g.description, status: 'unknown' }, rev: next.rev };
+  }
+
+  deleteGroup(id: NodeId): { rev: number } {
+    // Cascade the group's own contains edges (and any edge touching it); projects are never deleted.
+    const stored = this.index.read();
+    delete stored.groups[id];
+    stored.edges = stored.edges.filter((e) => e.from !== id && e.to !== id);
+    const next = this.index.write(stored, stored.rev);
+    return { rev: next.rev };
+  }
+
+  addMember(groupId_: NodeId, nodeId: NodeId): { edge: Edge; rev: number } {
+    return this.addEdge({ type: 'contains', from: groupId_, to: nodeId });
+  }
+
+  removeMember(groupId_: NodeId, nodeId: NodeId): { rev: number } {
+    return this.removeEdge({ type: 'contains', from: groupId_, to: nodeId });
+  }
+
+  private addEdge(edge: Edge): { edge: Edge; rev: number } {
+    const stored = this.index.read();
+    validateNewEdge(this.validationCtx(stored), edge);
+    stored.edges.push(edge);
+    const next = this.index.write(stored, stored.rev);
+    return { edge, rev: next.rev };
+  }
+
+  private removeEdge(edge: Edge): { rev: number } {
+    const stored = this.index.read();
+    stored.edges = stored.edges.filter((e) => !(e.type === edge.type && e.from === edge.from && e.to === edge.to));
+    const next = this.index.write(stored, stored.rev);
+    return { rev: next.rev };
   }
 }
