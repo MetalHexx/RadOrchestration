@@ -64,7 +64,7 @@ export class WorkGraphService {
   resolveWorktrees(projectId: NodeId): WorktreeRef[] {
     return deriveWorktrees(projectId, { projectsDir: this.projectsDir(), worktreesDir: this.worktreesDir(), exec: this.opts.exec });
   }
-  protected nodeExists(id: NodeId): boolean {
+  private nodeExists(id: NodeId): boolean {
     return this.index.read().groups[id] !== undefined || projectExists(this.projectsDir(), id);
   }
 
@@ -98,8 +98,9 @@ export class WorkGraphService {
   }
 
   deleteGroup(id: NodeId): { rev: number } {
-    // Cascade the group's own contains edges (and any edge touching it); projects are never deleted.
     const stored = this.index.read();
+    if (!stored.groups[id]) throw new GraphValidationError(`group '${id}' does not exist`);
+    // Cascade the group's own contains edges (and any edge touching it); projects are never deleted.
     delete stored.groups[id];
     stored.edges = stored.edges.filter((e) => e.from !== id && e.to !== id);
     const next = this.index.write(stored, stored.rev);
