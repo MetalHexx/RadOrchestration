@@ -25,6 +25,10 @@ workflow based on the orchestrator action:
   description, membership) to orient work that spans repos. Reference/lookup only;
   registry management (add/bind/edit/remove) is a user-driven `/rad-repo` activity,
   not this agent's job.
+- **`rad-project`**: Work-graph-aware orient/organize toolbox — situate tasks within
+  the project graph, surface inter-repo relationships, and resolve worktree awareness
+  ("where do I do this work?"). Use after `rad-repo` orients you to repo identity;
+  `rad-project` is the next step in the orient → situate → act chain.
 
 ## Spawn Prompt Conventions
 
