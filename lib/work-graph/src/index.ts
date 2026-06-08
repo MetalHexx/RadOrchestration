@@ -5,3 +5,5 @@ export type {
 } from './types.js';
 export { PROJECTION_SCHEMA } from './types.js';
 export { GraphIndex, StaleRevisionError } from './store.js';
+export { listProjectNames, projectExists, deriveProject } from './derive/projects.js';
+export type { DeriveDeps } from './derive/projects.js';
