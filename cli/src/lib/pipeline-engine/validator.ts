@@ -12,6 +12,7 @@ import type {
 } from './types.js';
 import { NODE_STATUSES, GRAPH_STATUSES, ALLOWED_NODE_TRANSITIONS } from './constants.js';
 import { validateStateSchema } from './schema-validator.js';
+import { deriveCurrentNodePathFromMarkers } from './dag-walker.js';
 
 const validNodeStatuses = new Set<string>(Object.values(NODE_STATUSES));
 const validGraphStatuses = new Set<string>(Object.values(GRAPH_STATUSES));
@@ -35,6 +36,7 @@ export function validateState(
     ...checkNodeKindMatchesTemplate(proposedState, template),
     ...checkStatusTransitions(_previousState, proposedState),
     ...checkImmutableCommitHash(_previousState, proposedState),
+    ...checkCurrentNodePathHonest(proposedState),
   ];
 }
 
@@ -407,4 +409,24 @@ function compareNodes(
       compareNodes(prevNode.nodes, currNode.nodes, `${path}.${id}.nodes`, errors);
     }
   }
+}
+
+// ── Check: current_node_path honest tripwire (FR-8, FR-9, AD-1, NFR-1) ───────
+
+/**
+ * Verifies that `current_node_path` agrees with the in_progress marker
+ * derived from the state tree. When at least one node is in_progress, the
+ * cursor must equal the derived path; when no node is in_progress (terminal
+ * or not-yet-started) the check is silently skipped (NFR-1 tolerance).
+ */
+function checkCurrentNodePathHonest(state: PipelineState): string[] {
+  const derived = deriveCurrentNodePathFromMarkers(state);
+  if (derived === null) return []; // terminal / no active node — tolerate
+  if (state.graph.current_node_path !== derived) {
+    return [
+      `current_node_path tripwire: cursor '${state.graph.current_node_path}' disagrees with ` +
+      `in_progress markers (expected '${derived}'). The echoed context is stale.`,
+    ];
+  }
+  return [];
 }

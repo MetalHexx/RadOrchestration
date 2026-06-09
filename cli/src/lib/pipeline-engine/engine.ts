@@ -5,7 +5,7 @@ import { loadTemplate } from './template-loader.js';
 import { resolveTemplateName, snapshotTemplate } from './template-resolver.js';
 import { preRead } from './pre-reads.js';
 import { getMutation } from './mutations.js';
-import { walkDAG, resolveNodeStatePath } from './dag-walker.js';
+import { walkDAG, resolveNodeStatePath, deriveCurrentNodePathFromMarkers } from './dag-walker.js';
 import { enrichActionContext } from './context-enrichment.js';
 import { OUT_OF_BAND_EVENTS } from './constants.js';
 import { composeActionPrompt, composeOrphanRuntimeShape, NEXT_ACTION_PLACEHOLDER } from './composer.js';
@@ -428,6 +428,11 @@ export function processEvent(
 
       const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
 
+      // Derive current_node_path from in_progress markers AFTER the walker has
+      // advanced any newly-activated nodes. FR-8, AD-1.
+      mutatedState.graph.current_node_path =
+        deriveCurrentNodePathFromMarkers(mutatedState) ?? mutatedState.graph.current_node_path;
+
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {
         return {
@@ -529,13 +534,19 @@ export function processEvent(
     }
 
     mutatedState.project.updated = new Date().toISOString();
-    mutatedState.graph.current_node_path = resolveNodeStatePath(entry.templatePath, context);
 
     // Per FR-11, all routed events now fall through to the walker; the
     // former `entry.eventPhase === 'started'` short-circuit is gone.
     let nextAction;
     {
       const walkerResult = walkDAG(mutatedState, template, config, wrappedReadDocument);
+
+      // Derive current_node_path from in_progress markers AFTER the walker has
+      // advanced any newly-activated nodes, so the cursor always reflects the
+      // post-walk state. Falls back to the echo-based path when no concrete
+      // in_progress leaf exists (terminal / gate-pending states). FR-8, AD-1.
+      mutatedState.graph.current_node_path =
+        deriveCurrentNodePathFromMarkers(mutatedState) ?? resolveNodeStatePath(entry.templatePath, context);
 
       const postWalkErrors = validateState(state, mutatedState, config, template);
       if (postWalkErrors.length > 0) {

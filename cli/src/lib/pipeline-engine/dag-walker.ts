@@ -641,6 +641,58 @@ function walkNodes(
 }
 
 /**
+ * Derives the current active node path from the `in_progress` markers in the
+ * state tree, rather than from the echoed `current_node_path` field. This
+ * resolves the stale-cursor problem during corrective execution where the
+ * echoed path trails the markers.
+ *
+ * Returns the state-path string of the deepest in_progress leaf (e.g.,
+ * "phase_loop[0].corrective_tasks[1]"), or null when no concrete active node
+ * exists. A "concrete active node" is either:
+ *   - a corrective task entry with status `in_progress`
+ *   - a leaf step/gate node with status `in_progress`
+ *
+ * Container nodes (`for_each_phase`, `for_each_task`) that are `in_progress`
+ * without any deeper in_progress descendant are **not** counted — they are in
+ * a transitional state (mid-walker advancement) and treating them as active
+ * would produce false-positive tripwire errors.
+ *
+ * FR-8, FR-9, AD-1
+ */
+export function deriveCurrentNodePathFromMarkers(state: PipelineState): string | null {
+  const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+  if (!phaseLoop?.iterations?.length) return null;
+
+  function findLeaf(nodes: Record<string, NodeState>, prefix: string): string | null {
+    for (const [id, node] of Object.entries(nodes)) {
+      const here = `${prefix}${id}`;
+      if (node.status === 'in_progress') {
+        if (node.kind === 'for_each_phase' || node.kind === 'for_each_task') {
+          for (const iter of node.iterations) {
+            for (const ct of iter.corrective_tasks) {
+              if (ct.status === 'in_progress') {
+                const deeper = findLeaf(ct.nodes, `${here}[${iter.index}].corrective_tasks[${ct.index}].`);
+                if (deeper) return deeper;
+                return `${here}[${iter.index}].corrective_tasks[${ct.index}]`;
+              }
+            }
+            const deeper = findLeaf(iter.nodes, `${here}[${iter.index}].`);
+            if (deeper) return deeper;
+          }
+          // Container is in_progress but no deeper leaf found — transitional, not concrete
+          return null;
+        }
+        // Leaf node (step or gate) — this is the concrete active node
+        return here;
+      }
+    }
+    return null;
+  }
+
+  return findLeaf(state.graph.nodes, '');
+}
+
+/**
  * Core DAG traversal function. Walks template nodes in order using a recursive
  * helper, checking dependencies and node status to determine the next action.
  *
