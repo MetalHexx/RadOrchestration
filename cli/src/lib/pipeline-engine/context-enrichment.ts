@@ -355,12 +355,28 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   if (action === 'invoke_source_control_commit') {
     const phaseNumber = resolveActivePhaseIndex(state);
     const taskNumber = resolveActiveTaskIndex(state, phaseNumber);
+    const phase_id = formatPhaseId(phaseNumber);
+
+    let task_number: number | null = taskNumber;
+    let task_id = formatTaskId(phaseNumber, taskNumber);
+
+    const phaseLoopForSentinel = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+    const phaseIterForSentinel = phaseLoopForSentinel?.iterations[phaseNumber - 1];
+    const phaseCorrectives = phaseIterForSentinel?.corrective_tasks ?? [];
+    const phaseCorrectiveActive = phaseCorrectives.length > 0 &&
+      (phaseCorrectives[phaseCorrectives.length - 1].status === 'not_started' ||
+       phaseCorrectives[phaseCorrectives.length - 1].status === 'in_progress');
+    if (phaseCorrectiveActive) {
+      task_number = null;
+      task_id = `${phase_id}-PHASE`;
+    }
+
     return {
       ...walkerContext,
       phase_number: phaseNumber,
-      phase_id: formatPhaseId(phaseNumber),
-      task_number: taskNumber,
-      task_id: formatTaskId(phaseNumber, taskNumber),
+      phase_id,
+      task_number,
+      task_id,
       branch: state.pipeline.source_control?.branch ?? '',
       worktree_path: state.pipeline.source_control?.worktree_path ?? '',
     };

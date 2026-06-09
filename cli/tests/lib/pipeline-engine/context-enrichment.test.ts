@@ -176,3 +176,62 @@ describe('corrective-aware resolvers (FR-1, FR-2, NFR-1)', () => {
     expect(resolveActiveTaskIndex(state, 1)).toBe(1);
   });
 });
+
+const cfg = { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as import('../../../src/lib/pipeline-engine/types.js').OrchestrationConfig;
+
+function commitState(correctiveActive: boolean): PipelineState {
+  const taskLoop = {
+    kind: 'for_each_task',
+    status: correctiveActive ? 'completed' : 'in_progress',
+    iterations: [
+      { index: 0, status: correctiveActive ? 'completed' : 'in_progress', doc_path: null, repos: [], corrective_tasks: [], nodes: {} },
+    ],
+  };
+  const phase = {
+    index: 3,
+    status: 'in_progress',
+    doc_path: null,
+    repos: [],
+    corrective_tasks: correctiveActive
+      ? [{ index: 1, status: 'in_progress', reason: 'r', injected_after: 'phase_review', nodes: {}, repos: [] }]
+      : [],
+    nodes: { task_loop: taskLoop },
+  };
+  // Pad to 4 phases so phase index 4 is the corrective phase.
+  const pad = (i: number) => ({ index: i, status: 'completed', doc_path: null, repos: [], corrective_tasks: [], nodes: { task_loop: structuredClone(taskLoop) } });
+  return {
+    pipeline: { source_control: { branch: 'PROJECT-GRAPH-2', worktree_path: '/wt' } },
+    graph: { nodes: { phase_loop: { kind: 'for_each_phase', status: 'in_progress', iterations: [pad(0), pad(1), pad(2), phase] } } },
+  } as unknown as PipelineState;
+}
+
+describe('invoke_source_control_commit sentinel parity (FR-3, DD-2)', () => {
+  it('projects the phase-scope sentinel on an active phase corrective (FR-3, DD-2)', () => {
+    const ctx = enrichActionContext({
+      action: 'invoke_source_control_commit',
+      walkerContext: {},
+      state: commitState(true),
+      config: cfg,
+      cliContext: {},
+    });
+    expect(ctx.phase_number).toBe(4);
+    expect(ctx.phase_id).toBe('P04');
+    expect(ctx.task_number).toBeNull();
+    expect(ctx.task_id).toBe('P04-PHASE');
+  });
+
+  it('keeps the resolved task identity on a normal commit (NFR-1)', () => {
+    const ctx = enrichActionContext({
+      action: 'invoke_source_control_commit',
+      walkerContext: {},
+      state: commitState(false),
+      config: cfg,
+      cliContext: {},
+    });
+    expect(ctx.task_number).toBe(1);
+    // commitState(false) has 4 phases with phase 4 in_progress, so the
+    // resolved phase is 4 and task is 1 — P04-T01 (not P01-T01 as the
+    // handoff stated; see Execution Notes for the discrepancy).
+    expect(ctx.task_id).toBe('P04-T01');
+  });
+});
