@@ -82,6 +82,16 @@ When the user agrees to a series:
 4. **Cross-link** — ensure prev/next links and dependency sections connect the series
 5. **Focus the session** — after creating the series structure, zoom into whichever project the user wants to start with
 
+## Continuing an Existing Series
+
+When the user arrives saying "X is done, what's next?" or similar:
+
+1. **Orient with `/rad-project`** — run `project show <name>` on the completed project and `project list` filtered to the series stem to see what exists and what state each entry is in. Surface the series position to the user before any brainstorming begins.
+2. **Brainstorm the next entry** — use the live graph context (status, relationships, what was delivered) to inform your questions and proposals.
+3. **Offer to link before scribing** — when you're ready to write the BRAINSTORMING.md, ask once: "Do you want to link this project to an existing one in the work-graph?" Don't assume the relationship type — let the user describe it in their own words, then hand off to `/rad-project` to record it with the right edge. If they decline, move on.
+
 ## Retrofitting Existing Projects
 
 If a completed project needs a follow-on that wasn't originally planned as a series, just create the new project as `{STEM}-2` (or the next available number). Add a "Series Context" section linking back. The original project doesn't need to be modified — forward-linking is optional for already-shipped work.
+
+If the new project relates to the original (follows it, branches from it, or some other relationship), offer to record that via `/rad-project` — let the user describe the relationship first, then link.

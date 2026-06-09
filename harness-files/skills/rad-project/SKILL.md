@@ -1,6 +1,6 @@
 ---
 name: rad-project
-description: Use this skill to understand, navigate, and organize the work-graph — the live map of projects in the system, what state each is in, how they relate to one another, and where their worktrees are. Fronts the `project`, `project-group`, and `graph` nouns.
+description: Use this skill to understand, navigate, and organize the work-graph — the live map of projects in the system, what state each is in, how they relate to one another, and where their worktrees are. Use at brainstorm time when continuing a series or referencing existing work — orient on live state before exploring files.
 user-invocable: true
 ---
 

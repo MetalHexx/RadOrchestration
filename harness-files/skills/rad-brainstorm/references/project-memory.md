@@ -15,6 +15,8 @@ Use judgment. If the brainstorm is clearly greenfield with no prior context, ski
 
 ## Finding Candidates
 
+> **Check `/rad-project` first.** If the conversation signals a connection to an existing series or active project, call `/rad-project` (`project show <name>` or `project list`) before dispatching an Explore subagent. The work-graph gives you live status and relationships instantly. Only fall through to the Explore subagent scan below when you need document *content* that `/rad-project` doesn't surface.
+
 Dispatch an **Explore** subagent to scan `~/.radorc/projects`. Instruct it to:
 
 1. **List project folders** in the base path
