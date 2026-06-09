@@ -5,11 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { buildHookOutput, resolveRadorch, emitHookResult, serializeForStdout } from '../session-preamble.mjs';
 
-test('wraps the preamble in additionalContext on ok envelope', () => {
-  const run = () => ({ status: 0, stdout: JSON.stringify({ ok: true, data: { preamble: 'Rad Orc Initialized!\n/rad-repo' } }) });
+test('wraps the restyled structured preamble in additionalContext on ok envelope', () => {
+  const preamble = '**Rad Orc — environment loaded**\n\n**Repos** (1) · `repo-one`\n**Config** · auto-commit `ask` · auto-pr `ask`';
+  const run = () => ({ status: 0, stdout: JSON.stringify({ ok: true, data: { preamble } }) });
   const out = buildHookOutput({ run });
-  assert.match(out.additionalContext, /Rad Orc Initialized!/);
-  assert.match(out.additionalContext, /\/rad-repo/);
+  assert.match(out.additionalContext, /Rad Orc — environment loaded/);
+  assert.match(out.additionalContext, /\*\*Repos\*\*/);
 });
 
 test('surfaces a clear notice and never throws when the command returns ok:false', () => {

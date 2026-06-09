@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { WHERE_NAMES } from '../../src/commands/where.js';
 import { installPaths } from '../../src/lib/paths.js';
 import { scanUserLevelHarnesses } from '../../src/lib/cross-harness-scan.js';
 
 describe('CLI cleanup — sweep targets retired', () => {
-  it('WHERE_NAMES no longer exposes config or registry', () => {
-    const keys = Object.keys(WHERE_NAMES);
-    expect(keys).not.toContain('config');
-    expect(keys).not.toContain('registry');
-  });
   it('installPaths interface drops configYml, registryYml, harnessPointer', () => {
     const p = installPaths('/tmp/fake-root') as Record<string, unknown>;
     expect(p.configYml).toBeUndefined();

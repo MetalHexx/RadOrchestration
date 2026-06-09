@@ -188,7 +188,7 @@ When `task_size_preference` is a `Custom: …` string, the prose flows through v
 ## Step 6: Finalize the plan
 
 **Kind check (run first, before presenting any options):**
-Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {PROJECT_NAME}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
+Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project show --id {PROJECT_NAME}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
 
 For all other kinds (`standard` or unset), present the two-option fork below.
 

@@ -6,15 +6,15 @@ const execP = promisify(execFile);
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 describe('radorch program wiring', () => {
-  it('exposes doctor and where subcommands in --help', async () => {
+  it('exposes doctor subcommand in --help (where removed)', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const { stdout } = await execP('node', ['dist/bin/radorch.js', '--help'], {
       cwd: repoRoot,
       env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
     expect(stdout).toMatch(/doctor/);
-    expect(stdout).toMatch(/where/);
-    expect(stdout).toMatch(/Tip: use 'radorch where <name>'/);
+    expect(stdout).not.toMatch(/\bwhere\b/);
+    expect(stdout).not.toMatch(/radorch where/);
   }, 30_000);
 
   it('exposes git commit and git pr subcommands at three help depths', async () => {
@@ -35,7 +35,7 @@ describe('radorch program wiring', () => {
     expect(prHelp).toMatch(/Optional absolute path to a markdown file/);
   }, 30_000);
 
-  it('exposes project context and project find subcommands at three help depths', async () => {
+  it('exposes project context subcommand at three help depths (find retired)', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
@@ -44,14 +44,10 @@ describe('radorch program wiring', () => {
     expect(rootHelp).toMatch(/\bproject\b/);
     const { stdout: projectHelp } = await node(['project', '--help']);
     expect(projectHelp).toMatch(/context\s+Return the shared context block/);
-    expect(projectHelp).toMatch(/find\s+Find execution-tier projects/);
+    expect(projectHelp).not.toMatch(/find\s+Find execution-tier projects/);
     const { stdout: contextHelp } = await node(['project', 'context', '--help']);
     expect(contextHelp).toMatch(/--project-name/);
     expect(contextHelp).toMatch(/result includes the project-state block/);
-    const { stdout: findHelp } = await node(['project', 'find', '--help']);
-    expect(findHelp).toMatch(/--projects-base-path/);
-    expect(findHelp).toMatch(/--repo-root/);
-    expect(findHelp).toMatch(/--project-name/);
   }, 30_000);
 
   it('exposes worktree create and worktree launch with per-agent matrix in launch help', async () => {

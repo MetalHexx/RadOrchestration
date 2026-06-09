@@ -1,6 +1,11 @@
 import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
 
-export interface RenderPreambleOpts { root: string }
+export interface RenderPreambleOpts {
+  root: string;
+  active?: { name: string; tier: string | null }[];
+  config?: { autoCommit: string; autoPr: string };
+  youAreIn?: string;
+}
 
 // The preamble is delivered to the assistant on the session-start hook's
 // additionalContext channel. It carries the EXACT user-facing message plus a
@@ -14,29 +19,15 @@ export interface RenderPreambleOpts { root: string }
 //
 // Empty-state path (FR-15): a warm, verbatim greeting that names the gap (no
 //   map beyond the cwd) and offers /rad-repo.
-// Registry-present path (FR-14, DD-1): a verbatim greeting whose only dynamic
-//   parts are the repo/repo-group slug lists and the unbound-repo nudge. Local
-//   paths and descriptions are intentionally omitted for brevity.
+// Registry-present path (FR-8, FR-9, FR-10, FR-12, DD-1): structured block
+//   with header plus Repos / Repo Groups / Active / Config rows.
 const DELIVERY_PREFIX =
   '[rad-orc session-start] Begin your first reply by giving the user this message, ' +
   'then continue with their request:\n\n';
 
 const code = (slug: string): string => `\`${slug}\``;
 
-/** Backticked slugs joined inline: "`a`, `b`, `c`". */
-function slugList(slugs: string[]): string {
-  return slugs.map(code).join(', ');
-}
-
-/** Backticked slugs joined for prose: "`a`", "`a` and `b`", "`a`, `b`, and `c`". */
-function andList(slugs: string[]): string {
-  const coded = slugs.map(code);
-  if (coded.length <= 1) return coded.join('');
-  if (coded.length === 2) return `${coded[0]} and ${coded[1]}`;
-  return `${coded.slice(0, -1).join(', ')}, and ${coded[coded.length - 1]}`;
-}
-
-export function renderPreamble({ root }: RenderPreambleOpts): string {
+export function renderPreamble({ root, active = [], config, youAreIn }: RenderPreambleOpts): string {
   const reg = readRegistry({ root });
   const repoNames = Object.keys(reg.repos);
   const groupNames = Object.keys(reg.repoGroups);
@@ -51,39 +42,23 @@ export function renderPreamble({ root }: RenderPreambleOpts): string {
     return DELIVERY_PREFIX + body;
   }
 
-  // Registry present — verbatim greeting; only the slug lists and the unbound
-  // nudge vary with the data.
+  // Registry present — structured block: header plus labeled rows.
   const resolved = repoNames.map((name) => resolveRepoPath(reg, name));
   const unbound = resolved.filter((r) => !r.bound);
 
-  const repoNoun = repoNames.length === 1 ? 'repository' : 'repositories';
-  let lead =
-    `**Rad Orc is ready — your repo map is loaded.** You've got ` +
-    `**${repoNames.length} ${repoNoun}** — ${slugList(repoNames)}`;
-  if (groupNames.length > 0) {
-    const groupNoun = groupNames.length === 1 ? 'repo-group' : 'repo-groups';
-    lead += ` — and **${groupNames.length} ${groupNoun}**: ${slugList(groupNames)}.`;
-  } else {
-    lead += '.';
+  const header = `**Rad Orc — environment loaded**${youAreIn ? ` · you're in ${code(youAreIn)}` : ''}`;
+  const rows: string[] = [];
+  rows.push(`**Repos** (${repoNames.length}) · ${repoNames.map(code).join(' ')}`);
+  if (groupNames.length > 0) rows.push(`**Repo Groups** (${groupNames.length}) · ${groupNames.map(code).join(' ')}`);
+  if (active.length > 0) {
+    const items = active.map((p) => `${code(p.name)} (${p.tier ?? 'unknown'})`).join(' · ');
+    rows.push(`**Active** (${active.length}) · ${items}`);
   }
-
-  const reach =
-    ' These are the repos I can reach beyond the current folder and reason across as we work.';
-
-  let closing: string;
-  if (unbound.length === 0) {
-    closing = ' Say **`/rad-repo`** anytime to review or update your repos.';
-  } else if (unbound.length === 1) {
-    closing =
-      `\n\nOne thing to sort out: ${andList(unbound.map((r) => r.name))} isn't bound to a local ` +
-      `folder on this machine yet, so I can't open its code until it is. Say **\`/rad-repo\`** and ` +
-      `I'll help you point it at the right clone.`;
-  } else {
-    closing =
-      `\n\nOne thing to sort out: ${andList(unbound.map((r) => r.name))} aren't bound to local ` +
-      `folders on this machine yet, so I can't open their code until they are. Say **\`/rad-repo\`** ` +
-      `and I'll help you point them at the right clones.`;
+  if (config) rows.push(`**Config** · auto-commit ${code(config.autoCommit)} · auto-pr ${code(config.autoPr)}`);
+  let block = `${header}\n\n${rows.join('\n')}`;
+  if (unbound.length > 0) {
+    const names = unbound.map((r) => code(r.name)).join(', ');
+    block += `\n\nUnbound: ${names} — say \`/rad-repo\` to point at a local clone.`;
   }
-
-  return DELIVERY_PREFIX + lead + reach + closing;
+  return DELIVERY_PREFIX + block;
 }

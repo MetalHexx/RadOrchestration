@@ -18,7 +18,7 @@ The plan for `project_name` has been approved. I'll help you start execution.
 - Greet the user briefly, confirming `project_name`.
 
 **Kind check (run before presenting any options):**
-Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {project_name}` and read `data.projectType`. Detection reads `state.json` via `project context` — never the master-plan body. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
+Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project show --id {project_name}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
 
 For all other kinds (`standard` or unset), present the two-option fork below.
 

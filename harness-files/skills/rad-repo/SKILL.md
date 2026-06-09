@@ -35,3 +35,9 @@ The CLI is the mechanical executor — fail-loud and non-interactive. *You* brin
 - **[references/interacting-with-users.md](references/interacting-with-users.md)** — how to register, scope, bind, and manage *with* the user: the dry-run → interview → confirm flow, project scoping, and the unbound/empty-state cases.
 
 Each command emits a JSON envelope `{ "ok": <bool>, "data": { ... }, "error": { ... } }`. On success, surface the relevant `data` fields in a short plain-language confirmation. On failure, surface `error.message`.
+
+# Orient → situate → act
+
+`rad-repo` gives you **repo identity and homes** — the first step. For everything that follows (work items, inter-repo relationships, and "where should I actually do this work?"), continue to **`rad-project`**: it is the work-graph-aware layer that situates tasks, tracks relationships, and surfaces worktree awareness. Route any work / relationship / "where do I do it" question to `rad-project` rather than stopping at the registry.
+
+The full in-scope orient → situate chain is: **`rad-repo`** (repo identity & homes) → **`rad-project`** (work, relationships, worktree awareness).
