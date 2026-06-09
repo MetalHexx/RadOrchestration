@@ -34,6 +34,7 @@ export function validateState(
     ...checkIterationLimits(proposedState, config),
     ...checkNodeKindMatchesTemplate(proposedState, template),
     ...checkStatusTransitions(_previousState, proposedState),
+    ...checkImmutableCommitHash(_previousState, proposedState),
   ];
 }
 
@@ -301,6 +302,59 @@ function checkStatusTransitions(
     'graph.nodes',
     errors,
   );
+  return errors;
+}
+
+// ── Check: immutable commit_hash ──────────────────────────────────────────────
+
+function checkImmutableCommitHash(
+  previousState: PipelineState | null,
+  proposedState: PipelineState,
+): string[] {
+  if (!previousState) return [];
+  const errors: string[] = [];
+
+  function repoHash(entry: { repos?: Array<{ commit_hash: string | null }> } | undefined): string | null {
+    return entry?.repos && entry.repos.length > 0 ? entry.repos[0].commit_hash : null;
+  }
+
+  function compare(prev: Record<string, NodeState>, curr: Record<string, NodeState>, path: string): void {
+    for (const [id, currNode] of Object.entries(curr)) {
+      const prevNode = prev[id];
+      if (!prevNode) continue;
+      if (
+        (currNode.kind === 'for_each_phase' || currNode.kind === 'for_each_task') &&
+        (prevNode.kind === 'for_each_phase' || prevNode.kind === 'for_each_task')
+      ) {
+        const prevIters = (prevNode as ForEachPhaseNodeState | ForEachTaskNodeState).iterations;
+        for (const currIter of currNode.iterations) {
+          const prevIter = prevIters[currIter.index];
+          if (!prevIter) continue;
+          const before = repoHash(prevIter as unknown as { repos?: Array<{ commit_hash: string | null }> });
+          const after = repoHash(currIter as unknown as { repos?: Array<{ commit_hash: string | null }> });
+          if (before != null && after != null && before !== after) {
+            errors.push(`Immutable commit_hash violation at ${path}.${id}.iterations[${currIter.index}]: '${before}' → '${after}'`);
+          }
+          for (const currCt of currIter.corrective_tasks) {
+            const prevCt = prevIter.corrective_tasks.find(ct => ct.index === currCt.index);
+            if (!prevCt) continue;
+            const ctBefore = repoHash(prevCt as unknown as { repos?: Array<{ commit_hash: string | null }> });
+            const ctAfter = repoHash(currCt as unknown as { repos?: Array<{ commit_hash: string | null }> });
+            if (ctBefore != null && ctAfter != null && ctBefore !== ctAfter) {
+              errors.push(`Immutable commit_hash violation at ${path}.${id}.iterations[${currIter.index}].corrective_tasks[${currCt.index}]: '${ctBefore}' → '${ctAfter}'`);
+            }
+            compare(prevCt.nodes, currCt.nodes, `${path}.${id}.iterations[${currIter.index}].corrective_tasks[${currCt.index}].nodes`);
+          }
+          compare(prevIter.nodes, currIter.nodes, `${path}.${id}.iterations[${currIter.index}].nodes`);
+        }
+      }
+      if (currNode.kind === 'parallel' && prevNode.kind === 'parallel') {
+        compare(prevNode.nodes, currNode.nodes, `${path}.${id}.nodes`);
+      }
+    }
+  }
+
+  compare(previousState.graph.nodes, proposedState.graph.nodes, 'graph.nodes');
   return errors;
 }
 
