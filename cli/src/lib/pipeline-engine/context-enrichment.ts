@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { buildSkillManifest } from '../skill-manifest.js';
 import type {
   PipelineState,
@@ -7,6 +8,36 @@ import type {
   ForEachTaskNodeState,
   StepNodeState,
 } from './types.js';
+
+/**
+ * Validate that `commits[0]` is the chronologically earliest commit according
+ * to the git-history ordinal map. Returns an error string when the invariant
+ * is violated (FR-7), or null when everything is fine.
+ *
+ * @param commits - Traversal-ordered list of short SHAs (8-char prefix).
+ * @param ordinal - Map from short SHA to 1-based chronological position
+ *                  (lower = older) derived from `git rev-list --topo-order --reverse`.
+ */
+export function validateBaseShaChronology(
+  commits: string[],
+  ordinal: Map<string, number>,
+): string | null {
+  if (commits.length === 0) return null;
+  const base = commits[0];
+  const baseOrd = ordinal.get(base);
+  if (baseOrd === undefined) return null; // unknown to git history — leave to other checks
+  for (const c of commits) {
+    const o = ordinal.get(c);
+    if (o !== undefined && o < baseOrd) {
+      return (
+        `project_base_sha chronology violation: selected base '${base}' (git position ${baseOrd}) ` +
+        `is not the earliest commit — '${c}' (git position ${o}) precedes it. ` +
+        `A poisoned commit_hash likely contaminated base derivation.`
+      );
+    }
+  }
+  return null;
+}
 
 /**
  * Call buildSkillManifest directly to discover and render the spawn-prompt
@@ -432,6 +463,28 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
 
     const project_base_sha = commits.length > 0 ? commits[0] : null;
     const project_head_sha = commits.length > 0 ? commits[commits.length - 1] : null;
+
+    // FR-7: Validate that the selected base SHA is chronologically the earliest
+    // commit in the project. Build an ordinal map from `git rev-list` so the
+    // check is deterministic and uses a single process invocation (NFR-4).
+    const worktree = state.pipeline.source_control?.worktree_path ?? process.cwd();
+    let ordinal = new Map<string, number>();
+    try {
+      const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
+        cwd: worktree,
+        encoding: 'utf8',
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      stdout.split('\n').map((s: string) => s.trim()).filter(Boolean).forEach((sha: string, i: number) => {
+        ordinal.set(sha.slice(0, 8), i + 1);
+      });
+    } catch {
+      ordinal = new Map();
+    }
+    const chronologyError = validateBaseShaChronology(commits.map((c: string) => c.slice(0, 8)), ordinal);
+    if (chronologyError) {
+      return { ...walkerContext, error: chronologyError };
+    }
 
     return {
       ...walkerContext,

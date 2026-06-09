@@ -235,3 +235,21 @@ describe('invoke_source_control_commit sentinel parity (FR-3, DD-2)', () => {
     expect(ctx.task_id).toBe('P04-T01');
   });
 });
+
+import { validateBaseShaChronology } from '../../../src/lib/pipeline-engine/context-enrichment.js';
+
+describe('project_base_sha chronology invariant (FR-7, NFR-4)', () => {
+  it('rejects a base SHA whose chronological position is not earliest (FR-7)', () => {
+    // Traversal order picks the poisoned P04 hash first, but git says it is #12.
+    const commits = ['1436cd63', '64f9c236', 'e9d71bc5'];
+    const ordinal = new Map([['64f9c236', 1], ['e9d71bc5', 5], ['1436cd63', 12]]);
+    const err = validateBaseShaChronology(commits, ordinal);
+    expect(err).toMatch(/base.*sha|chronolog/i);
+  });
+
+  it('accepts a base SHA that is the chronologically earliest (FR-7)', () => {
+    const commits = ['64f9c236', 'e9d71bc5', '1436cd63'];
+    const ordinal = new Map([['64f9c236', 1], ['e9d71bc5', 5], ['1436cd63', 12]]);
+    expect(validateBaseShaChronology(commits, ordinal)).toBeNull();
+  });
+});
