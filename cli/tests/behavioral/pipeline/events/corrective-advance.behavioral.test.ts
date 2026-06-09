@@ -401,3 +401,99 @@ describe('corrective-of-a-corrective — superseded parent finalization (full en
     assertPromptForEnvelopeAction(env);
   });
 });
+
+// ── Corrective close finalizes unreached body gates as `skipped` (state hygiene) ──
+// When a corrective closes an iteration, body nodes ordered AFTER the review node
+// (phase_gate after phase_review, task_gate after code_review in the real
+// templates) are never walked and would otherwise strand at `not_started` inside
+// a `completed` iteration. The walker sweeps them to `skipped`. These seed the
+// trailing gate as not_started (the real stranding shape) and drive the
+// corrective's code review to `approved` so the corrective-completion
+// short-circuit fires.
+describe('corrective close finalizes unreached body gates as skipped (state hygiene)', () => {
+  const APPROVED_CR_DOC = 'reports/sweep-approved-cr.md';
+  const APPROVED_CR = `---\nverdict: approved\n---\nCorrective approved.\n`;
+  const hasNotStarted = (nodes: Record<string, { status: string }>) =>
+    Object.values(nodes).some((n) => n.status === 'not_started');
+
+  it('phase scope: closing a phase corrective sweeps the unreached phase_gate to skipped', async () => {
+    const w = makeWorld(
+      baseState('phase_loop[0].corrective_tasks[1].code_review', {
+        index: 0, status: 'in_progress', doc_path: null, repos: [],
+        corrective_tasks: [
+          { index: 1, reason: 'phase review requested changes', injected_after: 'phase_review', status: 'in_progress', doc_path: null, repos: [{ name: 'backend', commit_hash: 'pcor1' }], nodes: correctiveNodes('completed', 'completed', 'in_progress') },
+        ],
+        nodes: {
+          task_loop: { kind: 'for_each_task', status: 'completed', iterations: [completedTaskIteration('aaa1111')] },
+          phase_gate: gate('not_started', false),   // ordered after phase_review → stranded by the corrective close
+          phase_review: step('completed'),
+        },
+      }),
+      [{ path: APPROVED_CR_DOC, contents: APPROVED_CR }],
+    );
+    const env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--verdict', 'approved', '--doc-path', path.join(w.projectDir, APPROVED_CR_DOC), '--phase', '1', '--task', '1']);
+
+    expect(env.ok, env.error?.message).toBe(true);
+    const it = readState(w.projectDir).graph.nodes.phase_loop.iterations[0];
+    expect(it.status).toBe('completed');
+    expect(it.corrective_tasks[0].status).toBe('completed');
+    expect(it.nodes.phase_gate.status).toBe('skipped');     // THE FIX — was not_started
+    expect(hasNotStarted(it.nodes)).toBe(false);
+  });
+
+  it('task scope: closing a task corrective sweeps the unreached task_gate to skipped', async () => {
+    const taskIter = {
+      index: 0, status: 'in_progress', doc_path: null, repos: [{ name: 'backend', commit_hash: 'aaa1111' }],
+      corrective_tasks: [
+        { index: 1, reason: 'code review requested changes', injected_after: 'code_review', status: 'in_progress', doc_path: null, repos: [{ name: 'backend', commit_hash: 'tcor1' }], nodes: correctiveNodes('completed', 'completed', 'in_progress') },
+      ],
+      nodes: { task_gate: gate('not_started', false), task_executor: step('completed'), commit: step('completed'), code_review: step('completed') },
+    };
+    const w = makeWorld(
+      baseState('phase_loop[0].task_loop[0].corrective_tasks[1].code_review', {
+        index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [],
+        nodes: {
+          task_loop: { kind: 'for_each_task', status: 'in_progress', iterations: [taskIter] },
+          phase_gate: gate('not_started', false),
+          phase_review: step('not_started'),
+        },
+      }),
+      [{ path: APPROVED_CR_DOC, contents: APPROVED_CR }],
+    );
+    const env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--verdict', 'approved', '--doc-path', path.join(w.projectDir, APPROVED_CR_DOC), '--phase', '1', '--task', '1']);
+
+    expect(env.ok, env.error?.message).toBe(true);
+    const taskIterOut = readState(w.projectDir).graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0];
+    expect(taskIterOut.status).toBe('completed');
+    expect(taskIterOut.corrective_tasks[0].status).toBe('completed');
+    expect(taskIterOut.nodes.task_gate.status).toBe('skipped');   // THE FIX — was not_started
+    expect(hasNotStarted(taskIterOut.nodes)).toBe(false);
+  });
+
+  it('normal (non-corrective) close does NOT skip the gate — it stays completed', async () => {
+    // No corrective: the body is walked normally and the gate ends `completed`.
+    // Proves the sweep fires only on the corrective-completion path.
+    const taskIter = {
+      index: 0, status: 'in_progress', doc_path: null, repos: [{ name: 'backend', commit_hash: 'n1' }],
+      corrective_tasks: [],
+      nodes: { task_gate: gate('completed', false), task_executor: step('completed'), commit: step('completed'), code_review: step('in_progress') },
+    };
+    const w = makeWorld(
+      baseState('phase_loop[0].task_loop[0].code_review', {
+        index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [],
+        nodes: {
+          task_loop: { kind: 'for_each_task', status: 'in_progress', iterations: [taskIter] },
+          phase_gate: gate('not_started', false),
+          phase_review: step('not_started'),
+        },
+      }),
+      [{ path: APPROVED_CR_DOC, contents: APPROVED_CR }],
+    );
+    const env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--verdict', 'approved', '--doc-path', path.join(w.projectDir, APPROVED_CR_DOC), '--phase', '1', '--task', '1']);
+
+    expect(env.ok, env.error?.message).toBe(true);
+    const taskIterOut = readState(w.projectDir).graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0];
+    expect(taskIterOut.status).toBe('completed');
+    expect(taskIterOut.nodes.task_gate.status).toBe('completed');   // unchanged — not swept to skipped
+  });
+});

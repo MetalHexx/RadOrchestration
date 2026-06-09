@@ -133,6 +133,25 @@ function resolveDocRefInScope(
  * advancing statuses and returning the first actionable result. Returns
  * 'all_completed' when every iteration has been completed or skipped.
  */
+/**
+ * Finalize an iteration that completes via the corrective-completion
+ * short-circuit. Body nodes ordered AFTER the review node (e.g. phase_gate after
+ * phase_review, task_gate after code_review) are never walked when a corrective
+ * closes the iteration, so they remain `not_started`. They were bypassed by the
+ * corrective close, not executed, so the honest terminal status is `skipped`.
+ * Sweep only the iteration's DIRECT body nodes — never recurse into task_loop or
+ * any other container. Idempotent (re-sweeping already-terminal nodes is a
+ * no-op). Only the corrective-completion path calls this; normal completion
+ * walks its gates to `completed` as usual.
+ */
+function skipUnreachedIterationBodyNodes(iteration: IterationEntry): void {
+  for (const node of Object.values(iteration.nodes)) {
+    if (node.status === NODE_STATUSES.NOT_STARTED) {
+      node.status = NODE_STATUSES.SKIPPED;
+    }
+  }
+}
+
 function walkForEachIterations(
   fepDef: ForEachPhaseNodeDef | ForEachTaskNodeDef,
   fepState: ForEachPhaseNodeState | ForEachTaskNodeState,
@@ -186,6 +205,7 @@ function walkForEachIterations(
       }
 
       if (latestCorrective.status === NODE_STATUSES.COMPLETED) {
+        skipUnreachedIterationBodyNodes(iteration);
         iteration.status = NODE_STATUSES.COMPLETED;
         continue;
       }
@@ -217,6 +237,7 @@ function walkForEachIterations(
       });
       if (allCorrectiveDone) {
         latestCorrective.status = NODE_STATUSES.COMPLETED;
+        skipUnreachedIterationBodyNodes(iteration);
         iteration.status = NODE_STATUSES.COMPLETED;
         continue;
       }
