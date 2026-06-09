@@ -39,8 +39,13 @@ When you're talking about a change the user wants to make, consider asking them 
 - Always give a reasonably sized question, don't be vague or too broad. If the user gives a vague answer, ask follow-up questions to clarify.
 - If the user gives a very detailed answer, ask follow-up questions to break it down into smaller, more manageable pieces.
 
-## Past Project Memories
-If the user references past work, related projects, or a known domain, consider consulting `project-memory.md` to find relevant documents that can inform the brainstorming.  You can offer to link to these documents in the "Related Projects" section of the BRAINSTORMING.md to create a richer context for the project.
+## Work-Graph & Project Memory
+When the user references an existing project, continues a series, or asks "what's next":
+
+1. **Orient first with `/rad-project`** — call it before touching any files. It surfaces live status, relationships, and series position instantly. Do not scan `~/.radorc/projects/` until the work-graph has told you what it knows.
+2. **Then consult docs** — if you need document content (goals, deferred work, error history) after orienting, follow `project-memory.md` to read the richest available doc.
+
+If the brainstorm is clearly greenfield with no prior context, skip both steps.
 
 ## Related Docs
 If the user offers documentation that could help with planning, offer to link it to the "Related Projects" section of the BRAINSTORMING.md.  This could include design docs, images, architecture diagrams, product requirement documents, or any other relevant materials.  The goal is to create a rich context for the project that planners can refer to when they start working on it.
@@ -92,8 +97,9 @@ The Rad Orchestration dashboard is the **canonical viewer** for every artifact t
 |---------|-------------------|
 | How to brainstorm | [references/collaboration.md](./references/collaboration.md) |
 | Writing the document | [references/document-writing.md](./references/document-writing.md) |
-| Finding related projects | [references/project-memory.md](./references/project-memory.md) |
-| Splitting large projects | [references/project-series.md](./references/project-series.md) |
+| Orienting on existing series / active work | `/rad-project` skill |
+| Finding related project docs | [references/project-memory.md](./references/project-memory.md) |
+| Splitting large projects / continuing a series | [references/project-series.md](./references/project-series.md) |
 | Visual summaries / diagrams | [references/make-it-visual.md](./references/make-it-visual.md) |
 | UI mockups / wireframes | [references/generate-mockup.md](./references/generate-mockup.md) |
 | Architecture / technical diagrams | [references/architecture-visuals.md](./references/architecture-visuals.md) |
@@ -101,8 +107,8 @@ The Rad Orchestration dashboard is the **canonical viewer** for every artifact t
 ## Loading Instructions
 
 1. **Always read**: `collaboration.md` and `document-writing.md` — these are your core workflow.
-2. **Read when relevant**: `project-memory.md` — when the conversation references past work, related projects, or a known domain.
-3. **Read when relevant**: `project-series.md` — when the idea feels too large for a single project, or the user mentions phases, stages, or incremental delivery.
+2. **Read when relevant**: `project-memory.md` — when the conversation references past work, related projects, or a known domain. But orient with `/rad-project` first (see *Work-Graph & Project Memory*).
+3. **Read when relevant**: `project-series.md` — when the idea feels too large for a single project, the user mentions phases/stages, *or the user is continuing an existing series*. Pair with `/rad-project` for live orientation.
 4. **Read when relevant**: `make-it-visual.md` / `generate-mockup.md` / `architecture-visuals.md` — when the user wants a visual summary, mockup, wireframe, or an architecture/technical diagram. Hand the generation to a subagent (see *Delegate Visual Generation to a Subagent*).
 
 ## Inputs
