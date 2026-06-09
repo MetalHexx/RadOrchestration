@@ -72,10 +72,24 @@ export function resolveActivePhaseIndex(state: PipelineState): number {
   }
   if (matches.length === 1) return matches[0].index + 1;
 
+  // Corrective-aware: a phase whose last corrective entry is active is the
+  // active phase even when its regular iteration already flipped completed.
+  const correctivePhase = phaseLoop.iterations.find(it => {
+    const cts = it.corrective_tasks ?? [];
+    if (cts.length === 0) return false;
+    const last = cts[cts.length - 1];
+    return last.status === 'in_progress' || last.status === 'not_started';
+  });
+  if (correctivePhase) return correctivePhase.index + 1;
+
   const notStarted = phaseLoop.iterations.find(it => it.status === 'not_started');
   if (notStarted) return notStarted.index + 1;
 
-  return 1;
+  throw new Error(
+    `Cannot resolve active phase: no phase is in_progress, no phase carries an active corrective, ` +
+    `and no phase is not_started. State is unresolved — refusing to default to phase 1. ` +
+    `Pass --phase <N> to specify explicitly.`
+  );
 }
 
 export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number): number {
@@ -84,6 +98,17 @@ export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number)
 
   const phaseIteration = phaseLoop.iterations[phaseIndex - 1];
   if (!phaseIteration?.nodes) return 1;
+
+  // Corrective-aware: when a phase-scope corrective is active on this phase,
+  // task identity is the phase-scope sentinel — represented to callers as
+  // task index 1 (the sentinel task_id/task_number override is applied by the
+  // enrichment sentinel block, not here). Do NOT fall through to the task
+  // loop, whose iterations are all completed during a phase corrective.
+  const phaseCts = phaseIteration.corrective_tasks ?? [];
+  if (phaseCts.length > 0) {
+    const last = phaseCts[phaseCts.length - 1];
+    if (last.status === 'in_progress' || last.status === 'not_started') return 1;
+  }
 
   const taskLoop = phaseIteration.nodes['task_loop'] as ForEachTaskNodeState | undefined;
   if (!taskLoop?.iterations?.length) return 1;
@@ -96,10 +121,22 @@ export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number)
   }
   if (matches.length === 1) return matches[0].index + 1;
 
+  const correctiveTask = taskLoop.iterations.find(it => {
+    const cts = it.corrective_tasks ?? [];
+    if (cts.length === 0) return false;
+    const last = cts[cts.length - 1];
+    return last.status === 'in_progress' || last.status === 'not_started';
+  });
+  if (correctiveTask) return correctiveTask.index + 1;
+
   const notStarted = taskLoop.iterations.find(it => it.status === 'not_started');
   if (notStarted) return notStarted.index + 1;
 
-  return 1;
+  throw new Error(
+    `Cannot resolve active task in phase ${phaseIndex}: no task is in_progress, no task carries an ` +
+    `active corrective, and no task is not_started. State is unresolved — refusing to default to task 1. ` +
+    `Pass --task <N> to specify explicitly.`
+  );
 }
 
 const PLANNING_SPAWN_STEPS: Record<string, string> = {

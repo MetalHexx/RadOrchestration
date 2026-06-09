@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { enrichActionContext, type EnrichmentInput } from '../../../src/lib/pipeline-engine/context-enrichment.js';
+import { enrichActionContext, resolveActivePhaseIndex, resolveActiveTaskIndex, type EnrichmentInput } from '../../../src/lib/pipeline-engine/context-enrichment.js';
 import { makeV6State } from '../../helpers/state-factory.js';
 import type { PipelineState } from '../../../src/lib/pipeline-engine/types.js';
 
@@ -82,5 +82,97 @@ describe('context-enrichment spawn_code_reviewer head_sha (FR-26)', () => {
   it('reads head_sha from repos[0].commit_hash for spawn_code_reviewer (FR-26)', () => {
     const ctx = enrichActionContext(makeEnrichmentInput('spawn_code_reviewer', stateWithTaskCommit('backend', 'def5678')));
     expect(ctx.head_sha).toBe('def5678');
+  });
+});
+
+// Build a phase loop where every regular iteration is `completed` (so the
+// pre-fix resolvers fall through to `return 1`) but phase index 4 carries an
+// in_progress phase-scope corrective — the PROJECT-GRAPH-2 shape.
+function stateWithPhaseCorrective(): PipelineState {
+  const completedTaskLoop = {
+    kind: 'for_each_task',
+    status: 'completed',
+    iterations: [
+      { index: 0, status: 'completed', doc_path: null, repos: [], corrective_tasks: [], nodes: {} },
+    ],
+  };
+  const mkPhase = (index: number, status: string, correctives: unknown[]) => ({
+    index,
+    status,
+    doc_path: null,
+    repos: [],
+    corrective_tasks: correctives,
+    nodes: { task_loop: structuredClone(completedTaskLoop) },
+  });
+  return {
+    graph: {
+      nodes: {
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: 'in_progress',
+          iterations: [
+            mkPhase(0, 'completed', []),
+            mkPhase(1, 'completed', []),
+            mkPhase(2, 'completed', []),
+            mkPhase(3, 'in_progress', [
+              { index: 1, status: 'in_progress', reason: 'r', injected_after: 'phase_review', nodes: {}, repos: [] },
+            ]),
+          ],
+        },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+function stateResolvingToOne(): PipelineState {
+  return {
+    graph: {
+      nodes: {
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: 'in_progress',
+          iterations: [
+            {
+              index: 0,
+              status: 'in_progress',
+              doc_path: null,
+              repos: [],
+              corrective_tasks: [],
+              nodes: {
+                task_loop: {
+                  kind: 'for_each_task',
+                  status: 'in_progress',
+                  iterations: [
+                    { index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [], nodes: {} },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+describe('corrective-aware resolvers (FR-1, FR-2, NFR-1)', () => {
+  it('resolves the active phase-scope corrective phase, not node 1 (FR-1)', () => {
+    const state = stateWithPhaseCorrective();
+    expect(resolveActivePhaseIndex(state)).toBe(4);
+    expect(resolveActiveTaskIndex(state, 4)).toBe(1);
+  });
+
+  it('fails loud when no active node can be resolved (FR-2)', () => {
+    // All phases completed, no correctives, no in_progress/not_started.
+    const state = stateWithPhaseCorrective();
+    (state as unknown as { graph: { nodes: { phase_loop: { iterations: { status: string; corrective_tasks: unknown[] }[] } } } })
+      .graph.nodes.phase_loop.iterations.forEach(it => { it.status = 'completed'; it.corrective_tasks = []; });
+    expect(() => resolveActivePhaseIndex(state)).toThrow(/no active phase|unresolved/i);
+  });
+
+  it('still resolves to phase 1 / task 1 when that is genuinely correct (NFR-1)', () => {
+    const state = stateResolvingToOne();
+    expect(resolveActivePhaseIndex(state)).toBe(1);
+    expect(resolveActiveTaskIndex(state, 1)).toBe(1);
   });
 });
