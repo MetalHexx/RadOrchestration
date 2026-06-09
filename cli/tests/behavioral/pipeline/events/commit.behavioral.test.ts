@@ -243,6 +243,31 @@ describe('commit_completed — per-repo hash write (FR-25, AD-10)', () => {
   });
 });
 
+describe('commit_completed overwrite protection (FR-5, FR-6, NFR-2, DD-1)', () => {
+  it('rejects a different-hash overwrite of a finalized node and leaves the hash unchanged (FR-5, FR-6, DD-1)', () => {
+    // Seed a task whose repos[0].commit_hash is already finalized.
+    const seeded = seedSingleRepoTask('backend');
+    firstTaskIteration(seeded).repos[0].commit_hash = '64f9c236';
+    expect(() =>
+      drive(seeded, { event: 'commit_completed', commit_hash: '1436cd63', phase: 1, task: 1 })
+    ).toThrow(/immutable|overwrite|already recorded|finalized/i);
+    // The durable hash must be untouched by the rejected attempt.
+    expect(firstTaskIteration(seeded).repos[0].commit_hash).toBe('64f9c236');
+  });
+
+  it('allows an idempotent retry writing the same hash (NFR-2)', () => {
+    const seeded = seedSingleRepoTask('backend');
+    firstTaskIteration(seeded).repos[0].commit_hash = '64f9c236';
+    const after = drive(seeded, { event: 'commit_completed', commit_hash: '64f9c236', phase: 1, task: 1 });
+    expect(firstTaskIteration(after).repos[0].commit_hash).toBe('64f9c236');
+  });
+
+  it('allows the first write when the existing hash is null (FR-5)', () => {
+    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', phase: 1, task: 1 });
+    expect(firstTaskIteration(after).repos[0].commit_hash).toBe('abc1234');
+  });
+});
+
 describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
   it('commit_completed marks commit.status = completed and writes commit_hash onto task iteration', async () => {
     const w = buildWorld({

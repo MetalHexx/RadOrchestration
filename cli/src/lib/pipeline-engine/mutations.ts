@@ -19,6 +19,23 @@ import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { resolveActivePhaseIndex, resolveActiveTaskIndex } from './context-enrichment.js';
 
+// ── Hash-overwrite guard ──────────────────────────────────────────────────────
+
+// Hash-equal (allow) vs hash-differs (reject) idempotency rule. Reads the
+// durable existing hash on the entry being written; refuses to overwrite a
+// non-null hash with a different non-null value. Null existing hash (first
+// write) and equal incoming hash (idempotent retry) are allowed.
+function assertHashWritable(repos: Array<{ name: string; commit_hash: string | null }> | undefined, incoming: string | null): void {
+  const existing = repos && repos.length > 0 ? repos[0].commit_hash : null;
+  if (existing != null && incoming != null && existing !== incoming) {
+    throw new Error(
+      `commit_completed refused: would overwrite a finalized commit_hash ` +
+      `('${existing}' → '${incoming}') on an already-recorded node. ` +
+      `A finalized commit hash is immutable; the incoming signal addresses the wrong node or carries a stale context.`
+    );
+  }
+}
+
 // ── Resolution scope ──────────────────────────────────────────────────────────
 
 type ResolveScope = 'top' | 'phase' | 'task';
@@ -901,6 +918,7 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
       // fall back to a blank-name stub. Per-repo commit attribution for multi-repo
       // tasks remains future work (T03), but names are no longer dropped.
       if (activePhaseCorrective.repos && activePhaseCorrective.repos.length > 0) {
+        assertHashWritable(activePhaseCorrective.repos, commitHash);
         activePhaseCorrective.repos[0].commit_hash = commitHash;
       } else {
         activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
@@ -919,6 +937,7 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
       // Preserve existing repo names; only set the commit hash on the first entry.
       // If no entries exist yet, fall back to a blank-name stub.
       if (activeCorrective.repos && activeCorrective.repos.length > 0) {
+        assertHashWritable(activeCorrective.repos, commitHash);
         activeCorrective.repos[0].commit_hash = commitHash;
       } else {
         activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
@@ -930,6 +949,7 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
       // blank-name stub. Per-repo commit attribution for multi-repo tasks remains
       // future work, but names are no longer dropped.
       if (taskIteration.repos && taskIteration.repos.length > 0) {
+        assertHashWritable(taskIteration.repos, commitHash);
         taskIteration.repos[0].commit_hash = commitHash;
       } else {
         taskIteration.repos = [{ name: '', commit_hash: commitHash }];
@@ -938,7 +958,13 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     }
 
     return { state: cloned, mutations_applied };
-  } catch {
+  } catch (err) {
+    // Re-throw errors that originate from the hash-overwrite guard (assertHashWritable)
+    // so they propagate as loud, diagnosable rejections rather than being swallowed
+    // by the generic node-resolution error message below (DD-1, NFR-3).
+    if (err instanceof Error && /immutable|overwrite|already recorded|finalized/i.test(err.message)) {
+      throw err;
+    }
     if (context.phase === undefined) {
       const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
       const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');
