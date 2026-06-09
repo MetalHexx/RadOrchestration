@@ -13,6 +13,7 @@ import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.
 import { runCommand } from '../../../../src/framework/command.js';
 import { getMutation } from '../../../../src/lib/pipeline-engine/mutations.js';
 import { makeV6State } from '../../../helpers/state-factory.js';
+import { resolveActivePhaseIndex } from '../../../../src/lib/pipeline-engine/context-enrichment.js';
 import type { PipelineState, OrchestrationConfig, PipelineTemplate, EventContext } from '../../../../src/lib/pipeline-engine/types.js';
 
 const cleanups: Array<() => void> = [];
@@ -305,5 +306,38 @@ describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
     // step (spawn_code_reviewer per the template); the composed prompt
     // carries that action's completion event from the real catalog.
     assertPromptForEnvelopeAction(env);
+  });
+});
+
+function seedPhaseCorrective(repoName: string): Record<string, unknown> {
+  const base = seedSingleRepoTask(repoName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const phaseIter = (base as any).graph.nodes.phase_loop.iterations[0];
+  phaseIter.nodes.task_loop.status = 'completed';
+  phaseIter.nodes.task_loop.iterations[0].status = 'completed';
+  phaseIter.corrective_tasks = [
+    {
+      index: 1, status: 'in_progress', reason: 'phase review', injected_after: 'phase_review',
+      repos: [{ name: repoName, commit_hash: null }],
+      nodes: { commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+    },
+  ];
+  return base;
+}
+
+describe('phase-corrective commit path (FR-11, NFR-1)', () => {
+  it('writes the commit hash onto the active phase corrective, not the task iteration (FR-11)', () => {
+    const after = drive(seedPhaseCorrective('backend'), { event: 'commit_completed', commit_hash: 'cor1234', phase: 1, task: 1 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const phaseIter = (after as any).graph.nodes.phase_loop.iterations[0];
+    expect(phaseIter.corrective_tasks[0].repos[0].commit_hash).toBe('cor1234');
+    // The genuine task iteration hash is untouched (still null).
+    expect(phaseIter.nodes.task_loop.iterations[0].repos[0].commit_hash).toBeNull();
+  });
+
+  it('resolves the active node to the corrective phase identity (FR-11)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const state = seedPhaseCorrective('backend') as any;
+    expect(resolveActivePhaseIndex(state)).toBe(1);
   });
 });
