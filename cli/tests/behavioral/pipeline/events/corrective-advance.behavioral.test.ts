@@ -219,12 +219,12 @@ async function signal(projectDir: string, configPath: string, argv: string[]) {
   });
 }
 
-function makeWorld(state: unknown) {
+function makeWorld(state: unknown, sideFiles: Array<{ path: string; contents: string }> = []) {
   const w = buildWorld({
     template: { id: 'syn-exec-commit', body: COMMIT_TEMPLATE_BODY },
     state: state as Parameters<typeof buildWorld>[0]['state'],
     config: { default_template: 'syn-exec-commit', human_gates: { after_planning: true, execution_mode: 'autonomous', after_final_review: true } },
-    sideFiles: [],
+    sideFiles,
   });
   cleanups.push(w.cleanup);
   return w;
@@ -283,6 +283,121 @@ describe('corrective task advancement — full engine flow', () => {
     const corrective = onDisk.graph.nodes.phase_loop.iterations[0].corrective_tasks[0];
     expect(corrective.repos[0].commit_hash).toBe('cor1234');
     expect(corrective.nodes.commit.status).toBe('completed');
+    assertPromptForEnvelopeAction(env);
+  });
+});
+
+// ── Corrective-of-a-corrective: superseded parent finalization ────────────────
+// Full-engine-flow regression for the HICCUP-TEST bug: a corrective's own code
+// review returns changes_requested and births a successor corrective. The
+// superseded parent corrective must be finalized to `completed` at birth so it
+// is never stranded at in_progress inside a later-completed iteration (which the
+// dashboard rendered as a perpetual "Coding" spinner). Driving
+// code_review_completed --verdict changes_requested requires the mutation's
+// routing inputs to be present on the review doc frontmatter (merged by
+// pre-read): verdict, orchestrator_mediated, effective_outcome, and
+// corrective_handoff_path.
+
+const PHASE_C1_CR_DOC = 'reports/phase-c1-cr.md';
+const PHASE_C1_CR_CONTENTS = `---\nverdict: changes_requested\norchestrator_mediated: true\neffective_outcome: changes_requested\ncorrective_handoff_path: tasks/phase-c2.md\n---\nPhase corrective C1 code review — requests further changes.\n`;
+const PHASE_C2_CR_DOC = 'reports/phase-c2-cr.md';
+const PHASE_C2_CR_APPROVED = `---\nverdict: approved\n---\nPhase corrective C2 code review — approved.\n`;
+const PHASE_C2_HANDOFF = 'tasks/phase-c2.md';
+const HANDOFF_STUB = `---\ntype: task_handoff\n---\nCorrective handoff stub.\n`;
+
+const TASK_C1_CR_DOC = 'reports/task-c1-cr.md';
+const TASK_C1_CR_CONTENTS = `---\nverdict: changes_requested\norchestrator_mediated: true\neffective_outcome: changes_requested\ncorrective_handoff_path: tasks/task-c2.md\n---\nTask corrective C1 code review — requests further changes.\n`;
+const TASK_C2_HANDOFF = 'tasks/task-c2.md';
+
+describe('corrective-of-a-corrective — superseded parent finalization (full engine flow)', () => {
+  it('phase scope: C1 code_review changes_requested finalizes C1 and births C2', async () => {
+    const w = makeWorld(
+      phaseCorrectiveState(
+        'phase_loop[0].corrective_tasks[1].code_review',
+        correctiveNodes('completed', 'completed', 'in_progress'),
+      ),
+      [
+        { path: PHASE_C1_CR_DOC, contents: PHASE_C1_CR_CONTENTS },
+        { path: PHASE_C2_HANDOFF, contents: HANDOFF_STUB },
+      ],
+    );
+    const reviewAbs = path.join(w.projectDir, PHASE_C1_CR_DOC);
+    const env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--doc-path', reviewAbs, '--phase', '1', '--task', '1']);
+
+    expect(env.ok, env.error?.message).toBe(true);
+    const onDisk = readState(w.projectDir);
+    const cts = onDisk.graph.nodes.phase_loop.iterations[0].corrective_tasks;
+    expect(cts).toHaveLength(2);
+    // The fix: parent corrective finalized to completed (was in_progress).
+    expect(cts[0].status).toBe('completed');
+    // Successor born and now active.
+    expect(cts[1].index).toBe(2);
+    expect(cts[1].injected_after).toBe('code_review');
+    expect(cts[1].doc_path).toBe('tasks/phase-c2.md');
+    expect(onDisk.graph.current_node_path).toMatch(/corrective_tasks\[2\]/);
+    assertPromptForEnvelopeAction(env);
+  });
+
+  it('phase scope: runs to phase completion with NO corrective left in_progress (end-to-end regression)', async () => {
+    const w = makeWorld(
+      phaseCorrectiveState(
+        'phase_loop[0].corrective_tasks[1].code_review',
+        correctiveNodes('completed', 'completed', 'in_progress'),
+      ),
+      [
+        { path: PHASE_C1_CR_DOC, contents: PHASE_C1_CR_CONTENTS },
+        { path: PHASE_C2_HANDOFF, contents: HANDOFF_STUB },
+        { path: PHASE_C2_CR_DOC, contents: PHASE_C2_CR_APPROVED },
+      ],
+    );
+    const c1ReviewAbs = path.join(w.projectDir, PHASE_C1_CR_DOC);
+    const c2ReviewAbs = path.join(w.projectDir, PHASE_C2_CR_DOC);
+
+    // 1. C1 review requests changes → C2 born, C1 finalized.
+    let env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--doc-path', c1ReviewAbs, '--phase', '1', '--task', '1']);
+    expect(env.ok, env.error?.message).toBe(true);
+    // 2. Drive C2's body to completion: execute → commit → code_review(approved).
+    env = await signal(w.projectDir, w.configPath, ['--event', 'task_completed', '--phase', '1', '--task', '1']);
+    expect(env.ok, env.error?.message).toBe(true);
+    env = await signal(w.projectDir, w.configPath, ['--event', 'commit_completed', '--phase', '1', '--task', '1', '--commit-hash', 'c2hash1']);
+    expect(env.ok, env.error?.message).toBe(true);
+    env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--doc-path', c2ReviewAbs, '--phase', '1', '--task', '1']);
+    expect(env.ok, env.error?.message).toBe(true);
+
+    const onDisk = readState(w.projectDir);
+    const phaseIter = onDisk.graph.nodes.phase_loop.iterations[0];
+    expect(phaseIter.status).toBe('completed');
+    const cts = phaseIter.corrective_tasks;
+    expect(cts).toHaveLength(2);
+    // The exact HICCUP-TEST symptom, now impossible: no corrective stranded in_progress.
+    expect(cts.every((ct: { status: string }) => ct.status === 'completed')).toBe(true);
+    expect(cts.some((ct: { status: string }) => ct.status === 'in_progress')).toBe(false);
+  });
+
+  it('task scope: C1 code_review changes_requested finalizes C1 and births C2', async () => {
+    const w = makeWorld(
+      taskCorrectiveState(
+        'phase_loop[0].task_loop[0].corrective_tasks[1].code_review',
+        correctiveNodes('completed', 'completed', 'in_progress'),
+      ),
+      [
+        { path: TASK_C1_CR_DOC, contents: TASK_C1_CR_CONTENTS },
+        { path: TASK_C2_HANDOFF, contents: HANDOFF_STUB },
+      ],
+    );
+    const reviewAbs = path.join(w.projectDir, TASK_C1_CR_DOC);
+    const env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--doc-path', reviewAbs, '--phase', '1', '--task', '1']);
+
+    expect(env.ok, env.error?.message).toBe(true);
+    const onDisk = readState(w.projectDir);
+    const cts = onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0].corrective_tasks;
+    expect(cts).toHaveLength(2);
+    // The fix: parent task corrective finalized to completed (was in_progress).
+    expect(cts[0].status).toBe('completed');
+    expect(cts[1].index).toBe(2);
+    expect(cts[1].injected_after).toBe('code_review');
+    expect(cts[1].doc_path).toBe('tasks/task-c2.md');
+    expect(onDisk.graph.current_node_path).toMatch(/task_loop\[0\]\.corrective_tasks\[2\]/);
     assertPromptForEnvelopeAction(env);
   });
 });

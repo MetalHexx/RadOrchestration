@@ -49,6 +49,7 @@ export function validateState(
     ...checkNodeStatuses(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationIndices(proposedState.graph.nodes, 'graph.nodes'),
     ...checkCompletedParentChildren(proposedState.graph.nodes, 'graph.nodes'),
+    ...checkCorrectiveEntriesTerminal(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationLimits(proposedState, config),
     ...checkNodeKindMatchesTemplate(proposedState, template),
     ...checkStatusTransitions(_previousState, proposedState),
@@ -173,6 +174,49 @@ function findInProgressNodes(nodes: Record<string, NodeState>, path: string, par
     }
     if (node.kind === 'parallel') {
       errors.push(...findInProgressNodes(node.nodes, `${path}.${id}.nodes`, parentPath));
+    }
+  }
+  return errors;
+}
+
+// ── Check: completed iteration ⇒ all corrective entries terminal ──────────────
+
+// A completed for-each iteration must contain only terminal corrective entries.
+// Catches the corrective-of-a-corrective stranding bug class at validate time: a
+// corrective entry left non-terminal (in_progress / not_started) under a
+// completed iteration, sitting before a completed sibling. This is the
+// defense-in-depth backstop for the mutations.ts fix that finalizes a superseded
+// parent corrective when its successor is born. Not cursor-related, so it runs
+// at BOTH the pre- and post-walk validate sites (it is NOT gated by
+// checkCursorHonesty); with the mutation in place it always passes, but without
+// it the post-walk validate that marked the iteration completed hard-rejects
+// instead of silently corrupting state.
+function checkCorrectiveEntriesTerminal(nodes: Record<string, NodeState>, path: string): string[] {
+  const errors: string[] = [];
+  for (const [id, node] of Object.entries(nodes)) {
+    const nodePath = `${path}.${id}`;
+    if (node.kind === 'for_each_phase' || node.kind === 'for_each_task') {
+      for (const iter of node.iterations) {
+        // Gate on the ITERATION status (not the for-each node status): a stranded
+        // corrective in a completed phase N must be flagged even while phase N+1
+        // is still running and the for-each node is therefore in_progress.
+        if (iter.status === 'completed') {
+          for (const ct of iter.corrective_tasks) {
+            if (ct.status !== 'completed' && ct.status !== 'skipped') {
+              errors.push(
+                `Corrective entry '${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}]' ` +
+                `has status '${ct.status}' but the iteration is completed ` +
+                `(all corrective entries under a completed iteration must be terminal: completed or skipped)`,
+              );
+            }
+          }
+        }
+        // Recurse into nested for-each (phase_loop → task_loop).
+        errors.push(...checkCorrectiveEntriesTerminal(iter.nodes, `${nodePath}.iterations[${iter.index}].nodes`));
+      }
+    }
+    if (node.kind === 'parallel') {
+      errors.push(...checkCorrectiveEntriesTerminal(node.nodes, `${nodePath}.nodes`));
     }
   }
   return errors;

@@ -716,6 +716,31 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     // phaseIter.corrective_tasks; otherwise it appends to taskIter. Preserves
     // iter-10 task-scope behaviour identically when scope === 'task'.
     const { iteration, scope } = resolveHostingIteration(cloned, phase, task);
+
+    // Corrective-of-a-corrective: when the code_review that just completed lives
+    // on the hosting iteration's most recent corrective entry, that parent
+    // corrective is now superseded — its review concluded (changes_requested)
+    // and a successor corrective takes over. Finalize the parent here, BEFORE
+    // pushing the child (after the push, length-1 is the child, not the parent).
+    // The walker only ever finalizes the LATEST corrective, so without this the
+    // parent is stranded at in_progress inside a later-completed iteration (the
+    // HICCUP-TEST symptom). Uses the hosting iteration, so it covers both
+    // task-scope and phase-scope correctives uniformly. An empty array (the
+    // first corrective, born from an original task's code_review) is a no-op.
+    // phase_review_completed needs no equivalent guard: phase_review is
+    // single-pass and never fires on a corrective, so it has no parent
+    // corrective to finalize.
+    const existingCorrectives = iteration.corrective_tasks;
+    if (existingCorrectives.length > 0) {
+      const parent = existingCorrectives[existingCorrectives.length - 1];
+      if (parent.status !== 'completed' && parent.nodes['code_review']?.status === 'completed') {
+        parent.status = 'completed';
+        mutations_applied.push(
+          `finalized superseded corrective_task[${parent.index}].status = completed (corrective-of-corrective, scope=${scope})`
+        );
+      }
+    }
+
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
     // Normalize the handoff path via trim so a value like " tasks/foo.md " is

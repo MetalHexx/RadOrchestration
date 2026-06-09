@@ -132,3 +132,94 @@ describe('current_node_path tripwire opt-out (pre-walk validate, FR-8, FR-9)', (
     expect(withFlag).toEqual(withoutOpts);
   });
 });
+
+// ── checkCorrectiveEntriesTerminal: completed iteration ⇒ terminal correctives ──
+// Defense-in-depth for the corrective-of-a-corrective stranding bug (the
+// HICCUP-TEST symptom): a completed phase iteration whose first corrective is
+// left in_progress before a completed sibling corrective. With the mutations.ts
+// fix the parent is finalized at child birth, so this invariant always passes;
+// without it the post-walk validate that marks the iteration completed
+// hard-rejects instead of silently corrupting state.
+
+function makeCorrective(index: number, status: string) {
+  return {
+    index,
+    status,
+    reason: index === 1 ? 'Phase review requested changes' : 'Code review requested changes',
+    injected_after: index === 1 ? 'phase_review' : 'code_review',
+    repos: [],
+    nodes: {
+      task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+      commit: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+      code_review: { kind: 'step', status: 'completed', doc_path: null, retries: 0, verdict: 'changes_requested' },
+    },
+  };
+}
+
+// A phase_loop with a single phase iteration. `phaseLoopStatus` / `iterStatus`
+// and the per-corrective statuses are all configurable so each case can pin the
+// exact shape it needs.
+function phaseWithCorrectives(
+  phaseLoopStatus: string,
+  iterStatus: string,
+  correctiveStatuses: string[],
+): PipelineState {
+  const taskLoop = { kind: 'for_each_task', status: 'completed', iterations: [ { index: 0, status: 'completed', doc_path: null, repos: [], corrective_tasks: [], nodes: {} } ] };
+  return {
+    graph: {
+      status: 'in_progress',
+      current_node_path: 'final_review',
+      nodes: {
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: phaseLoopStatus,
+          iterations: [
+            {
+              index: 0,
+              status: iterStatus,
+              doc_path: null,
+              repos: [],
+              corrective_tasks: correctiveStatuses.map((s, i) => makeCorrective(i + 1, s)),
+              nodes: { task_loop: structuredClone(taskLoop), phase_review: { kind: 'step', status: 'completed', doc_path: null, retries: 0, verdict: 'changes_requested' } },
+            },
+          ],
+        },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+describe('checkCorrectiveEntriesTerminal (corrective-of-a-corrective stranding)', () => {
+  it('rejects a completed iteration containing an in_progress corrective (the HICCUP-TEST symptom)', () => {
+    // C1 in_progress, C2 completed, under a completed phase iteration.
+    const next = phaseWithCorrectives('completed', 'completed', ['in_progress', 'completed']);
+    const errors = validateState(null, next, cfg, tmpl);
+    expect(errors.some(e => /corrective.*completed|terminal/i.test(e))).toBe(true);
+  });
+
+  it('accepts a completed iteration whose corrective entries are all terminal', () => {
+    const next = phaseWithCorrectives('completed', 'completed', ['completed', 'completed']);
+    const errors = validateState(null, next, cfg, tmpl);
+    expect(errors.some(e => /corrective.*completed|terminal/i.test(e))).toBe(false);
+  });
+
+  it('accepts a skipped corrective under a completed iteration (skipped is terminal)', () => {
+    const next = phaseWithCorrectives('completed', 'completed', ['completed', 'skipped']);
+    const errors = validateState(null, next, cfg, tmpl);
+    expect(errors.some(e => /corrective.*completed|terminal/i.test(e))).toBe(false);
+  });
+
+  it('tolerates an in_progress iteration with an in_progress corrective (legit live state)', () => {
+    const next = phaseWithCorrectives('in_progress', 'in_progress', ['in_progress']);
+    const errors = validateState(null, next, cfg, tmpl);
+    expect(errors.some(e => /corrective.*completed|terminal/i.test(e))).toBe(false);
+  });
+
+  it('flags a stranded corrective in a completed phase even while the for-each is still in_progress', () => {
+    // phase_loop node still in_progress (a later phase running), but THIS iteration
+    // is completed with a stranded in_progress corrective — iter-status gating catches it.
+    const next = phaseWithCorrectives('in_progress', 'completed', ['in_progress', 'completed']);
+    const errors = validateState(null, next, cfg, tmpl);
+    expect(errors.some(e => /corrective.*completed|terminal/i.test(e))).toBe(true);
+  });
+});
