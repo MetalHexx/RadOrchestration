@@ -19,12 +19,29 @@ const validGraphStatuses = new Set<string>(Object.values(GRAPH_STATUSES));
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/**
+ * Validate a proposed pipeline state.
+ *
+ * `opts.checkCursorHonesty` (default `true`) gates the `current_node_path`
+ * honesty tripwire (checkCurrentNodePathHonest). That check is a
+ * POST-recompute invariant: it only holds after the walker has advanced nodes
+ * and `graph.current_node_path` has been re-derived from the in_progress
+ * markers (the post-walk validate sites in engine.ts). The PRE-walk validate
+ * sites pass `{ checkCursorHonesty: false }` because the cursor is
+ * intentionally stale there — the mutation has been applied but the walker has
+ * not yet run, so a childless corrective entry (a reified state object whose
+ * derived path is the entry itself) would spuriously disagree with the
+ * not-yet-recomputed cursor. Every other check (schema, status transitions,
+ * immutable commit hash, corrective structure, etc.) runs at both sites.
+ */
 export function validateState(
   _previousState: PipelineState | null,
   proposedState: PipelineState,
   config: OrchestrationConfig,
   template: PipelineTemplate,
+  opts: { checkCursorHonesty?: boolean } = {},
 ): string[] {
+  const { checkCursorHonesty = true } = opts;
   return [
     ...validateStateSchema(proposedState),     // schema check (must be first)
     ...checkGraphStatus(proposedState),
@@ -36,7 +53,7 @@ export function validateState(
     ...checkNodeKindMatchesTemplate(proposedState, template),
     ...checkStatusTransitions(_previousState, proposedState),
     ...checkImmutableCommitHash(_previousState, proposedState),
-    ...checkCurrentNodePathHonest(proposedState),
+    ...(checkCursorHonesty ? checkCurrentNodePathHonest(proposedState) : []),
   ];
 }
 

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { enrichActionContext, resolveActivePhaseIndex, resolveActiveTaskIndex, type EnrichmentInput } from '../../../src/lib/pipeline-engine/context-enrichment.js';
 import { makeV6State } from '../../helpers/state-factory.js';
-import type { PipelineState } from '../../../src/lib/pipeline-engine/types.js';
+import type { PipelineState, OrchestrationConfig } from '../../../src/lib/pipeline-engine/types.js';
 
 function makeTmpRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pe-'));
@@ -177,7 +177,7 @@ describe('corrective-aware resolvers (FR-1, FR-2, NFR-1)', () => {
   });
 });
 
-const cfg = { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as import('../../../src/lib/pipeline-engine/types.js').OrchestrationConfig;
+const cfg = { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as OrchestrationConfig;
 
 function commitState(correctiveActive: boolean): PipelineState {
   const taskLoop = {

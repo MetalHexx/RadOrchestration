@@ -75,3 +75,60 @@ describe('current_node_path tripwire (FR-8, FR-9)', () => {
     expect(errors.some(e => /current_node_path|tripwire/i.test(e))).toBe(false);
   });
 });
+
+// A corrective entry that is in_progress but has NO in_progress child leaf
+// (task_executor just completed, commit not yet activated). This is the exact
+// shape the engine's PRE-walk validate sees: the cursor still points at the
+// now-completed child while deriveCurrentNodePathFromMarkers returns the bare
+// corrective ENTRY path (reified state object — dag-walker.ts).
+function childlessCorrectiveState(currentNodePath: string): PipelineState {
+  const taskLoop = { kind: 'for_each_task', status: 'completed', iterations: [ { index: 0, status: 'completed', doc_path: null, repos: [], corrective_tasks: [], nodes: {} } ] };
+  return {
+    graph: {
+      status: 'in_progress',
+      current_node_path: currentNodePath,
+      nodes: {
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: 'in_progress',
+          iterations: [
+            { index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [
+              { index: 1, status: 'in_progress', reason: 'r', injected_after: 'phase_review', repos: [], nodes: {
+                task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+                commit: { kind: 'step', status: 'not_started', doc_path: null, retries: 0 },
+              } },
+            ], nodes: { task_loop: structuredClone(taskLoop) } },
+          ],
+        },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+describe('current_node_path tripwire opt-out (pre-walk validate, FR-8, FR-9)', () => {
+  const STALE = 'phase_loop[0].corrective_tasks[1].task_executor';
+
+  it('sanity: derives the bare corrective entry path for a childless in_progress corrective', () => {
+    const derived = deriveCurrentNodePathFromMarkers(childlessCorrectiveState('ignored'));
+    expect(derived).toBe('phase_loop[0].corrective_tasks[1]');
+  });
+
+  it('{ checkCursorHonesty: false } suppresses the tripwire for the stale-cursor transient', () => {
+    const next = childlessCorrectiveState(STALE);
+    const errors = validateState(null, next, cfg, tmpl, { checkCursorHonesty: false });
+    expect(errors.some(e => /current_node_path|tripwire|disagree/i.test(e))).toBe(false);
+  });
+
+  it('default opts still flag the same stale-cursor transient (tripwire not neutered)', () => {
+    const next = childlessCorrectiveState(STALE);
+    const errors = validateState(null, next, cfg, tmpl);
+    expect(errors.some(e => /current_node_path|tripwire|disagree/i.test(e))).toBe(true);
+  });
+
+  it('{ checkCursorHonesty: true } is equivalent to omitting opts', () => {
+    const next = childlessCorrectiveState(STALE);
+    const withFlag = validateState(null, next, cfg, tmpl, { checkCursorHonesty: true });
+    const withoutOpts = validateState(null, next, cfg, tmpl);
+    expect(withFlag).toEqual(withoutOpts);
+  });
+});

@@ -415,7 +415,9 @@ export function processEvent(
       const mutationResult = mutation(state, normalizedContext, config, template);
       const mutatedState = mutationResult.state;
 
-      const validationErrors = validateState(state, mutatedState, config, template);
+      // Pre-walk: skip the current_node_path honesty tripwire — the cursor is
+      // recomputed post-walk (see below), so it is intentionally stale here.
+      const validationErrors = validateState(state, mutatedState, config, template, { checkCursorHonesty: false });
       if (validationErrors.length > 0) {
         return {
           action: null,
@@ -521,7 +523,9 @@ export function processEvent(
     const mutationResult = mutation(state, normalizedContext, config, template);
     const mutatedState = mutationResult.state;
 
-    const validationErrors = validateState(state, mutatedState, config, template);
+    // Pre-walk: skip the current_node_path honesty tripwire — the cursor is
+    // recomputed post-walk (see below), so it is intentionally stale here.
+    const validationErrors = validateState(state, mutatedState, config, template, { checkCursorHonesty: false });
     if (validationErrors.length > 0) {
       return {
         action: null,

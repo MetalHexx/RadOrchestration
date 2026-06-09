@@ -405,7 +405,7 @@
     {
       "bundlePath": "skills/rad-orchestration/references/corrective-playbook.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/references/corrective-playbook.md",
-      "sha256": "ed90a994f5cbf057397c057d78d6df498aa9c723ef50d6ae4c952dd2b6b7bd79"
+      "sha256": "ad8a524009e607827adeb236abef1c9443d26d130e33f9ea05d88520e0450057"
     },
     {
       "bundlePath": "skills/rad-orchestration/references/document-conventions.md",
@@ -420,7 +420,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "5b3ea1e8fc593677c96fdcef02574c51accd823fbf0c2f81b8ced206d703acb4"
+      "sha256": "24b1b008a63a63279ad74eecd6732e1fc5031ef61ddbeb638c400810f95b0358"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
