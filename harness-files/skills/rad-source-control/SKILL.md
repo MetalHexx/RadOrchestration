@@ -1,69 +1,34 @@
 ---
 name: rad-source-control
-description: 'Source control operations — commit code or open a PR. All inputs come from the spawn prompt.'
+description: 'Source control operations — commit code, open a PR, create a worktree, or clean up a worktree. All inputs for commit and PR come from the spawn prompt; worktree operations are interactive and driven from the main session.'
 user-invocable: false
 ---
 
 # Source Control
 
-Both operations are subcommands of the bundled `radorch` CLI. Each call emits a single JSON envelope on stdout of the shape `{ "ok": <bool>, "data": { ... }, "error": { ... } }`. Read result fields from inside `data` and emit the corresponding markdown block.
+This skill is a router. Each operation dispatches to a reference document. Read the section for your operation and follow it.
 
 ---
 
-## Commit Mode
+## Shared JSON-Envelope Convention
 
-**1. Build the commit message** from the spawn prompt. Derive the prefix from the task title or type (first match):
+All `radorch` CLI calls emit a single JSON envelope on stdout:
 
-| Keywords | Prefix |
-|----------|--------|
-| feature, feat, new | `feat` |
-| fix, bug, patch | `fix` |
-| refactor, restructure, clean | `refactor` |
-| test, testing, spec | `test` |
-| doc, docs, documentation | `docs` |
-| *(no match)* | `chore` |
-
-Format: `{prefix}({taskId}): {title}`
-Optional body: blank line then 2–4 prose lines from the task description.
-
-**2. Run:**
 ```
-node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" git commit --worktree-path "<worktree>" --message "<message>"
+{ "ok": <bool>, "data": { ... }, "error": { ... } }
 ```
 
-**3. Parse the envelope on stdout. Read fields from `data` and emit:**
-````
-## Commit Result
-```json
-{ "committed": <data.committed>, "pushed": <data.pushed>, "commitHash": "<data.commitHash-or-null>", "error": "<data.error-or-null>", "errorType": "<data.errorType-or-null>" }
-```
-````
-
-A partial-success commit (commit landed but push failed) is still envelope-success (`ok: true`); the failure surfaces via `data.pushed=false` and `data.errorType="push_failed"`. Treat it as a commit success in your block.
-
-A remote-less repo (such as a side-project) also returns `ok: true` with `data.pushed=false`, but carries **no** `errorType`. This is expected — the commit succeeded and there is simply no remote to push to. Do not treat it as a failure. The distinction: `push_failed` always sets `errorType`; a clean remote-less result does not.
-
-PR Mode is never invoked for a side-project (`auto_pr: never`). A side-project has no remote and therefore no pull-request surface; skip the PR step entirely when the project kind is `side-project`.
+Read result fields from inside `data` and emit the corresponding markdown block. This convention applies to every operation below.
 
 ---
 
-## PR Mode
+## Routing Table
 
-**1. Run:**
-```
-node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" git pr \
-  --worktree-path "<worktree>" \
-  --branch "<branch>" \
-  --base-branch "<base-branch>" \
-  --title "<project-name>" \
-  [--body-file "<path>"]
-```
-`--body-file` is the path to a markdown file that becomes the PR description on GitHub. Pass it when a body file path is provided in the prompt; omit it otherwise (PR will have no description).
+| Operation | Invoker | All inputs from spawn prompt? | Reference |
+|-----------|---------|-------------------------------|-----------|
+| Commit | source-control subagent | true | [`references/creating-commits.md`](references/creating-commits.md) |
+| Open PR | source-control subagent | true | [`references/working-with-prs.md`](references/working-with-prs.md) |
+| Create worktree | main session | false (interactive + project state) | [`references/working-with-worktrees.md`](references/working-with-worktrees.md) |
+| Clean up worktree | main session | false (interactive + project state) | [`references/working-with-worktrees.md`](references/working-with-worktrees.md) |
 
-**2. Parse the envelope on stdout. Read fields from `data` and emit:**
-````
-## PR Result
-```json
-{ "pr_created": <data.pr_created>, "pr_url": "<data.pr_url-or-null>", "pr_number": <data.pr_number-or-null>, "pr_existed": <data.pr_existed>, "error": "<data.error-or-null>", "message": "<data.message>" }
-```
-````
+> **Triad note:** Worktree lifecycle (create and clean up) lives in the **act lane** of the orchestration triad. This supersedes the earlier "worktree creation is outside all three lanes" stance from PROJECT-GRAPH-2. Commit and PR remain subagent operations and are never reached by the interactive worktree flow.
