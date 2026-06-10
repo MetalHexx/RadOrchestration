@@ -57,6 +57,8 @@ describe('radorch program wiring', () => {
     const { stdout: wtHelp } = await node(['worktree', '--help']);
     expect(wtHelp).toMatch(/create\s+Provision worktrees/);
     expect(wtHelp).toMatch(/launch\s+Open a terminal/);
+    // (c2) remove appears alongside create/launch with its own description
+    expect(wtHelp).toMatch(/remove\s+Remove worktrees/);
     const { stdout: createHelp } = await node(['worktree', 'create', '--help']);
     expect(createHelp).toMatch(/--project/);
     expect(createHelp).toMatch(/--worktree-name/);
@@ -159,16 +161,32 @@ describe('radorch program wiring', () => {
     expect(initHelp).toMatch(/--project/);
   }, 30_000);
 
+  it('exposes source-control init at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/source-control/);
+    // (c3) noun depth: source-control --help shows init with its description
+    const { stdout: nounHelp } = await node(['source-control', '--help']);
+    expect(nounHelp).toMatch(/init\s+Validate worktrees and record source-control state/);
+    const { stdout: initHelp } = await node(['source-control', 'init', '--help']);
+    expect(initHelp).toMatch(/--project/);
+  }, 30_000);
+
   it('exposes project list, show, and worktrees subcommands at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
-    // noun depth: project --help lists all three read verbs with their descriptions
+    // noun depth: project --help lists all read verbs with their descriptions
     const { stdout: projectHelp } = await node(['project', '--help']);
     expect(projectHelp).toMatch(/list\s+List projects/);
     expect(projectHelp).toMatch(/show\s+Show one project/);
     expect(projectHelp).toMatch(/worktrees\s+Show a project/);
+    // (c1) locate appears alongside list/show/worktrees with its own description
+    expect(projectHelp).toMatch(/locate\s+Classify the current working directory/);
     // verb depth: project list --help exposes --status and --group flags
     const { stdout: listHelp } = await node(['project', 'list', '--help']);
     expect(listHelp).toMatch(/--status/);

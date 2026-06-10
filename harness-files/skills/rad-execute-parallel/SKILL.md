@@ -18,7 +18,7 @@ You are an orchestrator. You'll be using the `rad-orchestration` skill for this 
 | `radorch project list` | *(none — no filters required)* | `{ projects: [{ name, status, tier, sourceControlInitialized }] }` | Scan all registered projects; apply a client-side `tier === 'execution'` filter to get execution-ready candidates |
 | `radorch project show` | `--id <name>` | `{ name, status, tier, sourceControlInitialized, dir, projectType, worktrees, docs, related }` | Look up one project by id — supplies `projectType`, `dir`, `sourceControlInitialized`, and `docs.masterPlan` for path composition |
 | `radorch project worktrees` | `--id <name>` | `{ name, worktrees: [{ repo, path, branch, exists }] }` | List resolved worktrees for a project — use to obtain `existingWorktreePath`, `existingBranch`, and `worktreeExists` |
-| `radorch worktree create` | `--repo-root <path> --branch <name> --worktree-path <path> --base-branch <ref>` | `{ created, worktreePath, branch, baseBranch, pushed, remoteUrl, compareUrl, error, errorType }` | Create worktree, push branch, detect remote URL |
+| `radorch worktree create` | `--project <name> [--worktree-name <name>] [--repo <name>]` | `{ repos: [{ name, created, pushed, path, branch, error, errorType }] }` | Provision a worktree per repo in the project's master-plan `repos:` list, push each branch |
 | `radorch worktree launch` | `--agent {claude\|copilot\|vscode\|terminal} --worktree-path <path>` plus per-agent flags | `{ ok, platform, agent, permissionMode? }` | Open a terminal at the worktree and launch the chosen agent |
 
 Every subcommand emits `{ ok, data, error }` on stdout. Exit codes (`worktree create`): `0` = created + pushed, `1` = created but push failed, `2` = create failed.

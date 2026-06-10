@@ -6,7 +6,7 @@ import { UserError } from '../../framework/errors.js';
 import type { CommandContext } from '../../framework/context.js';
 import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
 import { userDataPaths } from '../../lib/paths.js';
-import { parseYaml } from '../../lib/yaml.js';
+import { readProjectReposDefault } from '../../lib/project-repos.js';
 
 export type WorktreeCreateErrorType =
   | 'already_exists_path' | 'already_exists_branch' | 'invalid_reference' | 'missing_args' | 'unknown' | null;
@@ -116,50 +116,17 @@ export interface ProvisionWorktreesOptions extends ProvisionWorktreesDeps {
   repo?: string;
 }
 
-function readProjectReposDefault(project: string): { repos: string[]; projectType: 'standard' | 'side-project' } {
-  const projectDir = path.join(userDataPaths().projects, project);
-  // Find master plan — match the convention: <PROJECT>-MASTER-PLAN*.md
-  let masterPlanPath: string | null = null;
-  try {
-    const entries = fs.readdirSync(projectDir);
-    for (const e of entries) {
-      if (e.toUpperCase().startsWith(project.toUpperCase() + '-MASTER-PLAN') && e.endsWith('.md')) {
-        masterPlanPath = path.join(projectDir, e);
-        break;
-      }
-    }
-    // Fallback: any file matching MASTER-PLAN pattern
-    if (!masterPlanPath) {
-      for (const e of entries) {
-        if (e.toUpperCase().includes('MASTER-PLAN') && e.endsWith('.md')) {
-          masterPlanPath = path.join(projectDir, e);
-          break;
-        }
-      }
-    }
-  } catch { /* ignore — will throw below */ }
-
-  if (!masterPlanPath) {
-    throw new UserError(`No master plan found for project "${project}" in ${projectDir}`);
-  }
-
-  const raw = fs.readFileSync(masterPlanPath, 'utf-8');
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!match) {
-    throw new UserError(`Master plan at ${masterPlanPath} has no YAML frontmatter`);
-  }
-  const fm = parseYaml<Record<string, unknown>>(match[1] ?? '') ?? {};
-  const projectType = fm['project-type'] === 'side-project' ? 'side-project' : 'standard';
-  if (projectType === 'side-project') {
+// Wraps the shared master-plan reader with a worktree-create-specific guard:
+// provisioning worktrees is a standard-project operation, so reject
+// side-projects here (remove/init paths legitimately accept side-projects).
+function readStandardProjectReposDefault(project: string): { repos: string[]; projectType: 'standard' | 'side-project' } {
+  const result = readProjectReposDefault(project);
+  if (result.projectType === 'side-project') {
     throw new UserError(
       `Project "${project}" is a side-project. Use \`side-project init\` to set up its worktrees.`,
     );
   }
-  const repos = Array.isArray(fm['repos']) ? (fm['repos'] as unknown[]).map(String) : [];
-  if (repos.length === 0) {
-    throw new UserError(`Master plan for project "${project}" declares no repos.`);
-  }
-  return { repos, projectType };
+  return result;
 }
 
 function resolveClonePathDefault(repo: string): string {
@@ -237,7 +204,7 @@ export const worktreeCreateCommand = defineCommand({
       worktreeName: args['worktree-name'],
       repo: args.repo,
       worktreesDir: userDataPaths().worktrees,
-      readProjectRepos: readProjectReposDefault,
+      readProjectRepos: readStandardProjectReposDefault,
       resolveClonePath: resolveClonePathDefault,
       defaultBranch: defaultBranchDefault,
       exists: (p) => fs.existsSync(p),

@@ -179,49 +179,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { userDataPaths } from '../../lib/paths.js';
-import { parseYaml } from '../../lib/yaml.js';
+import { readProjectReposDefault } from '../../lib/project-repos.js';
 import { readState, writeState as writeStateIO } from '../../lib/pipeline-engine/state-io.js';
 import type { PipelineState } from '../../lib/pipeline-engine/types.js';
 import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
-
-function readProjectReposDefault(project: string): { repos: string[]; projectType: 'standard' | 'side-project' } {
-  const projectDir = path.join(userDataPaths().projects, project);
-  let masterPlanPath: string | null = null;
-  try {
-    const entries = fs.readdirSync(projectDir);
-    for (const e of entries) {
-      if (e.toUpperCase().startsWith(project.toUpperCase() + '-MASTER-PLAN') && e.endsWith('.md')) {
-        masterPlanPath = path.join(projectDir, e);
-        break;
-      }
-    }
-    if (!masterPlanPath) {
-      for (const e of entries) {
-        if (e.toUpperCase().includes('MASTER-PLAN') && e.endsWith('.md')) {
-          masterPlanPath = path.join(projectDir, e);
-          break;
-        }
-      }
-    }
-  } catch { /* ignore */ }
-
-  if (!masterPlanPath) {
-    throw new UserError(`No master plan found for project "${project}" in ${projectDir}`);
-  }
-
-  const raw = fs.readFileSync(masterPlanPath, 'utf-8');
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!match) {
-    throw new UserError(`Master plan at ${masterPlanPath} has no YAML frontmatter`);
-  }
-  const fm = parseYaml<Record<string, unknown>>(match[1] ?? '') ?? {};
-  const projectType = fm['project-type'] === 'side-project' ? 'side-project' : 'standard';
-  const repos = Array.isArray(fm['repos']) ? (fm['repos'] as unknown[]).map(String) : [];
-  if (repos.length === 0) {
-    throw new UserError(`Master plan for project "${project}" declares no repos.`);
-  }
-  return { repos, projectType };
-}
 
 function readWorktreeFactsDefault(worktreePath: string): WorktreeFacts {
   if (!fs.existsSync(worktreePath)) {

@@ -11,11 +11,14 @@ export const sessionContextCommand = defineCommand({
   args: {},
   flags: {},
   handler: async () => {
-    const root = userDataPaths().root;
+    const paths = userDataPaths();
+    const root = paths.root;
     // Worktree *paths* are derived from state.json + the worktree-name convention; only
     // branch/existence need git. The preamble uses paths only (for the "you're in" hint),
     // so pass a no-op exec to avoid spawning `git worktree list` per repo at session start.
-    const svc = new WorkGraphService({ root, exec: () => '' });
+    // worktreesDir is passed for single-authority parity with `project show` / `project
+    // worktrees` (NFR-7) — closes the seam even though it is path-equivalent today.
+    const svc = new WorkGraphService({ root, worktreesDir: paths.worktrees, exec: () => '' });
     const projects = svc.listProjects({ status: 'in_progress' });
     const active = projects.map((p) => ({ name: p.name, tier: p.tier }));
     const withWorktrees = projects.map((p) => ({ name: p.name, worktrees: svc.resolveWorktrees(p.id) }));
