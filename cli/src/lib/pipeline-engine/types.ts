@@ -244,9 +244,11 @@ export interface SourceControlState {
   worktree_path: string;
   auto_commit: string;             // 'always' | 'never'
   auto_pr: string;                 // 'always' | 'never'
-  remote_url: string | null;
-  compare_url: string | null;
-  pr_url: string | null;
+  // Legacy single-repo compat fields (optional): present on pre-v6 / legacy
+  // states; absent on fresh v6 inits, where per-repo facts live in repos[].
+  remote_url?: string | null;
+  compare_url?: string | null;
+  pr_url?: string | null;
   // commit_hash REMOVED — replaced by per-task tracking on IterationEntry/CorrectiveTaskEntry
 }
 
