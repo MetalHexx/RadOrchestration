@@ -1,8 +1,12 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { defineCommand } from '../../framework/command.js';
 import { UserError } from '../../framework/errors.js';
 import type { CommandContext } from '../../framework/context.js';
+import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
+import { userDataPaths } from '../../lib/paths.js';
+import { parseYaml } from '../../lib/yaml.js';
 
 export type WorktreeCreateErrorType =
   | 'already_exists_path' | 'already_exists_branch' | 'invalid_reference' | 'missing_args' | 'unknown' | null;
@@ -74,43 +78,166 @@ export function worktreeCreate(opts: WorktreeCreateOptions): WorktreeCreateResul
   };
 }
 
-interface Args { 'repo-root'?: string; branch?: string; 'worktree-path'?: string; 'base-branch'?: string }
+// ── provisionWorktrees ─────────────────────────────────────────────────────────
+
+export interface ProvisionRepoResult {
+  name: string;
+  created: boolean;
+  path: string | null;
+  branch: string | null;
+  error: string | null;
+  errorType: WorktreeCreateErrorType;
+}
+
+export interface ProvisionWorktreesResult {
+  repos: ProvisionRepoResult[];
+}
+
+export interface ProvisionWorktreesDeps {
+  worktreesDir: string;
+  readProjectRepos: (project: string) => { repos: string[]; projectType: 'standard' | 'side-project' };
+  resolveClonePath: (repo: string) => string;
+  defaultBranch: (repo: string) => string;
+  exists: (p: string) => boolean;
+  create: (opts: WorktreeCreateOptions) => WorktreeCreateResult;
+}
+
+export interface ProvisionWorktreesOptions extends ProvisionWorktreesDeps {
+  project: string;
+  worktreeName?: string;
+  /** Optional repo scope — when provided, only this repo is provisioned. */
+  repo?: string;
+}
+
+function readProjectReposDefault(project: string): { repos: string[]; projectType: 'standard' | 'side-project' } {
+  const projectDir = path.join(userDataPaths().projects, project);
+  // Find master plan — match the convention: <PROJECT>-MASTER-PLAN*.md
+  let masterPlanPath: string | null = null;
+  try {
+    const entries = fs.readdirSync(projectDir);
+    for (const e of entries) {
+      if (e.toUpperCase().startsWith(project.toUpperCase() + '-MASTER-PLAN') && e.endsWith('.md')) {
+        masterPlanPath = path.join(projectDir, e);
+        break;
+      }
+    }
+    // Fallback: any file matching MASTER-PLAN pattern
+    if (!masterPlanPath) {
+      for (const e of entries) {
+        if (e.toUpperCase().includes('MASTER-PLAN') && e.endsWith('.md')) {
+          masterPlanPath = path.join(projectDir, e);
+          break;
+        }
+      }
+    }
+  } catch { /* ignore — will throw below */ }
+
+  if (!masterPlanPath) {
+    throw new UserError(`No master plan found for project "${project}" in ${projectDir}`);
+  }
+
+  const raw = fs.readFileSync(masterPlanPath, 'utf-8');
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match) {
+    throw new UserError(`Master plan at ${masterPlanPath} has no YAML frontmatter`);
+  }
+  const fm = parseYaml<Record<string, unknown>>(match[1] ?? '') ?? {};
+  const projectType = fm['project-type'] === 'side-project' ? 'side-project' : 'standard';
+  if (projectType === 'side-project') {
+    throw new UserError(
+      `Project "${project}" is a side-project. Use \`side-project init\` to set up its worktrees.`,
+    );
+  }
+  const repos = Array.isArray(fm['repos']) ? (fm['repos'] as unknown[]).map(String) : [];
+  if (repos.length === 0) {
+    throw new UserError(`Master plan for project "${project}" declares no repos.`);
+  }
+  return { repos, projectType };
+}
+
+function resolveClonePathDefault(repo: string): string {
+  const reg = readRegistry({ root: userDataPaths().root });
+  const resolved = resolveRepoPath(reg, repo);
+  if (!resolved.path) {
+    throw new UserError(`Repo "${repo}" is not bound. ${resolved.hint ?? 'Run `radorch repo bind`.'}`);
+  }
+  return resolved.path;
+}
+
+function defaultBranchDefault(_repo: string): string {
+  return 'main';
+}
+
+export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWorktreesResult {
+  const { project, worktreesDir, readProjectRepos, resolveClonePath, defaultBranch, exists, create } = opts;
+  const worktreeName = opts.worktreeName ?? project;
+
+  const { repos: allRepos } = readProjectRepos(project);
+  const targetRepos = opts.repo ? allRepos.filter(r => r === opts.repo) : allRepos;
+
+  // Branch is derived once per project (AD-4) — create() receives the same branch name for all repos.
+  const branch = `radorch/${worktreeName}`;
+
+  const results: ProvisionRepoResult[] = [];
+  for (const repo of targetRepos) {
+    const worktreePath = path.join(worktreesDir, worktreeName, repo);
+    try {
+      if (exists(worktreePath)) {
+        results.push({ name: repo, created: false, path: worktreePath, branch, error: null, errorType: null });
+        continue;
+      }
+      const r = create({
+        repoRoot: resolveClonePath(repo),
+        branch,
+        worktreePath,
+        baseBranch: defaultBranch(repo),
+      });
+      results.push({
+        name: repo,
+        created: r.created,
+        path: r.worktreePath,
+        branch: r.branch,
+        error: r.error,
+        errorType: r.errorType,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      results.push({ name: repo, created: false, path: worktreePath, branch, error: msg, errorType: 'unknown' });
+    }
+  }
+
+  return { repos: results };
+}
+
+// ── Command ───────────────────────────────────────────────────────────────────
+
+interface Args { project?: string; 'worktree-name'?: string; repo?: string }
 
 export const worktreeCreateCommand = defineCommand({
   name: 'worktree-create',
-  description: 'Create a worktree at the given path on a new branch from base',
+  description: 'Provision worktrees for every repo in a project from the master-plan registry',
   args: {
-    'repo-root': { description: 'Absolute path to the repository root from which the worktree is added', required: true },
-    branch: { description: 'New branch name to create with the worktree', required: true },
-    'worktree-path': { description: 'Absolute target path for the new worktree directory', required: true },
-    'base-branch': { description: 'Existing ref to branch from (e.g. main, origin/main, or a commit SHA)', required: true },
+    project: { description: 'Project name; selects the master plan whose repos: list is provisioned', required: true },
+    'worktree-name': { description: 'Override the worktree folder name (defaults to the project name)' },
+    repo: { description: 'Scope provisioning to a single repo within the project set' },
   },
   flags: {},
   handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
-    const root = args['repo-root']; const br = args.branch;
-    const wt = args['worktree-path']; const base = args['base-branch'];
-    if (!root || !br || !wt || !base) {
-      throw new UserError('--repo-root, --branch, --worktree-path, and --base-branch are all required');
-    }
-    return worktreeCreate({ repoRoot: root, branch: br, worktreePath: wt, baseBranch: base });
+    if (!args.project) throw new UserError('--project is required');
+    return provisionWorktrees({
+      project: args.project,
+      worktreeName: args['worktree-name'],
+      repo: args.repo,
+      worktreesDir: userDataPaths().worktrees,
+      readProjectRepos: readProjectReposDefault,
+      resolveClonePath: resolveClonePathDefault,
+      defaultBranch: defaultBranchDefault,
+      exists: (p) => fs.existsSync(p),
+      create: worktreeCreate,
+    });
   },
-  mapResult: (r: WorktreeCreateResult) => {
-    if (!r.created) {
-      // Framework invariant: failure envelopes must not carry `data` (data XOR error).
-      // We lift the classifier's `errorType` plus enough structured context onto the
-      // `error` object so programmatic callers can still discriminate the failure
-      // mode (already_exists_path, already_exists_branch, invalid_reference, unknown)
-      // and identify which worktree/branch the failure refers to.
-      const error = {
-        type: 'user_error' as const,
-        message: r.error ?? 'worktree creation failed',
-        errorType: r.errorType,
-        worktreePath: r.worktreePath,
-        branch: r.branch,
-        baseBranch: r.baseBranch,
-      };
-      return { ok: false, error, exit_code: 2 } as { ok: false; error: { type: 'user_error'; message: string }; exit_code: number };
-    }
-    return { ok: true, data: r, exit_code: r.pushed ? 0 : 1 };
+  mapResult: (r: ProvisionWorktreesResult) => {
+    const anyFailed = r.repos.some(repo => repo.error != null);
+    return { ok: !anyFailed, data: r, exit_code: anyFailed ? 1 : 0 };
   },
 });

@@ -58,13 +58,12 @@ describe('radorch program wiring', () => {
     const { stdout: rootHelp } = await node(['--help']);
     expect(rootHelp).toMatch(/\bworktree\b/);
     const { stdout: wtHelp } = await node(['worktree', '--help']);
-    expect(wtHelp).toMatch(/create\s+Create a worktree/);
+    expect(wtHelp).toMatch(/create\s+Provision worktrees/);
     expect(wtHelp).toMatch(/launch\s+Open a terminal/);
     const { stdout: createHelp } = await node(['worktree', 'create', '--help']);
-    expect(createHelp).toMatch(/--repo-root/);
-    expect(createHelp).toMatch(/--branch/);
-    expect(createHelp).toMatch(/--worktree-path/);
-    expect(createHelp).toMatch(/--base-branch/);
+    expect(createHelp).toMatch(/--project/);
+    expect(createHelp).toMatch(/--worktree-name/);
+    expect(createHelp).toMatch(/--repo/);
     const { stdout: launchHelp } = await node(['worktree', 'launch', '--help']);
     expect(launchHelp).toMatch(/--agent/);
     expect(launchHelp).toMatch(/--prompt required for: claude, copilot/);
