@@ -5,7 +5,7 @@ import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/in
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { repoAddCommand, repoBindCommand, repoEditCommand, repoListCommand, repoRemoveCommand, repoShowCommand } from './commands/repo/index.js';
 import { projectContextCommand, projectListCommand, projectLocateCommand, projectShowCommand, projectWorktreesCommand } from './commands/project/index.js';
-import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
+import { worktreeCreateCommand, worktreeLaunchCommand, worktreeRemoveCommand } from './commands/worktree/index.js';
 import { sideProjectInitCommand } from './commands/side-project/index.js';
 import { planExplodeCommand } from './commands/plan/index.js';
 import { migrateCommand } from './commands/migrate/index.js';
@@ -422,6 +422,16 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(worktreeLaunchCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  worktree
+    .command('remove')
+    .description(worktreeRemoveCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(worktreeRemoveCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const sideProject = program.command('side-project').description('Side-project (local-only repo) lifecycle operations');
