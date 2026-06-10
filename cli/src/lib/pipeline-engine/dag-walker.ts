@@ -703,6 +703,20 @@ export function deriveCurrentNodePathFromMarkers(state: PipelineState): string |
           // Container is in_progress but no deeper leaf found — transitional, not concrete
           return null;
         }
+        // Conditional routers are not concrete leaves: the taken-branch step is
+        // scaffolded as a FLAT SIBLING in this same `nodes` record (see
+        // walkNodes), so keep scanning to reach it rather than reporting the
+        // router path as the cursor.
+        if (node.kind === 'conditional') {
+          continue;
+        }
+        // Parallel containers nest their children under `node.nodes`; descend to
+        // find the concrete active leaf instead of reporting the container.
+        if (node.kind === 'parallel') {
+          const deeper = findLeaf(node.nodes, `${here}.`);
+          if (deeper) return deeper;
+          continue;
+        }
         // Leaf node (step or gate) — this is the concrete active node
         return here;
       }

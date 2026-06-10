@@ -253,3 +253,30 @@ describe('project_base_sha chronology invariant (FR-7, NFR-4)', () => {
     expect(validateBaseShaChronology(commits, ordinal)).toBeNull();
   });
 });
+
+describe('spawn_final_reviewer base/head SHA derivation — ≤1 commit short-circuit (FR-7, NFR-4)', () => {
+  // With 0–1 collected commit hashes a chronology violation is impossible, so
+  // the enrichment must not depend on `git` (the rev-list invocation is skipped).
+  // worktree_path points at a throwaway non-git directory to prove the path does
+  // not require a git repository when there is nothing to order.
+  function finalReviewState(commitHash: string | null): PipelineState {
+    const s = makeV6State({ taskRepos: [{ name: 'backend', commit_hash: commitHash }] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (s as any).pipeline = { ...(s as any).pipeline, source_control: { worktree_path: os.tmpdir() } };
+    return s as unknown as PipelineState;
+  }
+
+  it('returns null base/head and no error when no commits were collected (auto-commit off)', () => {
+    const out = enrichActionContext(makeEnrichmentInput('spawn_final_reviewer', finalReviewState(null)));
+    expect(out.project_base_sha ?? null).toBeNull();
+    expect(out.project_head_sha ?? null).toBeNull();
+    expect(out.error).toBeUndefined();
+  });
+
+  it('returns the single commit as both base and head with no error (one commit)', () => {
+    const out = enrichActionContext(makeEnrichmentInput('spawn_final_reviewer', finalReviewState('abc12345')));
+    expect(out.project_base_sha).toBe('abc12345');
+    expect(out.project_head_sha).toBe('abc12345');
+    expect(out.error).toBeUndefined();
+  });
+});

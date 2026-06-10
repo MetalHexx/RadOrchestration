@@ -465,25 +465,30 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     const project_head_sha = commits.length > 0 ? commits[commits.length - 1] : null;
 
     // FR-7: Validate that the selected base SHA is chronologically the earliest
-    // commit in the project. Build an ordinal map from `git rev-list` so the
-    // check is deterministic and uses a single process invocation (NFR-4).
-    const worktree = state.pipeline.source_control?.worktree_path ?? process.cwd();
-    let ordinal = new Map<string, number>();
-    try {
-      const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
-        cwd: worktree,
-        encoding: 'utf8',
-        maxBuffer: 10 * 1024 * 1024,
-      });
-      stdout.split('\n').map((s: string) => s.trim()).filter(Boolean).forEach((sha: string, i: number) => {
-        ordinal.set(sha.slice(0, 8), i + 1);
-      });
-    } catch {
-      ordinal = new Map();
-    }
-    const chronologyError = validateBaseShaChronology(commits.map((c: string) => c.slice(0, 8)), ordinal);
-    if (chronologyError) {
-      return { ...walkerContext, error: chronologyError };
+    // commit in the project. A chronology violation requires at least two
+    // commits to order against each other, so skip the `git rev-list` invocation
+    // entirely for 0–1 commits: the check cannot fail there, and skipping it
+    // avoids spawning a subprocess and a hard dependency on `git` when
+    // auto-commit is off (no commits collected). NFR-4.
+    if (commits.length > 1) {
+      const worktree = state.pipeline.source_control?.worktree_path ?? process.cwd();
+      let ordinal = new Map<string, number>();
+      try {
+        const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
+          cwd: worktree,
+          encoding: 'utf8',
+          maxBuffer: 10 * 1024 * 1024,
+        });
+        stdout.split('\n').map((s: string) => s.trim()).filter(Boolean).forEach((sha: string, i: number) => {
+          ordinal.set(sha.slice(0, 8), i + 1);
+        });
+      } catch {
+        ordinal = new Map();
+      }
+      const chronologyError = validateBaseShaChronology(commits.map((c: string) => c.slice(0, 8)), ordinal);
+      if (chronologyError) {
+        return { ...walkerContext, error: chronologyError };
+      }
     }
 
     return {
