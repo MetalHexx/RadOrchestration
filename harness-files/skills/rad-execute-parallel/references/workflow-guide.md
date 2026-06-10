@@ -1,6 +1,6 @@
 # Workflow Guide — Execute Parallel
 
-Detailed reference for the agent executing the `rad-execute-parallel` skill. Covers question schemas, value resolution, the `source_control_init` pipeline call, launch commands, and error handling.
+Detailed reference for the agent executing the `rad-execute-parallel` skill. Covers question schemas, value resolution, the two-call source-control init flow, launch commands, and error handling.
 
 ---
 
@@ -157,35 +157,51 @@ After all answers are returned, derive these values:
 | `masterPlanPath` | Compose from `project show --id {projectName}`: `{data.dir}/{data.docs.masterPlan}` |
 | `projectDir` | `data.dir` from `project show --id {projectName}` |
 | `branchName` | `{projectName}` |
-| `worktreePath` | `{repoParent}/{repoName}-worktrees/{projectName}` |
+| `worktreePath` | From `data.repos[0].path` returned by `radorch worktree create --project {projectName}` (the command returns a per-repo array — `repos[0]` is the launch directory) |
 | `baseBranch` | `branch_from` answer |
 | `resolvedAutoCommit` | `auto_commit` answer (`yes` → `always`, `no` → `never`), or `configAutoCommit` if it wasn't `"ask"` |
 | `resolvedAutoPr` | `auto_pr` answer (`yes` → `always`, `no` → `never`), or `configAutoPr` if it wasn't `"ask"` |
 | `permissionMode` | Parsed from `post_action` label: `"auto"` (auto), `"bypassPermissions"` (bypass/yolo), `"acceptEdits"` (accept edits), `"default"` (interactive). Only set when a Claude Code option was selected. |
 
-> The `source_control_init` pipeline event also accepts `yes`/`no` directly and normalizes them — the conversion here is kept for clarity.
-
 **If the user chose "Use the existing worktree":**
 - Set `worktreePath` = `existingWorktreePath`, `branchName` = `existingBranch`
-- **Skip** the `radorch worktree create` step — jump directly to `source_control_init`
+- Same-branch reuse: the follow-up project continues on the same branch as the reused project, landing on top of prior work. No branch prompt fires (C cases are silent — see five-case routing below).
+- **Skip** the `radorch worktree create` step — jump directly to `radorch source-control init`.
 
 ---
 
-## Source Control Init
+## Source Control Init (Two-Call Flow)
 
-After worktree creation (or reuse), call the pipeline to record source control settings:
+After worktree creation (or reuse), delegate to `rad-source-control`'s worktree flow for the provision → record sequence. The launcher stays thin — it does not carry init logic.
+
+Run the two calls in order:
 
 ```
-node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal --event source_control_init --project-dir "{projectDir}" --branch "{branchName}" --base-branch "{baseBranch}" --worktree-path "{worktreePath}" --auto-commit "{resolvedAutoCommit}" --auto-pr "{resolvedAutoPr}" --remote-url "{remoteUrl}" --compare-url "{compareUrl}"
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree create --project {projectName}
 ```
 
-Use `data.remoteUrl` and `data.compareUrl` from `worktree create` output. For reused worktrees where the subcommand was not run, detect them manually:
-- Run `git remote get-url origin` from the worktree path
-- Convert SSH → HTTPS: `git@github.com:ORG/REPO.git` → `https://github.com/ORG/REPO`
-- Strip trailing `.git` from HTTPS URLs
-- `compareUrl` = `{remoteUrl}/compare/{baseBranch}...{branchName}` (strip `origin/` prefix from baseBranch)
+Then:
 
-Verify the envelope returns `ok: true`. On `ok: false`, show `error.message` and stop.
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" source-control init --project {projectName}
+```
+
+The locate → decide → prompt → provision → record logic lives in `rad-source-control`'s [`working-with-worktrees.md`](../../rad-source-control/references/working-with-worktrees.md). Refer to it for the authoritative decision flow — the launcher delegates rather than duplicating it.
+
+### Five-case routing summary
+
+Cases A, B, and C are silent (no prompts). Prompts fire only at genuine forks:
+
+| Case | Situation | Prompt? |
+|---|---|---|
+| **A — Fresh standard** | `kind === 'none'` or `kind === 'main-clone'`, standard project | No |
+| **B — Side-project** | Project type is `side-project` | No |
+| **C — Standing in target's worktree** | `kind === 'worktree'`, project already there | No |
+| **C′ — Different project's worktree** | `kind === 'worktree'`, different project | Yes — confirm reuse; branch inherited from current worktree |
+| **D — Main clone, no worktree wanted** | `kind === 'main-clone'`, user declines worktree | Yes — confirm in-place mode |
+| **E — Reused set missing a repo** | Reusing existing set but a repo has no worktree yet | Yes — confirm pull-in |
+
+Verify the `source-control init` envelope returns `ok: true`. On `ok: false`, show `error.message` and stop.
 
 ---
 
@@ -246,8 +262,8 @@ Inform the user: *"Worktree is ready at `{worktreePath}` on branch `{branchName}
 | `invalid_reference` | `baseBranch` ref not found | Run `git fetch` and retry; verify with `git branch -r` |
 | `unknown` | Unclassified git error | Show the raw error; suggest `git worktree list` to inspect state |
 
-**Do NOT proceed** to `source_control_init` if worktree creation fails.
+**Do NOT proceed** to `source-control init` if worktree creation fails.
 
 ### Partial success (exit code 1)
 
-The worktree was created but `git push -u origin` failed. This is non-blocking — proceed with `source_control_init` and launch. The branch can be pushed later.
+The worktree was created but `git push -u origin` failed. This is non-blocking — proceed with `source-control init` and launch. The branch can be pushed later.

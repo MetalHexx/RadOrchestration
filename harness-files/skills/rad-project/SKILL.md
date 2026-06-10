@@ -24,7 +24,7 @@ The work-graph is a live map of the projects in the system — what exists, what
 
 # Lane note
 
-This skill handles project identity, relationships, and worktree location. Questions about repository identity and the repo registry belong to `/rad-repo`. Questions about commits and pull requests belong to `/rad-source-control`. Worktree creation is outside all three lanes.
+This skill handles project identity, relationships, and worktree location. Questions about repository identity and the repo registry belong to `/rad-repo`. Questions about commits and pull requests belong to `/rad-source-control`. Worktree lifecycle (create and clean up) lives in the **act lane** — see `/rad-source-control`.
 
 # Commands & references
 

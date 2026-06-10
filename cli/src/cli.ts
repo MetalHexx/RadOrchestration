@@ -4,8 +4,8 @@ import { doctorCommand } from './commands/doctor/index.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { repoAddCommand, repoBindCommand, repoEditCommand, repoListCommand, repoRemoveCommand, repoShowCommand } from './commands/repo/index.js';
-import { projectContextCommand, projectListCommand, projectShowCommand, projectWorktreesCommand } from './commands/project/index.js';
-import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
+import { projectListCommand, projectLocateCommand, projectShowCommand, projectWorktreesCommand } from './commands/project/index.js';
+import { worktreeCreateCommand, worktreeLaunchCommand, worktreeRemoveCommand } from './commands/worktree/index.js';
 import { sideProjectInitCommand } from './commands/side-project/index.js';
 import { planExplodeCommand } from './commands/plan/index.js';
 import { migrateCommand } from './commands/migrate/index.js';
@@ -16,6 +16,7 @@ import { groupCreateCommand as pgGroupCreateCommand, groupEditCommand as pgGroup
 import { sessionContextCommand } from './commands/session-context/index.js';
 import { graphShowCommand, graphLinkCommand, graphUnlinkCommand, graphPruneCommand } from './commands/graph/index.js';
 import { configCommand } from './commands/config/index.js';
+import { sourceControlInitCommand } from './commands/source-control/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -352,16 +353,6 @@ export function buildProgram(version: string): Command {
 
   const project = program.command('project').description('Project state read operations');
   project
-    .command('context')
-    .description(projectContextCommand.description)
-    .helpOption(false)
-    .allowUnknownOption()
-    .allowExcessArguments(true)
-    .action(async () => {
-      const argv = process.argv.slice(4);
-      await runCommand(projectContextCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
-    });
-  project
     .command('list')
     .description(projectListCommand.description)
     .helpOption(false)
@@ -380,6 +371,16 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(projectShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  project
+    .command('locate')
+    .description(projectLocateCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(projectLocateCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
   project
     .command('worktrees')
@@ -413,6 +414,16 @@ export function buildProgram(version: string): Command {
       const argv = process.argv.slice(4);
       await runCommand(worktreeLaunchCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
+  worktree
+    .command('remove')
+    .description(worktreeRemoveCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(worktreeRemoveCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
 
   const sideProject = program.command('side-project').description('Side-project (local-only repo) lifecycle operations');
   sideProject
@@ -424,6 +435,18 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(sideProjectInitCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const sourceControl = program.command('source-control').description('Source-control lifecycle operations');
+  sourceControl
+    .command('init')
+    .description(sourceControlInitCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(sourceControlInitCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const plan = program.command('plan').description('Master Plan operations');

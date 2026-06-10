@@ -480,12 +480,33 @@
         "base_branch",
         "worktree_path",
         "auto_commit",
-        "auto_pr",
-        "remote_url",
-        "compare_url",
-        "pr_url"
+        "auto_pr"
       ],
       "properties": {
+        "worktree_name": {
+          "title": "Worktree Name",
+          "description": "Project-scoped worktree set name (v6).",
+          "type": "string"
+        },
+        "repos": {
+          "title": "Per-Repo Source Control Facts",
+          "description": "v6 per-repo source-control facts (no stored path). Authoritative in v6; the sibling top-level remote_url/compare_url/pr_url are retained as legacy single-repo compat fields and are optional.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "branch", "base_branch", "remote_url", "compare_url", "pr_url"],
+            "properties": {
+              "name": { "type": "string" },
+              "branch": { "type": "string" },
+              "base_branch": { "type": "string" },
+              "remote_url": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+              "compare_url": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+              "pr_url": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+              "in_place": { "type": "boolean" }
+            }
+          }
+        },
         "branch": {
           "title": "Feature Branch",
           "description": "Git branch name used for the project's code changes.",

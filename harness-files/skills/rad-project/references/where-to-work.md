@@ -30,10 +30,22 @@ Never build a worktree path by hand. Always query:
 - `project worktrees --id <project-id>` for resolved paths with existence checks
 - `project show --id <project-id>` for full project context including worktrees
 
+## Reverse lookup — where you're standing
+
+If you already have a cwd and need to know which project it belongs to, use `project locate` (no args):
+
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project locate
+```
+
+The `kind` field in the returned envelope tells you the location class of your cwd (`worktree`, `main-clone`, `side-project`, or `none`). The `projects` field lists the matching project IDs. Use this as the complement to the forward lookup: `project worktrees --id <project-id>` goes from project → paths; `project locate` goes from cwd → project.
+
 ## Side-projects
 
 A side-project (`type: side-project`) lives in its own local repo — it does not use the shared worktree layout. Its working directory is wherever the user's local repo lives. `project show` will surface its path if it was registered with one.
 
 ## This skill is awareness-only
 
-The `/rad-project` skill does not create worktrees and does not offer to. Worktree creation is a git operation outside this skill's scope. The skill's job is to find and surface existing worktrees so you work in the right place. (FR-6, NFR-4)
+The `/rad-project` skill is awareness-only for location. Its job is to find and surface existing worktrees (via `project worktrees`, `project show`, and `project locate`) so you work in the right place.
+
+Worktree lifecycle — creating new worktrees and cleaning them up — now lives in the act lane under `rad-source-control`. See that skill's `working-with-worktrees.md` for the authoritative create and cleanup procedures. Do not attempt to create or delete worktrees from within `/rad-project`.

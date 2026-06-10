@@ -14,7 +14,8 @@ export const projectShowCommand = defineCommand({
   flags: {},
   handler: async ({ args, ctx }: { args: Args; flags: Record<string, never>; ctx: CommandContext }) => {
     if (!args.id) throw new UserError('--id is required');
-    const svc = new WorkGraphService({ root: userDataPaths().root });
+    const paths = userDataPaths();
+    const svc = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees });
     const node = svc.getNode(args.id);
     if (!node || node.kind !== 'project') throw new UserError(`project '${args.id}' was not found`);
     const lean = toLeanProject(node as Project, svc.getGraph());

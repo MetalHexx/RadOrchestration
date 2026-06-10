@@ -1,0 +1,78 @@
+import { describe, it, expect, vi } from 'vitest';
+import path from 'node:path';
+import { sourceControlInit } from '../../../src/commands/source-control/init.js';
+
+const base = (over = {}) => ({
+  readProjectRepos: () => ({ repos: ['rad-orc-source'], projectType: 'standard' as const }),
+  readWorktreeFacts: () => ({ exists: true, branch: 'radorch/p', baseBranch: 'main', remoteUrl: 'https://github.com/o/r', compareUrl: 'https://github.com/o/r/compare/main...radorch/p' }),
+  autoCommit: () => 'always' as const,
+  autoPr: () => 'never' as const,
+  readState: () => ({ pipeline: {} }),
+  writeState: vi.fn(),
+  resolveClonePath: (_repo: string) => `/clones/${_repo}`,
+  ...over,
+});
+
+describe('sourceControlInit check + record (FR-7, FR-8, FR-9, FR-10, NFR-2)', () => {
+  it('reads branch from the worktree as source of truth and records the v6 shape', () => {
+    const writeState = vi.fn();
+    const r = sourceControlInit({ project: 'P', ...base({ writeState }) });
+    expect(r.ok).toBe(true);
+    const written = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { repos: { branch: string }[] } } });
+    expect(written.pipeline.source_control.repos[0]?.branch).toBe('radorch/p');
+  });
+  it('writes a non-empty repos[0] worktree_path compat field for standard mode (item 10)', () => {
+    const writeState = vi.fn();
+    const r = sourceControlInit({ project: 'P', worktreesDir: '/wt', worktreeName: 'P', ...base({ writeState }) });
+    expect(r.ok).toBe(true);
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { worktree_path: string } } }).pipeline.source_control;
+    expect(sc.worktree_path).toBe(path.join('/wt', 'P', 'rad-orc-source'));
+    expect(sc.worktree_path).not.toBe('');
+  });
+  it('fails loud naming the repo and the recovery command on a missing worktree', () => {
+    const r = sourceControlInit({ project: 'P', ...base({ readWorktreeFacts: () => ({ exists: false }) }) });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/rad-orc-source/);
+    expect(r.error).toMatch(/worktree create --repo/);
+  });
+  it('re-derives identical state as an idempotent no-op', () => {
+    const w1 = vi.fn(); sourceControlInit({ project: 'P', ...base({ writeState: w1 }) });
+    const w2 = vi.fn(); sourceControlInit({ project: 'P', ...base({ writeState: w2 }) });
+    expect(w1.mock.calls[0]?.[1]).toEqual(w2.mock.calls[0]?.[1]);
+  });
+  it('records the fixed side-project binding', () => {
+    const writeState = vi.fn();
+    sourceControlInit({ project: 'P', ...base({ readProjectRepos: () => ({ repos: ['P'], projectType: 'side-project' as const }), writeState }) });
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { auto_commit: string; auto_pr: string; repos: { branch: string; remote_url: string | null }[] } } }).pipeline.source_control;
+    expect(sc.auto_commit).toBe('always');
+    expect(sc.auto_pr).toBe('never');
+    expect(sc.repos[0]?.branch).toBe('main');
+    expect(sc.repos[0]?.remote_url).toBeNull();
+  });
+  it('rejects an in-place request against a multi-repo target as ambiguous', () => {
+    const r = sourceControlInit({ project: 'P', inPlace: true, ...base({ readProjectRepos: () => ({ repos: ['a', 'b'], projectType: 'standard' as const }) }) });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/in-place/i);
+  });
+  it('in-place mode reads branch from registry-resolved clone path and stamps in_place: true (FR-10, NFR-1)', () => {
+    const writeState = vi.fn();
+    const resolveClonePath = vi.fn((_repo: string) => `/clones/${_repo}`);
+    const readWorktreeFacts = vi.fn(() => ({ exists: true, branch: 'feature-x', baseBranch: 'main' }));
+    const r = sourceControlInit({
+      project: 'P',
+      inPlace: true,
+      ...base({ writeState, resolveClonePath, readWorktreeFacts }),
+    });
+    expect(r.ok).toBe(true);
+    // resolveClonePath must be called with the repo name
+    expect(resolveClonePath).toHaveBeenCalledWith('rad-orc-source');
+    // readWorktreeFacts must be called with the registry-resolved clone path (not a worktree-convention path)
+    expect(readWorktreeFacts).toHaveBeenCalledWith('/clones/rad-orc-source');
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { repos: Array<{ name: string; branch: string; in_place?: boolean }> } } }).pipeline.source_control;
+    expect(sc.repos[0]?.name).toBe('rad-orc-source');
+    expect(sc.repos[0]?.branch).toBe('feature-x');
+    expect(sc.repos[0]?.in_place).toBe(true);
+    // path-free invariant: no 'path' key on the repo entry
+    expect('path' in (sc.repos[0] as object)).toBe(false);
+  });
+});

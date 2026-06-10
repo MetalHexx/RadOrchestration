@@ -331,6 +331,9 @@ export function driveToExecutionWithConfig(
  * Initialize pipeline.source_control for integration tests whose walker will
  * evaluate commit_gate / pr_gate (state_ref: pipeline.source_control.*).
  *
+ * Previously fired source_control_init to seed this state; now that the event
+ * and its mutation are retired (P04-T03, FR-6), we write directly to state.
+ *
  * Normalization mirrors the pre-state-ref behavior of `config_ref`: any value
  * other than the canonical `"never" | "no"` is treated as `"always"` so that
  * commit_gate / pr_gate's `neq "never"` predicate fires. Previously tests that
@@ -343,19 +346,19 @@ export function initSourceControlForTests(io: MockIO, config: OrchestrationConfi
     const v = (raw ?? '').trim().toLowerCase();
     return v === 'never' || v === 'no' ? 'never' : 'always';
   };
-  processEvent(
-    'source_control_init',
-    PROJECT_DIR,
-    {
-      branch: 'feature/test-branch',
-      base_branch: 'main',
-      worktree_path: '.',
-      auto_commit: toNormalized(config.source_control.auto_commit),
-      auto_pr: toNormalized(config.source_control.auto_pr),
-    },
-    io,
-    TEST_PATH_CONTEXT,
-  );
+  if (!io.currentState) return;
+  const patched = structuredClone(io.currentState);
+  patched.pipeline.source_control = {
+    branch: 'feature/test-branch',
+    base_branch: 'main',
+    worktree_path: '.',
+    auto_commit: toNormalized(config.source_control.auto_commit),
+    auto_pr: toNormalized(config.source_control.auto_pr),
+    remote_url: null,
+    compare_url: null,
+    pr_url: null,
+  };
+  io.writeState(PROJECT_DIR, patched);
 }
 
 // ── Drive single task helper ──────────────────────────────────────────────────

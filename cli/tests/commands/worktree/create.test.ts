@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { worktreeCreate, worktreeCreateCommand } from '../../../src/commands/worktree/create.js';
+import { worktreeCreate, worktreeCreateCommand, provisionWorktrees, aggregateExitCode } from '../../../src/commands/worktree/create.js';
 import { runCommand } from '../../../src/framework/command.js';
 
 function makeExecErr(stderr: string): Error & { stderr: string } {
@@ -53,19 +53,16 @@ describe('worktreeCreate core', () => {
 });
 
 describe('worktreeCreate CLI path (runCommand argv → handler args)', () => {
-  // Locks the framework contract: --repo-root, --worktree-path, and
-  // --base-branch must arrive at the handler under their hyphenated keys.
-  // Before the framework fix the args branch read parsed[name] for the kebab
-  // name (got undefined since Commander stored camelCase) and threw
-  // "Missing required argument --repo-root" no matter what the user passed.
-  it('passes --repo-root, --branch, --worktree-path, --base-branch through runCommand', async () => {
-    type CreateArgs = { 'repo-root'?: string; branch?: string; 'worktree-path'?: string; 'base-branch'?: string };
+  // Locks the framework contract: --project and optional --worktree-name/--repo
+  // must arrive at the handler under their hyphenated keys.
+  it('passes --project, --worktree-name, --repo through runCommand', async () => {
+    type CreateArgs = { project?: string; 'worktree-name'?: string; repo?: string };
     let received: CreateArgs = {};
     const probeDef = {
       ...worktreeCreateCommand,
       handler: async ({ args }: { args: CreateArgs; ctx: unknown }) => {
         received = args;
-        return { probed: true } as never;
+        return { repos: [] } as never;
       },
       mapResult: undefined,
     };
@@ -73,19 +70,17 @@ describe('worktreeCreate CLI path (runCommand argv → handler args)', () => {
     const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
     await runCommand(probeDef, {
       argv: [
-        '--repo-root', '/r',
-        '--branch', 'feat/x',
-        '--worktree-path', '/r-wt/x',
-        '--base-branch', 'origin/main',
+        '--project', 'MY-PROJECT',
+        '--worktree-name', 'MY-WORKTREE',
+        '--repo', 'my-repo',
       ],
       env: { RADORCH_NO_LOG: '1' },
       isTTY: false,
       stderr: process.stderr,
     });
-    expect(received['repo-root']).toBe('/r');
-    expect(received.branch).toBe('feat/x');
-    expect(received['worktree-path']).toBe('/r-wt/x');
-    expect(received['base-branch']).toBe('origin/main');
+    expect(received.project).toBe('MY-PROJECT');
+    expect(received['worktree-name']).toBe('MY-WORKTREE');
+    expect(received.repo).toBe('my-repo');
     const arg = (log.mock.calls[0]?.[0] ?? '') as string;
     const env = JSON.parse(arg);
     expect(env.ok).toBe(true);
@@ -93,22 +88,11 @@ describe('worktreeCreate CLI path (runCommand argv → handler args)', () => {
     log.mockRestore(); exit.mockRestore();
   });
 
-  it('returns a well-formed user_error envelope when --repo-root is omitted in non-interactive mode', async () => {
-    // Probe handler so we don't invoke the real git-touching worktreeCreate.
-    const probeDef = {
-      ...worktreeCreateCommand,
-      handler: async () => ({ probed: true } as never),
-      mapResult: undefined,
-    };
+  it('returns a well-formed user_error envelope when --project is omitted in non-interactive mode', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined as never) as never);
-    await runCommand(probeDef, {
-      argv: [
-        '--non-interactive',
-        '--branch', 'feat/x',
-        '--worktree-path', '/r-wt/x',
-        '--base-branch', 'main',
-      ],
+    await runCommand(worktreeCreateCommand, {
+      argv: ['--non-interactive'],
       env: { RADORCH_NO_LOG: '1' },
       isTTY: true,
       stderr: process.stderr,
@@ -117,76 +101,99 @@ describe('worktreeCreate CLI path (runCommand argv → handler args)', () => {
     const env = JSON.parse(arg);
     expect(env.ok).toBe(false);
     expect(env.error.type).toBe('user_error');
-    expect(env.error.message).toMatch(/repo-root/);
+    expect(env.error.message).toMatch(/project/);
     expect(exit).toHaveBeenCalledWith(1);
     log.mockRestore(); exit.mockRestore();
   });
 });
 
-describe('worktreeCreateCommand.mapResult — three-way exit code', () => {
+describe('worktreeCreateCommand.mapResult — provision result exit codes', () => {
   const mr = worktreeCreateCommand.mapResult!;
-  it('exits 0 on create+push', () => {
-    expect(mr({ created: true, pushed: true } as never).exit_code).toBe(0);
+  it('exits 0 when all repos succeed without error', () => {
+    const result = { repos: [
+      { name: 'a', created: true, pushed: true, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
+      { name: 'b', created: true, pushed: true, path: '/wt/P/b', branch: 'radorch/P', error: null, errorType: null },
+    ] };
+    const env = mr(result as never);
+    expect(env.ok).toBe(true);
+    expect(env.exit_code).toBe(0);
   });
-  it('exits 1 on create+!push', () => {
-    expect(mr({ created: true, pushed: false } as never).exit_code).toBe(1);
+  it('exits 2 when at least one repo failed to create (has an error)', () => {
+    const result = { repos: [
+      { name: 'a', created: false, pushed: false, path: '/wt/P/a', branch: 'radorch/P', error: 'boom', errorType: 'unknown' },
+      { name: 'b', created: true, pushed: true, path: '/wt/P/b', branch: 'radorch/P', error: null, errorType: null },
+    ] };
+    const env = mr(result as never);
+    expect(env.ok).toBe(true);
+    expect(env.exit_code).toBe(2);
   });
-  it('exits 2 on !create', () => {
-    expect(mr({ created: false, pushed: false, errorType: 'already_exists_path' } as never).exit_code).toBe(2);
+  it('exits 1 when a repo was created but its push failed', () => {
+    const result = { repos: [
+      { name: 'a', created: true, pushed: false, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
+    ] };
+    const env = mr(result as never);
+    expect(env.ok).toBe(true);
+    expect(env.exit_code).toBe(1);
   });
+  it('carries repos data in the ok:true envelope', () => {
+    const result = { repos: [
+      { name: 'a', created: false, pushed: true, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
+    ] };
+    const env = mr(result as never) as { ok: boolean; data: unknown; exit_code: number };
+    expect(env.ok).toBe(true);
+    expect(env.data).toEqual(result);
+  });
+});
 
-  // Regression guard for SCRIPT-FOLD-2 smoke-test bug: the failure envelope used to
-  // carry both `data` and `error`, which the framework validator rejects as
-  // "failure envelope must not carry data". Callers got a generic system_error
-  // instead of the classifier's `errorType`. The fix drops `data` and lifts
-  // `errorType` (plus enough structured context to identify the worktree) onto
-  // the `error` object so programmatic callers can still discriminate.
-  describe('failure envelope shape (data XOR error)', () => {
-    const baseFailure = {
-      created: false,
-      worktreePath: '/r-wt/x',
-      branch: 'feat/x',
-      baseBranch: 'origin/main',
-      pushed: false,
-      remoteUrl: '',
-      compareUrl: '',
-      error: 'fatal: \'/r-wt/x\' already exists',
-    } as const;
+describe('worktree create aggregate exit code (AD-5)', () => {
+  it('returns 0 when every repo is present/created and pushed', () => {
+    expect(aggregateExitCode([{ created: true, pushed: true }, { created: false, pushed: true }] as never)).toBe(0);
+  });
+  it('returns 1 when a repo was created but its push failed', () => {
+    expect(aggregateExitCode([{ created: true, pushed: false }] as never)).toBe(1);
+  });
+  it('returns 2 when any repo failed to create', () => {
+    expect(aggregateExitCode([{ created: false, pushed: false, error: 'boom' }, { created: true, pushed: true }] as never)).toBe(2);
+  });
+});
 
-    it('omits data on failure (passes framework data-XOR-error invariant)', () => {
-      const env = mr({ ...baseFailure, errorType: 'already_exists_path' } as never) as Record<string, unknown>;
-      expect(env.ok).toBe(false);
-      expect('data' in env).toBe(false);
-    });
-
-    it('surfaces errorType=already_exists_path on the error object', () => {
-      const env = mr({ ...baseFailure, errorType: 'already_exists_path' } as never);
-      const err = env.error as Record<string, unknown> | undefined;
-      expect(err).toBeDefined();
-      expect(err!['type']).toBe('user_error');
-      expect(err!['errorType']).toBe('already_exists_path');
-      expect(err!['worktreePath']).toBe('/r-wt/x');
-      expect(err!['branch']).toBe('feat/x');
-    });
-
-    it('surfaces errorType=already_exists_branch on the error object', () => {
-      const env = mr({
-        ...baseFailure,
-        error: 'fatal: a branch named \'feat/x\' already exists',
-        errorType: 'already_exists_branch',
-      } as never);
-      const err = env.error as Record<string, unknown> | undefined;
-      expect(err!['errorType']).toBe('already_exists_branch');
-    });
-
-    it('surfaces errorType=invalid_reference on the error object', () => {
-      const env = mr({
-        ...baseFailure,
-        error: 'fatal: invalid reference: bogus-ref',
-        errorType: 'invalid_reference',
-      } as never);
-      const err = env.error as Record<string, unknown> | undefined;
-      expect(err!['errorType']).toBe('invalid_reference');
-    });
+describe('provisionWorktrees convention-bound (FR-3, FR-4, NFR-2, NFR-6)', () => {
+  const deps = (over: Partial<Record<string, unknown>> = {}) => ({
+    worktreesDir: '/wt',
+    readProjectRepos: () => ({ repos: ['a', 'b'], projectType: 'standard' as const }),
+    resolveClonePath: (r: string) => `/clones/${r}`,
+    defaultBranch: () => 'main',
+    exists: () => false,
+    create: vi.fn(() => ({ created: true, worktreePath: '/x', branch: 'radorch/p', baseBranch: 'main', pushed: true, remoteUrl: 'u', compareUrl: 'c', error: null, errorType: null })),
+    ...over,
+  });
+  it('provisions every repo in the set and returns a per-repo result array', () => {
+    const d = deps();
+    const r = provisionWorktrees({ project: 'P', ...d });
+    expect(r.repos.map((x) => x.name)).toEqual(['a', 'b']);
+    expect(r.repos.every((x) => x.created)).toBe(true);
+    expect((d.create as ReturnType<typeof vi.fn>)).toHaveBeenCalledTimes(2);
+  });
+  it('is an idempotent no-op for an already-present worktree', () => {
+    const create = vi.fn();
+    const r = provisionWorktrees({ project: 'P', ...deps({ exists: () => true, create }) });
+    expect(create).not.toHaveBeenCalled();
+    expect(r.repos.every((x) => x.created === false && x.error == null)).toBe(true);
+  });
+  it('isolates a per-repo failure without blocking the others', () => {
+    const create = vi.fn()
+      .mockImplementationOnce(() => ({ created: false, error: 'boom', errorType: 'unknown', worktreePath: null, branch: null, baseBranch: null, pushed: false, remoteUrl: '', compareUrl: '' }))
+      .mockImplementationOnce(() => ({ created: true, worktreePath: '/x', branch: 'b', baseBranch: 'main', pushed: true, remoteUrl: 'u', compareUrl: 'c', error: null, errorType: null }));
+    const r = provisionWorktrees({ project: 'P', ...deps({ create }) });
+    expect(r.repos[0]?.error).toBe('boom');
+    expect(r.repos[1]?.created).toBe(true);
+  });
+  it('throws naming the bad repo and listing the valid set when --repo is not in the project', () => {
+    const create = vi.fn();
+    expect(() => provisionWorktrees({ project: 'P', repo: 'nope', ...deps({ create }) }))
+      .toThrow(/nope/);
+    expect(() => provisionWorktrees({ project: 'P', repo: 'nope', ...deps({ create }) }))
+      .toThrow(/\ba\b.*\bb\b/);
+    expect(create).not.toHaveBeenCalled();
   });
 });

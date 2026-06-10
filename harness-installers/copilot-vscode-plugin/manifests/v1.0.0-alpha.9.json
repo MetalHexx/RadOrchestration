@@ -42,7 +42,6 @@
     { "destinationPath": "${RAD_HOME}/action-events/event.pr_created.md", "sourcePath": "_install-source/action-events/event.pr_created.md", "ownership": "installer-owned" },
     { "destinationPath": "${RAD_HOME}/action-events/event.pr_requested.md", "sourcePath": "_install-source/action-events/event.pr_requested.md", "ownership": "installer-owned" },
     { "destinationPath": "${RAD_HOME}/action-events/event.requirements_completed.md", "sourcePath": "_install-source/action-events/event.requirements_completed.md", "ownership": "installer-owned" },
-    { "destinationPath": "${RAD_HOME}/action-events/event.source_control_init.md", "sourcePath": "_install-source/action-events/event.source_control_init.md", "ownership": "installer-owned" },
     { "destinationPath": "${RAD_HOME}/action-events/event.start.md", "sourcePath": "_install-source/action-events/event.start.md", "ownership": "installer-owned" },
     { "destinationPath": "${RAD_HOME}/action-events/event.task_completed.md", "sourcePath": "_install-source/action-events/event.task_completed.md", "ownership": "installer-owned" },
     { "destinationPath": "${RAD_HOME}/action-events/event.task_gate_approved.md", "sourcePath": "_install-source/action-events/event.task_gate_approved.md", "ownership": "installer-owned" }

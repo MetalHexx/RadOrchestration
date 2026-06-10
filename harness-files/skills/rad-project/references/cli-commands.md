@@ -4,6 +4,22 @@ The `/rad-project` skill drives the `radorch` CLI. Every command emits one JSON 
 
 ## `project` operations
 
+Classify the current working directory against the project registry:
+
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project locate
+```
+
+`project locate` takes no required arguments. It inspects the cwd and returns a JSON envelope whose `data` includes:
+
+- `kind` — one of `worktree` | `main-clone` | `side-project` | `none`
+- `worktree_name` — (when `kind` is `worktree`) the logical worktree name
+- `repo` — (when `kind` is `worktree` or `main-clone`) the repository slug
+- `projects` — (when a match is found) the project IDs whose registry entry covers this path
+- `branch` — (when `kind` is `worktree`) the current branch
+
+This command is distinct from the vestigial `radorch where` removed in PROJECT-GRAPH-2. `project locate` has a real cwd→project classification job and is a first-class consumer in the launch-flow: the agent calls it on start-up to determine which project context it has landed in before querying further.
+
 List projects (optionally filtered by status or group):
 
 ```

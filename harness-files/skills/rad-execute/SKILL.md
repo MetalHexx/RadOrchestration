@@ -14,9 +14,9 @@ The Master Plan is complete. As a human reviewer, I have approved the plan and a
 
 Before the first pipeline tick, ensure `pipeline.source_control` is populated in `state.json`. The commit and PR gates read from this state — without it, the walker halts when it reaches either conditional.
 
-1. Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project context --project-name {PROJECT_NAME}` and parse fields from the envelope's `data` block. `{PROJECT_NAME}` comes from the /rad-execute argument or conversation context.
+1. Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project show --id {PROJECT_NAME}` and read `data.sourceControlInitialized` from the envelope. `{PROJECT_NAME}` comes from the /rad-execute argument or conversation context.
 2. **If `sourceControlInitialized === true`, skip to step 4** — resume is ceremony-free.
-3. Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project show --id {PROJECT_NAME}` and read `data.projectType`. Evaluate `(projectType ?? 'standard') === 'side-project'` to select the branch: if `true`, follow the **Side-project branch** in [`references/source-control-init.md`](references/source-control-init.md); otherwise follow the standard registered-repo branch. Then fire the `source_control_init` pipeline event.
+3. Route into `rad-source-control`'s [`working-with-worktrees.md`](../rad-source-control/references/working-with-worktrees.md) and follow the locate → decide → prompt → provision → record flow there. The launcher does not carry init logic — the worktree flow owns the five-case branch and same-branch reuse rules.
 4. Proceed with execution.
 
 ## Step 4: Execute Plan

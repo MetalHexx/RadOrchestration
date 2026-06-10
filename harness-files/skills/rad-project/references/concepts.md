@@ -33,6 +33,10 @@ These are distinct concepts:
 - **`spawned-from`** is a relationship edge — it says project B *branched off from* project A while A was in flight.
 - **`side-project`** is a `project-type` — it marks a project as a local-only repo effort, explicitly scoped to a single machine. A side-project may or may not have a `spawned-from` edge; the edge and the type are independent.
 
+## Location kinds
+
+When `project locate` classifies a directory, it returns one of four `kind` values: `worktree` (a registered project worktree under `~/.radorc/worktrees/`), `main-clone` (the bare repository clone), `side-project` (a local-only repo registered as a side-project), or `none` (no match found in the registry).
+
 ## Where to work
 
 Find the right worktree for a project before acting. See [where-to-work.md](where-to-work.md).

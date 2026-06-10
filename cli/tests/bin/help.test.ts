@@ -35,7 +35,7 @@ describe('radorch program wiring', () => {
     expect(prHelp).toMatch(/Optional absolute path to a markdown file/);
   }, 30_000);
 
-  it('exposes project context subcommand at three help depths (find retired)', async () => {
+  it('exposes project noun in root help (context and find retired)', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
@@ -43,11 +43,8 @@ describe('radorch program wiring', () => {
     const { stdout: rootHelp } = await node(['--help']);
     expect(rootHelp).toMatch(/\bproject\b/);
     const { stdout: projectHelp } = await node(['project', '--help']);
-    expect(projectHelp).toMatch(/context\s+Return the shared context block/);
+    expect(projectHelp).not.toMatch(/context\s+Return the shared context block/);
     expect(projectHelp).not.toMatch(/find\s+Find execution-tier projects/);
-    const { stdout: contextHelp } = await node(['project', 'context', '--help']);
-    expect(contextHelp).toMatch(/--project-name/);
-    expect(contextHelp).toMatch(/result includes the project-state block/);
   }, 30_000);
 
   it('exposes worktree create and worktree launch with per-agent matrix in launch help', async () => {
@@ -58,13 +55,14 @@ describe('radorch program wiring', () => {
     const { stdout: rootHelp } = await node(['--help']);
     expect(rootHelp).toMatch(/\bworktree\b/);
     const { stdout: wtHelp } = await node(['worktree', '--help']);
-    expect(wtHelp).toMatch(/create\s+Create a worktree/);
+    expect(wtHelp).toMatch(/create\s+Provision worktrees/);
     expect(wtHelp).toMatch(/launch\s+Open a terminal/);
+    // (c2) remove appears alongside create/launch with its own description
+    expect(wtHelp).toMatch(/remove\s+Remove worktrees/);
     const { stdout: createHelp } = await node(['worktree', 'create', '--help']);
-    expect(createHelp).toMatch(/--repo-root/);
-    expect(createHelp).toMatch(/--branch/);
-    expect(createHelp).toMatch(/--worktree-path/);
-    expect(createHelp).toMatch(/--base-branch/);
+    expect(createHelp).toMatch(/--project/);
+    expect(createHelp).toMatch(/--worktree-name/);
+    expect(createHelp).toMatch(/--repo/);
     const { stdout: launchHelp } = await node(['worktree', 'launch', '--help']);
     expect(launchHelp).toMatch(/--agent/);
     expect(launchHelp).toMatch(/--prompt required for: claude, copilot/);
@@ -163,16 +161,32 @@ describe('radorch program wiring', () => {
     expect(initHelp).toMatch(/--project/);
   }, 30_000);
 
+  it('exposes source-control init at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/source-control/);
+    // (c3) noun depth: source-control --help shows init with its description
+    const { stdout: nounHelp } = await node(['source-control', '--help']);
+    expect(nounHelp).toMatch(/init\s+Validate worktrees and record source-control state/);
+    const { stdout: initHelp } = await node(['source-control', 'init', '--help']);
+    expect(initHelp).toMatch(/--project/);
+  }, 30_000);
+
   it('exposes project list, show, and worktrees subcommands at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
     });
-    // noun depth: project --help lists all three read verbs with their descriptions
+    // noun depth: project --help lists all read verbs with their descriptions
     const { stdout: projectHelp } = await node(['project', '--help']);
     expect(projectHelp).toMatch(/list\s+List projects/);
     expect(projectHelp).toMatch(/show\s+Show one project/);
     expect(projectHelp).toMatch(/worktrees\s+Show a project/);
+    // (c1) locate appears alongside list/show/worktrees with its own description
+    expect(projectHelp).toMatch(/locate\s+Classify the current working directory/);
     // verb depth: project list --help exposes --status and --group flags
     const { stdout: listHelp } = await node(['project', 'list', '--help']);
     expect(listHelp).toMatch(/--status/);
@@ -210,6 +224,17 @@ describe('radorch program wiring', () => {
     const { stdout: linkHelp } = await node(['graph', 'link', '--help']);
     expect(linkHelp).toMatch(/spawned-from/);
     expect(linkHelp).toMatch(/Unknown types are accepted/);
+  }, 30_000);
+
+  it('project noun retires context and keeps show/list/worktrees/locate (FR-24)', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const { stdout: projectHelp } = await execP('node', ['dist/bin/radorch.js', 'project', '--help'], {
+      cwd: repoRoot,
+      env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    expect(projectHelp).not.toMatch(/\bcontext\b/);
+    expect(projectHelp).toMatch(/\bshow\b/);
+    expect(projectHelp).toMatch(/\blocate\b/);
   }, 30_000);
 
   it('exposes migrate in root help and responds to its own --help with safety-rail flags', async () => {

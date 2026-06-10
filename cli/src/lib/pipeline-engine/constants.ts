@@ -109,7 +109,6 @@ export const EVENTS = Object.freeze({
   FINAL_REJECTED: 'final_rejected',
   HALT: 'halt',
   GATE_MODE_SET: 'gate_mode_set',
-  SOURCE_CONTROL_INIT: 'source_control_init',
 } as const);
 
 export const OUT_OF_BAND_EVENTS = new Set<string>([
@@ -118,7 +117,6 @@ export const OUT_OF_BAND_EVENTS = new Set<string>([
   'final_rejected',
   'halt',
   'gate_mode_set',
-  'source_control_init',
   // Parse-failure recovery loop: step-level `failed` events are not template-indexed
   // by buildEventIndex, so routing `explosion_failed` requires the out-of-band path.
   'explosion_failed',
