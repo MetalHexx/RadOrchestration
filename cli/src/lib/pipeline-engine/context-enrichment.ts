@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { buildSkillManifest } from '../skill-manifest.js';
 import type {
   PipelineState,
@@ -7,6 +8,36 @@ import type {
   ForEachTaskNodeState,
   StepNodeState,
 } from './types.js';
+
+/**
+ * Validate that `commits[0]` is the chronologically earliest commit according
+ * to the git-history ordinal map. Returns an error string when the invariant
+ * is violated (FR-7), or null when everything is fine.
+ *
+ * @param commits - Traversal-ordered list of short SHAs (8-char prefix).
+ * @param ordinal - Map from short SHA to 1-based chronological position
+ *                  (lower = older) derived from `git rev-list --topo-order --reverse`.
+ */
+export function validateBaseShaChronology(
+  commits: string[],
+  ordinal: Map<string, number>,
+): string | null {
+  if (commits.length === 0) return null;
+  const base = commits[0];
+  const baseOrd = ordinal.get(base);
+  if (baseOrd === undefined) return null; // unknown to git history — leave to other checks
+  for (const c of commits) {
+    const o = ordinal.get(c);
+    if (o !== undefined && o < baseOrd) {
+      return (
+        `project_base_sha chronology violation: selected base '${base}' (git position ${baseOrd}) ` +
+        `is not the earliest commit — '${c}' (git position ${o}) precedes it. ` +
+        `A poisoned commit_hash likely contaminated base derivation.`
+      );
+    }
+  }
+  return null;
+}
 
 /**
  * Call buildSkillManifest directly to discover and render the spawn-prompt
@@ -72,10 +103,24 @@ export function resolveActivePhaseIndex(state: PipelineState): number {
   }
   if (matches.length === 1) return matches[0].index + 1;
 
+  // Corrective-aware: a phase whose last corrective entry is active is the
+  // active phase even when its regular iteration already flipped completed.
+  const correctivePhase = phaseLoop.iterations.find(it => {
+    const cts = it.corrective_tasks ?? [];
+    if (cts.length === 0) return false;
+    const last = cts[cts.length - 1];
+    return last.status === 'in_progress' || last.status === 'not_started';
+  });
+  if (correctivePhase) return correctivePhase.index + 1;
+
   const notStarted = phaseLoop.iterations.find(it => it.status === 'not_started');
   if (notStarted) return notStarted.index + 1;
 
-  return 1;
+  throw new Error(
+    `Cannot resolve active phase: no phase is in_progress, no phase carries an active corrective, ` +
+    `and no phase is not_started. State is unresolved — refusing to default to phase 1. ` +
+    `Pass --phase <N> to specify explicitly.`
+  );
 }
 
 export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number): number {
@@ -84,6 +129,17 @@ export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number)
 
   const phaseIteration = phaseLoop.iterations[phaseIndex - 1];
   if (!phaseIteration?.nodes) return 1;
+
+  // Corrective-aware: when a phase-scope corrective is active on this phase,
+  // task identity is the phase-scope sentinel — represented to callers as
+  // task index 1 (the sentinel task_id/task_number override is applied by the
+  // enrichment sentinel block, not here). Do NOT fall through to the task
+  // loop, whose iterations are all completed during a phase corrective.
+  const phaseCts = phaseIteration.corrective_tasks ?? [];
+  if (phaseCts.length > 0) {
+    const last = phaseCts[phaseCts.length - 1];
+    if (last.status === 'in_progress' || last.status === 'not_started') return 1;
+  }
 
   const taskLoop = phaseIteration.nodes['task_loop'] as ForEachTaskNodeState | undefined;
   if (!taskLoop?.iterations?.length) return 1;
@@ -96,10 +152,22 @@ export function resolveActiveTaskIndex(state: PipelineState, phaseIndex: number)
   }
   if (matches.length === 1) return matches[0].index + 1;
 
+  const correctiveTask = taskLoop.iterations.find(it => {
+    const cts = it.corrective_tasks ?? [];
+    if (cts.length === 0) return false;
+    const last = cts[cts.length - 1];
+    return last.status === 'in_progress' || last.status === 'not_started';
+  });
+  if (correctiveTask) return correctiveTask.index + 1;
+
   const notStarted = taskLoop.iterations.find(it => it.status === 'not_started');
   if (notStarted) return notStarted.index + 1;
 
-  return 1;
+  throw new Error(
+    `Cannot resolve active task in phase ${phaseIndex}: no task is in_progress, no task carries an ` +
+    `active corrective, and no task is not_started. State is unresolved — refusing to default to task 1. ` +
+    `Pass --task <N> to specify explicitly.`
+  );
 }
 
 const PLANNING_SPAWN_STEPS: Record<string, string> = {
@@ -318,12 +386,28 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   if (action === 'invoke_source_control_commit') {
     const phaseNumber = resolveActivePhaseIndex(state);
     const taskNumber = resolveActiveTaskIndex(state, phaseNumber);
+    const phase_id = formatPhaseId(phaseNumber);
+
+    let task_number: number | null = taskNumber;
+    let task_id = formatTaskId(phaseNumber, taskNumber);
+
+    const phaseLoopForSentinel = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+    const phaseIterForSentinel = phaseLoopForSentinel?.iterations[phaseNumber - 1];
+    const phaseCorrectives = phaseIterForSentinel?.corrective_tasks ?? [];
+    const phaseCorrectiveActive = phaseCorrectives.length > 0 &&
+      (phaseCorrectives[phaseCorrectives.length - 1].status === 'not_started' ||
+       phaseCorrectives[phaseCorrectives.length - 1].status === 'in_progress');
+    if (phaseCorrectiveActive) {
+      task_number = null;
+      task_id = `${phase_id}-PHASE`;
+    }
+
     return {
       ...walkerContext,
       phase_number: phaseNumber,
-      phase_id: formatPhaseId(phaseNumber),
-      task_number: taskNumber,
-      task_id: formatTaskId(phaseNumber, taskNumber),
+      phase_id,
+      task_number,
+      task_id,
       branch: state.pipeline.source_control?.branch ?? '',
       worktree_path: state.pipeline.source_control?.worktree_path ?? '',
     };
@@ -379,6 +463,33 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
 
     const project_base_sha = commits.length > 0 ? commits[0] : null;
     const project_head_sha = commits.length > 0 ? commits[commits.length - 1] : null;
+
+    // FR-7: Validate that the selected base SHA is chronologically the earliest
+    // commit in the project. A chronology violation requires at least two
+    // commits to order against each other, so skip the `git rev-list` invocation
+    // entirely for 0–1 commits: the check cannot fail there, and skipping it
+    // avoids spawning a subprocess and a hard dependency on `git` when
+    // auto-commit is off (no commits collected). NFR-4.
+    if (commits.length > 1) {
+      const worktree = state.pipeline.source_control?.worktree_path ?? process.cwd();
+      let ordinal = new Map<string, number>();
+      try {
+        const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
+          cwd: worktree,
+          encoding: 'utf8',
+          maxBuffer: 10 * 1024 * 1024,
+        });
+        stdout.split('\n').map((s: string) => s.trim()).filter(Boolean).forEach((sha: string, i: number) => {
+          ordinal.set(sha.slice(0, 8), i + 1);
+        });
+      } catch {
+        ordinal = new Map();
+      }
+      const chronologyError = validateBaseShaChronology(commits.map((c: string) => c.slice(0, 8)), ordinal);
+      if (chronologyError) {
+        return { ...walkerContext, error: chronologyError };
+      }
+    }
 
     return {
       ...walkerContext,

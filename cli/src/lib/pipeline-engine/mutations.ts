@@ -19,6 +19,23 @@ import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { resolveActivePhaseIndex, resolveActiveTaskIndex } from './context-enrichment.js';
 
+// ── Hash-overwrite guard ──────────────────────────────────────────────────────
+
+// Hash-equal (allow) vs hash-differs (reject) idempotency rule. Reads the
+// durable existing hash on the entry being written; refuses to overwrite a
+// non-null hash with a different non-null value. Null existing hash (first
+// write) and equal incoming hash (idempotent retry) are allowed.
+function assertHashWritable(repos: Array<{ name: string; commit_hash: string | null }> | undefined, incoming: string | null): void {
+  const existing = repos && repos.length > 0 ? repos[0].commit_hash : null;
+  if (existing != null && incoming != null && existing !== incoming) {
+    throw new Error(
+      `commit_completed refused: would overwrite a finalized commit_hash ` +
+      `('${existing}' → '${incoming}') on an already-recorded node. ` +
+      `A finalized commit hash is immutable; the incoming signal addresses the wrong node or carries a stale context.`
+    );
+  }
+}
+
 // ── Resolution scope ──────────────────────────────────────────────────────────
 
 type ResolveScope = 'top' | 'phase' | 'task';
@@ -699,6 +716,31 @@ mutationRegistry.set(EVENTS.CODE_REVIEW_COMPLETED, (state, context, config, temp
     // phaseIter.corrective_tasks; otherwise it appends to taskIter. Preserves
     // iter-10 task-scope behaviour identically when scope === 'task'.
     const { iteration, scope } = resolveHostingIteration(cloned, phase, task);
+
+    // Corrective-of-a-corrective: when the code_review that just completed lives
+    // on the hosting iteration's most recent corrective entry, that parent
+    // corrective is now superseded — its review concluded (changes_requested)
+    // and a successor corrective takes over. Finalize the parent here, BEFORE
+    // pushing the child (after the push, length-1 is the child, not the parent).
+    // The walker only ever finalizes the LATEST corrective, so without this the
+    // parent is stranded at in_progress inside a later-completed iteration (the
+    // HICCUP-TEST symptom). Uses the hosting iteration, so it covers both
+    // task-scope and phase-scope correctives uniformly. An empty array (the
+    // first corrective, born from an original task's code_review) is a no-op.
+    // phase_review_completed needs no equivalent guard: phase_review is
+    // single-pass and never fires on a corrective, so it has no parent
+    // corrective to finalize.
+    const existingCorrectives = iteration.corrective_tasks;
+    if (existingCorrectives.length > 0) {
+      const parent = existingCorrectives[existingCorrectives.length - 1];
+      if (parent.status !== 'completed' && parent.nodes['code_review']?.status === 'completed') {
+        parent.status = 'completed';
+        mutations_applied.push(
+          `finalized superseded corrective_task[${parent.index}].status = completed (corrective-of-corrective, scope=${scope})`
+        );
+      }
+    }
+
     const correctiveCount = iteration.corrective_tasks.length;
     const maxRetries = config.limits.max_retries_per_task;
     // Normalize the handoff path via trim so a value like " tasks/foo.md " is
@@ -901,6 +943,7 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
       // fall back to a blank-name stub. Per-repo commit attribution for multi-repo
       // tasks remains future work (T03), but names are no longer dropped.
       if (activePhaseCorrective.repos && activePhaseCorrective.repos.length > 0) {
+        assertHashWritable(activePhaseCorrective.repos, commitHash);
         activePhaseCorrective.repos[0].commit_hash = commitHash;
       } else {
         activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
@@ -919,6 +962,7 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
       // Preserve existing repo names; only set the commit hash on the first entry.
       // If no entries exist yet, fall back to a blank-name stub.
       if (activeCorrective.repos && activeCorrective.repos.length > 0) {
+        assertHashWritable(activeCorrective.repos, commitHash);
         activeCorrective.repos[0].commit_hash = commitHash;
       } else {
         activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
@@ -930,6 +974,7 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
       // blank-name stub. Per-repo commit attribution for multi-repo tasks remains
       // future work, but names are no longer dropped.
       if (taskIteration.repos && taskIteration.repos.length > 0) {
+        assertHashWritable(taskIteration.repos, commitHash);
         taskIteration.repos[0].commit_hash = commitHash;
       } else {
         taskIteration.repos = [{ name: '', commit_hash: commitHash }];
@@ -938,7 +983,13 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     }
 
     return { state: cloned, mutations_applied };
-  } catch {
+  } catch (err) {
+    // Re-throw errors that originate from the hash-overwrite guard (assertHashWritable)
+    // so they propagate as loud, diagnosable rejections rather than being swallowed
+    // by the generic node-resolution error message below (DD-1, NFR-3).
+    if (err instanceof Error && /immutable|overwrite|already recorded|finalized/i.test(err.message)) {
+      throw err;
+    }
     if (context.phase === undefined) {
       const phaseLoopNode = cloned.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
       const hasInProgressPhase = phaseLoopNode?.iterations?.some(it => it.status === 'in_progress');

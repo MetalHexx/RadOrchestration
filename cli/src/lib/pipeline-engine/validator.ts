@@ -12,18 +12,36 @@ import type {
 } from './types.js';
 import { NODE_STATUSES, GRAPH_STATUSES, ALLOWED_NODE_TRANSITIONS } from './constants.js';
 import { validateStateSchema } from './schema-validator.js';
+import { deriveCurrentNodePathFromMarkers } from './dag-walker.js';
 
 const validNodeStatuses = new Set<string>(Object.values(NODE_STATUSES));
 const validGraphStatuses = new Set<string>(Object.values(GRAPH_STATUSES));
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/**
+ * Validate a proposed pipeline state.
+ *
+ * `opts.checkCursorHonesty` (default `true`) gates the `current_node_path`
+ * honesty tripwire (checkCurrentNodePathHonest). That check is a
+ * POST-recompute invariant: it only holds after the walker has advanced nodes
+ * and `graph.current_node_path` has been re-derived from the in_progress
+ * markers (the post-walk validate sites in engine.ts). The PRE-walk validate
+ * sites pass `{ checkCursorHonesty: false }` because the cursor is
+ * intentionally stale there — the mutation has been applied but the walker has
+ * not yet run, so a childless corrective entry (a reified state object whose
+ * derived path is the entry itself) would spuriously disagree with the
+ * not-yet-recomputed cursor. Every other check (schema, status transitions,
+ * immutable commit hash, corrective structure, etc.) runs at both sites.
+ */
 export function validateState(
   _previousState: PipelineState | null,
   proposedState: PipelineState,
   config: OrchestrationConfig,
   template: PipelineTemplate,
+  opts: { checkCursorHonesty?: boolean } = {},
 ): string[] {
+  const { checkCursorHonesty = true } = opts;
   return [
     ...validateStateSchema(proposedState),     // schema check (must be first)
     ...checkGraphStatus(proposedState),
@@ -31,9 +49,12 @@ export function validateState(
     ...checkNodeStatuses(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationIndices(proposedState.graph.nodes, 'graph.nodes'),
     ...checkCompletedParentChildren(proposedState.graph.nodes, 'graph.nodes'),
+    ...checkCorrectiveEntriesTerminal(proposedState.graph.nodes, 'graph.nodes'),
     ...checkIterationLimits(proposedState, config),
     ...checkNodeKindMatchesTemplate(proposedState, template),
     ...checkStatusTransitions(_previousState, proposedState),
+    ...checkImmutableCommitHash(_previousState, proposedState),
+    ...(checkCursorHonesty ? checkCurrentNodePathHonest(proposedState) : []),
   ];
 }
 
@@ -153,6 +174,49 @@ function findInProgressNodes(nodes: Record<string, NodeState>, path: string, par
     }
     if (node.kind === 'parallel') {
       errors.push(...findInProgressNodes(node.nodes, `${path}.${id}.nodes`, parentPath));
+    }
+  }
+  return errors;
+}
+
+// ── Check: completed iteration ⇒ all corrective entries terminal ──────────────
+
+// A completed for-each iteration must contain only terminal corrective entries.
+// Catches the corrective-of-a-corrective stranding bug class at validate time: a
+// corrective entry left non-terminal (in_progress / not_started) under a
+// completed iteration, sitting before a completed sibling. This is the
+// defense-in-depth backstop for the mutations.ts fix that finalizes a superseded
+// parent corrective when its successor is born. Not cursor-related, so it runs
+// at BOTH the pre- and post-walk validate sites (it is NOT gated by
+// checkCursorHonesty); with the mutation in place it always passes, but without
+// it the post-walk validate that marked the iteration completed hard-rejects
+// instead of silently corrupting state.
+function checkCorrectiveEntriesTerminal(nodes: Record<string, NodeState>, path: string): string[] {
+  const errors: string[] = [];
+  for (const [id, node] of Object.entries(nodes)) {
+    const nodePath = `${path}.${id}`;
+    if (node.kind === 'for_each_phase' || node.kind === 'for_each_task') {
+      for (const iter of node.iterations) {
+        // Gate on the ITERATION status (not the for-each node status): a stranded
+        // corrective in a completed phase N must be flagged even while phase N+1
+        // is still running and the for-each node is therefore in_progress.
+        if (iter.status === 'completed') {
+          for (const ct of iter.corrective_tasks) {
+            if (ct.status !== 'completed' && ct.status !== 'skipped') {
+              errors.push(
+                `Corrective entry '${nodePath}.iterations[${iter.index}].corrective_tasks[${ct.index}]' ` +
+                `has status '${ct.status}' but the iteration is completed ` +
+                `(all corrective entries under a completed iteration must be terminal: completed or skipped)`,
+              );
+            }
+          }
+        }
+        // Recurse into nested for-each (phase_loop → task_loop).
+        errors.push(...checkCorrectiveEntriesTerminal(iter.nodes, `${nodePath}.iterations[${iter.index}].nodes`));
+      }
+    }
+    if (node.kind === 'parallel') {
+      errors.push(...checkCorrectiveEntriesTerminal(node.nodes, `${nodePath}.nodes`));
     }
   }
   return errors;
@@ -304,6 +368,59 @@ function checkStatusTransitions(
   return errors;
 }
 
+// ── Check: immutable commit_hash ──────────────────────────────────────────────
+
+function checkImmutableCommitHash(
+  previousState: PipelineState | null,
+  proposedState: PipelineState,
+): string[] {
+  if (!previousState) return [];
+  const errors: string[] = [];
+
+  function repoHash(entry: { repos?: Array<{ commit_hash: string | null }> } | undefined): string | null {
+    return entry?.repos && entry.repos.length > 0 ? entry.repos[0].commit_hash : null;
+  }
+
+  function compare(prev: Record<string, NodeState>, curr: Record<string, NodeState>, path: string): void {
+    for (const [id, currNode] of Object.entries(curr)) {
+      const prevNode = prev[id];
+      if (!prevNode) continue;
+      if (
+        (currNode.kind === 'for_each_phase' || currNode.kind === 'for_each_task') &&
+        (prevNode.kind === 'for_each_phase' || prevNode.kind === 'for_each_task')
+      ) {
+        const prevIters = (prevNode as ForEachPhaseNodeState | ForEachTaskNodeState).iterations;
+        for (const currIter of currNode.iterations) {
+          const prevIter = prevIters[currIter.index];
+          if (!prevIter) continue;
+          const before = repoHash(prevIter as unknown as { repos?: Array<{ commit_hash: string | null }> });
+          const after = repoHash(currIter as unknown as { repos?: Array<{ commit_hash: string | null }> });
+          if (before != null && after != null && before !== after) {
+            errors.push(`Immutable commit_hash violation at ${path}.${id}.iterations[${currIter.index}]: '${before}' → '${after}'`);
+          }
+          for (const currCt of currIter.corrective_tasks) {
+            const prevCt = prevIter.corrective_tasks.find(ct => ct.index === currCt.index);
+            if (!prevCt) continue;
+            const ctBefore = repoHash(prevCt as unknown as { repos?: Array<{ commit_hash: string | null }> });
+            const ctAfter = repoHash(currCt as unknown as { repos?: Array<{ commit_hash: string | null }> });
+            if (ctBefore != null && ctAfter != null && ctBefore !== ctAfter) {
+              errors.push(`Immutable commit_hash violation at ${path}.${id}.iterations[${currIter.index}].corrective_tasks[${currCt.index}]: '${ctBefore}' → '${ctAfter}'`);
+            }
+            compare(prevCt.nodes, currCt.nodes, `${path}.${id}.iterations[${currIter.index}].corrective_tasks[${currCt.index}].nodes`);
+          }
+          compare(prevIter.nodes, currIter.nodes, `${path}.${id}.iterations[${currIter.index}].nodes`);
+        }
+      }
+      if (currNode.kind === 'parallel' && prevNode.kind === 'parallel') {
+        compare(prevNode.nodes, currNode.nodes, `${path}.${id}.nodes`);
+      }
+    }
+  }
+
+  compare(previousState.graph.nodes, proposedState.graph.nodes, 'graph.nodes');
+  return errors;
+}
+
 function compareNodes(
   prevNodes: Record<string, NodeState>,
   currNodes: Record<string, NodeState>,
@@ -353,4 +470,24 @@ function compareNodes(
       compareNodes(prevNode.nodes, currNode.nodes, `${path}.${id}.nodes`, errors);
     }
   }
+}
+
+// ── Check: current_node_path honest tripwire (FR-8, FR-9, AD-1, NFR-1) ───────
+
+/**
+ * Verifies that `current_node_path` agrees with the in_progress marker
+ * derived from the state tree. When at least one node is in_progress, the
+ * cursor must equal the derived path; when no node is in_progress (terminal
+ * or not-yet-started) the check is silently skipped (NFR-1 tolerance).
+ */
+function checkCurrentNodePathHonest(state: PipelineState): string[] {
+  const derived = deriveCurrentNodePathFromMarkers(state);
+  if (derived === null) return []; // terminal / no active node — tolerate
+  if (state.graph.current_node_path !== derived) {
+    return [
+      `current_node_path tripwire: cursor '${state.graph.current_node_path}' disagrees with ` +
+      `in_progress markers (expected '${derived}'). The echoed context is stale.`,
+    ];
+  }
+  return [];
 }

@@ -233,6 +233,38 @@ After authoring the addendum and (when applicable) the corrective handoff, signa
 
 ---
 
+## Verify Before Echo (corrective commit signals)
+
+**Scope:** mutating signals on a phase-corrective (or task-corrective) commit
+path — specifically `commit_completed`. Not all signals; only the mutating
+corrective commit echo.
+
+When the pipeline returns `invoke_source_control_commit` and you are about to
+signal `commit_completed`, the `--phase`/`--task` you echo come from
+`data.context`. On a corrective path that context can be stale. Before emitting
+the mutating signal:
+
+1. **Read `state.json`.** Locate the node(s) carrying `status: in_progress`.
+2. **Confirm the active node.** On a phase-scope corrective the active node is
+   the last entry of the active phase's `corrective_tasks` (its `commit`
+   sub-node is `in_progress`); the echoed context should carry that phase's
+   identity with the phase-scope task sentinel (`task_number: null`,
+   `task_id: "P{NN}-PHASE"`).
+3. **Confirm the identifiers address that node.** If `--phase`/`--task` do not
+   resolve to the `in_progress` node, **do not emit `commit_completed`.**
+   Inspect and correct first — re-derive the correct identifiers from the
+   markers, or re-signal `start` (non-mutating) to let the engine recompute
+   the action context.
+4. **Never echo a context you have flagged as stale into a mutation.** A
+   finalized commit hash is immutable; a stale echo that addresses the wrong
+   node will be rejected by the engine with `ok: false`, but the rule is to
+   catch it before the signal, not rely on the engine's catch net.
+
+This is a standing rule: a future orchestrator agent facing the same
+stale-context signal halts and verifies rather than echoing into a mutation.
+
+---
+
 ## Addendum Shape
 
 Append a `## Orchestrator Addendum` section to the **existing** review doc. Write it after all existing content. Do not rewrite or restructure the review doc body.

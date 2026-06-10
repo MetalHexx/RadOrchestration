@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { walkDAG } from '../../../src/lib/pipeline-engine/dag-walker.js';
+import { walkDAG, deriveCurrentNodePathFromMarkers } from '../../../src/lib/pipeline-engine/dag-walker.js';
 import { NODE_STATUSES } from '../../../src/lib/pipeline-engine/constants.js';
 import type { PipelineState, PipelineTemplate, OrchestrationConfig, StepNodeDef, StepNodeState, ForEachPhaseNodeDef, ForEachTaskNodeDef, ForEachPhaseNodeState } from '../../../src/lib/pipeline-engine/types.js';
 
@@ -145,5 +145,85 @@ describe('for_each_phase / for_each_task iteration entry shape (FR-27, AD-4)', (
     const taskEntry = phaseEntry.nodes.task_loop.iterations[0];
     expect(Array.isArray(taskEntry.repos)).toBe(true);
     expect('commit_hash' in taskEntry).toBe(false);
+  });
+});
+
+describe('deriveCurrentNodePathFromMarkers — conditional / parallel are not concrete leaves', () => {
+  // In the runtime templates, `commit_gate` (a conditional) stays in_progress
+  // while its taken-branch step `commit` is in_progress. The branch step is
+  // scaffolded as a FLAT SIBLING in the same iteration nodes record and is
+  // ordered after the gate. The derived cursor must name the concrete active
+  // step, not the conditional router that precedes it in scan order.
+  function stateWithActiveCommitUnderConditional(): PipelineState {
+    return {
+      graph: {
+        status: 'in_progress',
+        current_node_path: null,
+        nodes: {
+          phase_loop: {
+            kind: 'for_each_phase',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [],
+                nodes: {
+                  task_loop: {
+                    kind: 'for_each_task',
+                    status: 'in_progress',
+                    iterations: [
+                      {
+                        index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [],
+                        nodes: {
+                          task_executor: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+                          commit_gate: { kind: 'conditional', status: 'in_progress', branch_taken: 'true' },
+                          commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as unknown as PipelineState;
+  }
+
+  it('returns the active branch step path, not the in_progress conditional router', () => {
+    const derived = deriveCurrentNodePathFromMarkers(stateWithActiveCommitUnderConditional());
+    expect(derived).toBe('phase_loop[0].task_loop[0].commit');
+  });
+
+  it('descends into an in_progress parallel container to find the concrete leaf', () => {
+    const state = {
+      graph: {
+        status: 'in_progress',
+        current_node_path: null,
+        nodes: {
+          phase_loop: {
+            kind: 'for_each_phase',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [],
+                nodes: {
+                  fan_out: {
+                    kind: 'parallel',
+                    status: 'in_progress',
+                    nodes: {
+                      leg_a: { kind: 'step', status: 'completed', doc_path: null, retries: 0 },
+                      leg_b: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    } as unknown as PipelineState;
+    const derived = deriveCurrentNodePathFromMarkers(state);
+    expect(derived).toBe('phase_loop[0].fan_out.leg_b');
   });
 });

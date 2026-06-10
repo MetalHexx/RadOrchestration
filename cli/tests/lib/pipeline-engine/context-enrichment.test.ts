@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { enrichActionContext, type EnrichmentInput } from '../../../src/lib/pipeline-engine/context-enrichment.js';
+import { enrichActionContext, resolveActivePhaseIndex, resolveActiveTaskIndex, type EnrichmentInput } from '../../../src/lib/pipeline-engine/context-enrichment.js';
 import { makeV6State } from '../../helpers/state-factory.js';
-import type { PipelineState } from '../../../src/lib/pipeline-engine/types.js';
+import type { PipelineState, OrchestrationConfig } from '../../../src/lib/pipeline-engine/types.js';
 
 function makeTmpRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pe-'));
@@ -82,5 +82,201 @@ describe('context-enrichment spawn_code_reviewer head_sha (FR-26)', () => {
   it('reads head_sha from repos[0].commit_hash for spawn_code_reviewer (FR-26)', () => {
     const ctx = enrichActionContext(makeEnrichmentInput('spawn_code_reviewer', stateWithTaskCommit('backend', 'def5678')));
     expect(ctx.head_sha).toBe('def5678');
+  });
+});
+
+// Build a phase loop where every regular iteration is `completed` (so the
+// pre-fix resolvers fall through to `return 1`) but phase index 4 carries an
+// in_progress phase-scope corrective — the PROJECT-GRAPH-2 shape.
+function stateWithPhaseCorrective(): PipelineState {
+  const completedTaskLoop = {
+    kind: 'for_each_task',
+    status: 'completed',
+    iterations: [
+      { index: 0, status: 'completed', doc_path: null, repos: [], corrective_tasks: [], nodes: {} },
+    ],
+  };
+  const mkPhase = (index: number, status: string, correctives: unknown[]) => ({
+    index,
+    status,
+    doc_path: null,
+    repos: [],
+    corrective_tasks: correctives,
+    nodes: { task_loop: structuredClone(completedTaskLoop) },
+  });
+  return {
+    graph: {
+      nodes: {
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: 'in_progress',
+          iterations: [
+            mkPhase(0, 'completed', []),
+            mkPhase(1, 'completed', []),
+            mkPhase(2, 'completed', []),
+            mkPhase(3, 'in_progress', [
+              { index: 1, status: 'in_progress', reason: 'r', injected_after: 'phase_review', nodes: {}, repos: [] },
+            ]),
+          ],
+        },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+function stateResolvingToOne(): PipelineState {
+  return {
+    graph: {
+      nodes: {
+        phase_loop: {
+          kind: 'for_each_phase',
+          status: 'in_progress',
+          iterations: [
+            {
+              index: 0,
+              status: 'in_progress',
+              doc_path: null,
+              repos: [],
+              corrective_tasks: [],
+              nodes: {
+                task_loop: {
+                  kind: 'for_each_task',
+                  status: 'in_progress',
+                  iterations: [
+                    { index: 0, status: 'in_progress', doc_path: null, repos: [], corrective_tasks: [], nodes: {} },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+describe('corrective-aware resolvers (FR-1, FR-2, NFR-1)', () => {
+  it('resolves the active phase-scope corrective phase, not node 1 (FR-1)', () => {
+    const state = stateWithPhaseCorrective();
+    expect(resolveActivePhaseIndex(state)).toBe(4);
+    expect(resolveActiveTaskIndex(state, 4)).toBe(1);
+  });
+
+  it('fails loud when no active node can be resolved (FR-2)', () => {
+    // All phases completed, no correctives, no in_progress/not_started.
+    const state = stateWithPhaseCorrective();
+    (state as unknown as { graph: { nodes: { phase_loop: { iterations: { status: string; corrective_tasks: unknown[] }[] } } } })
+      .graph.nodes.phase_loop.iterations.forEach(it => { it.status = 'completed'; it.corrective_tasks = []; });
+    expect(() => resolveActivePhaseIndex(state)).toThrow(/no active phase|unresolved/i);
+  });
+
+  it('still resolves to phase 1 / task 1 when that is genuinely correct (NFR-1)', () => {
+    const state = stateResolvingToOne();
+    expect(resolveActivePhaseIndex(state)).toBe(1);
+    expect(resolveActiveTaskIndex(state, 1)).toBe(1);
+  });
+});
+
+const cfg = { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as OrchestrationConfig;
+
+function commitState(correctiveActive: boolean): PipelineState {
+  const taskLoop = {
+    kind: 'for_each_task',
+    status: correctiveActive ? 'completed' : 'in_progress',
+    iterations: [
+      { index: 0, status: correctiveActive ? 'completed' : 'in_progress', doc_path: null, repos: [], corrective_tasks: [], nodes: {} },
+    ],
+  };
+  const phase = {
+    index: 3,
+    status: 'in_progress',
+    doc_path: null,
+    repos: [],
+    corrective_tasks: correctiveActive
+      ? [{ index: 1, status: 'in_progress', reason: 'r', injected_after: 'phase_review', nodes: {}, repos: [] }]
+      : [],
+    nodes: { task_loop: taskLoop },
+  };
+  // Pad to 4 phases so phase index 4 is the corrective phase.
+  const pad = (i: number) => ({ index: i, status: 'completed', doc_path: null, repos: [], corrective_tasks: [], nodes: { task_loop: structuredClone(taskLoop) } });
+  return {
+    pipeline: { source_control: { branch: 'PROJECT-GRAPH-2', worktree_path: '/wt' } },
+    graph: { nodes: { phase_loop: { kind: 'for_each_phase', status: 'in_progress', iterations: [pad(0), pad(1), pad(2), phase] } } },
+  } as unknown as PipelineState;
+}
+
+describe('invoke_source_control_commit sentinel parity (FR-3, DD-2)', () => {
+  it('projects the phase-scope sentinel on an active phase corrective (FR-3, DD-2)', () => {
+    const ctx = enrichActionContext({
+      action: 'invoke_source_control_commit',
+      walkerContext: {},
+      state: commitState(true),
+      config: cfg,
+      cliContext: {},
+    });
+    expect(ctx.phase_number).toBe(4);
+    expect(ctx.phase_id).toBe('P04');
+    expect(ctx.task_number).toBeNull();
+    expect(ctx.task_id).toBe('P04-PHASE');
+  });
+
+  it('keeps the resolved task identity on a normal commit (NFR-1)', () => {
+    const ctx = enrichActionContext({
+      action: 'invoke_source_control_commit',
+      walkerContext: {},
+      state: commitState(false),
+      config: cfg,
+      cliContext: {},
+    });
+    expect(ctx.task_number).toBe(1);
+    // commitState(false) has 4 phases with phase 4 in_progress, so the
+    // resolved phase is 4 and task is 1 — P04-T01 (not P01-T01 as the
+    // handoff stated; see Execution Notes for the discrepancy).
+    expect(ctx.task_id).toBe('P04-T01');
+  });
+});
+
+import { validateBaseShaChronology } from '../../../src/lib/pipeline-engine/context-enrichment.js';
+
+describe('project_base_sha chronology invariant (FR-7, NFR-4)', () => {
+  it('rejects a base SHA whose chronological position is not earliest (FR-7)', () => {
+    // Traversal order picks the poisoned P04 hash first, but git says it is #12.
+    const commits = ['1436cd63', '64f9c236', 'e9d71bc5'];
+    const ordinal = new Map([['64f9c236', 1], ['e9d71bc5', 5], ['1436cd63', 12]]);
+    const err = validateBaseShaChronology(commits, ordinal);
+    expect(err).toMatch(/base.*sha|chronolog/i);
+  });
+
+  it('accepts a base SHA that is the chronologically earliest (FR-7)', () => {
+    const commits = ['64f9c236', 'e9d71bc5', '1436cd63'];
+    const ordinal = new Map([['64f9c236', 1], ['e9d71bc5', 5], ['1436cd63', 12]]);
+    expect(validateBaseShaChronology(commits, ordinal)).toBeNull();
+  });
+});
+
+describe('spawn_final_reviewer base/head SHA derivation — ≤1 commit short-circuit (FR-7, NFR-4)', () => {
+  // With 0–1 collected commit hashes a chronology violation is impossible, so
+  // the enrichment must not depend on `git` (the rev-list invocation is skipped).
+  // worktree_path points at a throwaway non-git directory to prove the path does
+  // not require a git repository when there is nothing to order.
+  function finalReviewState(commitHash: string | null): PipelineState {
+    const s = makeV6State({ taskRepos: [{ name: 'backend', commit_hash: commitHash }] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (s as any).pipeline = { ...(s as any).pipeline, source_control: { worktree_path: os.tmpdir() } };
+    return s as unknown as PipelineState;
+  }
+
+  it('returns null base/head and no error when no commits were collected (auto-commit off)', () => {
+    const out = enrichActionContext(makeEnrichmentInput('spawn_final_reviewer', finalReviewState(null)));
+    expect(out.project_base_sha ?? null).toBeNull();
+    expect(out.project_head_sha ?? null).toBeNull();
+    expect(out.error).toBeUndefined();
+  });
+
+  it('returns the single commit as both base and head with no error (one commit)', () => {
+    const out = enrichActionContext(makeEnrichmentInput('spawn_final_reviewer', finalReviewState('abc12345')));
+    expect(out.project_base_sha).toBe('abc12345');
+    expect(out.project_head_sha).toBe('abc12345');
+    expect(out.error).toBeUndefined();
   });
 });

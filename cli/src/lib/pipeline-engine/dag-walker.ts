@@ -133,6 +133,25 @@ function resolveDocRefInScope(
  * advancing statuses and returning the first actionable result. Returns
  * 'all_completed' when every iteration has been completed or skipped.
  */
+/**
+ * Finalize an iteration that completes via the corrective-completion
+ * short-circuit. Body nodes ordered AFTER the review node (e.g. phase_gate after
+ * phase_review, task_gate after code_review) are never walked when a corrective
+ * closes the iteration, so they remain `not_started`. They were bypassed by the
+ * corrective close, not executed, so the honest terminal status is `skipped`.
+ * Sweep only the iteration's DIRECT body nodes — never recurse into task_loop or
+ * any other container. Idempotent (re-sweeping already-terminal nodes is a
+ * no-op). Only the corrective-completion path calls this; normal completion
+ * walks its gates to `completed` as usual.
+ */
+function skipUnreachedIterationBodyNodes(iteration: IterationEntry): void {
+  for (const node of Object.values(iteration.nodes)) {
+    if (node.status === NODE_STATUSES.NOT_STARTED) {
+      node.status = NODE_STATUSES.SKIPPED;
+    }
+  }
+}
+
 function walkForEachIterations(
   fepDef: ForEachPhaseNodeDef | ForEachTaskNodeDef,
   fepState: ForEachPhaseNodeState | ForEachTaskNodeState,
@@ -186,6 +205,7 @@ function walkForEachIterations(
       }
 
       if (latestCorrective.status === NODE_STATUSES.COMPLETED) {
+        skipUnreachedIterationBodyNodes(iteration);
         iteration.status = NODE_STATUSES.COMPLETED;
         continue;
       }
@@ -217,6 +237,7 @@ function walkForEachIterations(
       });
       if (allCorrectiveDone) {
         latestCorrective.status = NODE_STATUSES.COMPLETED;
+        skipUnreachedIterationBodyNodes(iteration);
         iteration.status = NODE_STATUSES.COMPLETED;
         continue;
       }
@@ -638,6 +659,72 @@ function walkNodes(
   }
 
   return null;
+}
+
+/**
+ * Derives the current active node path from the `in_progress` markers in the
+ * state tree, rather than from the echoed `current_node_path` field. This
+ * resolves the stale-cursor problem during corrective execution where the
+ * echoed path trails the markers.
+ *
+ * Returns the state-path string of the deepest in_progress leaf (e.g.,
+ * "phase_loop[0].corrective_tasks[1]"), or null when no concrete active node
+ * exists. A "concrete active node" is either:
+ *   - a corrective task entry with status `in_progress`
+ *   - a leaf step/gate node with status `in_progress`
+ *
+ * Container nodes (`for_each_phase`, `for_each_task`) that are `in_progress`
+ * without any deeper in_progress descendant are **not** counted — they are in
+ * a transitional state (mid-walker advancement) and treating them as active
+ * would produce false-positive tripwire errors.
+ *
+ * FR-8, FR-9, AD-1
+ */
+export function deriveCurrentNodePathFromMarkers(state: PipelineState): string | null {
+  const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
+  if (!phaseLoop?.iterations?.length) return null;
+
+  function findLeaf(nodes: Record<string, NodeState>, prefix: string): string | null {
+    for (const [id, node] of Object.entries(nodes)) {
+      const here = `${prefix}${id}`;
+      if (node.status === 'in_progress') {
+        if (node.kind === 'for_each_phase' || node.kind === 'for_each_task') {
+          for (const iter of node.iterations) {
+            for (const ct of iter.corrective_tasks) {
+              if (ct.status === 'in_progress') {
+                const deeper = findLeaf(ct.nodes, `${here}[${iter.index}].corrective_tasks[${ct.index}].`);
+                if (deeper) return deeper;
+                return `${here}[${iter.index}].corrective_tasks[${ct.index}]`;
+              }
+            }
+            const deeper = findLeaf(iter.nodes, `${here}[${iter.index}].`);
+            if (deeper) return deeper;
+          }
+          // Container is in_progress but no deeper leaf found — transitional, not concrete
+          return null;
+        }
+        // Conditional routers are not concrete leaves: the taken-branch step is
+        // scaffolded as a FLAT SIBLING in this same `nodes` record (see
+        // walkNodes), so keep scanning to reach it rather than reporting the
+        // router path as the cursor.
+        if (node.kind === 'conditional') {
+          continue;
+        }
+        // Parallel containers nest their children under `node.nodes`; descend to
+        // find the concrete active leaf instead of reporting the container.
+        if (node.kind === 'parallel') {
+          const deeper = findLeaf(node.nodes, `${here}.`);
+          if (deeper) return deeper;
+          continue;
+        }
+        // Leaf node (step or gate) — this is the concrete active node
+        return here;
+      }
+    }
+    return null;
+  }
+
+  return findLeaf(state.graph.nodes, '');
 }
 
 /**

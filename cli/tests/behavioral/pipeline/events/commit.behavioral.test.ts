@@ -13,6 +13,7 @@ import { pipelineSignalCommand } from '../../../../src/commands/pipeline/signal.
 import { runCommand } from '../../../../src/framework/command.js';
 import { getMutation } from '../../../../src/lib/pipeline-engine/mutations.js';
 import { makeV6State } from '../../../helpers/state-factory.js';
+import { resolveActivePhaseIndex } from '../../../../src/lib/pipeline-engine/context-enrichment.js';
 import type { PipelineState, OrchestrationConfig, PipelineTemplate, EventContext } from '../../../../src/lib/pipeline-engine/types.js';
 
 const cleanups: Array<() => void> = [];
@@ -243,6 +244,31 @@ describe('commit_completed — per-repo hash write (FR-25, AD-10)', () => {
   });
 });
 
+describe('commit_completed overwrite protection (FR-5, FR-6, NFR-2, DD-1)', () => {
+  it('rejects a different-hash overwrite of a finalized node and leaves the hash unchanged (FR-5, FR-6, DD-1)', () => {
+    // Seed a task whose repos[0].commit_hash is already finalized.
+    const seeded = seedSingleRepoTask('backend');
+    firstTaskIteration(seeded).repos[0].commit_hash = '64f9c236';
+    expect(() =>
+      drive(seeded, { event: 'commit_completed', commit_hash: '1436cd63', phase: 1, task: 1 })
+    ).toThrow(/immutable|overwrite|already recorded|finalized/i);
+    // The durable hash must be untouched by the rejected attempt.
+    expect(firstTaskIteration(seeded).repos[0].commit_hash).toBe('64f9c236');
+  });
+
+  it('allows an idempotent retry writing the same hash (NFR-2)', () => {
+    const seeded = seedSingleRepoTask('backend');
+    firstTaskIteration(seeded).repos[0].commit_hash = '64f9c236';
+    const after = drive(seeded, { event: 'commit_completed', commit_hash: '64f9c236', phase: 1, task: 1 });
+    expect(firstTaskIteration(after).repos[0].commit_hash).toBe('64f9c236');
+  });
+
+  it('allows the first write when the existing hash is null (FR-5)', () => {
+    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', phase: 1, task: 1 });
+    expect(firstTaskIteration(after).repos[0].commit_hash).toBe('abc1234');
+  });
+});
+
 describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
   it('commit_completed marks commit.status = completed and writes commit_hash onto task iteration', async () => {
     const w = buildWorld({
@@ -280,5 +306,38 @@ describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
     // step (spawn_code_reviewer per the template); the composed prompt
     // carries that action's completion event from the real catalog.
     assertPromptForEnvelopeAction(env);
+  });
+});
+
+function seedPhaseCorrective(repoName: string): Record<string, unknown> {
+  const base = seedSingleRepoTask(repoName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const phaseIter = (base as any).graph.nodes.phase_loop.iterations[0];
+  phaseIter.nodes.task_loop.status = 'completed';
+  phaseIter.nodes.task_loop.iterations[0].status = 'completed';
+  phaseIter.corrective_tasks = [
+    {
+      index: 1, status: 'in_progress', reason: 'phase review', injected_after: 'phase_review',
+      repos: [{ name: repoName, commit_hash: null }],
+      nodes: { commit: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 } },
+    },
+  ];
+  return base;
+}
+
+describe('phase-corrective commit path (FR-11, NFR-1)', () => {
+  it('writes the commit hash onto the active phase corrective, not the task iteration (FR-11)', () => {
+    const after = drive(seedPhaseCorrective('backend'), { event: 'commit_completed', commit_hash: 'cor1234', phase: 1, task: 1 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const phaseIter = (after as any).graph.nodes.phase_loop.iterations[0];
+    expect(phaseIter.corrective_tasks[0].repos[0].commit_hash).toBe('cor1234');
+    // The genuine task iteration hash is untouched (still null).
+    expect(phaseIter.nodes.task_loop.iterations[0].repos[0].commit_hash).toBeNull();
+  });
+
+  it('resolves the active node to the corrective phase identity (FR-11)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const state = seedPhaseCorrective('backend') as any;
+    expect(resolveActivePhaseIndex(state)).toBe(1);
   });
 });
