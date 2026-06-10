@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { worktreeCreate, worktreeCreateCommand, provisionWorktrees } from '../../../src/commands/worktree/create.js';
+import { worktreeCreate, worktreeCreateCommand, provisionWorktrees, aggregateExitCode } from '../../../src/commands/worktree/create.js';
 import { runCommand } from '../../../src/framework/command.js';
 
 function makeExecErr(stderr: string): Error & { stderr: string } {
@@ -111,29 +111,49 @@ describe('worktreeCreateCommand.mapResult — provision result exit codes', () =
   const mr = worktreeCreateCommand.mapResult!;
   it('exits 0 when all repos succeed without error', () => {
     const result = { repos: [
-      { name: 'a', created: true, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
-      { name: 'b', created: true, path: '/wt/P/b', branch: 'radorch/P', error: null, errorType: null },
+      { name: 'a', created: true, pushed: true, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
+      { name: 'b', created: true, pushed: true, path: '/wt/P/b', branch: 'radorch/P', error: null, errorType: null },
     ] };
     const env = mr(result as never);
     expect(env.ok).toBe(true);
     expect(env.exit_code).toBe(0);
   });
-  it('exits 1 when at least one repo has an error', () => {
+  it('exits 2 when at least one repo failed to create (has an error)', () => {
     const result = { repos: [
-      { name: 'a', created: false, path: '/wt/P/a', branch: 'radorch/P', error: 'boom', errorType: 'unknown' },
-      { name: 'b', created: true, path: '/wt/P/b', branch: 'radorch/P', error: null, errorType: null },
+      { name: 'a', created: false, pushed: false, path: '/wt/P/a', branch: 'radorch/P', error: 'boom', errorType: 'unknown' },
+      { name: 'b', created: true, pushed: true, path: '/wt/P/b', branch: 'radorch/P', error: null, errorType: null },
     ] };
     const env = mr(result as never);
-    expect(env.ok).toBe(false);
+    expect(env.ok).toBe(true);
+    expect(env.exit_code).toBe(2);
+  });
+  it('exits 1 when a repo was created but its push failed', () => {
+    const result = { repos: [
+      { name: 'a', created: true, pushed: false, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
+    ] };
+    const env = mr(result as never);
+    expect(env.ok).toBe(true);
     expect(env.exit_code).toBe(1);
   });
   it('carries repos data in the ok:true envelope', () => {
     const result = { repos: [
-      { name: 'a', created: false, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
+      { name: 'a', created: false, pushed: true, path: '/wt/P/a', branch: 'radorch/P', error: null, errorType: null },
     ] };
     const env = mr(result as never) as { ok: boolean; data: unknown; exit_code: number };
     expect(env.ok).toBe(true);
     expect(env.data).toEqual(result);
+  });
+});
+
+describe('worktree create aggregate exit code (AD-5)', () => {
+  it('returns 0 when every repo is present/created and pushed', () => {
+    expect(aggregateExitCode([{ created: true, pushed: true }, { created: false, pushed: true }] as never)).toBe(0);
+  });
+  it('returns 1 when a repo was created but its push failed', () => {
+    expect(aggregateExitCode([{ created: true, pushed: false }] as never)).toBe(1);
+  });
+  it('returns 2 when any repo failed to create', () => {
+    expect(aggregateExitCode([{ created: false, pushed: false, error: 'boom' }, { created: true, pushed: true }] as never)).toBe(2);
   });
 });
 

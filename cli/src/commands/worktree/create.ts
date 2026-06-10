@@ -83,10 +83,17 @@ export function worktreeCreate(opts: WorktreeCreateOptions): WorktreeCreateResul
 export interface ProvisionRepoResult {
   name: string;
   created: boolean;
+  pushed: boolean;
   path: string | null;
   branch: string | null;
   error: string | null;
   errorType: WorktreeCreateErrorType;
+}
+
+export function aggregateExitCode(repos: ReadonlyArray<{ created: boolean; pushed: boolean; error?: string | null }>): 0 | 1 | 2 {
+  if (repos.some(r => r.error != null)) return 2;
+  if (repos.some(r => r.created === true && r.pushed === false)) return 1;
+  return 0;
 }
 
 export interface ProvisionWorktreesResult {
@@ -183,7 +190,7 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
     const worktreePath = path.join(worktreesDir, worktreeName, repo);
     try {
       if (exists(worktreePath)) {
-        results.push({ name: repo, created: false, path: worktreePath, branch, error: null, errorType: null });
+        results.push({ name: repo, created: false, pushed: true, path: worktreePath, branch, error: null, errorType: null });
         continue;
       }
       const r = create({
@@ -195,6 +202,7 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
       results.push({
         name: repo,
         created: r.created,
+        pushed: r.pushed,
         path: r.worktreePath,
         branch: r.branch,
         error: r.error,
@@ -202,7 +210,7 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      results.push({ name: repo, created: false, path: worktreePath, branch, error: msg, errorType: 'unknown' });
+      results.push({ name: repo, created: false, pushed: false, path: worktreePath, branch, error: msg, errorType: 'unknown' });
     }
   }
 
@@ -237,7 +245,6 @@ export const worktreeCreateCommand = defineCommand({
     });
   },
   mapResult: (r: ProvisionWorktreesResult) => {
-    const anyFailed = r.repos.some(repo => repo.error != null);
-    return { ok: !anyFailed, data: r, exit_code: anyFailed ? 1 : 0 };
+    return { ok: true, data: r, exit_code: aggregateExitCode(r.repos) };
   },
 });
