@@ -35,7 +35,7 @@ describe('radorch program wiring', () => {
     expect(prHelp).toMatch(/Optional absolute path to a markdown file/);
   }, 30_000);
 
-  it('exposes project context subcommand at three help depths (find retired)', async () => {
+  it('exposes project noun in root help (context and find retired)', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
       cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
@@ -43,11 +43,8 @@ describe('radorch program wiring', () => {
     const { stdout: rootHelp } = await node(['--help']);
     expect(rootHelp).toMatch(/\bproject\b/);
     const { stdout: projectHelp } = await node(['project', '--help']);
-    expect(projectHelp).toMatch(/context\s+Return the shared context block/);
+    expect(projectHelp).not.toMatch(/context\s+Return the shared context block/);
     expect(projectHelp).not.toMatch(/find\s+Find execution-tier projects/);
-    const { stdout: contextHelp } = await node(['project', 'context', '--help']);
-    expect(contextHelp).toMatch(/--project-name/);
-    expect(contextHelp).toMatch(/result includes the project-state block/);
   }, 30_000);
 
   it('exposes worktree create and worktree launch with per-agent matrix in launch help', async () => {
@@ -209,6 +206,17 @@ describe('radorch program wiring', () => {
     const { stdout: linkHelp } = await node(['graph', 'link', '--help']);
     expect(linkHelp).toMatch(/spawned-from/);
     expect(linkHelp).toMatch(/Unknown types are accepted/);
+  }, 30_000);
+
+  it('project noun retires context and keeps show/list/worktrees/locate (FR-24)', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const { stdout: projectHelp } = await execP('node', ['dist/bin/radorch.js', 'project', '--help'], {
+      cwd: repoRoot,
+      env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    expect(projectHelp).not.toMatch(/\bcontext\b/);
+    expect(projectHelp).toMatch(/\bshow\b/);
+    expect(projectHelp).toMatch(/\blocate\b/);
   }, 30_000);
 
   it('exposes migrate in root help and responds to its own --help with safety-rail flags', async () => {
