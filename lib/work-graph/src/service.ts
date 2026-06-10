@@ -9,13 +9,21 @@ import { groupId } from './ids.js';
 import { validateNewEdge, validateNewGroupId } from './validate.js';
 import { pruneEdges } from './reconcile.js';
 
-export interface ServiceOpts { root: string; exec?: GitExec; }
+export interface ServiceOpts { root: string; exec?: GitExec; worktreesDir?: string; }
 
+/**
+ * WorkGraphService
+ *
+ * The library keeps its own default (`<root>/worktrees`) for package independence,
+ * but accepts the CLI's `userDataPaths().worktrees` as the authoritative override (NFR-7).
+ * The `resolveWorktrees` legacy single-`worktree_path` branch stays as the bridge
+ * for existing projects (AD-9).
+ */
 export class WorkGraphService {
   private readonly index: GraphIndex;
   constructor(private readonly opts: ServiceOpts) { this.index = new GraphIndex(opts.root); }
   private projectsDir(): string { return path.join(this.opts.root, 'projects'); }
-  private worktreesDir(): string { return path.join(this.opts.root, 'worktrees'); }
+  private worktreesDir(): string { return this.opts.worktreesDir ?? path.join(this.opts.root, 'worktrees'); }
 
   private compose(): { graph: WorkGraph } {
     const stored = this.index.read();

@@ -3,7 +3,16 @@ import { type GitExec } from './derive/worktrees.js';
 export interface ServiceOpts {
     root: string;
     exec?: GitExec;
+    worktreesDir?: string;
 }
+/**
+ * WorkGraphService
+ *
+ * The library keeps its own default (`<root>/worktrees`) for package independence,
+ * but accepts the CLI's `userDataPaths().worktrees` as the authoritative override (NFR-7).
+ * The `resolveWorktrees` legacy single-`worktree_path` branch stays as the bridge
+ * for existing projects (AD-9).
+ */
 export declare class WorkGraphService {
     private readonly opts;
     private readonly index;
