@@ -17,7 +17,7 @@ Read the following fields from `data` in the returned envelope:
 | Field | Meaning |
 |---|---|
 | `kind` | Where you are: `worktree` \| `main-clone` \| `side-project` \| `none` |
-| `worktree_name` | The worktree set name (present when `kind === 'worktree'`) |
+| `worktree_name` | The worktree set name (present when `kind === 'worktree'` or `kind === 'side-project'`) |
 | `repo` | The repo this directory belongs to (present when `kind === 'worktree'` or `kind === 'main-clone'`) |
 | `projects` | The project(s) associated with this location (array; may be empty) |
 | `branch` | The current branch at this path (present when `kind === 'worktree'`) |
@@ -51,8 +51,8 @@ After running `radorch worktree create`, inspect its per-repo result array befor
 
 **Gate rule:**
 
-- If every repo entry has `created: true` (aggregate exit code `0`) → proceed to `radorch source-control init`.
-- If any repo entry has `created: false` → surface the failed repo name and its error, then re-run `radorch worktree create --repo <failed>` before calling init. Do not call `source-control init` until all repos are present.
+- If every repo entry has `error: null` → all repos are present (some freshly `created: true`, some idempotent no-ops with `created: false, error: null`). Proceed to `radorch source-control init`.
+- If any repo entry has `error != null` (equivalently `errorType != null`) → surface that repo's name and its error, then re-run `radorch worktree create --project X --repo <failed>` before calling init. Do not call `source-control init` until every repo entry has `error: null`.
 
 **Failure semantics** meet in this skill: `worktree create` isolates per-repo failures so a single bad repo does not block the others; `source-control init` fails loud on any missing worktree (naming the specific repo and pointing at the recovery command). The skill closes the loop — the CLI commands themselves stay mechanical and never prompt.
 
