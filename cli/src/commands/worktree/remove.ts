@@ -44,6 +44,13 @@ export function removeWorktrees(opts: RemoveWorktreesOptions): RemoveWorktreesRe
 
   const wtName = worktreeName(project);
   const { repos: allRepos } = readProjectRepos(project);
+  // Fail fast on an unknown --repo: a scope outside the project set would
+  // otherwise produce an empty target list and silently exit 0.
+  if (opts.repo !== undefined && !allRepos.includes(opts.repo)) {
+    throw new UserError(
+      `Repo "${opts.repo}" is not in project "${project}" repo set: ${allRepos.join(', ')}`,
+    );
+  }
   const targetRepos = opts.repo ? allRepos.filter((r) => r === opts.repo) : allRepos;
 
   // AD-10: surface shared worktree_name risk as warnings before removal

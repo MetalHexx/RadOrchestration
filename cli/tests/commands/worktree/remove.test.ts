@@ -27,4 +27,12 @@ describe('removeWorktrees lifecycle (FR-5, AD-10)', () => {
     const r = removeWorktrees({ project: 'P', ...base({ dependents: () => ['FOLLOWUP'] }) });
     expect(r.warnings.some((w) => w.includes('FOLLOWUP'))).toBe(true);
   });
+  it('throws naming the bad repo and listing the valid set when --repo is not in the project', () => {
+    const exec = vi.fn(() => '');
+    expect(() => removeWorktrees({ project: 'P', repo: 'nope', ...base({ exec }) }))
+      .toThrow(/nope/);
+    expect(() => removeWorktrees({ project: 'P', repo: 'nope', ...base({ exec }) }))
+      .toThrow(/\ba\b.*\bb\b/);
+    expect(exec).not.toHaveBeenCalled();
+  });
 });

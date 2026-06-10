@@ -157,7 +157,7 @@ After all answers are returned, derive these values:
 | `masterPlanPath` | Compose from `project show --id {projectName}`: `{data.dir}/{data.docs.masterPlan}` |
 | `projectDir` | `data.dir` from `project show --id {projectName}` |
 | `branchName` | `{projectName}` |
-| `worktreePath` | From `data.worktreePath` returned by `radorch worktree create --project {projectName}` |
+| `worktreePath` | From `data.repos[0].path` returned by `radorch worktree create --project {projectName}` (the command returns a per-repo array — `repos[0]` is the launch directory) |
 | `baseBranch` | `branch_from` answer |
 | `resolvedAutoCommit` | `auto_commit` answer (`yes` → `always`, `no` → `never`), or `configAutoCommit` if it wasn't `"ask"` |
 | `resolvedAutoPr` | `auto_pr` answer (`yes` → `always`, `no` → `never`), or `configAutoPr` if it wasn't `"ask"` |

@@ -71,13 +71,13 @@ Once recovery succeeds, run `source-control init` normally.
 To remove a project's worktrees, run:
 
 ```
-node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree remove <project>
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree remove --project <name>
 ```
 
 To remove a single repo's worktree (targeted recovery or corruption fix):
 
 ```
-node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree remove <project> --repo <repo>
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree remove --project <name> --repo <repo>
 ```
 
 > **Shared `worktree_name` warning:** If two projects share the same `worktree_name` (e.g., a follow-up correction project reusing a parent's worktree), `worktree remove` operates on the physical directories under that `worktree_name`. Removing them affects every project pointing at the same set. The pipeline never auto-destroys worktrees; this operation is always manual and user-confirmed.

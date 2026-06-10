@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import path from 'node:path';
 import { sourceControlInit } from '../../../src/commands/source-control/init.js';
 
 const base = (over = {}) => ({
@@ -19,6 +20,14 @@ describe('sourceControlInit check + record (FR-7, FR-8, FR-9, FR-10, NFR-2)', ()
     expect(r.ok).toBe(true);
     const written = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { repos: { branch: string }[] } } });
     expect(written.pipeline.source_control.repos[0]?.branch).toBe('radorch/p');
+  });
+  it('writes a non-empty repos[0] worktree_path compat field for standard mode (item 10)', () => {
+    const writeState = vi.fn();
+    const r = sourceControlInit({ project: 'P', worktreesDir: '/wt', worktreeName: 'P', ...base({ writeState }) });
+    expect(r.ok).toBe(true);
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { worktree_path: string } } }).pipeline.source_control;
+    expect(sc.worktree_path).toBe(path.join('/wt', 'P', 'rad-orc-source'));
+    expect(sc.worktree_path).not.toBe('');
   });
   it('fails loud naming the repo and the recovery command on a missing worktree', () => {
     const r = sourceControlInit({ project: 'P', ...base({ readWorktreeFacts: () => ({ exists: false }) }) });

@@ -120,39 +120,48 @@ export function locate(cwd: string, deps: LocateDeps): LocateResult {
     const rel = path.relative(path.resolve(deps.worktreesDir), path.resolve(cwd));
     const segments = rel.split(path.sep).filter(Boolean);
     // segments[0] = worktree_name, segments[1] = repo (optional)
-    const worktree_name = segments[0] ?? '';
-    const repo = segments[1] ?? undefined;
+    // Only classify as a worktree when there is at least a worktree_name
+    // segment; the worktrees root itself (segments.length === 0) is not a
+    // worktree and falls through to `none`.
+    if (segments.length > 0) {
+      const worktree_name = segments[0] ?? '';
+      const repo = segments[1] ?? undefined;
 
-    // Find projects whose resolved worktree_name matches
-    const projectNames = listProjectNames(deps.projectsDir);
-    const projects = projectNames.filter(
-      (name) => resolvedWorktreeName(deps.projectsDir, name) === worktree_name,
-    );
+      // Find projects whose resolved worktree_name matches
+      const projectNames = listProjectNames(deps.projectsDir);
+      const projects = projectNames.filter(
+        (name) => resolvedWorktreeName(deps.projectsDir, name) === worktree_name,
+      );
 
-    // Read branch from git worktree metadata (best-effort)
-    let branch: string | null = null;
-    if (repo !== undefined) {
-      const wtDir = path.join(deps.worktreesDir, worktree_name, repo);
-      const live = listWorktrees(exec, wtDir);
-      const key = path.resolve(wtDir);
-      branch = live.get(key) ?? null;
+      // Read branch from git worktree metadata (best-effort)
+      let branch: string | null = null;
+      if (repo !== undefined) {
+        const wtDir = path.join(deps.worktreesDir, worktree_name, repo);
+        const live = listWorktrees(exec, wtDir);
+        const key = path.resolve(wtDir);
+        branch = live.get(key) ?? null;
+      }
+
+      return {
+        kind: 'worktree',
+        worktree_name,
+        ...(repo !== undefined ? { repo } : {}),
+        projects,
+        branch,
+      };
     }
-
-    return {
-      kind: 'worktree',
-      worktree_name,
-      ...(repo !== undefined ? { repo } : {}),
-      projects,
-      branch,
-    };
   }
 
   // 2. Side-project check ----------------------------------------------------
   if (within(deps.sideProjectsDir, cwd)) {
     const rel = path.relative(path.resolve(deps.sideProjectsDir), path.resolve(cwd));
     const segments = rel.split(path.sep).filter(Boolean);
-    const worktree_name = segments[0] ?? '';
-    return { kind: 'side-project', worktree_name };
+    // The side-projects root itself (segments.length === 0) is not a
+    // side-project; only classify when a name segment is present.
+    if (segments.length > 0) {
+      const worktree_name = segments[0] ?? '';
+      return { kind: 'side-project', worktree_name };
+    }
   }
 
   // 3. Main-clone check (registry) ------------------------------------------

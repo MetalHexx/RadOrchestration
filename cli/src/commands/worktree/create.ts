@@ -123,7 +123,7 @@ function readStandardProjectReposDefault(project: string): { repos: string[]; pr
   const result = readProjectReposDefault(project);
   if (result.projectType === 'side-project') {
     throw new UserError(
-      `Project "${project}" is a side-project. Use \`side-project init\` to set up its worktrees.`,
+      `Project "${project}" is a side-project. Use \`side-project init\` to set it up.`,
     );
   }
   return result;
@@ -147,6 +147,13 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
   const worktreeName = opts.worktreeName ?? project;
 
   const { repos: allRepos } = readProjectRepos(project);
+  // Fail fast on an unknown --repo: a scope outside the project set would
+  // otherwise produce an empty target list and silently exit 0.
+  if (opts.repo !== undefined && !allRepos.includes(opts.repo)) {
+    throw new UserError(
+      `Repo "${opts.repo}" is not in project "${project}" repo set: ${allRepos.join(', ')}`,
+    );
+  }
   const targetRepos = opts.repo ? allRepos.filter(r => r === opts.repo) : allRepos;
 
   // Branch is derived once per project (AD-4) — create() receives the same branch name for all repos.

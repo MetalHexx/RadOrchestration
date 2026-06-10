@@ -65,4 +65,32 @@ describe('locate classifier (FR-12, FR-13)', () => {
     });
     expect(r.kind).toBe('none');
   });
+
+  it('classifies the worktrees root itself as kind=none (no empty worktree_name)', () => {
+    const root = tmp();
+    const worktreesDir = path.join(root, 'worktrees');
+    fs.mkdirSync(worktreesDir, { recursive: true });
+    const r = locate(worktreesDir, {
+      projectsDir: path.join(root, 'projects'),
+      worktreesDir,
+      sideProjectsDir: path.join(root, 'side-projects'),
+      registryLocalPaths: {},
+      exec: () => '',
+    });
+    expect(r.kind).toBe('none');
+  });
+
+  it('classifies the side-projects root itself as kind=none (no empty worktree_name)', () => {
+    const root = tmp();
+    const sideProjectsDir = path.join(root, 'side-projects');
+    fs.mkdirSync(sideProjectsDir, { recursive: true });
+    const r = locate(sideProjectsDir, {
+      projectsDir: path.join(root, 'projects'),
+      worktreesDir: path.join(root, 'worktrees'),
+      sideProjectsDir,
+      registryLocalPaths: {},
+      exec: () => '',
+    });
+    expect(r.kind).toBe('none');
+  });
 });

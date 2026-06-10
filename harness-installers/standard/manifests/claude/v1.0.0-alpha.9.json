@@ -365,7 +365,7 @@
     {
       "bundlePath": "skills/rad-execute-parallel/references/workflow-guide.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute-parallel/references/workflow-guide.md",
-      "sha256": "39e1734b496874bd5f6734468458ab5e5482bfcbe9deeaa582f1ecf8715c965b"
+      "sha256": "ab600e655cecd9cd32ee99682b76135440dda172539aef1d70ae44818aa1ebf9"
     },
     {
       "bundlePath": "skills/rad-execute/SKILL.md",
@@ -450,7 +450,7 @@
     {
       "bundlePath": "skills/rad-project/references/cli-commands.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-project/references/cli-commands.md",
-      "sha256": "9efaf82db89425d7d244d54c508ca8a00c4cbdf0e4c3f8d98e7a5b76f3c13c2f"
+      "sha256": "779a44d8b76f2fc272bd97e0214e9f291d838de36ba527350b700abe26f9a549"
     },
     {
       "bundlePath": "skills/rad-project/references/concepts.md",
@@ -510,7 +510,7 @@
     {
       "bundlePath": "skills/rad-source-control/references/working-with-worktrees.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-source-control/references/working-with-worktrees.md",
-      "sha256": "ca3575c54abbb19834b4f51cf07772fd2470b8210e8d49676235273aa6db1250"
+      "sha256": "96222a52d59b4339cb6e0ecc429c0b7bb5284ffffd8fc8562b31c540e943167e"
     },
     {
       "bundlePath": "skills/rad-ui-start/SKILL.md",

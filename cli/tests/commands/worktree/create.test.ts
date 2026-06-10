@@ -188,4 +188,12 @@ describe('provisionWorktrees convention-bound (FR-3, FR-4, NFR-2, NFR-6)', () =>
     expect(r.repos[0]?.error).toBe('boom');
     expect(r.repos[1]?.created).toBe(true);
   });
+  it('throws naming the bad repo and listing the valid set when --repo is not in the project', () => {
+    const create = vi.fn();
+    expect(() => provisionWorktrees({ project: 'P', repo: 'nope', ...deps({ create }) }))
+      .toThrow(/nope/);
+    expect(() => provisionWorktrees({ project: 'P', repo: 'nope', ...deps({ create }) }))
+      .toThrow(/\ba\b.*\bb\b/);
+    expect(create).not.toHaveBeenCalled();
+  });
 });

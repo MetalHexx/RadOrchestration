@@ -16,7 +16,7 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project locat
 - `worktree_name` — (when `kind` is `worktree`) the logical worktree name
 - `repo` — (when `kind` is `worktree` or `main-clone`) the repository slug
 - `projects` — (when a match is found) the project IDs whose registry entry covers this path
-- `branch` — (when `kind` is `worktree` or `main-clone`) the current branch
+- `branch` — (when `kind` is `worktree`) the current branch
 
 This command is distinct from the vestigial `radorch where` removed in PROJECT-GRAPH-2. `project locate` has a real cwd→project classification job and is a first-class consumer in the launch-flow: the agent calls it on start-up to determine which project context it has landed in before querying further.
 
