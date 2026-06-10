@@ -5,11 +5,13 @@ import { GraphIndex } from './store.js';
 import { WorkGraph } from './graph.js';
 import { listProjectNames, projectExists, deriveProject } from './derive/projects.js';
 import { resolveWorktrees as deriveWorktrees, type GitExec } from './derive/worktrees.js';
+import { locate as deriveLocate, type LocateResult } from './derive/locate.js';
 import { groupId } from './ids.js';
 import { validateNewEdge, validateNewGroupId } from './validate.js';
 import { pruneEdges } from './reconcile.js';
+import { readRegistry } from '@rad-orchestration/repo-registry';
 
-export interface ServiceOpts { root: string; exec?: GitExec; worktreesDir?: string; }
+export interface ServiceOpts { root: string; exec?: GitExec; worktreesDir?: string; sideProjectsDir?: string; }
 
 /**
  * WorkGraphService
@@ -24,6 +26,7 @@ export class WorkGraphService {
   constructor(private readonly opts: ServiceOpts) { this.index = new GraphIndex(opts.root); }
   private projectsDir(): string { return path.join(this.opts.root, 'projects'); }
   private worktreesDir(): string { return this.opts.worktreesDir ?? path.join(this.opts.root, 'worktrees'); }
+  private sideProjectsDir(): string { return this.opts.sideProjectsDir ?? path.join(this.opts.root, 'side-projects'); }
 
   private compose(): { graph: WorkGraph } {
     const stored = this.index.read();
@@ -72,6 +75,18 @@ export class WorkGraphService {
   resolveWorktrees(projectId: NodeId): WorktreeRef[] {
     return deriveWorktrees(projectId, { projectsDir: this.projectsDir(), worktreesDir: this.worktreesDir(), exec: this.opts.exec });
   }
+
+  locate(cwd: string): LocateResult {
+    const registry = readRegistry({ root: this.opts.root });
+    return deriveLocate(cwd, {
+      projectsDir: this.projectsDir(),
+      worktreesDir: this.worktreesDir(),
+      sideProjectsDir: this.sideProjectsDir(),
+      registryLocalPaths: registry.localPaths,
+      exec: this.opts.exec,
+    });
+  }
+
   private nodeExists(id: NodeId): boolean {
     return this.index.read().groups[id] !== undefined || projectExists(this.projectsDir(), id);
   }
