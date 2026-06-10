@@ -1,9 +1,11 @@
 import type { Edge, EdgeType, GraphDTO, Group, Node, NodeId, NodeStatus, Project, Result, WorktreeRef } from './types.js';
 import { type GitExec } from './derive/worktrees.js';
+import { type LocateResult } from './derive/locate.js';
 export interface ServiceOpts {
     root: string;
     exec?: GitExec;
     worktreesDir?: string;
+    sideProjectsDir?: string;
 }
 /**
  * WorkGraphService
@@ -19,6 +21,7 @@ export declare class WorkGraphService {
     constructor(opts: ServiceOpts);
     private projectsDir;
     private worktreesDir;
+    private sideProjectsDir;
     private compose;
     getGraph(scope?: {
         rootId?: NodeId;
@@ -32,6 +35,7 @@ export declare class WorkGraphService {
     }): Project[];
     listGroups(): Group[];
     resolveWorktrees(projectId: NodeId): WorktreeRef[];
+    locate(cwd: string): LocateResult;
     private nodeExists;
     private validationCtx;
     createGroup(input: {

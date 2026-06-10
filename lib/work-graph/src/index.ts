@@ -6,6 +6,7 @@
 // store. Tests that need an internal import it by its direct module path.
 export { WorkGraphService } from './service.js';
 export type { ServiceOpts } from './service.js';
+export { within } from './derive/locate.js';
 export type { LocateResult, LocateKind } from './derive/locate.js';
 export { PROJECTION_SCHEMA } from './types.js';
 export type {
