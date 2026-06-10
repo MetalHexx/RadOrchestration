@@ -32,6 +32,18 @@ describe('installPaths', () => {
   });
 });
 
+describe('userDataPaths worktrees key (FR-1)', () => {
+  it('resolves worktrees to <root>/worktrees', () => {
+    const p = userDataPaths();
+    expect(p.worktrees).toBe(path.join(os.homedir(), '.radorc', 'worktrees'));
+  });
+  it('places worktrees as a sibling of sideProjects under the same root', () => {
+    const p = userDataPaths();
+    expect(path.dirname(p.worktrees)).toBe(p.root);
+    expect(path.dirname(p.sideProjects)).toBe(p.root);
+  });
+});
+
 describe('userDataPaths.actionEvents', () => {
   it('resolves to ~/.radorc/action-events', () => {
     const p = userDataPaths();
