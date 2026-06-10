@@ -1049,7 +1049,7 @@ mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): Mu
     if (!cloned.pipeline.source_control) {
       throw new Error(
         'pr_created: pipeline.source_control is null — cannot store pr_url. ' +
-        'Source control must be initialized via source_control_init before PR creation.'
+        'Source control must be initialized via `radorch source-control init` before PR creation.'
       );
     }
     cloned.pipeline.source_control.pr_url = (context.pr_url ?? null) as string | null;

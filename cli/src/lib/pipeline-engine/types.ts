@@ -225,12 +225,25 @@ export interface GraphState {
   nodes: Record<string, NodeState>;
 }
 
+export interface SourceControlRepoEntry {
+  name: string;
+  branch: string;
+  base_branch: string;
+  remote_url: string | null;
+  compare_url: string | null;
+  pr_url: string | null;
+  in_place?: boolean;
+}
+
 export interface SourceControlState {
+  worktree_name: string;           // v6 top-level (project-scoped)
+  repos: SourceControlRepoEntry[]; // v6 per-repo facts (no path stored)
+  // Compat-shim fields mirrored from repos[0] for single-repo readers:
   branch: string;
   base_branch: string;
   worktree_path: string;
-  auto_commit: string;         // 'always' | 'never'
-  auto_pr: string;             // 'always' | 'never'
+  auto_commit: string;             // 'always' | 'never'
+  auto_pr: string;                 // 'always' | 'never'
   remote_url: string | null;
   compare_url: string | null;
   pr_url: string | null;

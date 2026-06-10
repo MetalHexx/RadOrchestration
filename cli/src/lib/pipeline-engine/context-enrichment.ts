@@ -46,7 +46,7 @@ export function validateBaseShaChronology(
  * the planner spawn.
  *
  * The repo root is taken from `state.pipeline.source_control.worktree_path`
- * (set by source_control_init) and falls back to `process.cwd()` only when
+ * (set by `source-control init`) and falls back to `process.cwd()` only when
  * source control hasn't been initialized yet. AD-6 forbids consulting cwd
  * for path resolution; the state-first lookup honors that contract while
  * preserving the cwd fallback for the bootstrap window before init runs.

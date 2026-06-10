@@ -8,6 +8,7 @@ const base = (over = {}) => ({
   autoPr: () => 'never' as const,
   readState: () => ({ pipeline: {} }),
   writeState: vi.fn(),
+  resolveClonePath: (_repo: string) => `/clones/${_repo}`,
   ...over,
 });
 
@@ -43,5 +44,26 @@ describe('sourceControlInit check + record (FR-7, FR-8, FR-9, FR-10, NFR-2)', ()
     const r = sourceControlInit({ project: 'P', inPlace: true, ...base({ readProjectRepos: () => ({ repos: ['a', 'b'], projectType: 'standard' as const }) }) });
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/in-place/i);
+  });
+  it('in-place mode reads branch from registry-resolved clone path and stamps in_place: true (FR-10, NFR-1)', () => {
+    const writeState = vi.fn();
+    const resolveClonePath = vi.fn((_repo: string) => `/clones/${_repo}`);
+    const readWorktreeFacts = vi.fn(() => ({ exists: true, branch: 'feature-x', baseBranch: 'main' }));
+    const r = sourceControlInit({
+      project: 'P',
+      inPlace: true,
+      ...base({ writeState, resolveClonePath, readWorktreeFacts }),
+    });
+    expect(r.ok).toBe(true);
+    // resolveClonePath must be called with the repo name
+    expect(resolveClonePath).toHaveBeenCalledWith('rad-orc-source');
+    // readWorktreeFacts must be called with the registry-resolved clone path (not a worktree-convention path)
+    expect(readWorktreeFacts).toHaveBeenCalledWith('/clones/rad-orc-source');
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { repos: Array<{ name: string; branch: string; in_place?: boolean }> } } }).pipeline.source_control;
+    expect(sc.repos[0]?.name).toBe('rad-orc-source');
+    expect(sc.repos[0]?.branch).toBe('feature-x');
+    expect(sc.repos[0]?.in_place).toBe(true);
+    // path-free invariant: no 'path' key on the repo entry
+    expect('path' in (sc.repos[0] as object)).toBe(false);
   });
 });

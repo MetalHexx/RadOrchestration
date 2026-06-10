@@ -35,6 +35,8 @@ export interface SourceControlInitDeps {
   readState: (projectDir: string) => { pipeline: Record<string, unknown> };
   /** Writes the mutated pipeline state to disk. */
   writeState: (projectDir: string, state: { pipeline: Record<string, unknown> }) => void;
+  /** Resolves the main-clone path for a repo from the registry (used in in-place mode). */
+  resolveClonePath: (repo: string) => string;
 }
 
 export interface SourceControlInitOptions extends SourceControlInitDeps {
@@ -93,6 +95,7 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
     remote_url: string | null;
     compare_url: string | null;
     pr_url: string | null;
+    in_place?: boolean;
   }>;
 
   if (projectType === 'side-project') {
@@ -106,10 +109,10 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
       pr_url: null,
     }));
   } else if (inPlace) {
-    // Single-repo in-place binding — read branch from the current worktree facts
+    // Single-repo in-place binding — read branch from the registry-resolved main-clone path
     const repo = repos[0]!;
-    const wtPath = worktreesDir ? `${worktreesDir}/${worktreeName}/${repo}` : `${worktreeName}/${repo}`;
-    const facts = opts.readWorktreeFacts(wtPath);
+    const clonePath = opts.resolveClonePath(repo);
+    const facts = opts.readWorktreeFacts(clonePath);
     repoEntries = [{
       name: repo,
       branch: facts.branch ?? 'main',
@@ -117,6 +120,7 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
       remote_url: facts.remoteUrl ?? null,
       compare_url: facts.compareUrl ?? null,
       pr_url: null,
+      in_place: true,
     }];
   } else {
     // Standard mode: FR-7 — read branch from each on-disk worktree
@@ -178,6 +182,7 @@ import { userDataPaths } from '../../lib/paths.js';
 import { parseYaml } from '../../lib/yaml.js';
 import { readState, writeState as writeStateIO } from '../../lib/pipeline-engine/state-io.js';
 import type { PipelineState } from '../../lib/pipeline-engine/types.js';
+import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
 
 function readProjectReposDefault(project: string): { repos: string[]; projectType: 'standard' | 'side-project' } {
   const projectDir = path.join(userDataPaths().projects, project);
@@ -248,6 +253,15 @@ function readWorktreeFactsDefault(worktreePath: string): WorktreeFacts {
   return { exists: true, branch, baseBranch, remoteUrl: remoteUrl ?? undefined, compareUrl: compareUrl ?? undefined };
 }
 
+function resolveClonePathDefault(repo: string): string {
+  const reg = readRegistry({ root: userDataPaths().root });
+  const resolved = resolveRepoPath(reg, repo);
+  if (!resolved.path) {
+    throw new UserError(`Repo "${repo}" is not bound. ${resolved.hint ?? 'Run `radorch repo bind`.'}`);
+  }
+  return resolved.path;
+}
+
 function autoCommitDefault(_project: string): 'always' | 'never' {
   return 'always';
 }
@@ -290,6 +304,7 @@ export const sourceControlInitCommand = defineCommand({
       readWorktreeFacts: readWorktreeFactsDefault,
       autoCommit: autoCommitDefault,
       autoPr: autoPrDefault,
+      resolveClonePath: resolveClonePathDefault,
       readState: (dir) => {
         const s = readState(dir);
         if (!s) throw new UserError(`No state.json found at ${dir}`);

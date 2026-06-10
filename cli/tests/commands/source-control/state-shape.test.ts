@@ -21,4 +21,15 @@ describe('v6 source-control state shape + compat shim (FR-11, NFR-3, AD-3)', () 
     expect(sc.branch).toBe('radorch/p');
     expect(sc.base_branch).toBe('main');
   });
+  it('propagates in_place: true from RepoInput onto the repos[] entry (FR-10, NFR-1)', () => {
+    const reposWithInPlace = [
+      { name: 'rad-orc-source', branch: 'feature-x', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null, in_place: true },
+    ];
+    const sc = buildSourceControlState({ worktreeName: 'P', autoCommit: 'always', autoPr: 'never', repos: reposWithInPlace });
+    expect(sc.repos[0]?.in_place).toBe(true);
+  });
+  it('does not set in_place on a repo entry without the flag', () => {
+    const sc = buildSourceControlState({ worktreeName: 'P', autoCommit: 'always', autoPr: 'never', repos });
+    expect(sc.repos[0]?.in_place).toBeUndefined();
+  });
 });

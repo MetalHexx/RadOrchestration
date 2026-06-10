@@ -32,14 +32,14 @@ export function normalizeOptionalUrl(raw: unknown): string | null {
 export function normalizeAutoSetting(field: 'auto_commit' | 'auto_pr', raw: unknown): 'always' | 'never' {
   if (typeof raw !== 'string') {
     throw new Error(
-      `source_control_init: ${field} must be one of "always" | "yes" | "never" | "no", got ${raw === undefined ? 'undefined' : JSON.stringify(raw)}`,
+      `source-control init: ${field} must be one of "always" | "yes" | "never" | "no", got ${raw === undefined ? 'undefined' : JSON.stringify(raw)}`,
     );
   }
   const v = raw.trim().toLowerCase();
   if (v === 'always' || v === 'yes') return 'always';
   if (v === 'never' || v === 'no') return 'never';
   throw new Error(
-    `source_control_init: ${field} must be one of "always" | "yes" | "never" | "no", got ${JSON.stringify(raw)}`,
+    `source-control init: ${field} must be one of "always" | "yes" | "never" | "no", got ${JSON.stringify(raw)}`,
   );
 }
 
@@ -52,6 +52,7 @@ export interface RepoInput {
   remote_url: string | null;
   compare_url: string | null;
   pr_url: string | null;
+  in_place?: boolean;
 }
 
 export interface BuildSourceControlStateOptions {
@@ -70,6 +71,7 @@ export interface RepoEntry {
   remote_url: string | null;
   compare_url: string | null;
   pr_url: string | null;
+  in_place?: boolean;
 }
 
 export interface SourceControlState {
@@ -112,6 +114,7 @@ export function buildSourceControlState(opts: BuildSourceControlStateOptions): S
     remote_url: normalizeOptionalUrl(r.remote_url),
     compare_url: normalizeOptionalUrl(r.compare_url),
     pr_url: normalizeOptionalUrl(r.pr_url),
+    ...(r.in_place ? { in_place: true } : {}),
   }));
 
   const first = repoEntries[0];
