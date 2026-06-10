@@ -4,7 +4,7 @@ import { doctorCommand } from './commands/doctor/index.js';
 import { uiStartCommand, uiStopCommand, uiStatusCommand } from './commands/ui/index.js';
 import { gitCommitCommand, gitPrCommand } from './commands/git/index.js';
 import { repoAddCommand, repoBindCommand, repoEditCommand, repoListCommand, repoRemoveCommand, repoShowCommand } from './commands/repo/index.js';
-import { projectContextCommand, projectListCommand, projectShowCommand, projectWorktreesCommand } from './commands/project/index.js';
+import { projectContextCommand, projectListCommand, projectLocateCommand, projectShowCommand, projectWorktreesCommand } from './commands/project/index.js';
 import { worktreeCreateCommand, worktreeLaunchCommand } from './commands/worktree/index.js';
 import { sideProjectInitCommand } from './commands/side-project/index.js';
 import { planExplodeCommand } from './commands/plan/index.js';
@@ -380,6 +380,16 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(projectShowCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  project
+    .command('locate')
+    .description(projectLocateCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(projectLocateCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
   project
     .command('worktrees')
