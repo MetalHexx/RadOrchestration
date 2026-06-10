@@ -30,6 +30,13 @@ export interface ChainStep {
   context: Partial<EventContext>;
 }
 
+// Special sentinel: a chain step whose event is '__seed_source_control' is not
+// fired through processEvent. Instead the driveToNode loop intercepts it and
+// writes pipeline.source_control directly to state.json, replicating what the
+// retired source_control_init mutation used to do (P04-T03, FR-6).
+// Context fields: auto_commit, auto_pr, branch, base_branch.
+const SEED_SOURCE_CONTROL = '__seed_source_control';
+
 // Each chain is the sequence of events that, when fired in order against a
 // fresh extra-high world, leaves the engine resolved at the named target
 // step. The final processEvent return for the LAST event in the chain is
@@ -50,15 +57,14 @@ export const EVENT_CHAINS: Record<string, ChainStep[]> = {
   final_review: [
     // Reached after plan approval, gate-mode set, and a single phase + task
     // iteration is completed through phase_review and phase_gate.
-    // source_control_init seeds branch/base_branch and auto_commit=never so
-    // the commit_gate conditional in extra-high.yml evaluates cleanly.
+    // source_control seed provides auto_commit=never so commit_gate evaluates cleanly.
     { event: 'start', context: {} },
     { event: 'requirements_completed', context: { doc_path: 'REQUIREMENTS.md' } },
     { event: 'master_plan_completed', context: { doc_path: 'MASTER-PLAN.md' } },
     { event: 'explosion_completed', context: {} },
     { event: 'plan_approved', context: {} },
     { event: 'gate_mode_set', context: { gate_mode: 'autonomous' } },
-    { event: 'source_control_init', context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
+    { event: SEED_SOURCE_CONTROL, context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
     { event: 'task_completed', context: { verdict: 'approved' } },
     { event: 'code_review_completed', context: { doc_path: 'CR.md', verdict: 'approved' } },
     { event: 'phase_review_completed', context: { doc_path: 'PR.md', verdict: 'approved' } },
@@ -70,41 +76,40 @@ export const EVENT_CHAINS: Record<string, ChainStep[]> = {
     { event: 'explosion_completed', context: {} },
     { event: 'plan_approved', context: {} },
     { event: 'gate_mode_set', context: { gate_mode: 'autonomous' } },
-    // source_control_init with auto_commit=never so commit_gate evaluates cleanly.
-    { event: 'source_control_init', context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
+    // Seed source_control with auto_commit=never so commit_gate evaluates cleanly.
+    { event: SEED_SOURCE_CONTROL, context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
   ],
   commit: [
-    // Reached only when pipeline.source_control.auto_commit !== 'never';
-    // source_control_init seeds branch/base_branch required by the mutation.
+    // Reached only when pipeline.source_control.auto_commit !== 'never'.
     { event: 'start', context: {} },
     { event: 'requirements_completed', context: { doc_path: 'REQUIREMENTS.md' } },
     { event: 'master_plan_completed', context: { doc_path: 'MASTER-PLAN.md' } },
     { event: 'explosion_completed', context: {} },
     { event: 'plan_approved', context: {} },
     { event: 'gate_mode_set', context: { gate_mode: 'autonomous' } },
-    { event: 'source_control_init', context: { auto_commit: 'always', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
+    { event: SEED_SOURCE_CONTROL, context: { auto_commit: 'always', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
     { event: 'task_completed', context: { verdict: 'approved' } },
   ],
   code_review: [
-    // source_control_init with auto_commit=never so commit_gate evaluates cleanly.
+    // Seed source_control with auto_commit=never so commit_gate evaluates cleanly.
     { event: 'start', context: {} },
     { event: 'requirements_completed', context: { doc_path: 'REQUIREMENTS.md' } },
     { event: 'master_plan_completed', context: { doc_path: 'MASTER-PLAN.md' } },
     { event: 'explosion_completed', context: {} },
     { event: 'plan_approved', context: {} },
     { event: 'gate_mode_set', context: { gate_mode: 'autonomous' } },
-    { event: 'source_control_init', context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
+    { event: SEED_SOURCE_CONTROL, context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
     { event: 'task_completed', context: { verdict: 'approved' } },
   ],
   phase_review: [
-    // source_control_init with auto_commit=never so commit_gate evaluates cleanly.
+    // Seed source_control with auto_commit=never so commit_gate evaluates cleanly.
     { event: 'start', context: {} },
     { event: 'requirements_completed', context: { doc_path: 'REQUIREMENTS.md' } },
     { event: 'master_plan_completed', context: { doc_path: 'MASTER-PLAN.md' } },
     { event: 'explosion_completed', context: {} },
     { event: 'plan_approved', context: {} },
     { event: 'gate_mode_set', context: { gate_mode: 'autonomous' } },
-    { event: 'source_control_init', context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
+    { event: SEED_SOURCE_CONTROL, context: { auto_commit: 'never', auto_pr: 'never', branch: 'feature/test', base_branch: 'main' } },
     { event: 'task_completed', context: { verdict: 'approved' } },
     { event: 'code_review_completed', context: { doc_path: 'CR.md', verdict: 'approved' } },
   ],
@@ -115,9 +120,8 @@ export const EVENT_CHAINS: Record<string, ChainStep[]> = {
     { event: 'explosion_completed', context: {} },
     { event: 'plan_approved', context: {} },
     { event: 'gate_mode_set', context: { gate_mode: 'autonomous' } },
-    // source_control_init with auto_pr=always triggers the pr_gate conditional's
-    // true branch; branch/base_branch are required by the source_control_init mutation.
-    { event: 'source_control_init', context: { auto_commit: 'never', auto_pr: 'always', branch: 'feature/test', base_branch: 'main' } },
+    // Seed source_control with auto_pr=always to trigger pr_gate conditional's true branch.
+    { event: SEED_SOURCE_CONTROL, context: { auto_commit: 'never', auto_pr: 'always', branch: 'feature/test', base_branch: 'main' } },
     { event: 'task_completed', context: { verdict: 'approved' } },
     { event: 'code_review_completed', context: { doc_path: 'CR.md', verdict: 'approved' } },
     { event: 'phase_review_completed', context: { doc_path: 'PR.md', verdict: 'approved' } },
@@ -248,6 +252,28 @@ function patchPhaseIterationDocPaths(projectDir: string): void {
   }
 }
 
+/**
+ * Seed pipeline.source_control directly into state.json. Called when a chain
+ * step uses the SEED_SOURCE_CONTROL sentinel instead of the retired
+ * source_control_init event (P04-T03, FR-6).
+ */
+function seedSourceControlState(projectDir: string, context: Partial<EventContext>): void {
+  const stateFile = path.join(projectDir, 'state.json');
+  if (!fs.existsSync(stateFile)) return;
+  const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+  state.pipeline.source_control = {
+    branch: (context as Record<string, unknown>)['branch'] ?? 'feature/test',
+    base_branch: (context as Record<string, unknown>)['base_branch'] ?? 'main',
+    worktree_path: '.',
+    auto_commit: (context as Record<string, unknown>)['auto_commit'] ?? 'never',
+    auto_pr: (context as Record<string, unknown>)['auto_pr'] ?? 'never',
+    remote_url: null,
+    compare_url: null,
+    pr_url: null,
+  };
+  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
+}
+
 export async function driveToNode(world: World, targetNodeId: keyof typeof EVENT_CHAINS): Promise<PipelineResult> {
   const chain = EVENT_CHAINS[targetNodeId];
   if (!chain) {
@@ -263,6 +289,12 @@ export async function driveToNode(world: World, targetNodeId: keyof typeof EVENT
   const io = makeFilesystemIO();
   let result!: PipelineResult;
   for (const step of chain) {
+    if (step.event === SEED_SOURCE_CONTROL) {
+      // Directly write source_control into state.json instead of firing the
+      // retired source_control_init event (P04-T03, FR-6).
+      seedSourceControlState(world.projectDir, step.context);
+      continue;
+    }
     result = processEvent(step.event, world.projectDir, step.context, io, world.pathContext, world.configPath);
     // After each event, patch any newly-created phase iteration doc_paths so
     // the for_each_task walker can expand task iterations. Idempotent: only
