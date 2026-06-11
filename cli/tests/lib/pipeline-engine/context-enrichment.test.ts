@@ -280,3 +280,29 @@ describe('spawn_final_reviewer base/head SHA derivation — ≤1 commit short-ci
     expect(out.error).toBeUndefined();
   });
 });
+
+describe('enrichment readers migrate to repos[] (FR-21, FR-22)', () => {
+  it('final-approval lists every repo PR from source_control.repos[], no top-level pr_url', () => {
+    // Minimal state stub — request_final_approval only reads state.pipeline.source_control.
+    // createScaffoldedState() was the handoff-specified factory but importing parity-states.ts
+    // introduces engine.ts into the same module graph as context-enrichment.ts, creating a
+    // circular dependency (engine.ts → context-enrichment.ts → already loading). Using a stub
+    // avoids the circular dep while keeping the behavioral assertion identical (see Execution Notes).
+    const state = { graph: { nodes: {} }, pipeline: {} } as unknown as import('../../../src/lib/pipeline-engine/types.js').PipelineState;
+    state.pipeline.source_control = {
+      worktree_name: 'MR-5', auto_commit: 'always', auto_pr: 'always',
+      repos: [
+        { name: 'fake-api', branch: 'b', base_branch: 'main', remote_url: null, compare_url: null, pr_url: 'https://x/api/1' },
+        { name: 'fake-ui', branch: 'b', base_branch: 'main', remote_url: null, compare_url: null, pr_url: 'https://x/ui/2' },
+      ],
+    } as never;
+    const ctx = enrichActionContext({
+      action: 'request_final_approval', walkerContext: {}, state, config: cfg, cliContext: {},
+    });
+    expect(ctx.repos).toEqual([
+      { name: 'fake-api', pr_url: 'https://x/api/1' },
+      { name: 'fake-ui', pr_url: 'https://x/ui/2' },
+    ]);
+    expect(ctx).not.toHaveProperty('pr_url');
+  });
+});

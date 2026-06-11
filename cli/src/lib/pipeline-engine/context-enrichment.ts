@@ -1,5 +1,8 @@
 import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { buildSkillManifest } from '../skill-manifest.js';
+import { userDataPaths } from '../paths.js';
+import { WorkGraphService } from '@rad-orchestration/work-graph';
 import type {
   PipelineState,
   OrchestrationConfig,
@@ -45,19 +48,29 @@ export function validateBaseShaChronology(
  * emit a single warn line and return '' — manifest failure must NEVER break
  * the planner spawn.
  *
- * The repo root is taken from `state.pipeline.source_control.worktree_path`
- * (set by `source-control init`) and falls back to `process.cwd()` only when
- * source control hasn't been initialized yet. AD-6 forbids consulting cwd
- * for path resolution; the state-first lookup honors that contract while
- * preserving the cwd fallback for the bootstrap window before init runs.
+ * The repo root is resolved fresh via the `locate` primitive
+ * (`WorkGraphService.locate(process.cwd())`): when the result is kind=worktree,
+ * the root is derived from the convention path `worktreesDir/<worktree_name>/<repo>`.
+ * Falls back to `process.cwd()` when locate returns none/main-clone/side-project
+ * or when the worktree segments are missing — this covers the bootstrap window
+ * before source-control init runs (AD-6 bootstrap carve-out).
  *
  * Returns:
  *   - empty string '' when the manifest is `[]` OR when the invocation failed
  *   - the heading + JSON + orientation sentence block when at least one
  *     eligible skill is present
  */
-function buildRepositorySkillsBlock(state: PipelineState): string {
-  const repoRoot = process.cwd();
+function buildRepositorySkillsBlock(_state: PipelineState): string {
+  let repoRoot = process.cwd();
+  try {
+    const paths = userDataPaths();
+    const located = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).locate(process.cwd());
+    if (located.kind === 'worktree' && located.worktree_name && located.repo) {
+      repoRoot = path.join(paths.worktrees, located.worktree_name, located.repo);
+    }
+  } catch {
+    // Locate failure is non-fatal — fall back to process.cwd()
+  }
   let arr;
   try {
     arr = buildSkillManifest({ repoRoot });
@@ -402,30 +415,69 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       task_id = `${phase_id}-PHASE`;
     }
 
+    // Derive per-repo entries with fresh absolute paths via resolveWorktrees —
+    // never read a stored path. Falls back to an empty repos[] on any error.
+    const scRepos = state.pipeline.source_control?.repos ?? [];
+    let resolvedPaths: Record<string, string> = {};
+    try {
+      const paths = userDataPaths();
+      const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
+      const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
+      for (const ref of refs) {
+        resolvedPaths[ref.repo] = ref.path;
+      }
+    } catch {
+      // resolveWorktrees failure is non-fatal; paths will be empty string
+    }
+    const repos = scRepos.map(r => ({
+      name: r.name,
+      branch: r.branch,
+      base_branch: r.base_branch,
+      path: resolvedPaths[r.name] ?? '',
+    }));
+
     return {
       ...walkerContext,
       phase_number: phaseNumber,
       phase_id,
       task_number,
       task_id,
-      branch: state.pipeline.source_control?.repos?.[0]?.branch ?? '',
-      worktree_path: '',
+      repos,
     };
   }
 
   if (action === 'invoke_source_control_pr') {
+    // Derive per-repo entries with fresh absolute paths via resolveWorktrees —
+    // never read a stored path. Falls back to an empty repos[] on any error.
+    const scRepos = state.pipeline.source_control?.repos ?? [];
+    let resolvedPaths: Record<string, string> = {};
+    try {
+      const paths = userDataPaths();
+      const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
+      const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
+      for (const ref of refs) {
+        resolvedPaths[ref.repo] = ref.path;
+      }
+    } catch {
+      // resolveWorktrees failure is non-fatal; paths will be empty string
+    }
+    const repos = scRepos.map(r => ({
+      name: r.name,
+      branch: r.branch,
+      base_branch: r.base_branch,
+      path: resolvedPaths[r.name] ?? '',
+    }));
+
     return {
       ...walkerContext,
-      branch: state.pipeline.source_control?.repos?.[0]?.branch ?? '',
-      base_branch: state.pipeline.source_control?.repos?.[0]?.base_branch ?? '',
-      worktree_path: '',
+      repos,
     };
   }
 
   if (action === 'request_final_approval') {
     return {
       ...walkerContext,
-      pr_url: state.pipeline.source_control?.repos?.[0]?.pr_url ?? null,
+      repos: (state.pipeline.source_control?.repos ?? []).map(r => ({ name: r.name, pr_url: r.pr_url ?? null })),
     };
   }
 
@@ -471,7 +523,19 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     // avoids spawning a subprocess and a hard dependency on `git` when
     // auto-commit is off (no commits collected). NFR-4.
     if (commits.length > 1) {
-      const worktree = process.cwd();
+      // Derive the chronology-check cwd from resolveWorktrees (not worktree_path —
+      // no stored absolute path is read per AD-2). Falls back to process.cwd() when
+      // resolveWorktrees fails or returns no paths.
+      let worktree = process.cwd();
+      try {
+        const paths = userDataPaths();
+        const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
+        const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
+        const firstRef = refs.find(r => r.exists);
+        if (firstRef) worktree = firstRef.path;
+      } catch {
+        // resolveWorktrees failure is non-fatal — fall back to process.cwd()
+      }
       let ordinal = new Map<string, number>();
       try {
         const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
