@@ -7,7 +7,7 @@ category: gate
 completion_event: final_approved
 ---
 
-Present the final review document to the operator. If `pipeline.source_control.pr_url` is present in state, include a `PR: {pr_url}` line so they can navigate directly to the pull request. Omit the PR line entirely when `pr_url` is absent — do not show an empty placeholder.
+Present the final review document to the operator. For each `source_control.repos[]` entry that has a non-null `pr_url`, include a `PR: {pr_url}` line so they can navigate directly to that pull request. Omit the PR lines entirely when no repo has a PR — do not show an empty placeholder.
 
 Ask the operator to approve or reject. Hold here until they respond — do not proceed autonomously.
 
