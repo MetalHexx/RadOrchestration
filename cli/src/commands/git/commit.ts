@@ -71,17 +71,42 @@ export function gitCommit(opts: GitCommitOptions): GitCommitResult {
   return { committed: true, pushed: true, commitHash, upstreamConfigured: false, error: null, errorType: null };
 }
 
+export interface CommitFanOutEntry { name: string; path: string; message: string; }
+export interface CommitFanOutResult { name: string; committed: boolean; commitHash: string | null; pushed: boolean; }
+
+export function gitCommitFanOut(opts: { repos: CommitFanOutEntry[]; exec?: Exec }): CommitFanOutResult[] {
+  return opts.repos.map((r) => {
+    const res = gitCommit({ worktreePath: r.path, message: r.message, exec: opts.exec });
+    if (res.errorType === 'nothing_to_commit') return { name: r.name, committed: false, commitHash: null, pushed: false };
+    if (res.errorType === 'commit_failed') throw new UserError(`Commit failed in repo "${r.name}": ${res.error}`);
+    return { name: r.name, committed: res.committed, commitHash: res.commitHash, pushed: res.pushed };
+  });
+}
+
 interface Args { 'worktree-path'?: string; message?: string }
+interface Flags { repos?: string }
 
 export const gitCommitCommand = defineCommand({
   name: 'git-commit',
   description: 'Commit changes in the worktree and push to origin when a remote is configured',
   args: {
-    'worktree-path': { description: 'Absolute path to the worktree to commit from', required: true },
-    message: { description: 'Commit message body (used as the -m argument to git commit)', required: true },
+    'worktree-path': { description: 'Absolute path to the worktree to commit from', required: false },
+    message: { description: 'Commit message body (used as the -m argument to git commit)', required: false },
   },
-  flags: {},
-  handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
+  flags: {
+    repos: { description: 'JSON array of {name, path, message} objects for fan-out commits', type: 'string' },
+  },
+  handler: async ({ args, flags }: { args: Args; flags: Flags; ctx: CommandContext }) => {
+    const reposJson = flags.repos;
+    if (reposJson) {
+      let repos: CommitFanOutEntry[];
+      try {
+        repos = JSON.parse(reposJson) as CommitFanOutEntry[];
+      } catch {
+        throw new UserError('--repos must be a valid JSON array of {name, path, message} objects');
+      }
+      return gitCommitFanOut({ repos });
+    }
     const wt = args['worktree-path'];
     const msg = args.message;
     if (!wt || !msg) throw new UserError('--worktree-path and --message are both required');

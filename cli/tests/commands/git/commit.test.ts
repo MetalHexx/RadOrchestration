@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { gitCommit } from '../../../src/commands/git/commit.js';
+import { gitCommit, gitCommitFanOut } from '../../../src/commands/git/commit.js';
 
 function makeExecError(stderr: string, stdout = ''): Error & { stderr: string; stdout: string } {
   const e = new Error(stderr) as Error & { stderr: string; stdout: string };
@@ -82,5 +82,60 @@ describe('gitCommit core', () => {
     expect(r.committed).toBe(true);
     expect(r.pushed).toBe(true);
     expect(r.errorType).toBeNull();
+  });
+});
+
+describe('gitCommitFanOut — stateless array fan-out (FR-5)', () => {
+  function makeFakeExec(config: Record<string, { commitHash?: string; nothingToCommit?: boolean; pushOk?: boolean }>) {
+    const callCounts: Record<string, number> = {};
+    return (file: string, args: string[], opts: { cwd: string; encoding: 'utf8' }) => {
+      const cwd = opts.cwd;
+      const cfg = config[cwd];
+      if (!cfg) throw new Error(`No config for cwd: ${cwd}`);
+      callCounts[cwd] = (callCounts[cwd] ?? 0) + 1;
+      const call = callCounts[cwd];
+      // Call order: 1=git add, 2=git commit, 3=git rev-parse --short HEAD, 4=git remote get-url, 5=git push
+      if (call === 1) return ''; // git add -A
+      if (call === 2) {
+        // git commit -m
+        if (cfg.nothingToCommit) {
+          const e = new Error('nothing to commit, working tree clean') as Error & { stderr: string; stdout: string };
+          e.stderr = '';
+          e.stdout = 'nothing to commit, working tree clean';
+          throw e;
+        }
+        return '';
+      }
+      if (call === 3) return `${cfg.commitHash ?? 'abc0000'}\n`; // git rev-parse --short HEAD
+      if (call === 4) return 'git@github.com:org/repo.git\n';    // git remote get-url origin
+      if (call === 5) {
+        // git push
+        if (cfg.pushOk === false) {
+          const e = new Error('push failed') as Error & { stderr: string };
+          e.stderr = 'push failed';
+          throw e;
+        }
+        return '';
+      }
+      return '';
+    };
+  }
+
+  it('returns one structured result per repo, clean-skip is not an error', () => {
+    const exec = makeFakeExec({
+      '/wt/api': { commitHash: 'api1234', nothingToCommit: false, pushOk: true },
+      '/wt/ui': { nothingToCommit: true }, // clean skip
+    });
+    const out = gitCommitFanOut({
+      repos: [
+        { name: 'fake-api', path: '/wt/api', message: 'feat(P01-T01): a' },
+        { name: 'fake-ui', path: '/wt/ui', message: 'feat(P01-T01): b' },
+      ],
+      exec,
+    });
+    expect(out).toEqual([
+      { name: 'fake-api', committed: true, commitHash: 'api1234', pushed: true },
+      { name: 'fake-ui', committed: false, commitHash: null, pushed: false },
+    ]);
   });
 });
