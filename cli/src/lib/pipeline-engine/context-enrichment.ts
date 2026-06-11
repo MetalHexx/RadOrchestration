@@ -206,6 +206,55 @@ const EMPTY_CONTEXT_ACTIONS = new Set([
 ]);
 
 /**
+ * Derive per-repo enrichment entries for any action that emits a `repos[]` array.
+ *
+ * For each entry in `state.pipeline.source_control.repos[]`, resolves the
+ * absolute `path` fresh via `resolveWorktrees(projectId)` matched by repo name
+ * (never a stored path — AD-2). Falls back to `path: ''` when the worktree
+ * resolution fails or the repo is not found. Attaches `branch` from the sc
+ * entry. When `perRepoSha` is supplied, attaches the return value as `head_sha`
+ * on each entry (null → omitted). Single-repo state yields a length-1 array
+ * with the same shape — no special-casing.
+ *
+ * @param state - Current pipeline state.
+ * @param perRepoSha - Optional callback: receives each sc repo entry; returns
+ *   the SHA to attach as `head_sha`, or null/undefined to omit it for that repo.
+ */
+function buildReposArray(
+  state: PipelineState,
+  perRepoSha?: (entry: { name: string }) => string | null | undefined,
+): Array<Record<string, unknown>> {
+  const scRepos = state.pipeline.source_control?.repos ?? [];
+  let resolvedPaths: Record<string, string> = {};
+  try {
+    const paths = userDataPaths();
+    const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
+    const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
+    for (const ref of refs) {
+      resolvedPaths[ref.repo] = ref.path;
+    }
+  } catch {
+    // resolveWorktrees failure is non-fatal; paths will be empty string
+  }
+  return scRepos.map(r => {
+    const entry: Record<string, unknown> = {
+      name: r.name,
+      path: resolvedPaths[r.name] ?? '',
+      branch: r.branch,
+    };
+    if (perRepoSha) {
+      const sha = perRepoSha(r);
+      if (sha != null) {
+        entry.head_sha = sha;
+      } else {
+        entry.head_sha = null;
+      }
+    }
+    return entry;
+  });
+}
+
+/**
  * Enriches a raw walker result with action-specific context fields.
  * Returns the enriched context object matching v4's exact shapes.
  */
@@ -252,21 +301,30 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const taskIters = taskLoop?.iterations ?? [];
       const firstTask = taskIters[0];
       const lastTask = taskIters[taskIters.length - 1];
-      // repos[] is the per-task commit tracker; first entry's commit_hash (if any) is the base sha.
-      const phase_first_sha = firstTask?.repos[0]?.commit_hash ?? null;
+
+      // Build per-repo arrays for first/last SHA lookup.
+      const firstTaskRepos = firstTask?.repos ?? [];
+      // For the last task, prefer the final corrective's repos (if any commit exists), then the task's own repos.
       const lastTaskFinalCorrective = lastTask?.corrective_tasks
         .slice()
         .reverse()
         .find(ct => ct.repos.some(r => r.commit_hash != null));
-      const phase_head_sha = lastTaskFinalCorrective?.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash
-        ?? lastTask?.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash
-        ?? null;
+      const lastTaskRepos = lastTaskFinalCorrective?.repos ?? lastTask?.repos ?? [];
 
       const correctiveFields = phaseIter && phaseIter.corrective_tasks.length > 0
         ? { is_correction: true, corrective_index: phaseIter.corrective_tasks.length }
         : {};
 
-      return { ...base, phase_first_sha, phase_head_sha, ...correctiveFields };
+      // Build repos[] with path/branch from buildReposArray, then attach per-repo phase SHAs.
+      const repos = buildReposArray(state).map(entry => ({
+        ...entry,
+        phase_first_sha: firstTaskRepos.find(fr => fr.name === entry.name)?.commit_hash ?? null,
+        phase_head_sha: (
+          lastTaskRepos.slice().reverse().find(lr => lr.name === entry.name && lr.commit_hash != null)?.commit_hash ?? null
+        ),
+      }));
+
+      return { ...base, repos, ...correctiveFields };
     }
 
     return base;
@@ -352,7 +410,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       }
 
       const handoff_doc = taskIter?.doc_path ?? '';
-      return { ...base, handoff_doc };
+      return { ...base, handoff_doc, repos: buildReposArray(state) };
     }
 
     if (action === 'spawn_code_reviewer') {
@@ -360,18 +418,18 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
 
       // Iter 11 — phase-scope-first. When a phase-scope corrective is active,
-      // route head_sha to the phase-scope corrective's commit_hash and flag
-      // is_correction + corrective_index from phaseIter. Checked BEFORE the
+      // route repos[].head_sha to the phase-scope corrective's per-repo commit hashes
+      // and flag is_correction + corrective_index from phaseIter. Checked BEFORE the
       // task-scope corrective path.
       const phaseCTs = phaseIter?.corrective_tasks ?? [];
       const activePhaseCorrective = phaseCTs.slice().reverse().find(
         ct => ct.status === 'in_progress' || ct.status === 'not_started'
       );
       if (activePhaseCorrective) {
-        const head_sha = activePhaseCorrective.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash ?? null;
+        const sourceRepos = activePhaseCorrective.repos;
         return {
           ...base,
-          head_sha,
+          repos: buildReposArray(state, r => sourceRepos.find(sr => sr.name === r.name)?.commit_hash ?? null),
           is_correction: true,
           corrective_index: activePhaseCorrective.index,
         };
@@ -383,13 +441,15 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       const activeCorrective = correctives.slice().reverse().find(
         ct => ct.status === 'in_progress' || ct.status === 'not_started'
       );
-      const head_sha = activeCorrective
-        ? (activeCorrective.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash ?? null)
-        : (taskIter?.repos.slice().reverse().find(r => r.commit_hash != null)?.commit_hash ?? null);
+      const sourceRepos = activeCorrective ? activeCorrective.repos : (taskIter?.repos ?? []);
       const correctiveFields = activeCorrective
         ? { is_correction: true, corrective_index: activeCorrective.index }
         : {};
-      return { ...base, head_sha, ...correctiveFields };
+      return {
+        ...base,
+        repos: buildReposArray(state, r => sourceRepos.find(sr => sr.name === r.name)?.commit_hash ?? null),
+        ...correctiveFields,
+      };
     }
 
     return base;
@@ -415,25 +475,13 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       task_id = `${phase_id}-PHASE`;
     }
 
-    // Derive per-repo entries with fresh absolute paths via resolveWorktrees —
-    // never read a stored path. Falls back to an empty repos[] on any error.
-    const scRepos = state.pipeline.source_control?.repos ?? [];
-    let resolvedPaths: Record<string, string> = {};
-    try {
-      const paths = userDataPaths();
-      const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
-      const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
-      for (const ref of refs) {
-        resolvedPaths[ref.repo] = ref.path;
-      }
-    } catch {
-      // resolveWorktrees failure is non-fatal; paths will be empty string
-    }
-    const repos = scRepos.map(r => ({
-      name: r.name,
-      branch: r.branch,
-      base_branch: r.base_branch,
-      path: resolvedPaths[r.name] ?? '',
+    // Derive per-repo entries with fresh absolute paths via buildReposArray —
+    // never read a stored path. Merges base_branch from sc repos (required by
+    // the source-control skill's commit context contract).
+    const scReposForCommit = state.pipeline.source_control?.repos ?? [];
+    const repos = buildReposArray(state).map(r => ({
+      ...r,
+      base_branch: scReposForCommit.find(sc => sc.name === r.name)?.base_branch ?? null,
     }));
 
     return {
@@ -447,25 +495,13 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
   }
 
   if (action === 'invoke_source_control_pr') {
-    // Derive per-repo entries with fresh absolute paths via resolveWorktrees —
-    // never read a stored path. Falls back to an empty repos[] on any error.
-    const scRepos = state.pipeline.source_control?.repos ?? [];
-    let resolvedPaths: Record<string, string> = {};
-    try {
-      const paths = userDataPaths();
-      const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
-      const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
-      for (const ref of refs) {
-        resolvedPaths[ref.repo] = ref.path;
-      }
-    } catch {
-      // resolveWorktrees failure is non-fatal; paths will be empty string
-    }
-    const repos = scRepos.map(r => ({
-      name: r.name,
-      branch: r.branch,
-      base_branch: r.base_branch,
-      path: resolvedPaths[r.name] ?? '',
+    // Derive per-repo entries with fresh absolute paths via buildReposArray —
+    // never read a stored path. Merges base_branch from sc repos (required by
+    // the source-control skill's PR context contract).
+    const scReposForPr = state.pipeline.source_control?.repos ?? [];
+    const repos = buildReposArray(state).map(r => ({
+      ...r,
+      base_branch: scReposForPr.find(sc => sc.name === r.name)?.base_branch ?? null,
     }));
 
     return {

@@ -41,6 +41,14 @@ function stateWithTaskCommit(repoName: string, commitHash: string): PipelineStat
   const phaseIter = (s as any).graph.nodes.phase_loop.iterations[0];
   phaseIter.status = 'in_progress';
   phaseIter.nodes.task_loop.iterations[0].status = 'in_progress';
+  // Seed source_control.repos[] so buildReposArray can derive per-repo entries.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (s as any).pipeline.source_control = {
+    worktree_name: 'test-project',
+    auto_commit: 'always',
+    auto_pr: 'always',
+    repos: [{ name: repoName, branch: 'radorch/test', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }],
+  };
   return s as unknown as PipelineState;
 }
 
@@ -81,7 +89,10 @@ describe('context-enrichment skills block', () => {
 describe('context-enrichment spawn_code_reviewer head_sha (FR-26)', () => {
   it('reads head_sha from repos[0].commit_hash for spawn_code_reviewer (FR-26)', () => {
     const ctx = enrichActionContext(makeEnrichmentInput('spawn_code_reviewer', stateWithTaskCommit('backend', 'def5678')));
-    expect(ctx.head_sha).toBe('def5678');
+    // FR-26: spawn_code_reviewer now emits per-repo repos[] with head_sha on each
+    // entry instead of a top-level scalar head_sha (replaced in P03-T01).
+    expect(Array.isArray(ctx.repos)).toBe(true);
+    expect((ctx.repos as Array<Record<string, unknown>>)[0].head_sha).toBe('def5678');
   });
 });
 
@@ -278,6 +289,89 @@ describe('spawn_final_reviewer base/head SHA derivation — ≤1 commit short-ci
     expect(out.project_base_sha).toBe('abc12345');
     expect(out.project_head_sha).toBe('abc12345');
     expect(out.error).toBeUndefined();
+  });
+});
+
+describe('per-action repos[] enrichment (FR-1, FR-2, FR-3)', () => {
+  const DEFAULT_CONFIG = { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as OrchestrationConfig;
+
+  function buildTwoRepoExecState(): PipelineState {
+    const taskRepos = [
+      { name: 'fake-api', commit_hash: 'apihash1' },
+      { name: 'fake-ui', commit_hash: 'uihash1' },
+    ];
+    const state = {
+      graph: {
+        nodes: {
+          phase_loop: {
+            kind: 'for_each_phase',
+            status: 'in_progress',
+            iterations: [
+              {
+                index: 0,
+                status: 'in_progress',
+                doc_path: null,
+                repos: taskRepos.map(r => ({ name: r.name, commit_hash: null })),
+                corrective_tasks: [],
+                nodes: {
+                  task_loop: {
+                    kind: 'for_each_task',
+                    status: 'in_progress',
+                    iterations: [
+                      {
+                        index: 0,
+                        status: 'in_progress',
+                        doc_path: '/fake/handoff.md',
+                        repos: taskRepos,
+                        corrective_tasks: [],
+                        nodes: {},
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      pipeline: {
+        gate_mode: null,
+        current_tier: 'execution',
+        halt_reason: null,
+        source_control: {
+          worktree_name: 'MULTI-REPO-5',
+          auto_commit: 'always',
+          auto_pr: 'always',
+          repos: [
+            { name: 'fake-api', branch: 'radorch/MULTI-REPO-5', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+            { name: 'fake-ui', branch: 'radorch/MULTI-REPO-5', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+          ],
+        },
+      },
+      project: { name: 'MULTI-REPO-5' },
+    } as unknown as PipelineState;
+    return state;
+  }
+
+  it('execute_task emits a repos[] array with a per-repo path and branch (FR-1, FR-2)', () => {
+    const state = buildTwoRepoExecState(); // helper seeds repos[] on the active task iteration
+    const ctx = enrichActionContext({ action: 'execute_task', walkerContext: {}, state, config: DEFAULT_CONFIG, cliContext: {} });
+    expect(Array.isArray(ctx.repos)).toBe(true);
+    expect(ctx.repos).toHaveLength(2);
+    for (const r of ctx.repos as Array<Record<string, unknown>>) {
+      expect(typeof r.name).toBe('string');
+      expect(typeof r.path).toBe('string');
+      expect(r).toHaveProperty('branch');
+    }
+  });
+
+  it('spawn_code_reviewer groups head_sha per repo (FR-3)', () => {
+    const state = buildTwoRepoExecState();
+    const ctx = enrichActionContext({ action: 'spawn_code_reviewer', walkerContext: {}, state, config: DEFAULT_CONFIG, cliContext: {} });
+    expect(ctx.repos).toEqual([
+      expect.objectContaining({ name: 'fake-api', head_sha: 'apihash1' }),
+      expect.objectContaining({ name: 'fake-ui', head_sha: 'uihash1' }),
+    ]);
   });
 });
 
