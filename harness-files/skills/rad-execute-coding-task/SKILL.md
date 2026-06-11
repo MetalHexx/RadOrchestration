@@ -78,7 +78,15 @@ A single channel for executor feedback to the stateless code reviewer and the or
 
 ## CWD hygiene
 
-After running terminal commands inside a project subdirectory, restore working directory to the workspace root before continuing. Stale CWD slows every subsequent tool call.
+The spawn prompt carries a `repos[]` array. Each entry has a `name` and an absolute `path`. A single-repo task has a length-1 array — same rule, no special-casing.
+
+For each repo in `repos[]`:
+
+1. Match the repo's `name` against the `**Files for <repo>:**` section in the handoff to find that repo's file targets.
+2. Run all terminal commands for that repo from `repos[N].path` (the repo's own absolute path).
+3. After finishing that repo's commands, restore the working directory to the workspace root before moving to the next repo.
+
+Workspace root is the directory you started in (or the path given in the spawn prompt as the workspace root). Never carry a stale subdirectory CWD between repos or between tool calls.
 
 ## Output contract
 
