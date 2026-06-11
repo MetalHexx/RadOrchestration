@@ -91,10 +91,13 @@ becomes task-local and action-oriented.
     description is the screening surface; reading non-matches wastes tokens.
     If you encounter a `SKILL.md` via codebase Grep/Glob that is not in the
     catalog, do not Read it — the manifest is the complete authoritative
-    list and any exclusions are intentional. Inline any commands,
-    conventions, or code patterns the consulted skill prescribes into the
-    relevant tasks under their requirement IDs. Absence of the section means
-    no eligible repo skills exist; proceed normally.
+    list and any exclusions are intentional. Each catalog entry carries a
+    `repo` field identifying which registry repository the skill belongs to
+    (FR-18). When inlining a skill's commands, conventions, or code patterns
+    into a task, target the guidance to the task's `**Files for <repo>:**`
+    block for that same repo — this keeps per-repo guidance traceable and
+    prevents cross-repo contamination. Absence of the section means no
+    eligible repo skills exist; proceed normally.
 
 2b. When no brainstorming doc and no Requirements `repos:` set are available,
     invoke the `/rad-repo` skill to read the registry and infer the affected

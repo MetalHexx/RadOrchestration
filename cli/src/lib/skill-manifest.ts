@@ -5,6 +5,10 @@ export interface SkillEntry {
   name: string;
   description: string;
   path: string;
+  /** The registry repo name this skill was discovered in (FR-18). Present when
+   *  the entry was produced by `buildSkillManifestPerRepo`; absent on plain
+   *  `buildSkillManifest` results so the existing interface stays backward-compatible. */
+  repo?: string;
 }
 
 export interface BuildSkillManifestOptions {
@@ -84,4 +88,28 @@ export function buildSkillManifest(opts: BuildSkillManifestOptions): SkillEntry[
   }
   out.sort((a, b) => a.name.localeCompare(b.name));
   return out;
+}
+
+export interface BuildSkillManifestPerRepoOptions {
+  repos: Array<{ name: string; root: string }>;
+  warn?: (msg: string) => void;
+}
+
+/**
+ * Run `buildSkillManifest` for every supplied repo and tag each returned entry
+ * with the repo name it came from (FR-18). Results from all repos are
+ * concatenated and sorted by name ascending. A repo that yields no eligible
+ * skills simply contributes nothing to the output — it is not an error.
+ */
+export function buildSkillManifestPerRepo(opts: BuildSkillManifestPerRepoOptions): SkillEntry[] {
+  const { repos, warn } = opts;
+  const combined: SkillEntry[] = [];
+  for (const repo of repos) {
+    const entries = buildSkillManifest({ repoRoot: repo.root, warn });
+    for (const entry of entries) {
+      combined.push({ ...entry, repo: repo.name });
+    }
+  }
+  combined.sort((a, b) => a.name.localeCompare(b.name));
+  return combined;
 }

@@ -148,6 +148,8 @@ Before marking any finding as `decline`, scan:
 
 If the scan shows this task's contract owed the piece, change the disposition to `action`. If the piece legitimately belongs to a future phase or task, decline with the cross-artifact rationale in the Reason column.
 
+**Repo-dimension note (FR-19).** When a finding flags work that landed outside the task's declared `**Target repos:**`, apply the same cross-artifact scan with a repo lens: if the coder touched a repo not listed in the handoff's `**Target repos:**`, first check whether the Master Plan or a sibling Task Handoff assigns that repo-level change to a different task or phase. If a legitimate owner exists elsewhere, that is a pivot — decline with the repo rationale. If no legitimate owner exists and the change was required to satisfy the task's inlined requirement, that is overreach — action it as drift, bounding the corrective to the declared target repos.
+
 ### Action when
 
 Disposition is `action` when **all** of the following hold:

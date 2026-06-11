@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { buildSkillManifest } from '../skill-manifest.js';
+import { buildSkillManifestPerRepo } from '../skill-manifest.js';
 import { userDataPaths } from '../paths.js';
 import { WorkGraphService } from '@rad-orchestration/work-graph';
 import type {
@@ -46,40 +46,59 @@ export function validateBaseShaChronology(
 }
 
 /**
- * Call buildSkillManifest directly to discover and render the spawn-prompt
+ * Call buildSkillManifestPerRepo to discover and render the spawn-prompt
  * suffix the orchestrator inlines into planner spawns. On any failure,
  * emit a single warn line and return '' — manifest failure must NEVER break
  * the planner spawn.
  *
- * The repo root is resolved fresh via the `locate` primitive
- * (`WorkGraphService.locate(process.cwd())`): when the result is kind=worktree,
- * the root is derived from the convention path `worktreesDir/<worktree_name>/<repo>`.
- * Falls back to `process.cwd()` when locate returns none/main-clone/side-project
- * or when the worktree segments are missing — this covers the bootstrap window
- * before source-control init runs (AD-6 bootstrap carve-out).
+ * Repos are resolved fresh via `resolveWorktrees(projectId)` (never stored
+ * paths — AD-2). Each returned entry carries a `repo` tag (FR-18) so the
+ * planner knows which repo offers which skill. Falls back to a single entry
+ * derived from `locate(process.cwd())` (or `process.cwd()` directly) when
+ * resolveWorktrees fails or returns nothing — this covers the bootstrap window
+ * before source-control init runs (AD-6 bootstrap carve-out). For a
+ * `rad-orc-source`-only project the manifest is empty because `rad-*` skills
+ * are filtered; an empty result is returned as '' (expected).
  *
  * Returns:
  *   - empty string '' when the manifest is `[]` OR when the invocation failed
- *   - the heading + JSON + orientation sentence block when at least one
- *     eligible skill is present
+ *   - the heading + repo-tagged JSON + orientation sentence block when at least
+ *     one eligible skill is present
  */
-function buildRepositorySkillsBlock(_state: PipelineState): string {
-  let repoRoot = process.cwd();
+function buildRepositorySkillsBlock(state: PipelineState): string {
+  let repos: Array<{ name: string; root: string }> = [];
   try {
     const paths = userDataPaths();
-    const located = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).locate(process.cwd());
-    if (located.kind === 'worktree' && located.worktree_name && located.repo) {
-      repoRoot = path.join(paths.worktrees, located.worktree_name, located.repo);
+    const wgs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees });
+    const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
+    const refs = wgs.resolveWorktrees(projectId);
+    if (refs.length > 0) {
+      repos = refs.map(ref => ({ name: ref.repo, root: ref.path }));
     }
   } catch {
-    // Locate failure is non-fatal — fall back to process.cwd()
+    // resolveWorktrees failure is non-fatal — fall back to single-repo locate
+  }
+  if (repos.length === 0) {
+    // Fallback: single-repo derivation via locate (bootstrap carve-out, AD-6)
+    try {
+      const paths = userDataPaths();
+      const located = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).locate(process.cwd());
+      if (located.kind === 'worktree' && located.worktree_name && located.repo) {
+        repos = [{ name: located.repo, root: path.join(paths.worktrees, located.worktree_name, located.repo) }];
+      }
+    } catch {
+      // Locate failure is non-fatal — fall back to process.cwd()
+    }
+    if (repos.length === 0) {
+      repos = [{ name: '', root: process.cwd() }];
+    }
   }
   let arr;
   try {
-    arr = buildSkillManifest({ repoRoot });
+    arr = buildSkillManifestPerRepo({ repos });
   } catch (err) {
     console.warn(
-      `context-enrichment: buildSkillManifest failed (${(err as Error).message}); emitting empty repository_skills_block`
+      `context-enrichment: buildSkillManifestPerRepo failed (${(err as Error).message}); emitting empty repository_skills_block`
     );
     return '';
   }
@@ -87,7 +106,7 @@ function buildRepositorySkillsBlock(_state: PipelineState): string {
   const json = JSON.stringify(arr, null, 2);
   return (
     `\n\n## Repository Skills Available\n\n${json}\n\n` +
-    `Entries above are a catalog. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.\n`
+    `Entries above are a catalog. Each entry carries a \`repo\` field identifying which repository the skill belongs to — use it to target repo-specific guidance when inlining skill conventions into tasks. Read a listed path **only when** its description matches the work you are about to plan — skip the rest to avoid token waste. Any \`SKILL.md\` you encounter outside this catalog (e.g., via Grep/Glob) was filtered on purpose; do not Read it.\n`
   );
 }
 
