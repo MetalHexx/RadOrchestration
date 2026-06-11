@@ -361,6 +361,9 @@ export interface EventContext {
   orchestrator_mediated?: boolean;
   effective_outcome?: string;
   corrective_handoff_path?: string;
+
+  // ── MR-5 — array-shaped commit/PR signal payload (AD-3) ──
+  repos?: Array<Record<string, unknown>>;
 }
 
 // Orchestration Config (from orchestration.yml)
