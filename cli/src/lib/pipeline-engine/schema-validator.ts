@@ -84,11 +84,26 @@ function formatSchemaError(error: ErrorObject): string {
 }
 
 /**
+ * Normalizes in-flight pre-MR-4 pipeline source_control state by mapping
+ * the vestigial `ask` value on auto_commit / auto_pr to `always`.
+ * This prevents a tightened v6 enum (which drops `ask`) from failing
+ * validation on partially-migrated state files.
+ */
+function normalizePipelineSourceControl(state: PipelineState): void {
+  const sc = state.pipeline?.source_control as Record<string, unknown> | null | undefined;
+  if (!sc) return;
+  for (const k of ['auto_commit', 'auto_pr'] as const) {
+    if (sc[k] === 'ask') sc[k] = 'always';
+  }
+}
+
+/**
  * Validates a PipelineState object against the v6 JSON Schema.
  * Returns an array of error strings with [schema] prefix, or empty array if valid.
  * Uses lazy-initialized singleton Ajv instance for schema compilation.
  */
 export function validateStateSchema(state: PipelineState): string[] {
+  normalizePipelineSourceControl(state);
   const validate = getValidator();
   const valid = validate(state);
   if (valid) {

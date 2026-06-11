@@ -508,15 +508,15 @@
         },
         "auto_commit": {
           "title": "Auto Commit Mode",
-          "description": "Controls when commits are made automatically. Values: ask, always, never.",
+          "description": "Controls when commits are made automatically. Values: always, never.",
           "type": "string",
-          "enum": ["ask", "always", "never"]
+          "enum": ["always", "never"]
         },
         "auto_pr": {
           "title": "Auto PR Mode",
-          "description": "Controls when pull requests are created automatically. Values: ask, always, never.",
+          "description": "Controls when pull requests are created automatically. Values: always, never.",
           "type": "string",
-          "enum": ["ask", "always", "never"]
+          "enum": ["always", "never"]
         }
       }
     },
