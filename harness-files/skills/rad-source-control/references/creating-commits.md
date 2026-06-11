@@ -19,11 +19,10 @@ Optional body: blank line then 2–4 prose lines from the task description.
 **2. Run (fan-out across all repos in one command):**
 ```
 node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" git commit \
-  --repos '<json-array-of-{worktreePath,name}-objects>' \
-  --message "<message>"
+  --repos '[{"name":"<repo>","path":"<worktree-abs-path>","message":"<commit-message>"}, ...]'
 ```
 
-Where `--repos` is the JSON array of per-repo objects (each carrying `worktreePath` and `name`). The CLI commits every repo in a single pass and returns a structured per-repo result array.
+Where `--repos` is the JSON array of per-repo objects (each carrying `name`, `path`, and `message`). The CLI commits every repo in a single pass and returns a structured per-repo result array.
 
 **3. Parse the envelope on stdout. The `data.repos` field is a per-repo array. Relay the entire array into one array-shaped `commit_completed` signal:**
 ````
@@ -35,11 +34,11 @@ Where `--repos` is the JSON array of per-repo objects (each carrying `worktreePa
 ```
 ````
 
-Each entry in `data.repos` carries: `{ "name": "<repo>", "committed": <bool>, "pushed": <bool>, "commitHash": "<hash-or-null>", "error": "<error-or-null>", "errorType": "<errorType-or-null>" }`.
+Each entry in `data.repos` carries: `{ "name": "<repo>", "committed": <bool>, "commitHash": "<hash-or-null>", "pushed": <bool> }`.
 
-A partial-success commit (commit landed but push failed) is still envelope-success (`ok: true`); the failure surfaces via `pushed=false` and `errorType="push_failed"` on the affected repo entry. Treat committed repos as commit successes regardless of push outcome.
+A partial-success commit (commit landed but push failed) is still envelope-success (`ok: true`); the failure surfaces via `pushed=false` on the affected repo entry. Treat committed repos as commit successes regardless of push outcome.
 
-A remote-less repo (such as a side-project) also returns `ok: true` with `pushed=false`, but carries **no** `errorType`. This is expected — the commit succeeded and there is simply no remote to push to. Do not treat it as a failure. The distinction: `push_failed` always sets `errorType`; a clean remote-less result does not.
+A remote-less repo (such as a side-project) also returns `ok: true` with `pushed=false`. This is expected — the commit succeeded and there is simply no remote to push to. Do not treat it as a failure.
 
 A `committed: false` entry means the repo was skipped (e.g., no changes). This is a clean skip — relay it as-is in the array; the mutation ignores it without error.
 
