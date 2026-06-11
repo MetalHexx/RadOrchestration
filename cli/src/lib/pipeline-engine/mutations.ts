@@ -7,6 +7,7 @@ import type {
   MutationResult,
   IterationEntry,
   CorrectiveTaskEntry,
+  RepoCommitEntry,
   NodeDef,
   StepNodeDef,
   ForEachPhaseNodeState,
@@ -19,20 +20,55 @@ import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { resolveActivePhaseIndex, resolveActiveTaskIndex } from './context-enrichment.js';
 
+// ── Per-repo commit signal shape ──────────────────────────────────────────────
+
+interface SignalRepoRow {
+  name: string;
+  committed: boolean;
+  commitHash: string | null;
+  pushed: boolean;
+}
+
 // ── Hash-overwrite guard ──────────────────────────────────────────────────────
 
 // Hash-equal (allow) vs hash-differs (reject) idempotency rule. Reads the
-// durable existing hash on the entry being written; refuses to overwrite a
-// non-null hash with a different non-null value. Null existing hash (first
-// write) and equal incoming hash (idempotent retry) are allowed.
-function assertHashWritable(repos: Array<{ name: string; commit_hash: string | null }> | undefined, incoming: string | null): void {
-  const existing = repos && repos.length > 0 ? repos[0].commit_hash : null;
+// durable existing hash on the specific entry being written; refuses to
+// overwrite a non-null hash with a different non-null value. Null existing
+// hash (first write) and equal incoming hash (idempotent retry) are allowed.
+function assertHashWritable(entry: RepoCommitEntry, incoming: string | null): void {
+  const existing = entry.commit_hash;
   if (existing != null && incoming != null && existing !== incoming) {
     throw new Error(
       `commit_completed refused: would overwrite a finalized commit_hash ` +
       `('${existing}' → '${incoming}') on an already-recorded node. ` +
       `A finalized commit hash is immutable; the incoming signal addresses the wrong node or carries a stale context.`
     );
+  }
+}
+
+// ── Per-repo commit hash apply helper ────────────────────────────────────────
+
+/**
+ * For each entry in signalRepos, finds or creates the matching entry in repos
+ * by name and sets commit_hash when committed=true. A committed=false row is a
+ * no-op (clean skip — never a rejection).
+ */
+function applyPerRepoCommitHashes(
+  repos: RepoCommitEntry[],
+  signalRepos: SignalRepoRow[],
+  mutations_applied: string[],
+  label: string,
+): void {
+  for (const row of signalRepos) {
+    if (!row.committed) continue; // clean skip — not an error
+    let entry = repos.find(r => r.name === row.name);
+    if (!entry) {
+      entry = { name: row.name, commit_hash: null };
+      repos.push(entry);
+    }
+    assertHashWritable(entry, row.commitHash);
+    entry.commit_hash = row.commitHash;
+    mutations_applied.push(`set ${label}[name=${row.name}].commit_hash = ${row.commitHash ?? 'null'}`);
   }
 }
 
@@ -924,62 +960,52 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     node.status = 'completed';
     mutations_applied.push('set commit.status = completed');
 
-    const commitHash = (context.commit_hash as string) ?? null;
+    const signalRepos = (context.repos as SignalRepoRow[] | undefined) ?? [];
 
-    // Iter 11 — phase-scope-first routing. When a phase-scope corrective is
-    // active on this phase iteration, route the commit hash there before
-    // considering task-scope routing. The commit produced under a phase-scope
-    // corrective belongs to that corrective, not to the task iteration whose
-    // task_executor flipped to completed via `resolveNodeState` above (which
-    // itself already walks phase-scope corrective nodes).
+    // Iter 12 (P04-T02) — array-shaped signal. The commit CLI emits a per-repo
+    // result array; we fan the hashes into the matching repos[] entry by name,
+    // creating entries that are absent (corrective entries start with repos:[]).
+    // committed=false rows are a no-op (clean skip — not an error).
+    //
+    // Phase-scope-first routing: when a phase-scope corrective is active on
+    // this phase iteration, route the per-repo hashes there before considering
+    // task-scope routing.
     const phaseIteration = resolvePhaseIteration(cloned, phase);
     const activePhaseCorrective = phaseIteration.corrective_tasks.slice().reverse().find(
       (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
     );
 
     if (activePhaseCorrective) {
-      // Preserve existing repo names seeded by explode-master-plan; only set the
-      // commit hash on the first entry. If no entries exist yet (empty/absent),
-      // fall back to a blank-name stub. Per-repo commit attribution for multi-repo
-      // tasks remains future work (T03), but names are no longer dropped.
-      if (activePhaseCorrective.repos && activePhaseCorrective.repos.length > 0) {
-        assertHashWritable(activePhaseCorrective.repos, commitHash);
-        activePhaseCorrective.repos[0].commit_hash = commitHash;
-      } else {
-        activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
-      }
-      mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
+      applyPerRepoCommitHashes(
+        activePhaseCorrective.repos,
+        signalRepos,
+        mutations_applied,
+        `phase_corrective_task[${activePhaseCorrective.index}].repos`,
+      );
       return { state: cloned, mutations_applied };
     }
 
-    // Write commit hash to per-task IterationEntry or active CorrectiveTaskEntry
+    // Write per-repo commit hashes to task IterationEntry or active task-scope
+    // CorrectiveTaskEntry, matched by name.
     const taskIteration = resolveTaskIteration(cloned, phase, task);
     const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
       (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
     );
 
     if (activeCorrective) {
-      // Preserve existing repo names; only set the commit hash on the first entry.
-      // If no entries exist yet, fall back to a blank-name stub.
-      if (activeCorrective.repos && activeCorrective.repos.length > 0) {
-        assertHashWritable(activeCorrective.repos, commitHash);
-        activeCorrective.repos[0].commit_hash = commitHash;
-      } else {
-        activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
-      }
-      mutations_applied.push(`set corrective_task[${activeCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
+      applyPerRepoCommitHashes(
+        activeCorrective.repos,
+        signalRepos,
+        mutations_applied,
+        `corrective_task[${activeCorrective.index}].repos`,
+      );
     } else {
-      // Preserve existing repo names seeded by explode-master-plan; only set the
-      // commit hash on the first entry. If no entries exist yet, fall back to a
-      // blank-name stub. Per-repo commit attribution for multi-repo tasks remains
-      // future work, but names are no longer dropped.
-      if (taskIteration.repos && taskIteration.repos.length > 0) {
-        assertHashWritable(taskIteration.repos, commitHash);
-        taskIteration.repos[0].commit_hash = commitHash;
-      } else {
-        taskIteration.repos = [{ name: '', commit_hash: commitHash }];
-      }
-      mutations_applied.push(`set task_iteration[${taskIteration.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
+      applyPerRepoCommitHashes(
+        taskIteration.repos,
+        signalRepos,
+        mutations_applied,
+        `task_iteration[${taskIteration.index}].repos`,
+      );
     }
 
     return { state: cloned, mutations_applied };
