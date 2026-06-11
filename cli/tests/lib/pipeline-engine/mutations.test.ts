@@ -5,6 +5,7 @@ import type {
   PipelineState,
   PipelineTemplate,
   IterationEntry,
+  SourceControlState,
 } from '../../../src/lib/pipeline-engine/types.js';
 
 describe('source_control_init retirement (FR-6, AD-2)', () => {
@@ -167,5 +168,85 @@ describe('commit_completed per-repo by-name mutation (FR-7, AD-4)', () => {
         { name: 'fake-ui', committed: false, commitHash: null, pushed: false },
       ],
     })).not.toThrow();
+  });
+});
+
+// ── Two-repo state factory for PR tests ──────────────────────────────────────
+
+/**
+ * Builds a minimal PipelineState with source_control.repos containing
+ * [{name:'fake-api',...},{name:'fake-ui',...}] and final_pr in_progress.
+ */
+function buildTwoPrRepoState(): PipelineState {
+  return {
+    $schema: 'orchestration-state-v6',
+    project: { name: 'test', created: '2026-01-01T00:00:00.000Z', updated: '2026-01-01T00:00:00.000Z' },
+    config: {
+      gate_mode: 'task',
+      limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
+      source_control: { auto_commit: 'always', auto_pr: 'always' },
+    },
+    pipeline: {
+      gate_mode: 'task',
+      source_control: {
+        worktree_name: 'test',
+        auto_commit: 'always',
+        auto_pr: 'always',
+        repos: [
+          { name: 'fake-api', branch: 'radorch/test', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+          { name: 'fake-ui',  branch: 'radorch/test', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+        ],
+      },
+      current_tier: 'execution',
+      halt_reason: null,
+    },
+    graph: {
+      template_id: 't',
+      status: 'in_progress',
+      current_node_path: 'final_pr',
+      nodes: {
+        final_pr: { kind: 'step', status: 'in_progress', doc_path: null, retries: 0 },
+      },
+    },
+  } as unknown as PipelineState;
+}
+
+/**
+ * Returns a mutable IO-like object pre-seeded with a two-repo PR state.
+ * Mutation is applied via applyPrCreated (getMutation isolation pattern).
+ */
+function driveTwoRepoProjectToPr(): { currentState: PipelineState | null } {
+  return { currentState: buildTwoPrRepoState() };
+}
+
+/**
+ * Applies the pr_created mutation via getMutation directly (IOAdapter isolation).
+ * Updates io.currentState with the post-mutation state.
+ */
+function applyPrCreated(
+  io: { currentState: PipelineState | null },
+  ctx: Record<string, unknown>,
+): void {
+  const fn = getMutation('pr_created');
+  if (!fn) throw new Error('pr_created mutation not registered');
+  const { state: next } = fn(io.currentState!, ctx as never, cfg, tmpl);
+  io.currentState = next;
+}
+
+// ── pr_created by-name tests ──────────────────────────────────────────────────
+
+describe('pr_created per-repo pr_url by-name mutation (FR-9, FR-10, AD-4)', () => {
+  it('pr_created writes each pr_url to the matching source_control repo by name (FR-10, AD-4)', () => {
+    const io = driveTwoRepoProjectToPr(); // source_control.repos: [{name:'fake-api'},{name:'fake-ui'}]
+    applyPrCreated(io, {
+      repos: [
+        { name: 'fake-ui', pr_url: 'https://x/ui/2' },
+        { name: 'fake-api', pr_url: 'https://x/api/1' },
+      ],
+    });
+    const sc = io.currentState!.pipeline.source_control!;
+    expect(sc.repos.find((r: SourceControlState['repos'][number]) => r.name === 'fake-api')!.pr_url).toBe('https://x/api/1');
+    expect(sc.repos.find((r: SourceControlState['repos'][number]) => r.name === 'fake-ui')!.pr_url).toBe('https://x/ui/2');
+    expect(sc).not.toHaveProperty('pr_url');
   });
 });

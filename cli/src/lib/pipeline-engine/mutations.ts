@@ -1071,17 +1071,34 @@ mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): Mu
   node.status = 'completed';
   mutations_applied.push('set final_pr.status = completed');
 
-  if (context.pr_url !== undefined) {
+  // FR-9, FR-10, AD-4 — array-shaped per-repo signal. The PR CLI emits a
+  // [{name, pr_url}] result array; fan each pr_url into the matching
+  // source_control.repos[] entry by name, creating a stub entry when absent.
+  // No top-level pr_url is written (FR-9 removes that field).
+  const signalRepos = (context.repos as Array<{ name: string; pr_url: string | null }> | undefined) ?? [];
+  if (signalRepos.length > 0) {
     if (!cloned.pipeline.source_control) {
       throw new Error(
         'pr_created: pipeline.source_control is null — cannot store pr_url. ' +
-        'Source control must be initialized via `radorch source-control init` before PR creation.'
+        'Source control must be initialized before PR creation.'
       );
     }
-    const firstRepo = cloned.pipeline.source_control.repos[0];
-    if (firstRepo !== undefined) {
-      firstRepo.pr_url = (context.pr_url ?? null) as string | null;
-      mutations_applied.push(`set pipeline.source_control.repos[0].pr_url = ${context.pr_url ?? 'null'}`);
+    const scRepos = cloned.pipeline.source_control.repos;
+    for (const row of signalRepos) {
+      let entry = scRepos.find(r => r.name === row.name);
+      if (!entry) {
+        entry = {
+          name: row.name,
+          branch: '',
+          base_branch: '',
+          remote_url: null,
+          compare_url: null,
+          pr_url: null,
+        };
+        scRepos.push(entry);
+      }
+      entry.pr_url = row.pr_url ?? null;
+      mutations_applied.push(`set source_control.repos[name=${row.name}].pr_url = ${row.pr_url ?? 'null'}`);
     }
   }
 
