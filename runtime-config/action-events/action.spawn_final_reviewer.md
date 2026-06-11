@@ -9,7 +9,7 @@ completion_event: final_review_completed
 
 Spawn the `rad-orc:reviewer` agent for the final review.
 
-Pass `project_base_sha` (the first chronological commit across the project) and `project_head_sha` (the last committed SHA, including corrective commits at both task and phase scope). When `source_control.auto_commit: never` or no commits have been made, pass both SHAs as `null`; the reviewer will fall back to `git diff HEAD` plus untracked files.
+The envelope carries `data.context.repos[]` — an array where each entry has `name`, `path`, `branch`, and the project-scoped SHAs (`project_base_sha` — the first chronological commit across the project, and `project_head_sha` — the last committed SHA including corrective commits at both task and phase scope) for that repo. Inline the `repos[]` array verbatim into the reviewer spawn prompt so the reviewer reviews each repo's full project diff independently. When `source_control.auto_commit: never` or no commits have been made for a repo, that entry's SHAs are `null`; the reviewer falls back to `git diff HEAD` plus untracked files for that repo.
 
 Extract the review doc path from the agent's final message.
 
