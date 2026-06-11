@@ -66,9 +66,11 @@ function makeCustomReader(overlay: Record<string, string> | undefined) {
 }
 
 export function deriveSignalLine(eventName: string, fm: EventFrontmatter): string {
-  const keys = Object.keys(fm.signal_payload ?? {});
-  if (keys.length === 0) return `Signal: ${eventName}`;
-  const flags = keys.map((k) => `--${k} <value>`).join(' ');
+  const entries = Object.entries(fm.signal_payload ?? {});
+  if (entries.length === 0) return `Signal: ${eventName}`;
+  const flags = entries
+    .map(([k, def]) => (def.array ? `--${k} '<json>'` : `--${k} <value>`))
+    .join(' ');
   return `Signal: ${eventName} ${flags}`;
 }
 
