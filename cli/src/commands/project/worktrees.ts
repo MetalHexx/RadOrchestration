@@ -18,7 +18,7 @@ export const projectWorktreesCommand = defineCommand({
   handler: async ({ args, ctx }: { args: Args; flags: Record<string, never>; ctx: CommandContext }) => {
     if (!args.id) throw new UserError('--id is required');
     const paths = userDataPaths();
-    const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(args.id);
+    const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees, sideProjectsDir: paths.sideProjects }).resolveWorktrees(args.id);
     const result = buildWorktreesResult(args.id, refs);
     if (!ctx.ux.json) {
       ctx.stderr.write(result.worktrees.map((w) => `${w.repo}\t${w.path}\t${w.branch ?? '-'}\texists=${w.exists}`).join('\n') + '\n');

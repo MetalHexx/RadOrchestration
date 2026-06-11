@@ -3,6 +3,7 @@ import { type GitExec } from './worktrees.js';
 export interface DeriveDeps {
     projectsDir: string;
     worktreesDir: string;
+    sideProjectsDir?: string;
     exec?: GitExec;
 }
 export declare function listProjectNames(projectsDir: string): string[];

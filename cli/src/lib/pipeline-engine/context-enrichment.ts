@@ -69,7 +69,7 @@ function buildRepositorySkillsBlock(state: PipelineState): string {
   let repos: Array<{ name: string; root: string }> = [];
   try {
     const paths = userDataPaths();
-    const wgs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees });
+    const wgs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees, sideProjectsDir: paths.sideProjects });
     const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
     const refs = wgs.resolveWorktrees(projectId);
     if (refs.length > 0) {
@@ -82,7 +82,7 @@ function buildRepositorySkillsBlock(state: PipelineState): string {
     // Fallback: single-repo derivation via locate (bootstrap carve-out, AD-6)
     try {
       const paths = userDataPaths();
-      const located = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).locate(process.cwd());
+      const located = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees, sideProjectsDir: paths.sideProjects }).locate(process.cwd());
       if (located.kind === 'worktree' && located.worktree_name && located.repo) {
         repos = [{ name: located.repo, root: path.join(paths.worktrees, located.worktree_name, located.repo) }];
       }
@@ -251,7 +251,7 @@ function buildReposArray(
   try {
     const paths = userDataPaths();
     const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
-    const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
+    const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees, sideProjectsDir: paths.sideProjects }).resolveWorktrees(projectId);
     for (const ref of refs) {
       resolvedPaths[ref.repo] = ref.path;
     }
