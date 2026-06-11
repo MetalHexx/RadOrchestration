@@ -181,7 +181,29 @@ export interface CorrectiveTaskEntry {
   repos: RepoCommitEntry[];
 }
 
-// ─── v5 Source Control ───────────────────────────────────────────────────────
+// ─── v5 Source Control (+ temporary v6 repos[] compatibility shim) ───────────
+
+/**
+ * TEMPORARY SHIM — remove in MULTI-REPO-6 (the UI multi-repo dashboard
+ * iteration). MULTI-REPO-5 migrated the pipeline state to the v6 per-repo
+ * source-control shape (`source_control.repos[]`, each entry carrying
+ * branch / compare_url / pr_url / …). The UI readers in
+ * `app/projects/[[...slug]]/page.tsx` were migrated to read `repos[0]`, but
+ * this type was left at the v5 single-repo scalar shape. The optional `repos?`
+ * field below bridges the gap so `next build` type-checks. MULTI-REPO-6 must
+ * remove `repos?` and `V5SourceControlRepoEntry`, drop the now-stale top-level
+ * scalar fields, and migrate the UI (incl. project-header.tsx) to read
+ * `source_control.repos[]` natively.
+ */
+export interface V5SourceControlRepoEntry {
+  name: string;
+  branch: string;
+  base_branch: string;
+  remote_url: string | null;
+  compare_url: string | null;
+  pr_url: string | null;
+  in_place?: boolean;
+}
 
 export interface V5SourceControlState {
   branch: string;
@@ -192,6 +214,8 @@ export interface V5SourceControlState {
   remote_url: string | null;
   compare_url: string | null;
   pr_url: string | null;
+  /** SHIM (remove in MULTI-REPO-6): v6 per-repo source-control array. */
+  repos?: V5SourceControlRepoEntry[];
 }
 
 // ─── v5 Sections ─────────────────────────────────────────────────────────────
