@@ -384,7 +384,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         if (typeof phaseCorrectiveDoc === 'string' && phaseCorrectiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: phaseCorrectiveDoc };
+          return { ...base, handoff_doc: phaseCorrectiveDoc, repos: buildReposArray(state) };
         }
       }
 
@@ -408,7 +408,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         if (typeof correctiveDoc === 'string' && correctiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: correctiveDoc };
+          return { ...base, handoff_doc: correctiveDoc, repos: buildReposArray(state) };
         }
       }
 
