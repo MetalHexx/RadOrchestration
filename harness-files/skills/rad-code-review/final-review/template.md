@@ -16,7 +16,14 @@ created: "{ISO-DATE}"
 
 ## Scope
 
-<!-- Captures WHAT was reviewed and HOW it was scoped. Populated from workflow step 2. -->
+<!-- Captures WHAT was reviewed and HOW it was scoped. Populated from workflow step 2.
+     One sub-block per repo. The repos[] array in the spawn context supplies each repo's
+     project_base_sha and project_head_sha. Single-repo projects render one sub-block.
+     Requirements are judged holistically across all repos' diffs — no per-requirement
+     repo attribution in the Per-Requirement Audit below. -->
+
+<!-- Repeat the sub-block below for each repo in repos[]. -->
+### Repo: `{repo-name}`
 
 - **Commit range under review**: `{project_base_sha}..{project_head_sha}` (or `null — auto-commit off`)
 - **Diff command run**: `git diff <project_base_sha>~1..<project_head_sha>` (or `git diff HEAD` when either SHA is null)
@@ -25,6 +32,16 @@ created: "{ISO-DATE}"
   {Exact --stat output pasted verbatim. No approximations.}
   ```
 - **Untracked files inspected**: `{list paths, or "N/A — auto-commit on"}`
+
+## Repo Boundary Check
+
+<!-- Did changes stay within the expected project repos? This is the outer ring around the
+     per-repo File-Targets gate from the task reviews (AD-8). Check is repo-level, not file-by-file.
+     An out-of-bounds repo is a finding that flows into orchestrator mediation — not a hard gate. -->
+
+| Repo | Expected in Project? | Modified? | Status | Notes |
+|------|---------------------|-----------|--------|-------|
+| `{repo-name}` | ✅ / ❌ | ✅ / ❌ | ✅ In-bounds / ❌ Out-of-bounds | {Note or "—"} |
 
 ## Per-Requirement Audit
 
@@ -36,6 +53,8 @@ created: "{ISO-DATE}"
        - missing: the cumulative project does not deliver this requirement,
          or delivers only a partial slice that does not satisfy the
          requirement's acceptance criteria.
+     Judgment is holistic across all repos' diffs — a requirement satisfied by
+     evidence in any repo counts as met. No per-requirement repo attribution.
      F-ID is stable across this review doc and shared with the Quality Sweep
      table. Severity enum: low | medium | high | none. A `missing` requirement
      is a medium-severity finding at minimum.

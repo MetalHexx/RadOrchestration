@@ -18,7 +18,12 @@ created: "{ISO-DATE}"
 
 ## Scope
 
-<!-- Captures WHAT was reviewed and HOW it was scoped. Populated from workflow step 3. -->
+<!-- Captures WHAT was reviewed and HOW it was scoped. Populated from workflow step 3.
+     One sub-block per repo. The repos[] array in the spawn context supplies each repo's
+     phase_first_sha and phase_head_sha. Single-repo phases render one sub-block. -->
+
+<!-- Repeat the sub-block below for each repo in repos[]. -->
+### Repo: `{repo-name}`
 
 - **Commit range under review**: `{phase_first_sha}..{phase_head_sha}` (or `null — auto-commit off`)
 - **Diff command run**: `git diff <phase_first_sha>~1..<phase_head_sha>` (or `git diff HEAD` when either SHA is null)
@@ -27,6 +32,16 @@ created: "{ISO-DATE}"
   {Exact --stat output pasted verbatim. No approximations.}
   ```
 - **Untracked files inspected**: `{list paths, or "N/A — auto-commit on"}`
+
+## Repo Boundary Check
+
+<!-- Did the coder stay within the repos the phase declared? This is the outer ring around the
+     per-repo File-Targets gate in the task reviews (AD-8). Check is repo-level, not file-by-file.
+     An out-of-bounds repo is a finding that flows into orchestrator mediation — not a hard gate. -->
+
+| Repo | Declared in Phase? | Modified? | Status | Notes |
+|------|-------------------|-----------|--------|-------|
+| `{repo-name}` | ✅ / ❌ | ✅ / ❌ | ✅ In-bounds / ❌ Out-of-bounds | {Note or "—"} |
 
 ## Test Execution
 
