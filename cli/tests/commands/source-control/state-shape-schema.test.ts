@@ -90,4 +90,49 @@ describe('buildSourceControlState output validates against the v6 SourceControlS
     });
   }
 
+  // Backward-compat inversion (FR-20): the shim-only shape (old worktree_path +
+  // top-level branch/base_branch mirror fields, no repos[]) must now REJECT
+  // under the tightened v6 schema (additionalProperties: false + required repos[]).
+  it('rejects the legacy shim-only shape (FR-20): worktree_path + top-level branch/base_branch, no repos[]', () => {
+    const legacyShimOnly = {
+      worktree_path: '/home/user/worktrees/MR-X/rad-orc-source',
+      branch: 'radorch/p',
+      base_branch: 'main',
+      auto_commit: 'always',
+      auto_pr: 'never',
+    };
+    expect(validateSourceControl(legacyShimOnly)).toBe(false);
+    expect(validateSourceControl.errors).not.toBeNull();
+    expect((validateSourceControl.errors ?? []).length).toBeGreaterThan(0);
+  });
+
+  // Positive counterpart: the v6 builder output (repos[] + worktree_name) validates.
+  it('accepts the v6 repos[] builder output as the valid shape', () => {
+    const sc = buildSourceControlState({
+      worktreeName: 'MR-X',
+      autoCommit: 'always',
+      autoPr: 'never',
+      repos: [
+        {
+          name: 'fake-api',
+          branch: 'radorch/p',
+          base_branch: 'main',
+          remote_url: null,
+          compare_url: null,
+          pr_url: null,
+        },
+        {
+          name: 'fake-ui',
+          branch: 'radorch/p',
+          base_branch: 'main',
+          remote_url: null,
+          compare_url: null,
+          pr_url: null,
+        },
+      ],
+    });
+    expect(validateSourceControl(sc)).toBe(true);
+    expect(validateSourceControl.errors ?? []).toEqual([]);
+  });
+
 });
