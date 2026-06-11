@@ -141,8 +141,12 @@ function baseState(currentNodePath: string, phaseIteration: Record<string, unkno
     pipeline: {
       gate_mode: 'autonomous',
       source_control: {
-        branch: 'feature/syn', base_branch: 'main', worktree_path: '.',
-        auto_commit: 'always', auto_pr: 'never', remote_url: null, compare_url: null, pr_url: null,
+        worktree_name: 'cli-behavioral',
+        auto_commit: 'always',
+        auto_pr: 'never',
+        repos: [
+          { name: 'rad-orc-source', branch: 'feature/syn', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+        ],
       },
       current_tier: 'execution',
       halt_reason: null,

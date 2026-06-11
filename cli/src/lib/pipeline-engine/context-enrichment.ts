@@ -57,7 +57,7 @@ export function validateBaseShaChronology(
  *     eligible skill is present
  */
 function buildRepositorySkillsBlock(state: PipelineState): string {
-  const repoRoot = state.pipeline.source_control?.worktree_path ?? process.cwd();
+  const repoRoot = process.cwd();
   let arr;
   try {
     arr = buildSkillManifest({ repoRoot });
@@ -408,24 +408,24 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
       phase_id,
       task_number,
       task_id,
-      branch: state.pipeline.source_control?.branch ?? '',
-      worktree_path: state.pipeline.source_control?.worktree_path ?? '',
+      branch: state.pipeline.source_control?.repos?.[0]?.branch ?? '',
+      worktree_path: '',
     };
   }
 
   if (action === 'invoke_source_control_pr') {
     return {
       ...walkerContext,
-      branch: state.pipeline.source_control?.branch ?? '',
-      base_branch: state.pipeline.source_control?.base_branch ?? '',
-      worktree_path: state.pipeline.source_control?.worktree_path ?? '',
+      branch: state.pipeline.source_control?.repos?.[0]?.branch ?? '',
+      base_branch: state.pipeline.source_control?.repos?.[0]?.base_branch ?? '',
+      worktree_path: '',
     };
   }
 
   if (action === 'request_final_approval') {
     return {
       ...walkerContext,
-      pr_url: state.pipeline.source_control?.pr_url ?? null,
+      pr_url: state.pipeline.source_control?.repos?.[0]?.pr_url ?? null,
     };
   }
 
@@ -471,7 +471,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     // avoids spawning a subprocess and a hard dependency on `git` when
     // auto-commit is off (no commits collected). NFR-4.
     if (commits.length > 1) {
-      const worktree = state.pipeline.source_control?.worktree_path ?? process.cwd();
+      const worktree = process.cwd();
       let ordinal = new Map<string, number>();
       try {
         const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {

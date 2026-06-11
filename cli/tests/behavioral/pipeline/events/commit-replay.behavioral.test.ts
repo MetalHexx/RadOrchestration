@@ -22,7 +22,7 @@ function projectGraph2State(): PipelineState {
     nodes: { task_loop: { kind: 'for_each_task', status: 'completed', iterations: [completedTask(hash)] } },
   });
   return {
-    pipeline: { source_control: { branch: 'PROJECT-GRAPH-2', worktree_path: '.' } },
+    pipeline: { source_control: { worktree_name: 'PROJECT-GRAPH-2', auto_commit: 'never', auto_pr: 'never', repos: [{ name: 'rad-orc-source', branch: 'PROJECT-GRAPH-2', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }] } },
     graph: {
       status: 'in_progress',
       current_node_path: 'phase_loop[3].corrective_tasks[1].commit',

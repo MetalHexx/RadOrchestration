@@ -1052,8 +1052,11 @@ mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): Mu
         'Source control must be initialized via `radorch source-control init` before PR creation.'
       );
     }
-    cloned.pipeline.source_control.pr_url = (context.pr_url ?? null) as string | null;
-    mutations_applied.push(`set pipeline.source_control.pr_url = ${context.pr_url ?? 'null'}`);
+    const firstRepo = cloned.pipeline.source_control.repos[0];
+    if (firstRepo !== undefined) {
+      firstRepo.pr_url = (context.pr_url ?? null) as string | null;
+      mutations_applied.push(`set pipeline.source_control.repos[0].pr_url = ${context.pr_url ?? 'null'}`);
+    }
   }
 
   return { state: cloned, mutations_applied };

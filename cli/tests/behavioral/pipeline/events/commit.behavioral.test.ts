@@ -122,14 +122,12 @@ const afterCommitStartedState = {
   pipeline: {
     gate_mode: 'task',
     source_control: {
-      branch: 'feature/syn',
-      base_branch: 'main',
-      worktree_path: '.',
+      worktree_name: 'cli-behavioral',
       auto_commit: 'never',
       auto_pr: 'never',
-      remote_url: null,
-      compare_url: null,
-      pr_url: null,
+      repos: [
+        { name: 'rad-orc-source', branch: 'feature/syn', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+      ],
     },
     current_tier: 'execution',
     halt_reason: null,
