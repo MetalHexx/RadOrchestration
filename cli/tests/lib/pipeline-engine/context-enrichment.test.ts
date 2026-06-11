@@ -273,21 +273,34 @@ describe('spawn_final_reviewer base/head SHA derivation — ≤1 commit short-ci
   function finalReviewState(commitHash: string | null): PipelineState {
     const s = makeV6State({ taskRepos: [{ name: 'backend', commit_hash: commitHash }] });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (s as any).pipeline = { ...(s as any).pipeline, source_control: { worktree_path: os.tmpdir() } };
+    (s as any).pipeline = {
+      ...(s as any).pipeline,
+      source_control: {
+        worktree_path: os.tmpdir(),
+        worktree_name: 'test-project',
+        auto_commit: 'always',
+        auto_pr: 'always',
+        repos: [{ name: 'backend', branch: 'b', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }],
+      },
+    };
     return s as unknown as PipelineState;
   }
 
-  it('returns null base/head and no error when no commits were collected (auto-commit off)', () => {
+  it('returns null base/head per repo and no error when no commits were collected (auto-commit off)', () => {
     const out = enrichActionContext(makeEnrichmentInput('spawn_final_reviewer', finalReviewState(null)));
-    expect(out.project_base_sha ?? null).toBeNull();
-    expect(out.project_head_sha ?? null).toBeNull();
+    expect(Array.isArray(out.repos)).toBe(true);
+    const repo = (out.repos as Array<Record<string, unknown>>)[0];
+    expect(repo.project_base_sha ?? null).toBeNull();
+    expect(repo.project_head_sha ?? null).toBeNull();
     expect(out.error).toBeUndefined();
   });
 
-  it('returns the single commit as both base and head with no error (one commit)', () => {
+  it('returns the single commit as both base and head per repo with no error (one commit)', () => {
     const out = enrichActionContext(makeEnrichmentInput('spawn_final_reviewer', finalReviewState('abc12345')));
-    expect(out.project_base_sha).toBe('abc12345');
-    expect(out.project_head_sha).toBe('abc12345');
+    expect(Array.isArray(out.repos)).toBe(true);
+    const repo = (out.repos as Array<Record<string, unknown>>)[0];
+    expect(repo.project_base_sha).toBe('abc12345');
+    expect(repo.project_head_sha).toBe('abc12345');
     expect(out.error).toBeUndefined();
   });
 });
@@ -398,5 +411,107 @@ describe('enrichment readers migrate to repos[] (FR-21, FR-22)', () => {
       { name: 'fake-ui', pr_url: 'https://x/ui/2' },
     ]);
     expect(ctx).not.toHaveProperty('pr_url');
+  });
+});
+
+describe('per-repo chronology and final SHAs (FR-3, FR-4)', () => {
+  const DEFAULT_CONFIG = { limits: { max_phases: 10, max_tasks_per_phase: 8 } } as unknown as OrchestrationConfig;
+
+  function buildTwoRepoProjectWithCommits(): PipelineState {
+    // api: [a1, a2], ui: [u1, u2] — two phases, each with one task iteration carrying two repos
+    return {
+      graph: {
+        nodes: {
+          phase_loop: {
+            kind: 'for_each_phase',
+            status: 'completed',
+            iterations: [
+              {
+                index: 0,
+                status: 'completed',
+                doc_path: null,
+                repos: [],
+                corrective_tasks: [],
+                nodes: {
+                  task_loop: {
+                    kind: 'for_each_task',
+                    status: 'completed',
+                    iterations: [
+                      {
+                        index: 0,
+                        status: 'completed',
+                        doc_path: null,
+                        repos: [
+                          { name: 'fake-api', commit_hash: 'a1' },
+                          { name: 'fake-ui', commit_hash: 'u1' },
+                        ],
+                        corrective_tasks: [],
+                        nodes: {},
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                index: 1,
+                status: 'completed',
+                doc_path: null,
+                repos: [],
+                corrective_tasks: [],
+                nodes: {
+                  task_loop: {
+                    kind: 'for_each_task',
+                    status: 'completed',
+                    iterations: [
+                      {
+                        index: 0,
+                        status: 'completed',
+                        doc_path: null,
+                        repos: [
+                          { name: 'fake-api', commit_hash: 'a2' },
+                          { name: 'fake-ui', commit_hash: 'u2' },
+                        ],
+                        corrective_tasks: [],
+                        nodes: {},
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      pipeline: {
+        gate_mode: null,
+        current_tier: 'execution',
+        halt_reason: null,
+        source_control: {
+          worktree_name: 'MULTI-REPO-5',
+          auto_commit: 'always',
+          auto_pr: 'always',
+          repos: [
+            { name: 'fake-api', branch: 'radorch/MULTI-REPO-5', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+            { name: 'fake-ui', branch: 'radorch/MULTI-REPO-5', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+          ],
+        },
+      },
+      project: { name: 'MULTI-REPO-5' },
+    } as unknown as PipelineState;
+  }
+
+  it('final reviewer groups base/head SHAs per repo (FR-3)', () => {
+    const state = buildTwoRepoProjectWithCommits(); // api: [a1,a2], ui: [u1,u2]
+    const ctx = enrichActionContext({ action: 'spawn_final_reviewer', walkerContext: {}, state, config: DEFAULT_CONFIG, cliContext: {} });
+    expect(ctx.repos).toEqual([
+      expect.objectContaining({ name: 'fake-api', project_base_sha: 'a1', project_head_sha: 'a2' }),
+      expect.objectContaining({ name: 'fake-ui', project_base_sha: 'u1', project_head_sha: 'u2' }),
+    ]);
+  });
+
+  it('validateBaseShaChronology names the offending repo on a per-repo violation (FR-4)', () => {
+    const ordinal = new Map([['aaaa1111', 2], ['bbbb2222', 1]]);
+    const err = validateBaseShaChronology(['aaaa1111', 'bbbb2222'], ordinal, 'fake-api');
+    expect(err).toMatch(/fake-api/);
   });
 });

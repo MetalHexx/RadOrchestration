@@ -20,10 +20,12 @@ import type {
  * @param commits - Traversal-ordered list of short SHAs (8-char prefix).
  * @param ordinal - Map from short SHA to 1-based chronological position
  *                  (lower = older) derived from `git rev-list --topo-order --reverse`.
+ * @param repoName - Optional repo name to include in the violation message (FR-4).
  */
 export function validateBaseShaChronology(
   commits: string[],
   ordinal: Map<string, number>,
+  repoName?: string,
 ): string | null {
   if (commits.length === 0) return null;
   const base = commits[0];
@@ -32,8 +34,9 @@ export function validateBaseShaChronology(
   for (const c of commits) {
     const o = ordinal.get(c);
     if (o !== undefined && o < baseOrd) {
+      const repoPrefix = repoName ? `repo '${repoName}': ` : '';
       return (
-        `project_base_sha chronology violation: selected base '${base}' (git position ${baseOrd}) ` +
+        `${repoPrefix}project_base_sha chronology violation: selected base '${base}' (git position ${baseOrd}) ` +
         `is not the earliest commit — '${c}' (git position ${o}) precedes it. ` +
         `A poisoned commit_hash likely contaminated base derivation.`
       );
@@ -517,84 +520,102 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     };
   }
 
-  // Iter 12 — spawn_final_reviewer enrichment. Derive project-wide diff SHAs
-  // from iteration commit hashes across the whole pipeline. Traversal order:
-  // phases in index order → tasks in index order → task-correctives in index
-  // order → then phase-correctives (per phase). `project_base_sha` is commits[0]
-  // (first in traversal order); `project_head_sha` is commits[last]. The
-  // pipeline invariant ensures phase correctives always land after all task
-  // commits within a phase. Both null when no commits exist (auto-commit=off).
+  // Iter 12 — spawn_final_reviewer enrichment. Derive per-repo diff SHAs from
+  // iteration commit hashes across the whole pipeline. Traversal order: phases
+  // in index order → tasks in index order → task-correctives in index order →
+  // then phase-correctives (per phase). Commits are accumulated per repo in a
+  // Map keyed by repo name. `project_base_sha` is the first commit for that
+  // repo; `project_head_sha` is the last. The pipeline invariant ensures phase
+  // correctives always land after all task commits within a phase. Both null
+  // when no commits exist (auto-commit=off). FR-3: per-repo grouping.
   if (action === 'spawn_final_reviewer') {
     const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
-    const commits: string[] = [];
+    const commitsByRepo = new Map<string, string[]>();
     const phaseIterations = phaseLoop?.iterations ?? [];
     for (const phaseIter of phaseIterations) {
       const taskLoop = phaseIter.nodes['task_loop'] as ForEachTaskNodeState | undefined;
       const taskIterations = taskLoop?.iterations ?? [];
       for (const taskIter of taskIterations) {
         for (const r of taskIter.repos ?? []) {
-          if (r.commit_hash != null) commits.push(r.commit_hash);
+          if (r.commit_hash != null) {
+            const bucket = commitsByRepo.get(r.name) ?? [];
+            bucket.push(r.commit_hash);
+            commitsByRepo.set(r.name, bucket);
+          }
         }
         for (const ct of taskIter.corrective_tasks ?? []) {
           for (const r of ct.repos ?? []) {
-            if (r.commit_hash != null) commits.push(r.commit_hash);
+            if (r.commit_hash != null) {
+              const bucket = commitsByRepo.get(r.name) ?? [];
+              bucket.push(r.commit_hash);
+              commitsByRepo.set(r.name, bucket);
+            }
           }
         }
       }
-      // Phase correctives are appended after task commits because phase_review fires only after all task iterations complete, making phase correctives chronologically last within a phase.
+      // Phase correctives are appended after task commits because phase_review
+      // fires only after all task iterations complete, making phase correctives
+      // chronologically last within a phase.
       for (const ct of phaseIter.corrective_tasks ?? []) {
         for (const r of ct.repos ?? []) {
-          if (r.commit_hash != null) commits.push(r.commit_hash);
+          if (r.commit_hash != null) {
+            const bucket = commitsByRepo.get(r.name) ?? [];
+            bucket.push(r.commit_hash);
+            commitsByRepo.set(r.name, bucket);
+          }
         }
       }
     }
 
-    const project_base_sha = commits.length > 0 ? commits[0] : null;
-    const project_head_sha = commits.length > 0 ? commits[commits.length - 1] : null;
-
-    // FR-7: Validate that the selected base SHA is chronologically the earliest
-    // commit in the project. A chronology violation requires at least two
-    // commits to order against each other, so skip the `git rev-list` invocation
-    // entirely for 0–1 commits: the check cannot fail there, and skipping it
-    // avoids spawning a subprocess and a hard dependency on `git` when
-    // auto-commit is off (no commits collected). NFR-4.
-    if (commits.length > 1) {
-      // Derive the chronology-check cwd from resolveWorktrees (not worktree_path —
-      // no stored absolute path is read per AD-2). Falls back to process.cwd() when
-      // resolveWorktrees fails or returns no paths.
-      let worktree = process.cwd();
-      try {
-        const paths = userDataPaths();
-        const projectId = (state as { project?: { name?: string } }).project?.name ?? '';
-        const refs = new WorkGraphService({ root: paths.root, worktreesDir: paths.worktrees }).resolveWorktrees(projectId);
-        const firstRef = refs.find(r => r.exists);
-        if (firstRef) worktree = firstRef.path;
-      } catch {
-        // resolveWorktrees failure is non-fatal — fall back to process.cwd()
-      }
-      let ordinal = new Map<string, number>();
-      try {
-        const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
-          cwd: worktree,
-          encoding: 'utf8',
-          maxBuffer: 10 * 1024 * 1024,
-        });
-        stdout.split('\n').map((s: string) => s.trim()).filter(Boolean).forEach((sha: string, i: number) => {
-          ordinal.set(sha.slice(0, 8), i + 1);
-        });
-      } catch {
-        ordinal = new Map();
-      }
-      const chronologyError = validateBaseShaChronology(commits.map((c: string) => c.slice(0, 8)), ordinal);
-      if (chronologyError) {
-        return { ...walkerContext, error: chronologyError };
+    // FR-4: For each repo with > 1 commits, validate chronology using that
+    // repo's own worktree path as the git cwd. A chronology violation requires
+    // at least two commits to order against each other, so skip the rev-list
+    // invocation entirely for 0–1 commits (the check cannot fail there, and
+    // skipping it avoids spawning a subprocess when auto-commit is off). NFR-4.
+    const reposArray = buildReposArray(state);
+    for (const entry of reposArray) {
+      const repoName = entry.name as string;
+      const commits = commitsByRepo.get(repoName) ?? [];
+      if (commits.length > 1) {
+        const repoPath = (entry.path as string) || process.cwd();
+        let ordinal = new Map<string, number>();
+        try {
+          const stdout = execFileSync('git', ['rev-list', '--topo-order', '--reverse', 'HEAD'], {
+            cwd: repoPath,
+            encoding: 'utf8',
+            maxBuffer: 10 * 1024 * 1024,
+          });
+          stdout.split('\n').map((s: string) => s.trim()).filter(Boolean).forEach((sha: string, i: number) => {
+            ordinal.set(sha.slice(0, 8), i + 1);
+          });
+        } catch {
+          ordinal = new Map();
+        }
+        const chronologyError = validateBaseShaChronology(
+          commits.map((c: string) => c.slice(0, 8)),
+          ordinal,
+          repoName,
+        );
+        if (chronologyError) {
+          return { ...walkerContext, error: chronologyError };
+        }
       }
     }
 
+    // Build repos[] with per-repo base/head SHAs.
+    const repos = reposArray.map(entry => {
+      const repoName = entry.name as string;
+      const commits = commitsByRepo.get(repoName) ?? [];
+      return {
+        ...entry,
+        project_base_sha: commits.length > 0 ? commits[0] : null,
+        project_head_sha: commits.length > 0 ? commits[commits.length - 1] : null,
+      };
+    });
+
     return {
       ...walkerContext,
-      project_base_sha,
-      project_head_sha,
+      repos,
     };
   }
 
