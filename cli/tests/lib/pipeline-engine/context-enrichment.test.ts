@@ -378,6 +378,14 @@ describe('per-action repos[] enrichment (FR-1, FR-2, FR-3)', () => {
     }
   });
 
+  it('execute_task throws when source_control is uninitialized (empty repos[]) — fail loud, not silent', () => {
+    const state = buildTwoRepoExecState();
+    // Simulate source-control init never having run: no per-repo entries to derive a path from.
+    (state.pipeline.source_control as { repos: unknown[] }).repos = [];
+    expect(() => enrichActionContext({ action: 'execute_task', walkerContext: {}, state, config: DEFAULT_CONFIG, cliContext: {} }))
+      .toThrow(/source-control|not initialized|no repos/i);
+  });
+
   it('spawn_code_reviewer groups head_sha per repo (FR-3)', () => {
     const state = buildTwoRepoExecState();
     const ctx = enrichActionContext({ action: 'spawn_code_reviewer', walkerContext: {}, state, config: DEFAULT_CONFIG, cliContext: {} });

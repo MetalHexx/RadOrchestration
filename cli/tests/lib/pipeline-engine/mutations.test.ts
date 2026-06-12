@@ -169,6 +169,19 @@ describe('commit_completed per-repo by-name mutation (FR-7, AD-4)', () => {
       ],
     })).not.toThrow();
   });
+
+  it('rejects a malformed row: commitHash present but committed:false (relay dropped the flag)', () => {
+    const state = buildTwoRepoState();
+    // A real commit whose `committed` flag was dropped in relay must fail loud,
+    // not silently skip (the MR-5-TEST footgun). The CLI guarantees
+    // committed:false ⇒ commitHash:null, so this only fires on a mis-relayed payload.
+    expect(() => applyCommitCompleted(state, {
+      phase: 1, task: 1,
+      repos: [
+        { name: 'fake-api', committed: false, commitHash: 'apihash1', pushed: false },
+      ],
+    })).toThrow(/committed/i);
+  });
 });
 
 // ── Two-repo state factory for PR tests ──────────────────────────────────────

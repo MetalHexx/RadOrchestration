@@ -384,6 +384,21 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
     }
 
     if (action === 'execute_task') {
+      // Source-control must be initialized before any task executes — the
+      // convention-derived repos[] is the coder's only source of a working
+      // path. An empty array means `pipeline.source_control` was never
+      // populated (init skipped), so fail loud here instead of handing the
+      // coder no working directory and letting the run die silently.
+      const repos = buildReposArray(state);
+      if (repos.length === 0) {
+        throw new Error(
+          `Cannot enrich execute_task for ${phase_id}/${task_id}: no repos resolved ` +
+          `(pipeline.source_control is not initialized). Run source-control init ` +
+          `(rad-execute Step 3 — 'radorch source-control init --project <name>') ` +
+          `before executing tasks.`
+        );
+      }
+
       const phaseLoop = state.graph.nodes['phase_loop'] as ForEachPhaseNodeState | undefined;
       const phaseIter = phaseLoop?.iterations[phaseNumber - 1];
 
@@ -403,7 +418,7 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         if (typeof phaseCorrectiveDoc === 'string' && phaseCorrectiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: phaseCorrectiveDoc, repos: buildReposArray(state) };
+          return { ...base, handoff_doc: phaseCorrectiveDoc, repos };
         }
       }
 
@@ -427,12 +442,12 @@ export function enrichActionContext(input: EnrichmentInput): Record<string, unkn
         if (typeof correctiveDoc === 'string' && correctiveDoc.trim().length > 0) {
           // Return the stored path unchanged (not the trimmed copy) so downstream
           // consumers see the value exactly as the mutation wrote it.
-          return { ...base, handoff_doc: correctiveDoc, repos: buildReposArray(state) };
+          return { ...base, handoff_doc: correctiveDoc, repos };
         }
       }
 
       const handoff_doc = taskIter?.doc_path ?? '';
-      return { ...base, handoff_doc, repos: buildReposArray(state) };
+      return { ...base, handoff_doc, repos };
     }
 
     if (action === 'spawn_code_reviewer') {

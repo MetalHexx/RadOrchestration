@@ -50,8 +50,12 @@ function assertHashWritable(entry: RepoCommitEntry, incoming: string | null): vo
 
 /**
  * For each entry in signalRepos, finds or creates the matching entry in repos
- * by name and sets commit_hash when committed=true. A committed=false row is a
- * no-op (clean skip — never a rejection).
+ * by name and sets commit_hash when committed=true. A committed=false row with
+ * no commitHash is a no-op (clean skip — never a rejection). A committed=false
+ * row that nonetheless carries a commitHash is malformed (a real commit whose
+ * `committed` flag was dropped in relay) and is rejected loudly — the CLI
+ * guarantees committed:false ⇒ commitHash:null, so this only fires on a
+ * mis-relayed payload.
  */
 function applyPerRepoCommitHashes(
   repos: RepoCommitEntry[],
@@ -60,7 +64,17 @@ function applyPerRepoCommitHashes(
   label: string,
 ): void {
   for (const row of signalRepos) {
-    if (!row.committed) continue; // clean skip — not an error
+    if (!row.committed) {
+      if (row.commitHash != null) {
+        throw new Error(
+          `commit_completed refused: repo '${row.name}' carries commitHash ` +
+          `'${row.commitHash}' but committed is false/absent. A committed row must set ` +
+          `committed:true — relay the source-control agent's result array verbatim ` +
+          `(every field of each row, including committed).`
+        );
+      }
+      continue; // clean skip — nothing was committed for this repo
+    }
     let entry = repos.find(r => r.name === row.name);
     if (!entry) {
       entry = { name: row.name, commit_hash: null };
@@ -1010,10 +1024,12 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
 
     return { state: cloned, mutations_applied };
   } catch (err) {
-    // Re-throw errors that originate from the hash-overwrite guard (assertHashWritable)
-    // so they propagate as loud, diagnosable rejections rather than being swallowed
-    // by the generic node-resolution error message below (DD-1, NFR-3).
-    if (err instanceof Error && /immutable|overwrite|already recorded|finalized/i.test(err.message)) {
+    // Re-throw the loud per-repo guards (hash-overwrite via assertHashWritable,
+    // and the malformed committed:false-with-hash rejection) so they propagate
+    // as diagnosable rejections rather than being swallowed by the generic
+    // node-resolution error message below (DD-1, NFR-3). Both share the
+    // `commit_completed refused:` prefix.
+    if (err instanceof Error && /commit_completed refused|immutable|overwrite|already recorded|finalized/i.test(err.message)) {
       throw err;
     }
     if (context.phase === undefined) {

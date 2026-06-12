@@ -16,4 +16,4 @@ signal_payload:
     description: Task number. Auto-resolved from the active in-progress task when omitted.
 ---
 
-Confirm the agent's `## Commit Result` block reported a per-repo result array where each entry carries a non-empty `commitHash` and a boolean `pushed`. Signaling records each commit hash against the matching task-iteration repo by name.
+Confirm the agent's `## Commit Result` array — each row carries `committed: true`, a non-empty `commitHash`, and a boolean `pushed`. Relay it unchanged: the mutation records a hash only when `committed` is true and silently skips any row missing it. Hashes match to task-iteration repos by name.
