@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { driveToExecutionWithConfig, DEFAULT_CONFIG, PROJECT_DIR } from './parity-states.js';
+import { driveToExecutionWithConfig, DEFAULT_CONFIG } from './parity-states.js';
 
 describe('shared fixtures build the v6 repos[] shape (NFR-7, FR-20)', () => {
   it('initSourceControlForTests seeds repos[] and no compat fields', () => {
@@ -15,7 +15,9 @@ describe('shared fixtures build the v6 repos[] shape (NFR-7, FR-20)', () => {
 
   it('seedExplosionStateFor seeds task iterations carrying repos[] not a scalar commit_hash', () => {
     const io = driveToExecutionWithConfig(DEFAULT_CONFIG, 1, 2);
-    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as any;
+    const phaseLoop = io.currentState!.graph.nodes['phase_loop'] as {
+      iterations: Array<{ nodes: Record<string, { iterations: Array<Record<string, unknown>> }> }>;
+    };
     const ti = phaseLoop.iterations[0].nodes['task_loop'].iterations[0];
     expect(Array.isArray(ti.repos)).toBe(true);
     expect(ti).not.toHaveProperty('commit_hash');

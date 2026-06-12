@@ -9,7 +9,6 @@
 import { describe, it, expect } from 'vitest';
 import { processEvent } from '../../../src/lib/pipeline-engine/engine.js';
 import type {
-  PipelineState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
   IterationEntry,

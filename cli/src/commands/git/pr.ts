@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineCommand } from '../../framework/command.js';
+import { UserError } from '../../framework/errors.js';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface GhPrResult {
@@ -123,9 +124,10 @@ export function ghPrFanOut(opts: GhPrFanOutOptions): FanOutResult[] {
 
   // Pass 1: create all PRs
   const created: Array<{ name: string; pr_url: string; pr_number: number | null }> = [];
-  for (const repo of opts.repos) {
-    // Write description to a temp body-file so ghPr can use it
-    const bodyFile = join(tmpdir(), `rad-pr-body-${repo.name}-${Date.now()}.md`);
+  for (const [i, repo] of opts.repos.entries()) {
+    // Write description to a temp body-file so ghPr can use it. The index keeps
+    // the filename unique even if two repos shared a name and Date.now() repeated.
+    const bodyFile = join(tmpdir(), `rad-pr-body-${repo.name}-${i}-${Date.now()}.md`);
     writeFileSync(bodyFile, repo.description, 'utf8');
 
     const result = ghPr({
@@ -141,9 +143,16 @@ export function ghPrFanOut(opts: GhPrFanOutOptions): FanOutResult[] {
       throw new Error(`Failed to create PR for ${repo.name}: ${result.message}`);
     }
 
+    // Fail loud rather than recording a placeholder. By here ghPr reported either
+    // a created or an existing PR, both of which carry a URL; a missing/empty url
+    // is a contract violation, not a value to swallow into ''.
+    if (!result.pr_url) {
+      throw new Error(`PR creation for ${repo.name} returned no URL despite reporting success`);
+    }
+
     created.push({
       name: repo.name,
-      pr_url: result.pr_url ?? '',
+      pr_url: result.pr_url,
       pr_number: result.pr_number,
     });
   }
@@ -157,7 +166,7 @@ export function ghPrFanOut(opts: GhPrFanOutOptions): FanOutResult[] {
       const linkedSection = '\n\n## Linked PRs\n' + siblings.map(s => `- ${s.name}: ${s.pr_url}`).join('\n');
       const combinedBody = repo.description + linkedSection;
 
-      const bodyFile = join(tmpdir(), `rad-pr-xlink-${repo.name}-${Date.now()}.md`);
+      const bodyFile = join(tmpdir(), `rad-pr-xlink-${repo.name}-${i}-${Date.now()}.md`);
       writeFileSync(bodyFile, combinedBody, 'utf8');
 
       if (pr.pr_number !== null) {
@@ -196,8 +205,13 @@ export const gitPrCommand = defineCommand({
   handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
     // Fan-out mode: --repos '<json>'
     if (args.repos) {
-      const repoList = JSON.parse(args.repos) as FanOutRepo[];
-      return ghPrFanOut({ repos: repoList });
+      let parsed: unknown;
+      try { parsed = JSON.parse(args.repos); }
+      catch (e) { throw new UserError(`--repos must be valid JSON: ${(e as Error).message}`); }
+      if (!Array.isArray(parsed)) {
+        throw new UserError('--repos must be a JSON array of {name, path, branch, baseBranch, title, description} objects');
+      }
+      return ghPrFanOut({ repos: parsed as FanOutRepo[] });
     }
     // Single-repo mode (original behaviour)
     // runCommand throws UserError for missing required args before reaching this

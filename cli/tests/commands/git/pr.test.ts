@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ghPr, ghPrFanOut } from '../../../src/commands/git/pr.js';
+import { ghPr, ghPrFanOut, gitPrCommand } from '../../../src/commands/git/pr.js';
+import { UserError } from '../../../src/framework/errors.js';
 
 // Helper used by ghPrFanOut tests
 function makeFakeGh(
@@ -118,5 +119,36 @@ describe('ghPrFanOut — two-pass create-then-cross-link (FR-8)', () => {
     const out = ghPrFanOut({ repos: [{ name: 'fake-api', path: '/wt/api', branch: 'b', baseBranch: 'main', title: 'P', description: 'a' }], exec });
     expect(out).toEqual([{ name: 'fake-api', pr_url: 'https://x/api/1' }]);
     expect(calls.some(c => c.includes('pr edit'))).toBe(false);
+  });
+
+  it('fails loud when gh pr create returns an empty URL (no silent "" record)', () => {
+    // gh "succeeds" but yields no URL — must throw, not push pr_url: ''.
+    const exec = (file: string, args: string[]): string => {
+      if (args[0] === 'auth') return '';
+      if (file === 'git' && args[0] === 'remote') return 'origin\n';
+      if (args[1] === 'list') return '[]';   // no existing PR
+      if (args[1] === 'create') return '\n'; // empty URL despite success
+      return '';
+    };
+    expect(() => ghPrFanOut({
+      repos: [{ name: 'fake-api', path: '/wt/api', branch: 'b', baseBranch: 'main', title: 'P', description: 'a' }],
+      exec,
+    })).toThrow(/returned no URL/i);
+  });
+});
+
+describe('git-pr handler — guarded --repos parsing (C3)', () => {
+  const ctx = {} as never;
+
+  it('throws a UserError on invalid --repos JSON', async () => {
+    await expect(
+      gitPrCommand.handler({ args: { repos: '{not valid json' }, flags: {}, ctx }),
+    ).rejects.toBeInstanceOf(UserError);
+  });
+
+  it('throws a UserError when --repos JSON is valid but not an array', async () => {
+    await expect(
+      gitPrCommand.handler({ args: { repos: '{"name":"x"}' }, flags: {}, ctx }),
+    ).rejects.toThrow(/array/i);
   });
 });

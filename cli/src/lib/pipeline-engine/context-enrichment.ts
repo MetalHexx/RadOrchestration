@@ -247,7 +247,7 @@ function buildReposArray(
   perRepoSha?: (entry: { name: string }) => string | null | undefined,
 ): Array<Record<string, unknown>> {
   const scRepos = state.pipeline.source_control?.repos ?? [];
-  let resolvedPaths: Record<string, string> = {};
+  const resolvedPaths: Record<string, string> = {};
   try {
     const paths = userDataPaths();
     const projectId = (state as { project?: { name?: string } }).project?.name ?? '';

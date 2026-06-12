@@ -75,6 +75,19 @@ function applyPerRepoCommitHashes(
       }
       continue; // clean skip — nothing was committed for this repo
     }
+    // committed:true must carry a real hash. A null/empty hash on a committed row
+    // would silently record no hash, collapsing the reviewer's diff scope to
+    // `git diff HEAD`. The commit CLI never emits this (committed ⇒ commitHash), so
+    // it only fires on a mis-relayed payload — reject it loudly, symmetric with the
+    // committed:false-with-hash guard above.
+    if (row.commitHash == null || row.commitHash === '') {
+      throw new Error(
+        `commit_completed refused: repo '${row.name}' reports committed:true but carries no ` +
+        `commit hash (commitHash is ${row.commitHash === '' ? 'empty' : 'null'}). A committed ` +
+        `repo must report its commit hash — relay the source-control agent's result array verbatim ` +
+        `(every field of each row, including commitHash).`
+      );
+    }
     let entry = repos.find(r => r.name === row.name);
     if (!entry) {
       entry = { name: row.name, commit_hash: null };
@@ -975,6 +988,19 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     mutations_applied.push('set commit.status = completed');
 
     const signalRepos = (context.repos as SignalRepoRow[] | undefined) ?? [];
+
+    // A commit_completed signal must relay the source-control agent's per-repo
+    // result array. An empty/missing repos[] would complete the commit node and
+    // advance the walker without recording any hash — a silent correctness hole.
+    // (The legitimate "nothing changed" case is a non-empty array of committed:false
+    // rows, not an empty array, so this never rejects a real clean-skip.)
+    if (signalRepos.length === 0) {
+      throw new Error(
+        `commit_completed refused: no per-repo result payload (repos[] is missing or empty). ` +
+        `The commit signal must relay the source-control agent's result array via --repos '<json>'; ` +
+        `advancing without it would complete the commit step recording zero commit hashes.`
+      );
+    }
 
     // Iter 12 (P04-T02) — array-shaped signal. The commit CLI emits a per-repo
     // result array; we fan the hashes into the matching repos[] entry by name,

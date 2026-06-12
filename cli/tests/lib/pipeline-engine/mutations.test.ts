@@ -182,6 +182,30 @@ describe('commit_completed per-repo by-name mutation (FR-7, AD-4)', () => {
       ],
     })).toThrow(/committed/i);
   });
+
+  it('rejects a committed:true row carrying no commit hash (relay dropped the hash)', () => {
+    const state = buildTwoRepoState();
+    // committed:true ⇒ commitHash must be present. A null hash here would silently
+    // record nothing, collapsing the reviewer's diff scope. Symmetric with the
+    // committed:false-with-hash guard — fail loud on the mis-relay.
+    expect(() => applyCommitCompleted(state, {
+      phase: 1, task: 1,
+      repos: [
+        { name: 'fake-api', committed: true, commitHash: null, pushed: true },
+      ],
+    })).toThrow(/commit_completed refused.*commit hash/is);
+  });
+
+  it('rejects a missing/empty repos[] payload (would complete recording zero hashes)', () => {
+    const state = buildTwoRepoState();
+    // An empty array — or an absent repos key — must not silently complete the
+    // commit node. The legitimate clean-skip case is a non-empty array of
+    // committed:false rows, not an empty array.
+    expect(() => applyCommitCompleted(state, { phase: 1, task: 1, repos: [] }))
+      .toThrow(/commit_completed refused.*repos\[\]/is);
+    expect(() => applyCommitCompleted(state, { phase: 1, task: 1 }))
+      .toThrow(/commit_completed refused.*repos\[\]/is);
+  });
 });
 
 // ── Two-repo state factory for PR tests ──────────────────────────────────────
