@@ -45,6 +45,28 @@ describe('stampLastWriter', () => {
     const ij = await readInstallJson(file);
     expect(ij.harnesses.claude?.last_writer_version).toBe('1.2.0');
   });
+
+  it('does not rewrite the file when the version is equal (no churn)', async () => {
+    const file = path.join(tmp, 'install.json');
+    await writeInstallJson(file, {
+      harnesses: {
+        claude: {
+          version: '1.2.0',
+          channel: 'standard',
+          installed_at: '2026-05-08T00:00:00.000Z',
+          last_writer_version: '1.2.0',
+        },
+      },
+    });
+    const before = (await fs.stat(file)).mtimeMs;
+    await new Promise((r) => setTimeout(r, 15));
+    await stampLastWriter(file, '1.2.0');
+    const ij = await readInstallJson(file);
+    expect(ij.harnesses.claude?.last_writer_version).toBe('1.2.0');
+    // A no-op stamp must not rewrite install.json — every rewrite is a chance to
+    // orphan a temp under concurrent access (the install.json.tmp litter).
+    expect((await fs.stat(file)).mtimeMs).toBe(before);
+  });
 });
 
 describe('checkVersionSkew', () => {
