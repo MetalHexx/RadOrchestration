@@ -10,6 +10,20 @@ This skill is a router. Each operation dispatches to a reference document. Read 
 
 ---
 
+## Fan-out model
+
+Commit and PR operations work across one or more repos in a single CLI call. The agent composes one commit message or PR description per repo, then passes the full array to the CLI via `--repos '<json>'`. No additional agent tool calls are needed — the CLI handles all repos in one pass and returns a structured per-repo result.
+
+**Failure semantics:**
+
+- **Commit failure** — if a repo's commit fails, halt immediately and name the failing repo. Do not continue to remaining repos.
+- **Push failure** — if push fails for a repo, mark that repo as `pushed: false` and continue. The commit itself is still a success.
+- **No-change repo** — a repo with no staged changes is a clean skip (`committed: false`). Relay it as-is; the pipeline ignores it without error.
+
+The agent runs on the haiku model. All inputs (repo names, paths, branch names, messages, PR descriptions) come from the spawn prompt — no interactive prompting.
+
+---
+
 ## Shared JSON-Envelope Convention
 
 All `radorch` CLI calls emit a single JSON envelope on stdout:
@@ -31,4 +45,4 @@ Read result fields from inside `data` and emit the corresponding markdown block.
 | Create worktree | main session | false (interactive + project state) | [`references/working-with-worktrees.md`](references/working-with-worktrees.md) |
 | Clean up worktree | main session | false (interactive + project state) | [`references/working-with-worktrees.md`](references/working-with-worktrees.md) |
 
-> **Triad note:** Worktree lifecycle (create and clean up) lives in the **act lane** of the orchestration triad. This supersedes the earlier "worktree creation is outside all three lanes" stance from PROJECT-GRAPH-2. Commit and PR remain subagent operations and are never reached by the interactive worktree flow.
+> **Triad note:** Worktree lifecycle (create and clean up) lives in the **act lane** of the orchestration triad. Commit and PR remain subagent operations and are never reached by the interactive worktree flow.

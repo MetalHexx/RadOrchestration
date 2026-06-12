@@ -74,7 +74,6 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
     worktreeName = project,
     inPlace = false,
     worktreesDir = '',
-    sideProjectsDir = '',
     projectDir = project,
   } = opts;
 
@@ -101,11 +100,6 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
     in_place?: boolean;
   }>;
 
-  // Non-empty compat worktree path for repos[0] — written as the top-level
-  // `worktree_path` so downstream context-enrichment has a real repo root
-  // instead of '' (which prior builds emitted).
-  let compatWorktreePath = '';
-
   if (projectType === 'side-project') {
     // FR-9: fixed side-project binding
     repoEntries = repos.map((name) => ({
@@ -116,13 +110,6 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
       compare_url: null,
       pr_url: null,
     }));
-    // Side-projects live at <sideProjectsDir>/<project> (one repo == the project).
-    // Mirror that convention for repos[0]; fall back to the legacy empty value
-    // only when no sideProjectsDir was threaded in.
-    const firstRepo = repos[0];
-    if (firstRepo !== undefined && sideProjectsDir) {
-      compatWorktreePath = path.join(sideProjectsDir, firstRepo);
-    }
   } else if (inPlace) {
     // Single-repo in-place binding — read branch from the registry-resolved main-clone path
     const repo = repos[0]!;
@@ -137,8 +124,6 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
       pr_url: null,
       in_place: true,
     }];
-    // In-place: the repo root is the resolved clone path itself.
-    compatWorktreePath = clonePath;
   } else {
     // Standard mode: FR-7 — read branch from each on-disk worktree
     repoEntries = [];
@@ -146,10 +131,6 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
       const wtPath = worktreesDir
         ? path.join(worktreesDir, worktreeName, repo)
         : path.join(worktreeName, repo);
-      // Capture repos[0]'s worktree path as the compat top-level value.
-      if (compatWorktreePath === '') {
-        compatWorktreePath = wtPath;
-      }
       const facts = opts.readWorktreeFacts(wtPath);
 
       // FR-8: fail loud naming the repo and pointing at recovery command (DD-4)
@@ -177,7 +158,6 @@ export function sourceControlInit(opts: SourceControlInitOptions): SourceControl
     autoCommit,
     autoPr,
     repos: repoEntries,
-    worktreePath: compatWorktreePath,
   });
 
   // AD-2: mutate state.json directly, no event round-trip

@@ -22,7 +22,7 @@ function projectGraph2State(): PipelineState {
     nodes: { task_loop: { kind: 'for_each_task', status: 'completed', iterations: [completedTask(hash)] } },
   });
   return {
-    pipeline: { source_control: { branch: 'PROJECT-GRAPH-2', worktree_path: '.' } },
+    pipeline: { source_control: { worktree_name: 'PROJECT-GRAPH-2', auto_commit: 'never', auto_pr: 'never', repos: [{ name: 'rad-orc-source', branch: 'PROJECT-GRAPH-2', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }] } },
     graph: {
       status: 'in_progress',
       current_node_path: 'phase_loop[3].corrective_tasks[1].commit',
@@ -49,7 +49,10 @@ describe('PROJECT-GRAPH-2 stale-context replay (FR-12)', () => {
   it('rejects the stale P01-T01 echo and leaves the genuine hash unchanged (FR-12, DD-1)', () => {
     const state = projectGraph2State();
     const mut = getMutation('commit_completed')!;
-    const ctx = { event: 'commit_completed', project_dir: '', config_path: '', commit_hash: '1436cd63', phase: 1, task: 1 } as unknown as EventContext;
+    // P04-T02: signal is now array-shaped; scalar commit_hash retired.
+    const ctx = { event: 'commit_completed', project_dir: '', config_path: '',
+      repos: [{ name: 'rad-orc-source', committed: true, commitHash: '1436cd63', pushed: true }],
+      phase: 1, task: 1 } as unknown as EventContext;
     // Layer 1 (handler guard) — the stale echo against finalized P01-T01 throws.
     expect(() => mut(state, ctx, cfg, tmpl)).toThrow(/overwrite|immutable|finalized/i);
     // The genuine P01-T01 hash is untouched.

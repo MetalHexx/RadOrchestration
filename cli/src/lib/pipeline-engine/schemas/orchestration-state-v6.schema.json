@@ -472,13 +472,12 @@
     },
     "SourceControlState": {
       "title": "Source Control State",
-      "description": "Source control configuration and runtime state for the project. Does not include commit_hash (tracked per-iteration instead).",
+      "description": "Source control configuration and runtime state for the project. v6 shape: worktree_name + repos[] + auto_commit + auto_pr. No stored path fields. Does not include commit_hash (tracked per-iteration instead).",
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "branch",
-        "base_branch",
-        "worktree_path",
+        "worktree_name",
+        "repos",
         "auto_commit",
         "auto_pr"
       ],
@@ -490,7 +489,7 @@
         },
         "repos": {
           "title": "Per-Repo Source Control Facts",
-          "description": "v6 per-repo source-control facts (no stored path). Authoritative in v6; the sibling top-level remote_url/compare_url/pr_url are retained as legacy single-repo compat fields and are optional.",
+          "description": "v6 per-repo source-control facts. No path stored; per-repo branch/base_branch/URLs live here.",
           "type": "array",
           "items": {
             "type": "object",
@@ -507,56 +506,17 @@
             }
           }
         },
-        "branch": {
-          "title": "Feature Branch",
-          "description": "Git branch name used for the project's code changes.",
-          "type": "string"
-        },
-        "base_branch": {
-          "title": "Base Branch",
-          "description": "Git branch to merge into when the pull request is created.",
-          "type": "string"
-        },
-        "worktree_path": {
-          "title": "Worktree Path",
-          "description": "Absolute path to the git worktree directory for this project.",
-          "type": "string"
-        },
         "auto_commit": {
           "title": "Auto Commit Mode",
-          "description": "Controls when commits are made automatically. Values: ask, always, never.",
+          "description": "Controls when commits are made automatically. Values: always, never.",
           "type": "string",
-          "enum": ["ask", "always", "never"]
+          "enum": ["always", "never"]
         },
         "auto_pr": {
           "title": "Auto PR Mode",
-          "description": "Controls when pull requests are created automatically. Values: ask, always, never.",
+          "description": "Controls when pull requests are created automatically. Values: always, never.",
           "type": "string",
-          "enum": ["ask", "always", "never"]
-        },
-        "remote_url": {
-          "title": "Remote URL",
-          "description": "URL of the remote repository, or null if not configured.",
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ]
-        },
-        "compare_url": {
-          "title": "Compare URL",
-          "description": "URL to compare the feature branch against base branch, or null if not yet available.",
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ]
-        },
-        "pr_url": {
-          "title": "Pull Request URL",
-          "description": "URL of the created pull request, or null if not yet created.",
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ]
+          "enum": ["always", "never"]
         }
       }
     },

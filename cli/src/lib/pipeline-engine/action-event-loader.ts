@@ -17,7 +17,7 @@ export interface EventFrontmatter {
   name: string;
   title: string;
   description: string;
-  signal_payload: Record<string, { required: boolean; description: string }>;
+  signal_payload: Record<string, { required: boolean; description: string; array?: boolean }>;
 }
 
 export type Frontmatter = ActionFrontmatter | EventFrontmatter;
@@ -78,6 +78,9 @@ export function parseActionEventFile(text: string, filename: string): ParsedActi
       const d = def as Record<string, unknown>;
       if (typeof d?.['required'] !== 'boolean' || typeof d?.['description'] !== 'string') {
         throw new Error(`File '${filename}' signal_payload['${flag}'] must be { required: boolean, description: string }.`);
+      }
+      if (d['array'] !== undefined && typeof d['array'] !== 'boolean') {
+        throw new Error(`File '${filename}' signal_payload['${flag}'].array must be a boolean when present.`);
       }
     }
   }

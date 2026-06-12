@@ -67,12 +67,20 @@ export async function pipelineSignal(input: PipelineSignalInput): Promise<Pipeli
   return { ok: true, data };
 }
 
+export function parseReposFlag(raw: string): Array<Record<string, unknown>> {
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { throw new Error(`--repos must be valid JSON: ${(e as Error).message}`); }
+  if (!Array.isArray(parsed)) throw new Error('--repos must be a JSON array of per-repo result objects');
+  return parsed as Array<Record<string, unknown>>;
+}
+
 interface SignalArgs { event?: string; 'project-dir'?: string }
 interface SignalFlags {
   'doc-path'?: string; phase?: string; task?: string; 'gate-mode'?: string; 'gate-type'?: string;
   verdict?: string; branch?: string; reason?: string; 'commit-hash'?: string; pushed?: string;
   'compare-url'?: string; 'pr-url'?: string; template?: string; step?: string;
-  'parse-error'?: string; config?: string;
+  'parse-error'?: string; config?: string; repos?: string;
 }
 
 export const pipelineSignalCommand = defineCommand({
@@ -99,6 +107,7 @@ export const pipelineSignalCommand = defineCommand({
     step: { description: 'Internal step identifier carried by *_started events from the v5 DAG walker', type: 'string' },
     'parse-error': { description: 'JSON object { line, expected, found, message } carried on explosion_failed', type: 'string' },
     config: { description: 'Override path to orchestration.yml; default ~/.radorc/orchestration.yml', type: 'string' },
+    repos: { description: "JSON array of per-repo commit/PR results, e.g. '[{\"name\":...}]'", type: 'string' },
   },
   handler: async ({ args, flags }: { args: SignalArgs; flags: SignalFlags; ctx: CommandContext }) => {
     const event = args.event!;
@@ -124,6 +133,10 @@ export const pipelineSignalCommand = defineCommand({
       const pe = parseParseErrorFlag(flags['parse-error']);
       if (!pe.ok) return { ok: false as const, data: { event, field: pe.error.field }, error: { type: 'user_error' as const, message: pe.error.message } };
       context['parse_error'] = pe.value;
+    }
+    if (flags.repos !== undefined) {
+      try { context['repos'] = parseReposFlag(flags.repos); }
+      catch (e) { return { ok: false as const, data: { event, field: 'repos' }, error: { type: 'user_error' as const, message: (e as Error).message } }; }
     }
     return pipelineSignal({ event, projectDir, context, configPath: flags.config });
   },

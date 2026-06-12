@@ -1,8 +1,34 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildSkillManifest } from '../../src/lib/skill-manifest.js';
+import { buildSkillManifest, buildSkillManifestPerRepo } from '../../src/lib/skill-manifest.js';
+
+// ---------------------------------------------------------------------------
+// Shared fixture setup for buildSkillManifestPerRepo tests
+// ---------------------------------------------------------------------------
+const fixtureRoots: Record<string, string> = {};
+
+function fixtureRoot(name: string): string {
+  return fixtureRoots[name]!;
+}
+
+beforeAll(() => {
+  // api-with-skill: has one non-rad- SKILL.md for "deploy-helper"
+  const apiRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-per-repo-api-'));
+  const skillDir = path.join(apiRoot, 'skills', 'deploy-helper');
+  fs.mkdirSync(skillDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(skillDir, 'SKILL.md'),
+    '---\nname: deploy-helper\ndescription: Deploy helper\n---\n',
+    'utf8',
+  );
+  fixtureRoots['api-with-skill'] = apiRoot;
+
+  // ui-no-skill: empty directory — no SKILL.md
+  const uiRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-per-repo-ui-'));
+  fixtureRoots['ui-no-skill'] = uiRoot;
+});
 
 function writeSkill(dir: string, name: string, body: string) {
   fs.mkdirSync(dir, { recursive: true });
@@ -58,5 +84,19 @@ describe('buildSkillManifest', () => {
     writeSkill(path.join(root, 'prompt-tests/y/skills/y'), 'y', '---\nname: y\ndescription: hidden\n---\n');
     writeSkill(path.join(root, '.git/skills/z'), 'z', '---\nname: z\ndescription: hidden\n---\n');
     expect(buildSkillManifest({ repoRoot: root }).map(e => e.name)).toEqual(['deep']);
+  });
+});
+
+describe('buildSkillManifestPerRepo — repo-tagged (FR-18)', () => {
+  it('tags each discovered skill with its repo name', () => {
+    const out = buildSkillManifestPerRepo({
+      repos: [
+        { name: 'fake-api', root: fixtureRoot('api-with-skill') },
+        { name: 'fake-ui', root: fixtureRoot('ui-no-skill') },
+      ],
+    });
+    expect(out).toEqual([
+      { name: 'deploy-helper', description: 'Deploy helper', path: expect.any(String), repo: 'fake-api' },
+    ]);
   });
 });

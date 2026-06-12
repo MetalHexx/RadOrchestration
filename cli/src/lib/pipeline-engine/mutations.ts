@@ -7,6 +7,7 @@ import type {
   MutationResult,
   IterationEntry,
   CorrectiveTaskEntry,
+  RepoCommitEntry,
   NodeDef,
   StepNodeDef,
   ForEachPhaseNodeState,
@@ -19,20 +20,82 @@ import { EVENTS, VALID_VERDICTS, REVIEW_VERDICTS } from './constants.js';
 import { scaffoldNodeState } from './scaffold.js';
 import { resolveActivePhaseIndex, resolveActiveTaskIndex } from './context-enrichment.js';
 
+// ── Per-repo commit signal shape ──────────────────────────────────────────────
+
+interface SignalRepoRow {
+  name: string;
+  committed: boolean;
+  commitHash: string | null;
+  pushed: boolean;
+}
+
 // ── Hash-overwrite guard ──────────────────────────────────────────────────────
 
 // Hash-equal (allow) vs hash-differs (reject) idempotency rule. Reads the
-// durable existing hash on the entry being written; refuses to overwrite a
-// non-null hash with a different non-null value. Null existing hash (first
-// write) and equal incoming hash (idempotent retry) are allowed.
-function assertHashWritable(repos: Array<{ name: string; commit_hash: string | null }> | undefined, incoming: string | null): void {
-  const existing = repos && repos.length > 0 ? repos[0].commit_hash : null;
+// durable existing hash on the specific entry being written; refuses to
+// overwrite a non-null hash with a different non-null value. Null existing
+// hash (first write) and equal incoming hash (idempotent retry) are allowed.
+function assertHashWritable(entry: RepoCommitEntry, incoming: string | null): void {
+  const existing = entry.commit_hash;
   if (existing != null && incoming != null && existing !== incoming) {
     throw new Error(
       `commit_completed refused: would overwrite a finalized commit_hash ` +
       `('${existing}' → '${incoming}') on an already-recorded node. ` +
       `A finalized commit hash is immutable; the incoming signal addresses the wrong node or carries a stale context.`
     );
+  }
+}
+
+// ── Per-repo commit hash apply helper ────────────────────────────────────────
+
+/**
+ * For each entry in signalRepos, finds or creates the matching entry in repos
+ * by name and sets commit_hash when committed=true. A committed=false row with
+ * no commitHash is a no-op (clean skip — never a rejection). A committed=false
+ * row that nonetheless carries a commitHash is malformed (a real commit whose
+ * `committed` flag was dropped in relay) and is rejected loudly — the CLI
+ * guarantees committed:false ⇒ commitHash:null, so this only fires on a
+ * mis-relayed payload.
+ */
+function applyPerRepoCommitHashes(
+  repos: RepoCommitEntry[],
+  signalRepos: SignalRepoRow[],
+  mutations_applied: string[],
+  label: string,
+): void {
+  for (const row of signalRepos) {
+    if (!row.committed) {
+      if (row.commitHash != null) {
+        throw new Error(
+          `commit_completed refused: repo '${row.name}' carries commitHash ` +
+          `'${row.commitHash}' but committed is false/absent. A committed row must set ` +
+          `committed:true — relay the source-control agent's result array verbatim ` +
+          `(every field of each row, including committed).`
+        );
+      }
+      continue; // clean skip — nothing was committed for this repo
+    }
+    // committed:true must carry a real hash. A null/empty hash on a committed row
+    // would silently record no hash, collapsing the reviewer's diff scope to
+    // `git diff HEAD`. The commit CLI never emits this (committed ⇒ commitHash), so
+    // it only fires on a mis-relayed payload — reject it loudly, symmetric with the
+    // committed:false-with-hash guard above.
+    if (row.commitHash == null || row.commitHash === '') {
+      throw new Error(
+        `commit_completed refused: repo '${row.name}' reports committed:true but carries no ` +
+        `commit hash (commitHash is ${row.commitHash === '' ? 'empty' : 'null'}). A committed ` +
+        `repo must report its commit hash — relay the source-control agent's result array verbatim ` +
+        `(every field of each row, including commitHash).`
+      );
+    }
+    let entry = repos.find(r => r.name === row.name);
+    if (!entry) {
+      entry = { name: row.name, commit_hash: null };
+      repos.push(entry);
+    }
+    assertHashWritable(entry, row.commitHash);
+    entry.commit_hash = row.commitHash;
+    mutations_applied.push(`set ${label}[name=${row.name}].commit_hash = ${row.commitHash ?? 'null'}`);
   }
 }
 
@@ -924,70 +987,75 @@ mutationRegistry.set(EVENTS.COMMIT_COMPLETED, (state, context, _config, _templat
     node.status = 'completed';
     mutations_applied.push('set commit.status = completed');
 
-    const commitHash = (context.commit_hash as string) ?? null;
+    const signalRepos = (context.repos as SignalRepoRow[] | undefined) ?? [];
 
-    // Iter 11 — phase-scope-first routing. When a phase-scope corrective is
-    // active on this phase iteration, route the commit hash there before
-    // considering task-scope routing. The commit produced under a phase-scope
-    // corrective belongs to that corrective, not to the task iteration whose
-    // task_executor flipped to completed via `resolveNodeState` above (which
-    // itself already walks phase-scope corrective nodes).
+    // A commit_completed signal must relay the source-control agent's per-repo
+    // result array. An empty/missing repos[] would complete the commit node and
+    // advance the walker without recording any hash — a silent correctness hole.
+    // (The legitimate "nothing changed" case is a non-empty array of committed:false
+    // rows, not an empty array, so this never rejects a real clean-skip.)
+    if (signalRepos.length === 0) {
+      throw new Error(
+        `commit_completed refused: no per-repo result payload (repos[] is missing or empty). ` +
+        `The commit signal must relay the source-control agent's result array via --repos '<json>'; ` +
+        `advancing without it would complete the commit step recording zero commit hashes.`
+      );
+    }
+
+    // Iter 12 (P04-T02) — array-shaped signal. The commit CLI emits a per-repo
+    // result array; we fan the hashes into the matching repos[] entry by name,
+    // creating entries that are absent (corrective entries start with repos:[]).
+    // committed=false rows are a no-op (clean skip — not an error).
+    //
+    // Phase-scope-first routing: when a phase-scope corrective is active on
+    // this phase iteration, route the per-repo hashes there before considering
+    // task-scope routing.
     const phaseIteration = resolvePhaseIteration(cloned, phase);
     const activePhaseCorrective = phaseIteration.corrective_tasks.slice().reverse().find(
       (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
     );
 
     if (activePhaseCorrective) {
-      // Preserve existing repo names seeded by explode-master-plan; only set the
-      // commit hash on the first entry. If no entries exist yet (empty/absent),
-      // fall back to a blank-name stub. Per-repo commit attribution for multi-repo
-      // tasks remains future work (T03), but names are no longer dropped.
-      if (activePhaseCorrective.repos && activePhaseCorrective.repos.length > 0) {
-        assertHashWritable(activePhaseCorrective.repos, commitHash);
-        activePhaseCorrective.repos[0].commit_hash = commitHash;
-      } else {
-        activePhaseCorrective.repos = [{ name: '', commit_hash: commitHash }];
-      }
-      mutations_applied.push(`set phase_corrective_task[${activePhaseCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
+      applyPerRepoCommitHashes(
+        activePhaseCorrective.repos,
+        signalRepos,
+        mutations_applied,
+        `phase_corrective_task[${activePhaseCorrective.index}].repos`,
+      );
       return { state: cloned, mutations_applied };
     }
 
-    // Write commit hash to per-task IterationEntry or active CorrectiveTaskEntry
+    // Write per-repo commit hashes to task IterationEntry or active task-scope
+    // CorrectiveTaskEntry, matched by name.
     const taskIteration = resolveTaskIteration(cloned, phase, task);
     const activeCorrective = taskIteration.corrective_tasks.slice().reverse().find(
       (ct: CorrectiveTaskEntry) => ct.status === 'in_progress' || ct.status === 'not_started'
     );
 
     if (activeCorrective) {
-      // Preserve existing repo names; only set the commit hash on the first entry.
-      // If no entries exist yet, fall back to a blank-name stub.
-      if (activeCorrective.repos && activeCorrective.repos.length > 0) {
-        assertHashWritable(activeCorrective.repos, commitHash);
-        activeCorrective.repos[0].commit_hash = commitHash;
-      } else {
-        activeCorrective.repos = [{ name: '', commit_hash: commitHash }];
-      }
-      mutations_applied.push(`set corrective_task[${activeCorrective.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
+      applyPerRepoCommitHashes(
+        activeCorrective.repos,
+        signalRepos,
+        mutations_applied,
+        `corrective_task[${activeCorrective.index}].repos`,
+      );
     } else {
-      // Preserve existing repo names seeded by explode-master-plan; only set the
-      // commit hash on the first entry. If no entries exist yet, fall back to a
-      // blank-name stub. Per-repo commit attribution for multi-repo tasks remains
-      // future work, but names are no longer dropped.
-      if (taskIteration.repos && taskIteration.repos.length > 0) {
-        assertHashWritable(taskIteration.repos, commitHash);
-        taskIteration.repos[0].commit_hash = commitHash;
-      } else {
-        taskIteration.repos = [{ name: '', commit_hash: commitHash }];
-      }
-      mutations_applied.push(`set task_iteration[${taskIteration.index}].repos[0].commit_hash = ${commitHash ?? 'null'}`);
+      applyPerRepoCommitHashes(
+        taskIteration.repos,
+        signalRepos,
+        mutations_applied,
+        `task_iteration[${taskIteration.index}].repos`,
+      );
     }
 
     return { state: cloned, mutations_applied };
   } catch (err) {
-    // Re-throw errors that originate from the hash-overwrite guard (assertHashWritable)
-    // so they propagate as loud, diagnosable rejections rather than being swallowed
-    // by the generic node-resolution error message below (DD-1, NFR-3).
-    if (err instanceof Error && /immutable|overwrite|already recorded|finalized/i.test(err.message)) {
+    // Re-throw the loud per-repo guards (hash-overwrite via assertHashWritable,
+    // and the malformed committed:false-with-hash rejection) so they propagate
+    // as diagnosable rejections rather than being swallowed by the generic
+    // node-resolution error message below (DD-1, NFR-3). Both share the
+    // `commit_completed refused:` prefix.
+    if (err instanceof Error && /commit_completed refused|immutable|overwrite|already recorded|finalized/i.test(err.message)) {
       throw err;
     }
     if (context.phase === undefined) {
@@ -1045,15 +1113,35 @@ mutationRegistry.set(EVENTS.PR_CREATED, (state, context, _config, _template): Mu
   node.status = 'completed';
   mutations_applied.push('set final_pr.status = completed');
 
-  if (context.pr_url !== undefined) {
+  // FR-9, FR-10, AD-4 — array-shaped per-repo signal. The PR CLI emits a
+  // [{name, pr_url}] result array; fan each pr_url into the matching
+  // source_control.repos[] entry by name, creating a stub entry when absent.
+  // No top-level pr_url is written (FR-9 removes that field).
+  const signalRepos = (context.repos as Array<{ name: string; pr_url: string | null }> | undefined) ?? [];
+  if (signalRepos.length > 0) {
     if (!cloned.pipeline.source_control) {
       throw new Error(
         'pr_created: pipeline.source_control is null — cannot store pr_url. ' +
-        'Source control must be initialized via `radorch source-control init` before PR creation.'
+        'Source control must be initialized before PR creation.'
       );
     }
-    cloned.pipeline.source_control.pr_url = (context.pr_url ?? null) as string | null;
-    mutations_applied.push(`set pipeline.source_control.pr_url = ${context.pr_url ?? 'null'}`);
+    const scRepos = cloned.pipeline.source_control.repos;
+    for (const row of signalRepos) {
+      let entry = scRepos.find(r => r.name === row.name);
+      if (!entry) {
+        entry = {
+          name: row.name,
+          branch: '',
+          base_branch: '',
+          remote_url: null,
+          compare_url: null,
+          pr_url: null,
+        };
+        scRepos.push(entry);
+      }
+      entry.pr_url = row.pr_url ?? null;
+      mutations_applied.push(`set source_control.repos[name=${row.name}].pr_url = ${row.pr_url ?? 'null'}`);
+    }
   }
 
   return { state: cloned, mutations_applied };

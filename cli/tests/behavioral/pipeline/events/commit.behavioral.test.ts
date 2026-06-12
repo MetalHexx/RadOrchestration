@@ -122,14 +122,12 @@ const afterCommitStartedState = {
   pipeline: {
     gate_mode: 'task',
     source_control: {
-      branch: 'feature/syn',
-      base_branch: 'main',
-      worktree_path: '.',
+      worktree_name: 'cli-behavioral',
       auto_commit: 'never',
       auto_pr: 'never',
-      remote_url: null,
-      compare_url: null,
-      pr_url: null,
+      repos: [
+        { name: 'rad-orc-source', branch: 'feature/syn', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+      ],
     },
     current_tier: 'execution',
     halt_reason: null,
@@ -201,15 +199,16 @@ function seedSingleRepoTask(repoName: string): Record<string, unknown> {
 
 function drive(
   state: Record<string, unknown>,
-  opts: { event: string; commit_hash: string; phase: number; task: number },
+  opts: { event: string; commit_hash: string; repo_name: string; phase: number; task: number },
 ): Record<string, unknown> {
   const mut = getMutation(opts.event);
   if (!mut) throw new Error(`No mutation registered for event: ${opts.event}`);
+  // P04-T02: signal is now array-shaped (repos[]); scalar commit_hash retired.
   const ctx: EventContext = {
     event: opts.event,
     project_dir: '',
     config_path: '',
-    commit_hash: opts.commit_hash,
+    repos: [{ name: opts.repo_name, committed: true, commitHash: opts.commit_hash, pushed: true }],
     phase: opts.phase,
     task: opts.task,
   };
@@ -237,7 +236,7 @@ function firstTaskIteration(state: Record<string, unknown>): Record<string, unkn
 
 describe('commit_completed — per-repo hash write (FR-25, AD-10)', () => {
   it('writes the commit hash into repos[0] for a single-repo task (FR-25, AD-10)', () => {
-    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', phase: 1, task: 1 });
+    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', repo_name: 'backend', phase: 1, task: 1 });
     const taskIter = firstTaskIteration(after);
     expect(taskIter.repos[0].commit_hash).toBe('abc1234');
     expect('commit_hash' in taskIter).toBe(false);
@@ -250,7 +249,7 @@ describe('commit_completed overwrite protection (FR-5, FR-6, NFR-2, DD-1)', () =
     const seeded = seedSingleRepoTask('backend');
     firstTaskIteration(seeded).repos[0].commit_hash = '64f9c236';
     expect(() =>
-      drive(seeded, { event: 'commit_completed', commit_hash: '1436cd63', phase: 1, task: 1 })
+      drive(seeded, { event: 'commit_completed', commit_hash: '1436cd63', repo_name: 'backend', phase: 1, task: 1 })
     ).toThrow(/immutable|overwrite|already recorded|finalized/i);
     // The durable hash must be untouched by the rejected attempt.
     expect(firstTaskIteration(seeded).repos[0].commit_hash).toBe('64f9c236');
@@ -259,12 +258,12 @@ describe('commit_completed overwrite protection (FR-5, FR-6, NFR-2, DD-1)', () =
   it('allows an idempotent retry writing the same hash (NFR-2)', () => {
     const seeded = seedSingleRepoTask('backend');
     firstTaskIteration(seeded).repos[0].commit_hash = '64f9c236';
-    const after = drive(seeded, { event: 'commit_completed', commit_hash: '64f9c236', phase: 1, task: 1 });
+    const after = drive(seeded, { event: 'commit_completed', commit_hash: '64f9c236', repo_name: 'backend', phase: 1, task: 1 });
     expect(firstTaskIteration(after).repos[0].commit_hash).toBe('64f9c236');
   });
 
   it('allows the first write when the existing hash is null (FR-5)', () => {
-    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', phase: 1, task: 1 });
+    const after = drive(seedSingleRepoTask('backend'), { event: 'commit_completed', commit_hash: 'abc1234', repo_name: 'backend', phase: 1, task: 1 });
     expect(firstTaskIteration(after).repos[0].commit_hash).toBe('abc1234');
   });
 });
@@ -278,12 +277,14 @@ describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
       sideFiles: [],
     });
     cleanups.push(w.cleanup);
+    // P04-T02: signal is now array-shaped; pass --repos JSON instead of --commit-hash.
+    const reposJson = JSON.stringify([{ name: 'rad-orc-source', committed: true, commitHash: 'abc1234', pushed: true }]);
     const env = await captureEnvelope(async () => {
       await runCommand(pipelineSignalCommand, {
         argv: [
           '--event', 'commit_completed',
           '--phase', '1', '--task', '1',
-          '--commit-hash', 'abc1234',
+          '--repos', reposJson,
           '--project-dir', w.projectDir,
           '--config', w.configPath,
         ],
@@ -299,9 +300,11 @@ describe('commit_completed event (FR-3, FR-8, DD-2)', () => {
       sideFiles: [],
     });
     // Assert commit_hash written onto task iteration.repos[0] via direct state.json read (v6 schema).
+    // The task iteration starts with repos:[] so the mutation creates the entry by name.
     const onDisk = JSON.parse(fs.readFileSync(path.join(w.projectDir, 'state.json'), 'utf8'));
     const taskIteration = onDisk.graph.nodes.phase_loop.iterations[0].nodes.task_loop.iterations[0];
-    expect(taskIteration.repos[0].commit_hash, 'task_iteration[0].repos[0].commit_hash').toBe('abc1234');
+    const repoEntry = taskIteration.repos.find((r: { name: string }) => r.name === 'rad-orc-source');
+    expect(repoEntry?.commit_hash, 'task_iteration[0].repos[rad-orc-source].commit_hash').toBe('abc1234');
     // FR-4, FR-23 — after commit_completed the walker advances to the next
     // step (spawn_code_reviewer per the template); the composed prompt
     // carries that action's completion event from the real catalog.
@@ -327,7 +330,7 @@ function seedPhaseCorrective(repoName: string): Record<string, unknown> {
 
 describe('phase-corrective commit path (FR-11, NFR-1)', () => {
   it('writes the commit hash onto the active phase corrective, not the task iteration (FR-11)', () => {
-    const after = drive(seedPhaseCorrective('backend'), { event: 'commit_completed', commit_hash: 'cor1234', phase: 1, task: 1 });
+    const after = drive(seedPhaseCorrective('backend'), { event: 'commit_completed', commit_hash: 'cor1234', repo_name: 'backend', phase: 1, task: 1 });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const phaseIter = (after as any).graph.nodes.phase_loop.iterations[0];
     expect(phaseIter.corrective_tasks[0].repos[0].commit_hash).toBe('cor1234');

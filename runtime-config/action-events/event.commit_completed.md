@@ -2,14 +2,12 @@
 kind: event
 name: commit_completed
 title: Commit completed
-description: The source-control agent has finished the task's commit (and optionally a push).
+description: The source-control agent has finished the task's commit (and optionally a push) for all repos.
 signal_payload:
-  commit-hash:
+  repos:
     required: true
-    description: Commit SHA returned by the source-control agent.
-  pushed:
-    required: true
-    description: Whether the commit was pushed to the remote (`true` / `false`).
+    array: true
+    description: Structured per-repo commit result array [{name, committed, commitHash, pushed}] returned by the CLI.
   phase:
     required: false
     description: Phase number. Auto-resolved from the active in-progress phase when omitted.
@@ -18,4 +16,4 @@ signal_payload:
     description: Task number. Auto-resolved from the active in-progress task when omitted.
 ---
 
-Confirm the agent's `## Commit Result` block reported a non-empty `commitHash` and a boolean `pushed`. Signaling records the commit SHA and push state against the active task iteration.
+Confirm the agent's `## Commit Result` array — each row carries `committed: true`, a non-empty `commitHash`, and a boolean `pushed`. Relay it unchanged: the mutation records a hash only when `committed` is true and silently skips any row missing it. Hashes match to task-iteration repos by name.

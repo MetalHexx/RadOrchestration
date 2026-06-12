@@ -46,10 +46,13 @@ prompt says, no more.
     because it appears in the catalog.** The description is the screening
     surface; reading non-matches wastes tokens. If you encounter a `SKILL.md`
     via Grep/Glob that is not in the catalog, do not Read it — the manifest
-    is the complete authoritative list and exclusions are intentional. Let
-    the conventions encoded in consulted `SKILL.md` files inform the
-    requirements you author — especially any test commands, file-layout
-    rules, or error-handling patterns the eligible skill defines.
+    is the complete authoritative list and exclusions are intentional. Each
+    catalog entry carries a `repo` field identifying which registry repository
+    the skill belongs to (FR-18). Let the conventions encoded in consulted
+    `SKILL.md` files inform the requirements you author — especially any test
+    commands, file-layout rules, or error-handling patterns the eligible skill
+    defines — and note the source repo when encoding those conventions so
+    downstream planners can keep guidance repo-targeted.
     Absence of the section means no eligible repo skills exist; proceed normally.
 
 1c. **Determine the project kind before touching the registry.** Set `project-type` using the closed

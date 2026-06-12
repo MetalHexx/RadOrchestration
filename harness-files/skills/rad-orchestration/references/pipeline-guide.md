@@ -57,10 +57,13 @@ node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline sign
   [--remote-url <url>] [--compare-url <url>] \
   [--gate-type <type>] [--reason <text>] [--gate-mode <mode>] \
   [--commit-hash <hash>] [--pushed <true|false>] [--pr-url <url>] \
+  [--repos '<json>'] \
   [--parse-error <json>]
 ```
 
 Always invoke from the workspace root. The `--config` flag overrides the default config path. The catalog file for each event documents which flags are required for that event in its `signal_payload` block; the `Signal:` line in `data.prompt` mirrors the same shape.
+
+The `commit_completed` and `pr_created` events carry a single array-shaped `--repos '<json>'` flag whose value is the CLI's structured per-repo result (a JSON array of objects, one per repository); the `--phase` and `--task` flags remain scalar integers as before.
 
 ### First Call
 

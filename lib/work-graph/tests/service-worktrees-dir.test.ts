@@ -11,4 +11,12 @@ describe('WorkGraphService worktrees dir reconciliation (NFR-7)', () => {
     const svc = new WorkGraphService({ root: '/fake/.radorc', worktreesDir: '/authoritative/worktrees' }) as unknown as { worktreesDir(): string };
     expect(svc.worktreesDir()).toBe('/authoritative/worktrees');
   });
+  it('defaults sideProjectsDir to <root>/side-projects', () => {
+    const svc = new WorkGraphService({ root: '/fake/.radorc' }) as unknown as { sideProjectsDir(): string };
+    expect(svc.sideProjectsDir()).toBe(path.join('/fake/.radorc', 'side-projects'));
+  });
+  it('honors an explicit sideProjectsDir override from ServiceOpts', () => {
+    const svc = new WorkGraphService({ root: '/fake/.radorc', sideProjectsDir: '/authoritative/side-projects' }) as unknown as { sideProjectsDir(): string };
+    expect(svc.sideProjectsDir()).toBe('/authoritative/side-projects');
+  });
 });

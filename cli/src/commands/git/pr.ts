@@ -1,5 +1,9 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defineCommand } from '../../framework/command.js';
+import { UserError } from '../../framework/errors.js';
 import type { CommandContext } from '../../framework/context.js';
 
 export interface GhPrResult {
@@ -96,30 +100,131 @@ export function ghPr(opts: GhPrOptions): GhPrResult {
   }
 }
 
+export interface FanOutRepo {
+  name: string;
+  path: string;
+  branch: string;
+  baseBranch: string;
+  title: string;
+  description: string;
+}
+
+export interface FanOutResult {
+  name: string;
+  pr_url: string;
+}
+
+export interface GhPrFanOutOptions {
+  repos: FanOutRepo[];
+  exec?: Exec;
+}
+
+export function ghPrFanOut(opts: GhPrFanOutOptions): FanOutResult[] {
+  const exec = opts.exec ?? ((file, args, o) => execFileSync(file, args, o) as unknown as string);
+
+  // Pass 1: create all PRs
+  const created: Array<{ name: string; pr_url: string; pr_number: number | null }> = [];
+  for (const [i, repo] of opts.repos.entries()) {
+    // Write description to a temp body-file so ghPr can use it. The index keeps
+    // the filename unique even if two repos shared a name and Date.now() repeated.
+    const bodyFile = join(tmpdir(), `rad-pr-body-${repo.name}-${i}-${Date.now()}.md`);
+    writeFileSync(bodyFile, repo.description, 'utf8');
+
+    const result = ghPr({
+      worktreePath: repo.path,
+      branch: repo.branch,
+      baseBranch: repo.baseBranch,
+      title: repo.title,
+      bodyFile,
+      exec,
+    });
+
+    if (result.error !== null && !result.pr_existed) {
+      throw new Error(`Failed to create PR for ${repo.name}: ${result.message}`);
+    }
+
+    // Fail loud rather than recording a placeholder. By here ghPr reported either
+    // a created or an existing PR, both of which carry a URL; a missing/empty url
+    // is a contract violation, not a value to swallow into ''.
+    if (!result.pr_url) {
+      throw new Error(`PR creation for ${repo.name} returned no URL despite reporting success`);
+    }
+
+    created.push({
+      name: repo.name,
+      pr_url: result.pr_url,
+      pr_number: result.pr_number,
+    });
+  }
+
+  // Pass 2: cross-link siblings (only when more than one PR)
+  if (created.length > 1) {
+    for (let i = 0; i < created.length; i++) {
+      const repo = opts.repos[i];
+      const pr = created[i];
+      const siblings = created.filter((_, j) => j !== i);
+      const linkedSection = '\n\n## Linked PRs\n' + siblings.map(s => `- ${s.name}: ${s.pr_url}`).join('\n');
+      const combinedBody = repo.description + linkedSection;
+
+      const bodyFile = join(tmpdir(), `rad-pr-xlink-${repo.name}-${i}-${Date.now()}.md`);
+      writeFileSync(bodyFile, combinedBody, 'utf8');
+
+      if (pr.pr_number !== null) {
+        exec('gh', ['pr', 'edit', String(pr.pr_number), '--body-file', bodyFile], {
+          cwd: repo.path,
+          encoding: 'utf8',
+        });
+      }
+    }
+  }
+
+  return created.map(c => ({ name: c.name, pr_url: c.pr_url }));
+}
+
 interface Args {
   'worktree-path'?: string;
   branch?: string;
   'base-branch'?: string;
   title?: string;
   'body-file'?: string;
+  repos?: string;
 }
 
 export const gitPrCommand = defineCommand({
   name: 'git-pr',
   description: 'Open a GitHub pull request for the worktree branch',
   args: {
-    'worktree-path': { description: 'Absolute path to the worktree containing the branch', required: true },
-    branch: { description: 'Head branch name to open the PR from', required: true },
-    'base-branch': { description: 'Base branch name to target (typically main)', required: true },
-    title: { description: 'PR title — typically the project name', required: true },
+    'worktree-path': { description: 'Absolute path to the worktree containing the branch', required: false },
+    branch: { description: 'Head branch name to open the PR from', required: false },
+    'base-branch': { description: 'Base branch name to target (typically main)', required: false },
+    title: { description: 'PR title — typically the project name', required: false },
     'body-file': { description: 'Optional absolute path to a markdown file used as the PR description; omitted means the PR opens with no body' },
+    repos: { description: 'JSON array of repos [{name, path, branch, baseBranch, title, description}] for multi-repo fan-out' },
   },
   flags: {},
   handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
+    // Fan-out mode: --repos '<json>'
+    if (args.repos) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(args.repos); }
+      catch (e) { throw new UserError(`--repos must be valid JSON: ${(e as Error).message}`); }
+      if (!Array.isArray(parsed)) {
+        throw new UserError('--repos must be a JSON array of {name, path, branch, baseBranch, title, description} objects');
+      }
+      return ghPrFanOut({ repos: parsed as FanOutRepo[] });
+    }
+    // Single-repo mode (original behaviour)
     // runCommand throws UserError for missing required args before reaching this
     // handler, so the `?? ''` fallbacks below are type-checker satisfaction only.
     // The `precondition_failure` gate inside ghPr() remains for direct programmatic
     // callers (unit tests exercise it by passing empty strings).
+    if (!args['worktree-path'] || !args.branch || !args['base-branch'] || !args.title) {
+      return {
+        pr_created: false, pr_url: null, pr_number: null, pr_existed: false,
+        error: 'precondition_failure',
+        message: 'Missing required argument: --worktree-path, --branch, --base-branch, and --title are all required',
+      };
+    }
     return ghPr({
       worktreePath: args['worktree-path'] ?? '',
       branch: args.branch ?? '',

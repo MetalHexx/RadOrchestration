@@ -9,6 +9,6 @@ completion_event: commit_completed
 
 Spawn `rad-orc:source-control` in commit mode.
 
-Pass `worktree_path` and `task_id` (from `data.context`), plus the task title and task type read from the handoff.
+Inline `data.context.repos[]` (each `{name, path, branch}`) verbatim into the spawn prompt with the task title and type. The agent writes one commit message per repo and runs `radorch git commit --repos '<json>'`.
 
-Extract `commitHash` and `pushed` from the agent's `## Commit Result` block.
+Relay the agent's result array into the signal **verbatim** — pass every field of each row through unchanged (`name`, `committed`, `commitHash`, `pushed`). Do not reconstruct or drop fields: `committed` is what records the hash.

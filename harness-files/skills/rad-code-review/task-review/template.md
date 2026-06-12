@@ -18,7 +18,12 @@ created: "{ISO-DATE}"
 
 ## Scope
 
-<!-- Captures WHAT was reviewed and HOW it was scoped. Populated from workflow step 2. -->
+<!-- Captures WHAT was reviewed and HOW it was scoped. Populated from workflow step 2.
+     One sub-block per repo. The repos[] array in the spawn context supplies each repo's
+     head_sha. Single-repo tasks render one sub-block. -->
+
+<!-- Repeat the sub-block below for each repo in repos[]. -->
+### Repo: `{repo-name}`
 
 - **Commit under review**: `{head_sha}` (or `null — auto-commit off`)
 - **Diff command run**: `git diff <head_sha>~1..<head_sha>` (or `git diff HEAD` when SHA is null)
@@ -27,10 +32,20 @@ created: "{ISO-DATE}"
   {Exact --stat output pasted verbatim. No approximations, no "~14 lines".}
   ```
 - **Untracked files inspected**: `{list paths, or "N/A — auto-commit on"}`
-- **File Targets gate** (from Task Handoff):
+- **File Targets gate** (from Task Handoff — declared targets for this repo):
   - Declared targets: `{path1}`, `{path2}`, ...
   - Targets modified as declared: ✅ / ❌ {if ❌, list which ones were not modified — each becomes a finding}
   - Files modified outside declared targets: ✅ none / ❌ `{path}` {each out-of-scope file is a scope-creep finding}
+
+## Repo Boundary Check
+
+<!-- Did the coder stay within the repos the task declared? This is the outer ring around the
+     per-repo File-Targets gate above (AD-8). Check is repo-level, not file-by-file.
+     An out-of-bounds repo is a finding that flows into orchestrator mediation — not a hard gate. -->
+
+| Repo | Declared in Task? | Modified? | Status | Notes |
+|------|-------------------|-----------|--------|-------|
+| `{repo-name}` | ✅ / ❌ | ✅ / ❌ | ✅ In-bounds / ❌ Out-of-bounds | {Note or "—"} |
 
 ## Test Execution
 

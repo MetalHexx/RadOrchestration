@@ -25,7 +25,19 @@ const afterTaskGateActiveState = {
     limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
     source_control: { auto_commit: 'never', auto_pr: 'never' },
   },
-  pipeline: { gate_mode: 'task', source_control: null, current_tier: 'execution', halt_reason: null },
+  // SC is initialized before execution; seed it so execute_task enrichment
+  // resolves a repo (empty repos[] now fails loud — MR-5-TEST regression guard).
+  pipeline: {
+    gate_mode: 'task',
+    source_control: {
+      worktree_name: 'cli-behavioral',
+      auto_commit: 'never',
+      auto_pr: 'never',
+      repos: [{ name: 'cli-behavioral', branch: 'main', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }],
+    },
+    current_tier: 'execution',
+    halt_reason: null,
+  },
   graph: {
     template_id: 'syn-exec',
     status: 'in_progress',
@@ -82,7 +94,19 @@ const afterTaskLoopCompletedState = {
     limits: { max_phases: 10, max_tasks_per_phase: 8, max_retries_per_task: 3, max_consecutive_review_rejections: 3 },
     source_control: { auto_commit: 'never', auto_pr: 'never' },
   },
-  pipeline: { gate_mode: 'task', source_control: null, current_tier: 'execution', halt_reason: null },
+  // SC is initialized before execution; seed it so execute_task enrichment
+  // resolves a repo (empty repos[] now fails loud — MR-5-TEST regression guard).
+  pipeline: {
+    gate_mode: 'task',
+    source_control: {
+      worktree_name: 'cli-behavioral',
+      auto_commit: 'never',
+      auto_pr: 'never',
+      repos: [{ name: 'cli-behavioral', branch: 'main', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }],
+    },
+    current_tier: 'execution',
+    halt_reason: null,
+  },
   graph: {
     template_id: 'syn-exec',
     status: 'in_progress',

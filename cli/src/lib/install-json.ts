@@ -168,7 +168,11 @@ export async function stampLastWriter(installJsonPath: string, version: string):
   for (const key of Object.keys(ij.harnesses) as InstallKey[]) {
     const entry = ij.harnesses[key];
     if (!entry) continue;
-    if (!entry.last_writer_version || cmpSemver(version, entry.last_writer_version) >= 0) {
+    // Only write on a real change: absent, or strictly newer. An equal value
+    // (the steady state — CLI version == installed version) is already accurate,
+    // so `> 0` (not `>= 0`) skips a no-op rewrite. An older CLI never reaches
+    // here: checkVersionSkew hard-exits before the command body runs.
+    if (!entry.last_writer_version || cmpSemver(version, entry.last_writer_version) > 0) {
       entry.last_writer_version = version;
       mutated = true;
     }

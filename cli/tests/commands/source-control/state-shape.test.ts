@@ -15,12 +15,6 @@ describe('v6 source-control state shape + compat shim (FR-11, NFR-3, AD-3)', () 
     const sc = buildSourceControlState({ worktreeName: 'P', autoCommit: 'always', autoPr: 'never', repos });
     expect('path' in (sc.repos[0] as object)).toBe(false);
   });
-  it('writes the three compat fields from repos[0] (worktree_path, branch, base_branch)', () => {
-    const sc = buildSourceControlState({ worktreeName: 'P', autoCommit: 'always', autoPr: 'never', repos, worktreePath: '/wt/P/rad-orc-source' });
-    expect(sc.worktree_path).toBe('/wt/P/rad-orc-source');
-    expect(sc.branch).toBe('radorch/p');
-    expect(sc.base_branch).toBe('main');
-  });
   it('propagates in_place: true from RepoInput onto the repos[] entry (FR-10, NFR-1)', () => {
     const reposWithInPlace = [
       { name: 'rad-orc-source', branch: 'feature-x', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null, in_place: true },
@@ -31,5 +25,22 @@ describe('v6 source-control state shape + compat shim (FR-11, NFR-3, AD-3)', () 
   it('does not set in_place on a repo entry without the flag', () => {
     const sc = buildSourceControlState({ worktreeName: 'P', autoCommit: 'always', autoPr: 'never', repos });
     expect(sc.repos[0]?.in_place).toBeUndefined();
+  });
+});
+
+describe('buildSourceControlState — compat shim removed (FR-20)', () => {
+  it('emits no top-level worktree_path / branch / base_branch mirror fields', () => {
+    const sc = buildSourceControlState({
+      worktreeName: 'MR-5',
+      autoCommit: 'always',
+      autoPr: 'never',
+      repos: [{ name: 'rad-orc-source', branch: 'radorch/p', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null }],
+    });
+    expect(sc).not.toHaveProperty('worktree_path');
+    expect(sc).not.toHaveProperty('branch');
+    expect(sc).not.toHaveProperty('base_branch');
+    expect(sc.worktree_name).toBe('MR-5');
+    expect(sc.repos[0]).not.toHaveProperty('path');
+    expect(sc.repos[0]).toMatchObject({ name: 'rad-orc-source', branch: 'radorch/p', base_branch: 'main' });
   });
 });

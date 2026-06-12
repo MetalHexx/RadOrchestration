@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { composeActionPrompt, composeOrphanEventPrompt } from '../../../src/lib/pipeline-engine/composer.js';
+import { composeActionPrompt, composeOrphanEventPrompt, deriveSignalLine } from '../../../src/lib/pipeline-engine/composer.js';
+import type { EventFrontmatter } from '../../../src/lib/pipeline-engine/action-event-loader.js';
 
 function makeCatalog(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ae-'));
@@ -278,5 +279,30 @@ describe('composeOrphanEventPrompt — Step-N numbering and flag', () => {
     expect(result.prompt).toMatch(/^## Step 1\n\n[\s\S]*Signal: kickoff/);
     expect(result.prompt).toMatch(/## Step 2\n\npost\s*$/);
     expect(result.has_custom_instructions).toBe(true);
+  });
+});
+
+describe('deriveSignalLine — array-shaped flags (AD-3)', () => {
+  it('renders an array flag as a single --repos <json> token', () => {
+    const fm = {
+      kind: 'event', name: 'commit_completed', title: 'x', description: 'y',
+      signal_payload: {
+        repos: { required: true, array: true, description: 'per-repo commit results' },
+      },
+    } as unknown as EventFrontmatter;
+    expect(deriveSignalLine('commit_completed', fm))
+      .toBe("Signal: commit_completed --repos '<json>'");
+  });
+
+  it('keeps scalar flags rendered as --flag <value>', () => {
+    const fm = {
+      kind: 'event', name: 'phase_review_completed', title: 'x', description: 'y',
+      signal_payload: {
+        'doc-path': { required: true, description: 'path' },
+        phase: { required: false, description: 'phase' },
+      },
+    } as unknown as EventFrontmatter;
+    expect(deriveSignalLine('phase_review_completed', fm))
+      .toBe('Signal: phase_review_completed --doc-path <value> --phase <value>');
   });
 });

@@ -261,15 +261,15 @@ function seedSourceControlState(projectDir: string, context: Partial<EventContex
   const stateFile = path.join(projectDir, 'state.json');
   if (!fs.existsSync(stateFile)) return;
   const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+  const branch = (context as Record<string, unknown>)['branch'] as string ?? 'feature/test';
+  const base_branch = (context as Record<string, unknown>)['base_branch'] as string ?? 'main';
   state.pipeline.source_control = {
-    branch: (context as Record<string, unknown>)['branch'] ?? 'feature/test',
-    base_branch: (context as Record<string, unknown>)['base_branch'] ?? 'main',
-    worktree_path: '.',
+    worktree_name: state.project?.name ?? 'test',
     auto_commit: (context as Record<string, unknown>)['auto_commit'] ?? 'never',
     auto_pr: (context as Record<string, unknown>)['auto_pr'] ?? 'never',
-    remote_url: null,
-    compare_url: null,
-    pr_url: null,
+    repos: [
+      { name: 'rad-orc-source', branch, base_branch, remote_url: null, compare_url: null, pr_url: null },
+    ],
   };
   fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
 }

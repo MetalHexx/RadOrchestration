@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { processEvent } from '../../../src/lib/pipeline-engine/engine.js';
+import { processEvent } from '../../../../src/lib/pipeline-engine/engine.js';
 import type {
   PathContext,
   PipelineState,
@@ -10,7 +10,7 @@ import type {
   StepNodeState,
   ForEachPhaseNodeState,
   ForEachTaskNodeState,
-} from '../../../src/lib/pipeline-engine/types.js';
+} from '../../../../src/lib/pipeline-engine/types.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -22,12 +22,14 @@ export const ORCH_ROOT = path.resolve(__dirname, '../../../../..');
 
 // Shared PathContext for every test that invokes `processEvent` or
 // `enrichActionContext`. Built from this fixture file's own location
-// (`tests/fixtures/`) so it works in source-mode (vitest/tsx) without
+// (`tests/lib/pipeline-engine/fixtures/`) so it works in source-mode (vitest/tsx) without
 // depending on the engine's bundled output geometry.
-const FIXTURE_SCRIPTS_DIR = path.resolve(__dirname, '..', '..');
+// scriptsDir is the engine source folder; templatesDir resolves via ORCH_ROOT
+// (5 levels up from fixtures/ to the repo root) → runtime-config/templates/.
+const FIXTURE_SCRIPTS_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'src', 'lib', 'pipeline-engine');
 export const TEST_PATH_CONTEXT: PathContext = {
   scriptsDir: FIXTURE_SCRIPTS_DIR,
-  templatesDir: path.resolve(FIXTURE_SCRIPTS_DIR, '..', 'templates'),
+  templatesDir: path.resolve(ORCH_ROOT, 'runtime-config', 'templates'),
 };
 
 export const DEFAULT_CONFIG: OrchestrationConfig = {
@@ -271,7 +273,7 @@ export function seedExplosionStateFor(
         nodes: {},
         corrective_tasks: [],
         doc_path: handoffDoc,
-        commit_hash: null,
+        repos: [{ name: 'rad-orc-source', commit_hash: null }],
       };
     });
   }
@@ -349,14 +351,19 @@ export function initSourceControlForTests(io: MockIO, config: OrchestrationConfi
   if (!io.currentState) return;
   const patched = structuredClone(io.currentState);
   patched.pipeline.source_control = {
-    branch: 'feature/test-branch',
-    base_branch: 'main',
-    worktree_path: '.',
+    worktree_name: 'PARITY-TEST',
     auto_commit: toNormalized(config.source_control.auto_commit),
     auto_pr: toNormalized(config.source_control.auto_pr),
-    remote_url: null,
-    compare_url: null,
-    pr_url: null,
+    repos: [
+      {
+        name: 'rad-orc-source',
+        branch: 'feature/test-branch',
+        base_branch: 'main',
+        remote_url: null,
+        compare_url: null,
+        pr_url: null,
+      },
+    ],
   };
   io.writeState(PROJECT_DIR, patched);
 }

@@ -232,7 +232,7 @@ function ProjectsPageContent({
                   repoBaseUrl={v5Derivations.repoBaseUrl}
                   projectName={selected.name}
                   phaseLoopStatus={v5Derivations.phaseLoopStatus}
-                  prUrl={v5State.pipeline.source_control?.pr_url ?? null}
+                  prUrl={v5State.pipeline.source_control?.repos?.[0]?.pr_url ?? null}
                 />
               </>
             ) : (
@@ -391,7 +391,7 @@ export default function ProjectsPage() {
       gateMode: v5State.pipeline.gate_mode,
       currentPhaseName: deriveCurrentPhase(typedPhaseLoop),
       progress: derivePhaseProgress(typedPhaseLoop),
-      repoBaseUrl: deriveRepoBaseUrl(v5State.pipeline.source_control?.compare_url ?? null),
+      repoBaseUrl: deriveRepoBaseUrl(v5State.pipeline.source_control?.repos?.[0]?.compare_url ?? null),
       phaseLoopStatus: typedPhaseLoop?.status,
     };
   }, [v5State]);

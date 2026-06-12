@@ -4,7 +4,7 @@ import type { Project, ProjectDocs, Tier } from '../types.js';
 import { rollupProjectStatus } from './status.js';
 import { resolveWorktrees, type GitExec } from './worktrees.js';
 
-export interface DeriveDeps { projectsDir: string; worktreesDir: string; exec?: GitExec; }
+export interface DeriveDeps { projectsDir: string; worktreesDir: string; sideProjectsDir?: string; exec?: GitExec; }
 
 export function listProjectNames(projectsDir: string): string[] {
   if (!fs.existsSync(projectsDir)) return [];

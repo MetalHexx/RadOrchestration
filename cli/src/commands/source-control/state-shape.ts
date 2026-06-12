@@ -1,11 +1,9 @@
 /**
- * v6 source-control state shape builder (FR-11, NFR-1, NFR-3, AD-2, AD-3).
+ * v6 source-control state shape builder (FR-11, NFR-1, AD-2).
  *
  * Produces the v6 `repos[]` + `worktree_name` shape with top-level
  * `auto_commit` / `auto_pr` / `worktree_name`, no stored `repos[].path`,
- * and the derived top-level `worktree_path` + `branch` + `base_branch`
- * compat fields (all from `repos[0]`) that single-repo enrichment readers
- * depend on.
+ * and no compat mirror fields (FR-20).
  */
 
 // ── Helpers salvaged from mutations.ts (AD-2) ────────────────────────────────
@@ -60,8 +58,6 @@ export interface BuildSourceControlStateOptions {
   autoCommit: string;
   autoPr: string;
   repos: RepoInput[];
-  /** Optional explicit worktree path; used as the compat `worktree_path`. */
-  worktreePath?: string;
 }
 
 export interface RepoEntry {
@@ -81,13 +77,6 @@ export interface SourceControlState {
   auto_pr: 'always' | 'never';
   /** Per-repo facts — no `path` stored (NFR-1) */
   repos: RepoEntry[];
-  /**
-   * Compat shim fields (NFR-3, AD-3): mirrors `repos[0]` values so that
-   * single-repo commit/PR/planner enrichment readers continue to work.
-   */
-  worktree_path: string;
-  branch: string;
-  base_branch: string;
 }
 
 // ── Builder ──────────────────────────────────────────────────────────────────
@@ -97,16 +86,12 @@ export interface SourceControlState {
  *
  * - Per-repo facts live inside `repos[]` with no `path` field (NFR-1).
  * - `auto_commit`, `auto_pr`, and `worktree_name` are top-level (AD-2).
- * - The three compat fields `worktree_path`, `branch`, and `base_branch` are
- *   derived from `repos[0]` (or the supplied `worktreePath`) and written
- *   unconditionally so single-repo enrichment keeps resolving (NFR-3, AD-3).
+ * - No compat mirror fields (FR-20).
  */
 export function buildSourceControlState(opts: BuildSourceControlStateOptions): SourceControlState {
-  const { worktreeName, autoCommit, autoPr, repos, worktreePath } = opts;
-
+  const { worktreeName, autoCommit, autoPr, repos } = opts;
   const auto_commit = normalizeAutoSetting('auto_commit', autoCommit);
   const auto_pr = normalizeAutoSetting('auto_pr', autoPr);
-
   const repoEntries: RepoEntry[] = repos.map((r) => ({
     name: r.name,
     branch: r.branch,
@@ -116,17 +101,5 @@ export function buildSourceControlState(opts: BuildSourceControlStateOptions): S
     pr_url: normalizeOptionalUrl(r.pr_url),
     ...(r.in_place ? { in_place: true } : {}),
   }));
-
-  const first = repoEntries[0];
-
-  return {
-    worktree_name: worktreeName,
-    auto_commit,
-    auto_pr,
-    repos: repoEntries,
-    // Compat shim: mirrors repos[0] so single-repo readers keep resolving
-    worktree_path: worktreePath ?? '',
-    branch: first?.branch ?? '',
-    base_branch: first?.base_branch ?? '',
-  };
+  return { worktree_name: worktreeName, auto_commit, auto_pr, repos: repoEntries };
 }

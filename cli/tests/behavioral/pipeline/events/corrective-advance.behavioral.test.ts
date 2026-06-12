@@ -141,8 +141,12 @@ function baseState(currentNodePath: string, phaseIteration: Record<string, unkno
     pipeline: {
       gate_mode: 'autonomous',
       source_control: {
-        branch: 'feature/syn', base_branch: 'main', worktree_path: '.',
-        auto_commit: 'always', auto_pr: 'never', remote_url: null, compare_url: null, pr_url: null,
+        worktree_name: 'cli-behavioral',
+        auto_commit: 'always',
+        auto_pr: 'never',
+        repos: [
+          { name: 'rad-orc-source', branch: 'feature/syn', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+        ],
       },
       current_tier: 'execution',
       halt_reason: null,
@@ -274,7 +278,9 @@ describe('corrective task advancement — full engine flow', () => {
       'phase_loop[0].corrective_tasks[1].commit',
       correctiveNodes('completed', 'in_progress', 'not_started'),
     ));
-    const env = await signal(w.projectDir, w.configPath, ['--event', 'commit_completed', '--phase', '1', '--task', '1', '--commit-hash', 'cor1234']);
+    // P04-T02: signal is now array-shaped; use --repos instead of --commit-hash.
+    const env = await signal(w.projectDir, w.configPath, ['--event', 'commit_completed', '--phase', '1', '--task', '1',
+      '--repos', JSON.stringify([{ name: 'backend', committed: true, commitHash: 'cor1234', pushed: true }])]);
 
     expect(env.ok, env.error?.message).toBe(true);
     expect((env.data as { action: string }).action).toBe('spawn_code_reviewer');
@@ -359,7 +365,9 @@ describe('corrective-of-a-corrective — superseded parent finalization (full en
     // 2. Drive C2's body to completion: execute → commit → code_review(approved).
     env = await signal(w.projectDir, w.configPath, ['--event', 'task_completed', '--phase', '1', '--task', '1']);
     expect(env.ok, env.error?.message).toBe(true);
-    env = await signal(w.projectDir, w.configPath, ['--event', 'commit_completed', '--phase', '1', '--task', '1', '--commit-hash', 'c2hash1']);
+    // P04-T02: signal is now array-shaped; use --repos instead of --commit-hash.
+    env = await signal(w.projectDir, w.configPath, ['--event', 'commit_completed', '--phase', '1', '--task', '1',
+      '--repos', JSON.stringify([{ name: 'backend', committed: true, commitHash: 'c2hash1', pushed: true }])]);
     expect(env.ok, env.error?.message).toBe(true);
     env = await signal(w.projectDir, w.configPath, ['--event', 'code_review_completed', '--doc-path', c2ReviewAbs, '--phase', '1', '--task', '1']);
     expect(env.ok, env.error?.message).toBe(true);

@@ -115,14 +115,12 @@ const afterFinalApprovedState = {
   pipeline: {
     gate_mode: 'task',
     source_control: {
-      branch: 'feature/syn',
-      base_branch: 'main',
-      worktree_path: '.',
+      worktree_name: 'cli-behavioral',
       auto_commit: 'never',
       auto_pr: 'never',
-      remote_url: null,
-      compare_url: null,
-      pr_url: null,
+      repos: [
+        { name: 'rad-orc-source', branch: 'feature/syn', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+      ],
     },
     current_tier: 'execution',
     halt_reason: null,
@@ -153,14 +151,12 @@ const afterPrRequestedState = {
   pipeline: {
     gate_mode: 'task',
     source_control: {
-      branch: 'feature/syn',
-      base_branch: 'main',
-      worktree_path: '.',
+      worktree_name: 'cli-behavioral',
       auto_commit: 'never',
       auto_pr: 'never',
-      remote_url: null,
-      compare_url: null,
-      pr_url: null,
+      repos: [
+        { name: 'rad-orc-source', branch: 'feature/syn', base_branch: 'main', remote_url: null, compare_url: null, pr_url: null },
+      ],
     },
     current_tier: 'execution',
     halt_reason: null,
@@ -243,11 +239,6 @@ describe('pr_created event (FR-3, FR-8, DD-2)', () => {
           template_id: 'syn-exec-pr',
           nodes: {
             final_pr: { status: 'completed' },
-          },
-        },
-        pipeline: {
-          source_control: {
-            pr_url: 'https://github.com/example/repo/pull/42',
           },
         },
       },
