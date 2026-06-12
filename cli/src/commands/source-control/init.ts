@@ -225,12 +225,12 @@ function resolveClonePathDefault(repo: string): string {
   return resolved.path;
 }
 
-function autoCommitDefault(_project: string): 'always' | 'never' {
-  return 'always';
+export function resolveAutoCommit(flag: string | undefined): 'always' | 'never' {
+  return flag === 'never' ? 'never' : flag === 'always' ? 'always' : 'always';
 }
 
-function autoPrDefault(_project: string): 'always' | 'never' {
-  return 'never';
+export function resolveAutoPr(flag: string | undefined): 'always' | 'never' {
+  return flag === 'always' ? 'always' : flag === 'never' ? 'never' : 'never';
 }
 
 interface Args {
@@ -239,6 +239,8 @@ interface Args {
 }
 interface Flags {
   'in-place'?: boolean;
+  'auto-commit'?: string;
+  'auto-pr'?: string;
 }
 
 export const sourceControlInitCommand = defineCommand({
@@ -250,6 +252,8 @@ export const sourceControlInitCommand = defineCommand({
   },
   flags: {
     'in-place': { description: 'Record a single in-place (main clone) binding for a single-repo project' },
+    'auto-commit': { description: 'Resolved auto-commit preference (always|never)', type: 'string' },
+    'auto-pr': { description: 'Resolved auto-PR preference (always|never)', type: 'string' },
   },
   handler: async ({ args, flags }: { args: Args; flags: Flags; ctx: CommandContext }) => {
     if (!args.project) throw new UserError('--project is required');
@@ -267,8 +271,8 @@ export const sourceControlInitCommand = defineCommand({
       projectDir,
       readProjectRepos: readProjectReposDefault,
       readWorktreeFacts: readWorktreeFactsDefault,
-      autoCommit: autoCommitDefault,
-      autoPr: autoPrDefault,
+      autoCommit: (_project: string) => resolveAutoCommit(flags['auto-commit']),
+      autoPr: (_project: string) => resolveAutoPr(flags['auto-pr']),
       resolveClonePath: resolveClonePathDefault,
       readState: (dir) => {
         const s = readState(dir);
