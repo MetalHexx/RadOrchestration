@@ -360,7 +360,7 @@
     {
       "bundlePath": "skills/rad-execute/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/SKILL.md",
-      "sha256": "fd67eda5c768b4f6cb80f33b3167251f3e5ec7cfec5473bfdf8aaaaa8b51f848"
+      "sha256": "104d1c840245f1989ed0dbbc7d4ed09c3138385fb6a6f976e95b6867e8163a4d"
     },
     {
       "bundlePath": "skills/rad-log-error/SKILL.md",
