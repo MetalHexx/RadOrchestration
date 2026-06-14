@@ -187,7 +187,9 @@ When `task_size_preference` is a `Custom: …` string, the prose flows through v
 
 ## Step 6: Finalize the plan
 
-**Kind check (run first, before presenting any options):**
-Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project show --id {PROJECT_NAME}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
+Planning is complete — the Requirements doc and Master Plan are written, audited, and exploded into `phases/` and `tasks/`. **Do not start execution automatically.** `/rad-plan` ends at the plan; it never relays into `/rad-execute` on its own.
 
-- Hand straight off to `/rad-execute {PROJECT_NAME}`. Do not present a branch/worktree fork — `/rad-execute` classifies where the operator is standing and decides worktree-vs-in-place itself. The plan-approval gate `/rad-execute` crosses as it enters the pipeline is the built-in "ready?" confirmation beat; do not invent a separate pause.
+Tell the user the plan is ready and **ask whether they want to proceed to execution now** (a simple yes/no), e.g. *"`{PROJECT_NAME}`'s plan is ready. Want me to run `/rad-execute {PROJECT_NAME}` now?"*
+
+- **If yes:** read the `/rad-execute` skill and invoke `/rad-execute {PROJECT_NAME}`, then follow it to drive the pipeline. Do not present a branch/worktree fork or a separate approval beat — `/rad-execute` classifies where the operator is standing (worktree-vs-in-place) and confers plan approval itself. This holds for both standard and side-projects.
+- **If no:** stop here. Let the user know they can run `/rad-execute {PROJECT_NAME}` whenever they're ready.

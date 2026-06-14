@@ -7,6 +7,7 @@ import type { CommandContext } from '../../framework/context.js';
 import { readRegistry, resolveRepoPath } from '@rad-orchestration/repo-registry';
 import { userDataPaths } from '../../lib/paths.js';
 import { readProjectReposDefault } from '../../lib/project-repos.js';
+import { deriveWorktreeConvention } from '../../lib/worktree-convention.js';
 
 export type WorktreeCreateErrorType =
   | 'already_exists_path' | 'already_exists_branch' | 'invalid_reference' | 'missing_args' | 'unknown' | null;
@@ -138,8 +139,13 @@ function resolveClonePathDefault(repo: string): string {
   return resolved.path;
 }
 
-function defaultBranchDefault(_repo: string): string {
-  return 'main';
+// Base branch is the repo's registered default_branch — never a hardcoded 'main'.
+// Older repos use 'master'; some use something else. Fall back to 'main' only when
+// the repo is unregistered or has no recorded default. Exported for a focused
+// registry-backed unit test.
+export function defaultBranchDefault(repo: string): string {
+  const reg = readRegistry({ root: userDataPaths().root });
+  return reg.repos[repo]?.default_branch ?? 'main';
 }
 
 export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWorktreesResult {
@@ -156,12 +162,14 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
   }
   const targetRepos = opts.repo ? allRepos.filter(r => r === opts.repo) : allRepos;
 
-  // Branch is derived once per project (AD-4) — create() receives the same branch name for all repos.
-  const branch = `radorch/${worktreeName}`;
+  // Branch + per-repo base/path come from the single shared worktree convention
+  // (AD-4) — create() receives the same branch name for all repos, and each
+  // repo's base branch is its registry default (no hardcoded 'main').
+  const convention = deriveWorktreeConvention({ worktreeName, repos: targetRepos, worktreesDir, defaultBranch });
+  const branch = convention.branch;
 
   const results: ProvisionRepoResult[] = [];
-  for (const repo of targetRepos) {
-    const worktreePath = path.join(worktreesDir, worktreeName, repo);
+  for (const { repo, base, worktreePath } of convention.repos) {
     try {
       if (exists(worktreePath)) {
         results.push({ name: repo, created: false, pushed: true, path: worktreePath, branch, error: null, errorType: null });
@@ -171,7 +179,7 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
         repoRoot: resolveClonePath(repo),
         branch,
         worktreePath,
-        baseBranch: defaultBranch(repo),
+        baseBranch: base,
       });
       results.push({
         name: repo,
@@ -191,6 +199,27 @@ export function provisionWorktrees(opts: ProvisionWorktreesOptions): ProvisionWo
   return { repos: results };
 }
 
+/**
+ * Default-wired provisioning entry: the exact dependency bundle the
+ * `worktree create` handler uses. Exposed so `execute prepare` can compose
+ * provisioning without re-declaring the production deps.
+ */
+export function provisionWorktreesWithDefaults(
+  args: { project: string; worktreeName?: string; repo?: string },
+): ProvisionWorktreesResult {
+  return provisionWorktrees({
+    project: args.project,
+    worktreeName: args.worktreeName,
+    repo: args.repo,
+    worktreesDir: userDataPaths().worktrees,
+    readProjectRepos: readStandardProjectReposDefault,
+    resolveClonePath: resolveClonePathDefault,
+    defaultBranch: defaultBranchDefault,
+    exists: (p) => fs.existsSync(p),
+    create: worktreeCreate,
+  });
+}
+
 // ── Command ───────────────────────────────────────────────────────────────────
 
 interface Args { project?: string; 'worktree-name'?: string; repo?: string }
@@ -206,16 +235,10 @@ export const worktreeCreateCommand = defineCommand({
   flags: {},
   handler: async ({ args }: { args: Args; ctx: CommandContext }) => {
     if (!args.project) throw new UserError('--project is required');
-    return provisionWorktrees({
+    return provisionWorktreesWithDefaults({
       project: args.project,
       worktreeName: args['worktree-name'],
       repo: args.repo,
-      worktreesDir: userDataPaths().worktrees,
-      readProjectRepos: readStandardProjectReposDefault,
-      resolveClonePath: resolveClonePathDefault,
-      defaultBranch: defaultBranchDefault,
-      exists: (p) => fs.existsSync(p),
-      create: worktreeCreate,
     });
   },
   mapResult: (r: ProvisionWorktreesResult) => {

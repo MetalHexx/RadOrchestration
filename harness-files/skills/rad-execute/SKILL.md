@@ -1,55 +1,74 @@
 ---
 name: rad-execute
-description: "Run an approved project through the orchestration pipeline. Decides run mode from where you're standing — the main clone (or nowhere) launches a fresh session into a new worktree; inside a worktree it runs in place after one confirmation. Asks one combined question up front, then runs deterministically."
+description: "Run a project through the orchestration execution pipeline. A thin relay over the `execute resolve` / `execute prepare` CLI pair: one read-only call classifies the run mode — launch a fresh worktree session, run in place, or silently resume — and returns the exact commands to run. This skill only handles the human beats (one combined question), then runs those commands in order; plan approval is baked into the returned commands, so there is no separate approval beat to run."
 user-invocable: true
 ---
 
-You are an orchestrator. Read the `rad-orchestration` skill and use it to drive the execution pipeline. This skill resolves all setup once, up front, then hands the pipeline a fully settled state — nothing is asked mid-run.
+You are an orchestrator. You will use the `rad-orchestration` skill to drive the execution pipeline. This skill is a **thin relay**: the `execute resolve` CLI command does all the classification and convention math and hands back a data envelope; you run only the human beats it flags, then the commands it returns. Do not re-derive run modes, branches, base branches, paths, or settings yourself — the CLI owns all of that.
 
-`${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs` is the CLI for every call below. Run discovery calls silently — do not narrate raw envelope output.
+`${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs` is the CLI for every call below. Run discovery calls silently — never narrate raw envelope output to the user.
 
-## Step 1: Classify where you're standing
-Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project locate`. Read `data.kind` from the envelope. It drives the run mode:
-
-- `kind` is `main-clone` or `none` → **launch path** (Step 2L). The main clone is never written to directly and is never run in place.
-- `kind` is `worktree` → **in-place path** (Step 2P).
-
-Identify the project name from the `/rad-execute` argument or conversation context. If absent, run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project list`, filter to rows where `tier === 'execution'`, and let the project sub-question (below) resolve it.
-
-## Step 2L: Launch path (main clone or nowhere)
-Cross the plan-approval gate **before** the context switch: confirm the plan is approved and the operator is ready, then mark the plan approved. Only after approval do you create the worktree and launch — the fresh session resumes into an already-approved state and asks nothing further.
-
-Read the auto-commit / auto-pr values you were provided at session-start — do not issue a separate fetch unless necessary. Derive convention values without asking: branch = project name, base = `origin/main`, worktree path = `{repoParent}/{repoName}-worktrees/{projectName}`.
-
-Ask **one** combined `askUserQuestion` covering only genuine forks:
-- **Launch flavor** (always): Claude Code — auto, Claude Code — yolo (bypass permissions), Copilot CLI or VS Code.
-- **auto_commit** — include only if the ambient config value is `ask`.
-- **auto_pr** — include only if the ambient config value is `ask`.
-
-Then, in order:
-1. `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree create --project {projectName}` — read `data.repos[0].path` as the launch directory.
-2. Write all resolved setup to project state exactly once, before launching. Map the commit/PR answers to settled values (`yes → always`, `no → never`, else the ambient value, which is already `always` / `never`) and persist them by calling source-control init with the resolved values — never `ask`:
-   `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" source-control init --project {projectName} --auto-commit {always|never} --auto-pr {always|never}`
-3. Launch the chosen flavor:
-   - Claude Code: `MSYS_NO_PATHCONV=1 node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent claude --worktree-path "{worktreePath}" --prompt "/rad-execute {projectName}" --permission-mode "{auto|bypassPermissions|acceptEdits}"`
-   - Copilot CLI: `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent copilot --worktree-path "{worktreePath}"`
-   - VS Code: `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" worktree launch --agent vscode --worktree-path "{worktreePath}"`
-
-The fresh session re-enters `/rad-execute`, re-runs `locate`, classifies as `worktree`, and takes the in-place path with state already settled.
-
-## Step 2P: In-place path (inside a worktree)
-Confirm with the operator as a location check: *"you're in `<project>`'s worktree on `<branch>` — run here?"* (read `<branch>` and `<project>` from the `locate` envelope's `branch` and `projects`). This doubles as the cross-project guard. Do not create a new worktree.
-
-Read auto-commit / auto-pr from the context you gained at session-start. In the same combined `askUserQuestion`, include the auto_commit and/or auto_pr sub-question only when the value in your context value is `ask`. On confirmation, write all resolved setup to project state exactly once, before driving the pipeline in the current session — persisting the settled commit/PR values via `source-control init --project {projectName} --auto-commit {always|never} --auto-pr {always|never}` (resolve `ask` before the call; never pass `ask`).
-
-## Step 3: Run the pipeline
-Fire the pipeline `start` event — it returns the current pending action without mutating state, so it is correct both for first-time execution and resume:
+## Step 1: Resolve
+Run `execute resolve`, adding `--project <PROJECT>` when a project name is available from the `/rad-execute` argument or the conversation (omit it otherwise):
 
 ```
-node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" pipeline signal --event start --project-dir {projectDir}
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" execute resolve --project <PROJECT>
 ```
 
-Do not invent event names like `tick` or `next_action`. Commit and PR are governed by the already-settled `always` / `never` / `ask` values through the DAG's commit and PR conditionals — never re-ask or describe those conditionals. The pipeline runs deterministically with no setup prompts firing mid-run.
+Read `data` from the envelope. The fields you act on: `runMode`, `needsProject`, `candidates`, `ask`, `derived`, `projectDir`, `next`, and — on `unknown` — `reason`.
 
-## Step 4: Errors
-If the pipeline errors, use the `rad-log-error` skill to record it. Do not try to fix pipeline code — work around it with a clear, actionable message that names the failure point.
+## Step 2: Resolve the project if asked
+If `data.needsProject` is true, no project was determined yet:
+- If a project name is obvious from the conversation, re-run Step 1 with `--project <NAME>`.
+- Else if `data.candidates` is non-empty, ask the operator to pick one (show each candidate's `name`, `tier`, `status`), then re-run Step 1 with the chosen `--project <NAME>`.
+- Else (`data.candidates` is empty) nothing is execute-ready: tell the operator that `/rad-execute` needs a project name or one in context, and suggest `/rad-plan <PROJECT-NAME>` (to plan an existing brainstorm) or `/rad-brainstorm` (to start a new one). Stop.
+
+## Step 3: Run the human beats for the run mode
+Every confirm is driven by a `data.ask.*` flag — never decide one yourself. If a flag is absent, do not ask that question.
+
+First, if `data.ask.confirmDone` is set, the project is already complete: ask *"`<data.project>` is already marked done — run it again?"* If the operator declines, stop. If they accept, continue.
+
+Then branch on `data.runMode`:
+
+- **`resume`** — already settled. Ask nothing. Go straight to Step 4.
+
+- **`launch`** — you are at a main clone (or nowhere); a fresh session will be launched into a new worktree. Ask **one** combined `askUserQuestion`:
+  - **Launch flavor** (always): *Claude Code (auto-accept edits)*, *Claude Code (yolo — bypass permissions)*, *Copilot CLI*, *VS Code*.
+  - **auto_commit** — include the sub-question only if `data.ask.autoCommit` is set.
+  - **auto_pr** — include the sub-question only if `data.ask.autoPr` is set.
+
+  No separate plan-approval step: the `execute prepare` command in `data.next` confers approval (running `/rad-execute` *is* the approval), so the fresh session resumes without stopping at the plan gate.
+
+- **`in-place`** — you will drive the pipeline in the **current** session. Ask **one** combined `askUserQuestion` containing only what `data.ask` flags (a side-project flags nothing → ask nothing):
+  - if `data.ask.reuseWorktree` → confirm reuse: *"you're in `<data.derived.worktreeName>`'s worktree on `<data.derived.branch>` — reuse it for `<data.project>`?"* If `data.derived.missingRepos` is non-empty, fold into the **same** question: *"it also needs `<data.derived.missingRepos>`, which aren't in this worktree — add them?"*
+  - else if `data.ask.confirmHere` → confirm location: *"you're in `<data.project>`'s worktree on `<data.derived.branch>` — run here?"*
+  - **auto_commit / auto_pr** — include in the same question only when `data.ask.autoCommit` / `data.ask.autoPr` is set.
+
+  If the operator declines a reuse / location confirm, stop. (No approval beat here either — `execute prepare` in `data.next` confers it.)
+
+- **`unknown`** — stop. Relay `data.reason` to the operator verbatim and ask how to proceed. Do not guess a run mode or run any `next` command.
+
+## Step 4: Run the next commands
+Run every command in `data.next` **in order**, each as:
+
+```
+node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" <command from data.next>
+```
+
+The resolver already substituted everything it knows; substitute only the placeholders it left for your answers — change nothing else:
+- `{ac}` / `{ap}` → `always` for a "yes" answer, `never` for "no" (present only when you asked).
+- `{flavor}` / `{pm}` (launch only) → map the chosen launch flavor:
+
+  | Launch flavor | `{flavor}` | `{pm}` | `--prompt` |
+  |---|---|---|---|
+  | Claude Code (auto-accept edits) | `claude` | `acceptEdits` | keep |
+  | Claude Code (yolo — bypass permissions) | `claude` | `bypassPermissions` | keep |
+  | Copilot CLI | `copilot` | drop `--permission-mode` | keep |
+  | VS Code | `vscode` | drop `--permission-mode` | drop `--prompt` |
+
+  On Windows, prefix the Claude/Copilot launch line with `MSYS_NO_PATHCONV=1` so the worktree path is not mangled.
+
+After a **launch** you are done: the fresh session re-enters `/rad-execute`, resolves to `resume` against the now-settled state, and drives the pipeline. For **in-place** / **resume**, the final `pipeline signal --event start` returns the current pending action — continue driving the pipeline through the `rad-orchestration` skill. Plan approval is conferred for you before `start` (by `execute prepare` on launch/in-place, or a `gate approve plan` step on resume), so `start` advances past the plan gate without a prompt. Commit and PR are governed by the already-sealed `always` / `never` values through the DAG's conditionals; never re-ask or describe them.
+
+## Step 5: Errors
+If any command errors, use the `rad-log-error` skill to record it. Do not try to fix pipeline code — work around it with a clear, actionable message that names the failure point.

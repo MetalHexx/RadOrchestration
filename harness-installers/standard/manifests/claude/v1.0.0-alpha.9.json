@@ -360,7 +360,7 @@
     {
       "bundlePath": "skills/rad-execute/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-execute/SKILL.md",
-      "sha256": "afe83d6a724b792d83cec37f08fb1f46adfb0482d3c42f85160f147dc1d8020a"
+      "sha256": "fd67eda5c768b4f6cb80f33b3167251f3e5ec7cfec5473bfdf8aaaaa8b51f848"
     },
     {
       "bundlePath": "skills/rad-log-error/SKILL.md",
@@ -400,7 +400,7 @@
     {
       "bundlePath": "skills/rad-orchestration/scripts/radorch.mjs",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-orchestration/scripts/radorch.mjs",
-      "sha256": "8e0933676a6060ce767ac41030991e65ded6400b3cb1fb1b72614ec9ad23083e"
+      "sha256": "6386566a1ad273e7cb237a806bd444783f4c70d663cfb1e3a7d70560fa119a79"
     },
     {
       "bundlePath": "skills/rad-plan-audit/SKILL.md",
@@ -430,7 +430,7 @@
     {
       "bundlePath": "skills/rad-plan/SKILL.md",
       "destinationPath": "${HARNESS_ROOT}/skills/rad-plan/SKILL.md",
-      "sha256": "fd8069b56ba6fc69e7d4b06abfe974715f736c210a29b0c30cf95b2683536398"
+      "sha256": "24ff2366d678e07dad3b9ca58c9a7cc57940999bca943435e0b5058fb9dbbdcb"
     },
     {
       "bundlePath": "skills/rad-project/SKILL.md",

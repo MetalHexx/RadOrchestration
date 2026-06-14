@@ -175,6 +175,24 @@ describe('radorch program wiring', () => {
     expect(initHelp).toMatch(/--project/);
   }, 30_000);
 
+  it('exposes execute resolve and prepare at three help depths', async () => {
+    await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
+    const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {
+      cwd: repoRoot, env: { ...process.env, RADORCH_NO_LOG: '1' },
+    });
+    const { stdout: rootHelp } = await node(['--help']);
+    expect(rootHelp).toMatch(/\bexecute\b/);
+    const { stdout: nounHelp } = await node(['execute', '--help']);
+    expect(nounHelp).toMatch(/resolve\s+Classify the run mode/);
+    expect(nounHelp).toMatch(/prepare\s+Provision worktrees and seal/);
+    const { stdout: resolveHelp } = await node(['execute', 'resolve', '--help']);
+    expect(resolveHelp).toMatch(/--project/);
+    const { stdout: prepareHelp } = await node(['execute', 'prepare', '--help']);
+    expect(prepareHelp).toMatch(/--project/);
+    expect(prepareHelp).toMatch(/--auto-commit/);
+    expect(prepareHelp).toMatch(/--auto-pr/);
+  }, 30_000);
+
   it('exposes project list, show, and worktrees subcommands at three help depths', async () => {
     await execP('npx', ['tsc'], { cwd: repoRoot, shell: process.platform === 'win32' });
     const node = (args: string[]) => execP('node', ['dist/bin/radorch.js', ...args], {

@@ -17,6 +17,17 @@ function makeProject(): string {
   return dir;
 }
 
+// Write a project-local orchestration.yml with a chosen execution_mode and pass
+// its path explicitly to runApprovePlan. Required for hermeticity: runApprovePlan
+// now defaults configPath to ~/.radorc/orchestration.yml discovery, so a test
+// without an explicit config would read the dev's real home config and vary by
+// machine. readConfig deep-merges this partial over DEFAULT_CONFIG.
+function writeConfig(dir: string, executionMode: 'ask' | 'task' | 'phase' | 'autonomous'): string {
+  const configPath = path.join(dir, 'orchestration.yml');
+  fs.writeFileSync(configPath, `human_gates:\n  execution_mode: ${executionMode}\n`, 'utf8');
+  return configPath;
+}
+
 async function scaffoldToPlanApprovalGate(dir: string): Promise<void> {
   // Reach into the pipeline lib directly to drive the project from start to
   // a state where plan_approved is the next legal event. Mirrors the
@@ -60,7 +71,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
     const dir = makeProject();
     await scaffoldToPlanApprovalGate(dir);
 
-    const result = await runApprovePlan({ projectDir: dir });
+    const result = await runApprovePlan({ projectDir: dir, configPath: writeConfig(dir, 'ask') });
 
     expect(result.error).toBeUndefined();
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
@@ -75,7 +86,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
     await scaffoldToPlanApprovalGate(dir);
 
     process.chdir(os.tmpdir());
-    const result = await runApprovePlan({ projectDir: dir });
+    const result = await runApprovePlan({ projectDir: dir, configPath: writeConfig(dir, 'ask') });
 
     expect(result.error).toBeUndefined();
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
@@ -86,6 +97,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
   it('emits exactly one JSON blob on stdout (FR-13)', async () => {
     const dir = makeProject();
     await scaffoldToPlanApprovalGate(dir);
+    const cfg = writeConfig(dir, 'ask');
     const stdoutChunks: string[] = [];
 
     const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
@@ -104,7 +116,7 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
 
     try {
       await runCommand(approvePlanCommand, {
-        argv: ['--project-dir', dir],
+        argv: ['--project-dir', dir, '--config', cfg],
         env: { ...process.env, RADORCH_NO_LOG: '1' },
         isTTY: false,
         stderr: process.stderr,
@@ -125,5 +137,36 @@ describe('radorch gate approve plan (FR-13, AD-5)', () => {
     // mirroring every other radorch subcommand's framework envelope shape.
     expect(parsed.data).toBeDefined();
     expect(parsed.data.action).toBeDefined();
+  });
+
+  // ── Regression: gate-approval must walk under the live orchestration.yml ─────
+  // Bug: runApprovePlan called processEvent without a configPath, so readConfig
+  // returned DEFAULT_CONFIG (execution_mode: 'ask'). The post-approval walk then
+  // surfaced ask_gate_mode even when the operator's config said autonomous.
+  // medium.yml chains plan_approval_gate → gate_mode_selection → phase_loop, so
+  // the gate-mode gate is the first node the walk hits after approval.
+
+  it('honors execution_mode=autonomous from the passed config — does not surface ask_gate_mode (regression)', async () => {
+    const dir = makeProject();
+    await scaffoldToPlanApprovalGate(dir);
+
+    const result = await runApprovePlan({ projectDir: dir, configPath: writeConfig(dir, 'autonomous') });
+
+    expect(result.error).toBeUndefined();
+    // autonomous is in gate_mode_selection.auto_approve_modes, so the gate
+    // auto-approves and the walk advances past it — never asking for gate mode.
+    expect(result.action).not.toBe('ask_gate_mode');
+  });
+
+  it('honors execution_mode=ask from the passed config — surfaces ask_gate_mode', async () => {
+    const dir = makeProject();
+    await scaffoldToPlanApprovalGate(dir);
+
+    const result = await runApprovePlan({ projectDir: dir, configPath: writeConfig(dir, 'ask') });
+
+    expect(result.error).toBeUndefined();
+    // Proves the passed config is actually consulted: under ask with no gate_mode
+    // chosen yet, the walk stops and requests the gate mode.
+    expect(result.action).toBe('ask_gate_mode');
   });
 });
