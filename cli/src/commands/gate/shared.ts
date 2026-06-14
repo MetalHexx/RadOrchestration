@@ -2,10 +2,10 @@ import { processEvent } from '../../lib/pipeline-engine/engine.js';
 import {
   readState, writeState, readConfig, readDocument, ensureDirectories,
 } from '../../lib/pipeline-engine/state-io.js';
-import { resolvePathContext } from '../../lib/pipeline-engine/path-context.js';
+import { resolvePathContext, resolveDiscoveredConfigPath } from '../../lib/pipeline-engine/path-context.js';
 import type { IOAdapter, PathContext, PipelineResult } from '../../lib/pipeline-engine/types.js';
 
-export { processEvent, resolvePathContext };
+export { processEvent, resolvePathContext, resolveDiscoveredConfigPath };
 export type { PathContext, PipelineResult };
 
 export function makeIO(): IOAdapter {

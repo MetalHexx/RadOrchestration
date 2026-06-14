@@ -5,7 +5,7 @@
  *
  * Cross-platform launcher: opens a new terminal window at the given
  * workspace root and starts Claude Code with a slash-prefixed prompt.
- * Modeled on .claude/skills/rad-execute-parallel/scripts/launch-claude.js
+ * Modeled on the worktree-launch path now folded into /rad-execute,
  * but with a project-scoped arg surface: no worktree path, no
  * --add-dir, a single workspace root that becomes the cwd.
  *
@@ -48,7 +48,7 @@ if (!workspaceRoot || !prompt) {
 
 function buildClaudeCmd() {
   // Prompt is slash-prefixed at the caller; single-quoted here to match
-  // rad-execute-parallel/scripts/launch-claude.js. See NFR-4.
+  // the worktree-launch path now folded into /rad-execute. See NFR-4.
   return `claude --permission-mode ${permissionMode} '${prompt}'`;
 }
 

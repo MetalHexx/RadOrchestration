@@ -43,10 +43,24 @@ async function makeProjectAtFinalGate(): Promise<string> {
   return dir;
 }
 
+// Write a project-local orchestration.yml and pass its path explicitly to
+// runApproveFinal. Required for hermeticity: runApproveFinal now defaults
+// configPath to ~/.radorc/orchestration.yml discovery (mirroring `pipeline
+// signal` and `gate approve plan`), so a test without an explicit config would
+// read the dev's real home config. readConfig deep-merges this partial over
+// DEFAULT_CONFIG. after_final_review governs whether the final gate is *required*
+// (covered by final_review.behavioral.test.ts); here it pins the config so the
+// approval is driven deterministically.
+function writeConfig(dir: string, afterFinalReview: boolean): string {
+  const configPath = path.join(dir, 'orchestration.yml');
+  fs.writeFileSync(configPath, `human_gates:\n  after_final_review: ${afterFinalReview}\n`, 'utf8');
+  return configPath;
+}
+
 describe('radorch gate approve final (FR-13, AD-5)', () => {
   it('mutates final_approval_gate to completed and emits the canonical envelope', async () => {
     const dir = await makeProjectAtFinalGate();
-    const result = await runApproveFinal({ projectDir: dir });
+    const result = await runApproveFinal({ projectDir: dir, configPath: writeConfig(dir, true) });
 
     expect(result.error).toBeUndefined();
     const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
@@ -59,7 +73,7 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
     const cwdBefore = process.cwd();
     process.chdir(os.tmpdir());
     try {
-      const result = await runApproveFinal({ projectDir: dir });
+      const result = await runApproveFinal({ projectDir: dir, configPath: writeConfig(dir, true) });
       expect(result.error).toBeUndefined();
       const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
       expect(state.graph.nodes.final_approval_gate.status).toBe('completed');
@@ -70,6 +84,7 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
 
   it('emits exactly one JSON blob on stdout (FR-13)', async () => {
     const dir = await makeProjectAtFinalGate();
+    const cfg = writeConfig(dir, true);
     const stdoutChunks: string[] = [];
 
     const stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {
@@ -88,7 +103,7 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
 
     try {
       await runCommand(approveFinalCommand, {
-        argv: ['--project-dir', dir],
+        argv: ['--project-dir', dir, '--config', cfg],
         env: { ...process.env, RADORCH_NO_LOG: '1' },
         isTTY: false,
         stderr: process.stderr,
@@ -109,5 +124,22 @@ describe('radorch gate approve final (FR-13, AD-5)', () => {
     // mirroring every other radorch subcommand's framework envelope shape.
     expect(parsed.data).toBeDefined();
     expect(parsed.data.action).toBeDefined();
+  });
+
+  // ── Symmetry with `gate approve plan`: walk under the live orchestration.yml ─
+  // runApproveFinal had the identical latent config-path bug — it called
+  // processEvent without a configPath. It now defaults to discovering
+  // ~/.radorc/orchestration.yml and accepts an explicit override. The
+  // final-approval *requirement* (after_final_review) is exercised end-to-end in
+  // final_review.behavioral.test.ts; here we assert the approval lands when
+  // driven with an explicit config path.
+  it('accepts and honors an explicit config path', async () => {
+    const dir = await makeProjectAtFinalGate();
+
+    const result = await runApproveFinal({ projectDir: dir, configPath: writeConfig(dir, true) });
+
+    expect(result.error).toBeUndefined();
+    const state = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8'));
+    expect(state.graph.nodes.final_approval_gate.status).toBe('completed');
   });
 });

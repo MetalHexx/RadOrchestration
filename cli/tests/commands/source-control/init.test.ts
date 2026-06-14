@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { sourceControlInit } from '../../../src/commands/source-control/init.js';
+import { sourceControlInit, resolveAutoCommit, resolveAutoPr } from '../../../src/commands/source-control/init.js';
 
 const base = (over = {}) => ({
   readProjectRepos: () => ({ repos: ['rad-orc-source'], projectType: 'standard' as const }),
@@ -65,5 +65,45 @@ describe('sourceControlInit check + record (FR-7, FR-8, FR-9, FR-10, NFR-2)', ()
     expect(sc.repos[0]?.in_place).toBe(true);
     // path-free invariant: no 'path' key on the repo entry
     expect('path' in (sc.repos[0] as object)).toBe(false);
+  });
+});
+
+describe('sourceControlInit honors resolved commit/PR preference (FR-21, NFR-5, AD-7)', () => {
+  it('persists a resolved auto_pr: always so the PR gate would open the PR', () => {
+    const writeState = vi.fn();
+    const r = sourceControlInit({
+      project: 'P',
+      ...base({ writeState, autoCommit: () => 'always' as const, autoPr: () => 'always' as const }),
+    });
+    expect(r.ok).toBe(true);
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { auto_commit: string; auto_pr: string } } }).pipeline.source_control;
+    // The operator chose "open PRs" → resolved to always → must NOT be the silent never (the S-2 defect).
+    expect(sc.auto_pr).toBe('always');
+    expect(sc.auto_commit).toBe('always');
+  });
+
+  it('persists a resolved auto_commit: never without altering auto_pr', () => {
+    const writeState = vi.fn();
+    const r = sourceControlInit({
+      project: 'P',
+      ...base({ writeState, autoCommit: () => 'never' as const, autoPr: () => 'never' as const }),
+    });
+    expect(r.ok).toBe(true);
+    const sc = (writeState.mock.calls[0]?.[1] as { pipeline: { source_control: { auto_commit: string; auto_pr: string } } }).pipeline.source_control;
+    expect(sc.auto_commit).toBe('never');
+    expect(sc.auto_pr).toBe('never');
+  });
+});
+
+describe('flag-absent fallback preserves today\'s defaults (FR-21)', () => {
+  it('auto_commit defaults to always when no flag is supplied', () => {
+    expect(resolveAutoCommit(undefined)).toBe('always');
+  });
+  it('auto_pr defaults to never when no flag is supplied', () => {
+    expect(resolveAutoPr(undefined)).toBe('never');
+  });
+  it('a supplied flag value wins over the default', () => {
+    expect(resolveAutoCommit('never')).toBe('never');
+    expect(resolveAutoPr('always')).toBe('always');
   });
 });

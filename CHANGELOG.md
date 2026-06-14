@@ -4,6 +4,14 @@ All notable changes to this project are documented here. For full per-release de
 
 ---
 
+## Unreleased
+
+### What's Changed
+
+- **Worktree-launch folded into `/rad-execute`** — The previously separate worktree-launch command has been retired. Running `/rad-execute` from the main clone now launches a fresh worktree and branch automatically; running it from inside an existing worktree executes in place after a confirmation. No separate command is needed.
+
+---
+
 ## v1.0.0-alpha.8 — 2026-05-04
 
 A release focused on multi-harness support, a new pluggable adapter architecture, and a substantially revised documentation set.
@@ -46,7 +54,7 @@ A polish release focused on the dashboard — start projects without leaving the
 
 - **Project names with dots** (e.g., `RELEASE-1.7-TEST`) no longer get rejected by the approve dialog or start-action route.
 - **Claude Code terminal launch on Windows** no longer prefixes `/rad-execute` with an unnecessary directory path.
-- **`rad-execute-parallel` skill** loads properly — the stray `disable-model-invocation` flag has been removed.
+- **Execution skill** loads properly — a stray `disable-model-invocation` flag that blocked model invocation has been removed.
 - **`next build`** runs clean — a stray `require()` in the document-ordering tests was tripping the production lint gate.
 - **Planning skill task-size descriptions** sharpened so junior/standard/senior coder routing is easier to reason about.
 

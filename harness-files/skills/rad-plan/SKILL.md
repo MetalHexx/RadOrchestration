@@ -187,12 +187,9 @@ When `task_size_preference` is a `Custom: …` string, the prose flows through v
 
 ## Step 6: Finalize the plan
 
-**Kind check (run first, before presenting any options):**
-Run `node "${PLUGIN_ROOT}/skills/rad-orchestration/scripts/radorch.mjs" project show --id {PROJECT_NAME}` and read `data.projectType`. When `(projectType ?? 'standard') === 'side-project'`, skip the branch/worktree fork entirely and invoke `/rad-execute` directly — no question is asked.
+Planning is complete — the Requirements doc and Master Plan are written, audited, and exploded into `phases/` and `tasks/`. **Do not start execution automatically.** `/rad-plan` ends at the plan; it never relays into `/rad-execute` on its own.
 
-For all other kinds (`standard` or unset), present the two-option fork below.
+Tell the user the plan is ready and **ask whether they want to proceed to execution now** (a simple yes/no), e.g. *"`{PROJECT_NAME}`'s plan is ready. Want me to run `/rad-execute {PROJECT_NAME}` now?"*
 
-- Use the `askQuestions` tool to ask the user how they want to proceed and execute the plan:
-- Give them 2 options "Execute Plan in current branch / worktree" or "Execute the plan in a new branch / worktree".
-  - **Current branch**: Invoke the `/rad-execute` skill and follow its workflow start-to-finish without skipping or improvising from this skill's context. Source Control Initialization (rad-execute Step 3) is mandatory for fresh projects and MUST prompt the user for any `auto_commit` or `auto_pr` value set to `"ask"` in `orchestration.yml` (the default).
-  - **New worktree**: Follow the `rad-execute-parallel` skill — set up the worktree and follow user's choices. Stop there. Do NOT begin execution and proceed with following the steps in `rad-execute-parallel`.
+- **If yes:** read the `/rad-execute` skill and invoke `/rad-execute {PROJECT_NAME}`, then follow it to drive the pipeline. Do not present a branch/worktree fork or a separate approval beat — `/rad-execute` classifies where the operator is standing (worktree-vs-in-place) and confers plan approval itself. This holds for both standard and side-projects.
+- **If no:** stop here. Let the user know they can run `/rad-execute {PROJECT_NAME}` whenever they're ready.

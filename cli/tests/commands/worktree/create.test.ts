@@ -1,6 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
-import { worktreeCreate, worktreeCreateCommand, provisionWorktrees, aggregateExitCode } from '../../../src/commands/worktree/create.js';
+import { worktreeCreate, worktreeCreateCommand, provisionWorktrees, aggregateExitCode, defaultBranchDefault } from '../../../src/commands/worktree/create.js';
 import { runCommand } from '../../../src/framework/command.js';
+
+// Registry-backed base branch: 'old-repo' resolves to its recorded default_branch;
+// an unregistered repo falls back to 'main'. (No real registry I/O.)
+vi.mock('@rad-orchestration/repo-registry', () => ({
+  readRegistry: () => ({
+    repos: { 'old-repo': { default_branch: 'develop', remote: 'git@github.com:o/old-repo.git', description: '' } },
+    repoGroups: {},
+    localPaths: {},
+  }),
+  resolveRepoPath: () => ({ path: '/clones/x' }),
+}));
 
 function makeExecErr(stderr: string): Error & { stderr: string } {
   const e = new Error(stderr) as Error & { stderr: string };
@@ -154,6 +165,15 @@ describe('worktree create aggregate exit code (AD-5)', () => {
   });
   it('returns 2 when any repo failed to create', () => {
     expect(aggregateExitCode([{ created: false, pushed: false, error: 'boom' }, { created: true, pushed: true }] as never)).toBe(2);
+  });
+});
+
+describe('defaultBranchDefault — base branch from the registry (no hardcoded main)', () => {
+  it('returns the registered default_branch for a known repo', () => {
+    expect(defaultBranchDefault('old-repo')).toBe('develop');
+  });
+  it('falls back to main for an unregistered repo', () => {
+    expect(defaultBranchDefault('unregistered-repo')).toBe('main');
   });
 });
 

@@ -28,21 +28,13 @@ The tier governs review depth — `extra-high` runs per-task code review plus ph
 
 ### /rad-execute
 
-**What it does** — Runs the approved plan in your current branch and worktree.  This will begin the coding and code review process, so be sure you've thoroughly read your plans before you use this command.
+**What it does** — Runs the approved plan, deciding run location from where you're standing. Invoked from the main clone, it launches a fresh worktree and branch then begins execution there. Invoked from inside an existing worktree, it runs in place after a confirmation. This will begin the coding and code review process, so be sure you've thoroughly read your plans before you use this command.
 
-**When to use it** — Use it after the plan is approved and you want execution in place without switching branches.
+**When to use it** — Use it after the plan is approved. Run it from the main clone to get an isolated worktree + branch; run it from inside a worktree to execute in place.
 
 **How to use it** - `/rad-execute <PROJECT-NAME>`.  If you don't provide a project name, you will be prompted to select a project.  You must make sure you've already created a plan with `/rad-plan` as a prerequisite to using this command.
 
 **What it produces** — Your final code output.  During the process, you will also see code review documents as you iterate through phases and tasks.
-
-### /rad-execute-parallel
-
-**What it does** — Runs the approved plan in a dedicated worktree and branch.
-
-**When to use it** — Use it when you want `main` untouched during execution, or when you want to run multiple projects in parallel.  Effectively, this will create a copy of your repository into a new directory in a new branch based on the branch you choose.
-
-**What it produces** — Nothing is really produced in this command other than the new worktree where `/rad-execute` will be run.
 
 ## User-invocable UI skills
 

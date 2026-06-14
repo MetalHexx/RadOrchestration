@@ -17,6 +17,7 @@ import { sessionContextCommand } from './commands/session-context/index.js';
 import { graphShowCommand, graphLinkCommand, graphUnlinkCommand, graphPruneCommand } from './commands/graph/index.js';
 import { configCommand } from './commands/config/index.js';
 import { sourceControlInitCommand } from './commands/source-control/index.js';
+import { executeResolveCommand, executePrepareCommand } from './commands/execute/index.js';
 
 export function buildProgram(version: string): Command {
   const program = new Command('radorch');
@@ -447,6 +448,28 @@ export function buildProgram(version: string): Command {
     .action(async () => {
       const argv = process.argv.slice(4);
       await runCommand(sourceControlInitCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+
+  const execute = program.command('execute').description('Execution run-mode resolution and preparation');
+  execute
+    .command('resolve')
+    .description(executeResolveCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(executeResolveCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
+    });
+  execute
+    .command('prepare')
+    .description(executePrepareCommand.description)
+    .helpOption(false)
+    .allowUnknownOption()
+    .allowExcessArguments(true)
+    .action(async () => {
+      const argv = process.argv.slice(4);
+      await runCommand(executePrepareCommand, { argv, env: process.env, isTTY: Boolean(process.stdin.isTTY), stderr: process.stderr });
     });
 
   const plan = program.command('plan').description('Master Plan operations');

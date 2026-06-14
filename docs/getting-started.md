@@ -29,7 +29,7 @@ flowchart LR
 2. **Plan the project.** Once goals are locked, run `/rad-plan <PROJECT-NAME>`. Skills you've already authored in your own repo are picked up by the Planner during this step — no extra configuration.
 3. **Review the planning output before approving.** The planner produces `{NAME}-REQUIREMENTS.md`, the phase plans under `phases/`, and the per-task handoff files under `tasks/`. This is the moment to course-correct. See [project-structure.md](project-structure.md) for what each document is.
 > Recommended: Use the UI make review more comfortable, but you can also review in your code editor if you prefer.  See [dashboard.md](dashboard.md) for how the dashboard surfaces planning output.
-4. **Execute.** Run `/rad-execute <PROJECT-NAME>` for in-place execution, or `/rad-execute-parallel <PROJECT-NAME>` for an isolated worktree + branch (recommended when you want `main` untouched, or when you want multiple projects in flight simultaneously).
+4. **Execute.** Run `/rad-execute <PROJECT-NAME>`. From the main clone it launches a fresh worktree + branch; from inside an existing worktree it runs in place after a confirmation.
 
 5. **Lean into automation.** Enabling `auto_commit` and `auto_pr` lets the pipeline run hands-off through commits and pull requests; see [configuration.md](configuration.md).
 > Recommended: At the very least, use `auto_commit` to let the agent commit directly to your branch as it executes. This will enable the code-reviewer to more clearly review against the code diff for the given task.

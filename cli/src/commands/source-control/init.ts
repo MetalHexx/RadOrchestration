@@ -225,12 +225,48 @@ function resolveClonePathDefault(repo: string): string {
   return resolved.path;
 }
 
-function autoCommitDefault(_project: string): 'always' | 'never' {
-  return 'always';
+export function resolveAutoCommit(flag: string | undefined): 'always' | 'never' {
+  return flag === 'never' ? 'never' : flag === 'always' ? 'always' : 'always';
 }
 
-function autoPrDefault(_project: string): 'always' | 'never' {
-  return 'never';
+export function resolveAutoPr(flag: string | undefined): 'always' | 'never' {
+  return flag === 'always' ? 'always' : flag === 'never' ? 'never' : 'never';
+}
+
+/**
+ * Default-wired seal entry: the exact dependency bundle the `source-control init`
+ * handler uses, with auto-commit/auto-pr already resolved to `always|never`.
+ * Exposed so `execute prepare` can compose sealing without re-declaring deps.
+ */
+export function sourceControlInitWithDefaults(args: {
+  project: string;
+  worktreeName?: string;
+  inPlace?: boolean;
+  autoCommit: 'always' | 'never';
+  autoPr: 'always' | 'never';
+}): SourceControlInitResult {
+  const projectDir = path.join(userDataPaths().projects, args.project);
+  return sourceControlInit({
+    project: args.project,
+    worktreeName: args.worktreeName,
+    inPlace: args.inPlace ?? false,
+    worktreesDir: userDataPaths().worktrees,
+    sideProjectsDir: userDataPaths().sideProjects,
+    projectDir,
+    readProjectRepos: readProjectReposDefault,
+    readWorktreeFacts: readWorktreeFactsDefault,
+    autoCommit: () => args.autoCommit,
+    autoPr: () => args.autoPr,
+    resolveClonePath: resolveClonePathDefault,
+    readState: (dir) => {
+      const s = readState(dir);
+      if (!s) throw new UserError(`No state.json found at ${dir}`);
+      return s as unknown as { pipeline: Record<string, unknown> };
+    },
+    writeState: (dir, state) => {
+      writeStateIO(dir, state as unknown as PipelineState);
+    },
+  });
 }
 
 interface Args {
@@ -239,6 +275,8 @@ interface Args {
 }
 interface Flags {
   'in-place'?: boolean;
+  'auto-commit'?: string;
+  'auto-pr'?: string;
 }
 
 export const sourceControlInitCommand = defineCommand({
@@ -250,34 +288,17 @@ export const sourceControlInitCommand = defineCommand({
   },
   flags: {
     'in-place': { description: 'Record a single in-place (main clone) binding for a single-repo project' },
+    'auto-commit': { description: 'Resolved auto-commit preference (always|never)', type: 'string' },
+    'auto-pr': { description: 'Resolved auto-PR preference (always|never)', type: 'string' },
   },
   handler: async ({ args, flags }: { args: Args; flags: Flags; ctx: CommandContext }) => {
     if (!args.project) throw new UserError('--project is required');
-    const project = args.project;
-    const projectDir = path.join(userDataPaths().projects, project);
-    const worktreesDir = userDataPaths().worktrees;
-    const sideProjectsDir = userDataPaths().sideProjects;
-
-    return sourceControlInit({
-      project,
+    return sourceControlInitWithDefaults({
+      project: args.project,
       worktreeName: args['worktree-name'],
       inPlace: flags['in-place'] ?? false,
-      worktreesDir,
-      sideProjectsDir,
-      projectDir,
-      readProjectRepos: readProjectReposDefault,
-      readWorktreeFacts: readWorktreeFactsDefault,
-      autoCommit: autoCommitDefault,
-      autoPr: autoPrDefault,
-      resolveClonePath: resolveClonePathDefault,
-      readState: (dir) => {
-        const s = readState(dir);
-        if (!s) throw new UserError(`No state.json found at ${dir}`);
-        return s as unknown as { pipeline: Record<string, unknown> };
-      },
-      writeState: (dir, state) => {
-        writeStateIO(dir, state as unknown as PipelineState);
-      },
+      autoCommit: resolveAutoCommit(flags['auto-commit']),
+      autoPr: resolveAutoPr(flags['auto-pr']),
     });
   },
   mapResult: (r: SourceControlInitResult) => {
