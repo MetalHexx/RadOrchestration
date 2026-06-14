@@ -1,6 +1,6 @@
 ---
 name: rad-execute
-description: "Run a project through the orchestration execution pipeline. A thin relay over the `execute resolve` / `execute prepare` CLI pair: one read-only call classifies the run mode — launch a fresh worktree session, run in place, or silently resume — and returns the exact commands to run. This skill only handles the human beats (one combined question), then runs those commands in order; plan approval is baked into the returned commands, so there is no separate approval beat to run."
+description: "Run a project through the rad orc execution pipeline. Use it when after /rad-plan has completed and ready to execute or when the user indicates they want to execute or run a project.  It can also be used when resuming a project that was previouisly executed but not completed."
 user-invocable: true
 ---
 
