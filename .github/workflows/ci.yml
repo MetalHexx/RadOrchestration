@@ -21,14 +21,16 @@ jobs:
       - name: Install dependencies (root workspace)
         run: npm install
 
-      - name: Build lib/repo-registry
-        run: npm run build -w @rad-orchestration/repo-registry
+      # The cross-surface cohesion guard resolves lib/work-graph by name against its
+      # compiled dist/, so this job builds it too.
+      - name: Build lib/repo-registry and lib/work-graph
+        run: npm run build -w @rad-orchestration/repo-registry -w @rad-orchestration/work-graph
 
       - name: Test lib/repo-registry
         run: npm test -w @rad-orchestration/repo-registry
 
-      - name: Root workspace guard tests (by-name resolution, workspace linkage, CI wiring)
-        run: node --test tests/*.test.mjs
+      - name: Root workspace guard tests (by-name resolution, workspace linkage, CI wiring, cross-surface cohesion)
+        run: node --test --import tsx "tests/*.test.mjs" "tests/*.test.ts"
 
       - name: Build-helper structural tests (tests/)
         run: node --test harness-installers/shared/build-helpers/tests/*.test.mjs
@@ -80,6 +82,25 @@ jobs:
 
       - name: Test lib/telemetry
         run: npm test -w @rad-orchestration/telemetry
+
+  terminal-launch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies (root workspace)
+        run: npm install
+
+      - name: Build lib/terminal-launch
+        run: npm run build -w @rad-orchestration/terminal-launch
+
+      - name: Test lib/terminal-launch
+        run: npm test -w @rad-orchestration/terminal-launch
 
   graph-engine:
     runs-on: ubuntu-latest
@@ -214,6 +235,12 @@ jobs:
 
       - name: Build lib/telemetry (ui dependency)
         run: npm run build -w @rad-orchestration/telemetry
+
+      - name: Build lib/work-graph (ui dependency)
+        run: npm run build -w @rad-orchestration/work-graph
+
+      - name: Build lib/terminal-launch (ui dependency)
+        run: npm run build -w @rad-orchestration/terminal-launch
 
       - name: Build UI (next build)
         working-directory: ui

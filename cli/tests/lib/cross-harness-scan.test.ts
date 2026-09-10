@@ -7,7 +7,6 @@ import {
   detectCopilotCliPlugin,
   COPILOT_CLI_PLUGIN_NAME,
   COPILOT_CLI_PLUGIN_MARKETPLACE,
-  COPILOT_CLI_PLUGIN_MARKETPLACE_RADANCY,
 } from '../../src/lib/cross-harness-scan.js';
 import { INSTALL_KEYS } from '../../src/lib/install-json.js';
 
@@ -90,7 +89,7 @@ describe('scanUserLevelHarnesses (single-shape registry reader)', () => {
   });
 });
 
-describe('detectCopilotCliPlugin (new-marketplace + legacy union probe)', () => {
+describe('detectCopilotCliPlugin (single-marketplace probe)', () => {
   let home: string;
   beforeEach(() => {
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'rad-copilot-cli-'));
@@ -103,23 +102,18 @@ describe('detectCopilotCliPlugin (new-marketplace + legacy union probe)', () => 
     return path.join(home, '.copilot', 'installed-plugins', marketplace, COPILOT_CLI_PLUGIN_NAME);
   }
 
-  it('detects an install under the current (Radancy) marketplace location', () => {
-    fs.mkdirSync(pluginDir(COPILOT_CLI_PLUGIN_MARKETPLACE_RADANCY), { recursive: true });
-    expect(detectCopilotCliPlugin({ home })).toBe(true);
-  });
-
-  it('detects an install under the legacy marketplace location', () => {
+  it('detects an install under the default marketplace location', () => {
     fs.mkdirSync(pluginDir(COPILOT_CLI_PLUGIN_MARKETPLACE), { recursive: true });
     expect(detectCopilotCliPlugin({ home })).toBe(true);
   });
 
-  it('returns false when neither location has an install', () => {
+  it('returns false when the default location has no install', () => {
     expect(detectCopilotCliPlugin({ home })).toBe(false);
   });
 
   it('probes only the explicit override, ignoring a default location that exists', () => {
-    fs.mkdirSync(pluginDir(COPILOT_CLI_PLUGIN_MARKETPLACE_RADANCY), { recursive: true });
-    expect(detectCopilotCliPlugin({ home, marketplace: 'some-other-marketplace' })).toBe(false);
+    fs.mkdirSync(pluginDir(COPILOT_CLI_PLUGIN_MARKETPLACE), { recursive: true });
+    expect(detectCopilotCliPlugin({ home, marketplace: 'fake-marketplace' })).toBe(false);
   });
 
   it('does not throw when the install-plugins path is unreadable', () => {

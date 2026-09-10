@@ -34,9 +34,9 @@ function fileContainsToken(filePath: string, token: string): boolean {
   }
 }
 
-describe('shipped surfaces contain no references to public org', () => {
-  it('does not contain metalhexx in shipped surfaces', () => {
-    const token = 'metalhexx';
+describe('shipped surfaces contain no references to the private upstream org', () => {
+  it('does not contain radancy in shipped surfaces', () => {
+    const token = 'radancy';
     const offenders: string[] = [];
 
     // Resolve paths to scan

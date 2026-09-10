@@ -8,6 +8,7 @@ on:
       - 'lib/repo-registry/**'
       - 'lib/work-graph/**'
       - 'lib/telemetry/**'
+      - 'runtime-config/**'
       - '.github/workflows/cli.yml'
   push:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'lib/repo-registry/**'
       - 'lib/work-graph/**'
       - 'lib/telemetry/**'
+      - 'runtime-config/**'
       - '.github/workflows/cli.yml'
 
 jobs:
@@ -33,7 +35,7 @@ jobs:
         run: npm install
 
       - name: Build workspace libraries
-        run: npm run build -w @rad-orchestration/repo-registry -w @rad-orchestration/work-graph -w @rad-orchestration/telemetry
+        run: npm run build -w @rad-orchestration/repo-registry -w @rad-orchestration/work-graph -w @rad-orchestration/telemetry -w @rad-orchestration/terminal-launch
 
       - name: Typecheck (tsc --noEmit)
         working-directory: cli

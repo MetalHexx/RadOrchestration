@@ -338,10 +338,10 @@ look for OTEL calls whose `query_source`/model indicate the auto-mode classifier
 
 ## Appendix A — Environment & paths
 
-- Claude Code binary: `C:\Users\Metal\.local\share\claude\versions\2.1.207` (PE32+, ~247 MB, JS embedded)
-- Transcripts: `C:\Users\Metal\.claude\projects\c--dev-orchestration-v3\<session>.jsonl`
-- rad-orc store: `C:\Users\Metal\.radorc\telemetry\usage\usage-<date>-<session>.ndjson`
-- Deployed pricing used for scoring: `C:\Users\Metal\.radorc\ui\lib\telemetry\dist\read\pricing.js`
+- Claude Code binary: `C:\Users\you\.local\share\claude\versions\2.1.207` (PE32+, ~247 MB, JS embedded)
+- Transcripts: `C:\Users\you\.claude\projects\c--dev-orchestration-v3\<session>.jsonl`
+- rad-orc store: `C:\Users\you\.radorc\telemetry\usage\usage-<date>-<session>.ndjson`
+- Deployed pricing used for scoring: `C:\Users\you\.radorc\ui\lib\telemetry\dist\read\pricing.js`
 - Pricing source of truth: `lib/telemetry/src/read/pricing.ts` (drives the UI via `spend-display.ts`)
 - Hooks (`~/.claude/settings.json`): `SessionStart` → `session-preamble.mjs`;
   `PostToolUse`/`Stop`/`SessionEnd` → `telemetry-capture.mjs`. No LLM hooks.
@@ -374,9 +374,9 @@ metric: claude_code.cost.usage  (counter, attribute: model)  — Σ == /cost
 // pricing both with the deployed dollarsFor. Flags missing/mismatched rows and inherited caches.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-const PROJ = 'C:/Users/Metal/.claude/projects/c--dev-orchestration-v3';
-const STORE = 'C:/Users/Metal/.radorc/telemetry/usage';
-const { dollarsFor } = await import(pathToFileURL('C:/Users/Metal/.radorc/ui/lib/telemetry/dist/read/pricing.js').href);
+const PROJ = 'C:/Users/you/.claude/projects/c--dev-orchestration-v3';
+const STORE = 'C:/Users/you/.radorc/telemetry/usage';
+const { dollarsFor } = await import(pathToFileURL('C:/Users/you/.radorc/ui/lib/telemetry/dist/read/pricing.js').href);
 let sid = process.argv[2] || 'auto';
 if (sid === 'auto') {
   const cands = readdirSync(PROJ).filter(f => f.endsWith('.jsonl'))

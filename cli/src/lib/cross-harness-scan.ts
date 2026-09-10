@@ -6,15 +6,13 @@ import { INSTALL_KEYS } from './install-json.js';
 
 /**
  * Copilot CLI plugin-install segments. `COPILOT_CLI_PLUGIN_MARKETPLACE` is
- * the legacy value derived from the conventional kebab-case form Copilot CLI
- * produces from the `OWNER/REPO` slug it was originally added from; it is
- * kept so existing installs are still detected. `COPILOT_CLI_PLUGIN_MARKETPLACES`
- * is the ordered probe list — the current marketplace first, legacy last.
+ * the kebab-case form Copilot CLI derives from the `OWNER/REPO` slug the
+ * plugin was added from. `COPILOT_CLI_PLUGIN_MARKETPLACES` is the probe
+ * list — a single marketplace today, probed as a list because the
+ * detection helper below supports more than one.
  */
 export const COPILOT_CLI_PLUGIN_MARKETPLACE = 'MetalHexx-RadOrchestration';
-export const COPILOT_CLI_PLUGIN_MARKETPLACE_RADANCY = 'radancy-pe-rai-ops-plugin-marketplace';
 export const COPILOT_CLI_PLUGIN_MARKETPLACES: readonly string[] = [
-  COPILOT_CLI_PLUGIN_MARKETPLACE_RADANCY,
   COPILOT_CLI_PLUGIN_MARKETPLACE,
 ];
 export const COPILOT_CLI_PLUGIN_NAME = 'rad-orc';
@@ -26,10 +24,9 @@ export const COPILOT_CLI_PLUGIN_NAME = 'rad-orc';
  * path-inspection is the sole detection signal.
  *
  * With no `marketplace` override, every candidate in
- * `COPILOT_CLI_PLUGIN_MARKETPLACES` is probed and the first hit wins, so a
- * plugin installed from either the current or a legacy marketplace slug is
- * detected. Passing an explicit `marketplace` narrows the probe to exactly
- * that one location.
+ * `COPILOT_CLI_PLUGIN_MARKETPLACES` is probed and the first hit wins.
+ * Passing an explicit `marketplace` narrows the probe to exactly that one
+ * location.
  */
 export function detectCopilotCliPlugin(opts?: {
   home?: string;
@@ -51,15 +48,13 @@ export function detectCopilotCliPlugin(opts?: {
 }
 
 /**
- * VS Code Copilot plugin `<org>/<repo>` segments. `COPILOT_VSCODE_PLUGIN_ORG`
- * / `_REPO` are the legacy values, kept so existing installs are still
- * detected. `COPILOT_VSCODE_PLUGIN_SOURCES` is the ordered probe list — the
- * current marketplace source first, legacy last.
+ * VS Code Copilot plugin `<org>/<repo>` segments. `COPILOT_VSCODE_PLUGIN_SOURCES`
+ * is the probe list — a single `{ org, repo }` source today, probed as a
+ * list because the detection helper below supports more than one.
  */
 export const COPILOT_VSCODE_PLUGIN_ORG = 'MetalHexx';
 export const COPILOT_VSCODE_PLUGIN_REPO = 'RadOrchestration';
 export const COPILOT_VSCODE_PLUGIN_SOURCES: readonly { org: string; repo: string }[] = [
-  { org: 'radancy-pe', repo: 'rai-ops-plugin-marketplace' },
   { org: COPILOT_VSCODE_PLUGIN_ORG, repo: COPILOT_VSCODE_PLUGIN_REPO },
 ];
 
@@ -71,11 +66,11 @@ export const COPILOT_VSCODE_PLUGIN_SOURCES: readonly { org: string; repo: string
  * that exists.
  *
  * With no `org` / `repo` override, every source in
- * `COPILOT_VSCODE_PLUGIN_SOURCES` is probed under that root, current
- * marketplace source first. Passing an explicit `org` and/or `repo` narrows
- * the probe to exactly that one pair — tests use this to swap in fake
- * segments. The actual derivation rule VS Code uses in production may differ
- * from this convention; that gap is a known watch-item.
+ * `COPILOT_VSCODE_PLUGIN_SOURCES` is probed under that root. Passing an
+ * explicit `org` and/or `repo` narrows the probe to exactly that one pair —
+ * tests use this to swap in fake segments. The actual derivation rule VS
+ * Code uses in production may differ from this convention; that gap is a
+ * known watch-item.
  */
 export function detectCopilotVscodePlugin(opts?: {
   home?: string;

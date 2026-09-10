@@ -24,22 +24,11 @@ function makeFakeHome(platform: 'darwin' | 'linux' | 'win32', layout: 'present' 
 }
 
 describe('detectCopilotVscodePlugin — OS-specific agentPlugins path probe', () => {
-  it('returns true when the legacy-org plugin directory exists under the platform-matched path', () => {
+  it('returns true when the org/repo plugin directory exists at the default location under the platform-matched path', () => {
     const { home, cleanup } = makeFakeHome(currentPlatform(), 'present');
     try {
       expect(detectCopilotVscodePlugin({ home })).toBe(true);
     } finally { cleanup(); }
-  });
-
-  it('returns true when the new-marketplace org/repo directory exists under the platform-matched path', () => {
-    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'vscode-detect-new-'));
-    try {
-      const base = appDataRootFor(home, currentPlatform());
-      fs.mkdirSync(path.join(base, 'agentPlugins', 'github.com', 'radancy-pe', 'rai-ops-plugin-marketplace'), { recursive: true });
-      expect(detectCopilotVscodePlugin({ home })).toBe(true);
-    } finally {
-      fs.rmSync(home, { recursive: true, force: true });
-    }
   });
 
   it('returns false when no agentPlugins/github.com/.../ path exists', () => {

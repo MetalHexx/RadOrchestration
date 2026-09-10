@@ -1,47 +1,80 @@
-# Slash Commands
+# Skills
 
-This page documents the user-invoked slash commands for the orchestration system. Author-time and plumbing skills — the internal skills that pipeline agents load automatically — are intentionally not listed here. Operators interact with the system through these six commands; everything else runs behind the scenes.
+A skill is a set of instructions an agent loads when it needs them, rather than carrying all the
+time. Rad Orc ships two kinds: commands you type, and references the agents load themselves as the
+pipeline puts them in position.
 
-The 3 most important commands are: `/rad-brainstorm`,  `/rad-plan` and `/rad-execute`.  The others are for special cases and convenience.
+This page is the index. Each row points at the page that actually explains the thing.
 
-The shipped review-intensity tiers are `extra-high`, `high`, `medium`, and `low`. They share planning ceremony and final review; they differ only in defensive review depth between planning and final approval. See [Process Templates](pipeline.md#process-templates) for the full matrix.
+## The ones you type
 
-### /rad-brainstorm
+Invoke a skill by typing its name after a slash — `/rad-execute`. What actually resolves depends on
+the harness: Claude Code and Copilot VS Code namespace plugin commands under the plugin name
+(`/rad-orc:rad-execute`, `/rad-orc-vscode:rad-execute`), while Copilot CLI takes the bare name as
+written. These docs write the bare form throughout for readability — add your harness's namespace
+when you type a command for real.
 
-**What it does** — Runs a collaborative ideation session to align goals and capture context before planning begins.
+| Command | What it does | Where it's documented |
+|---|---|---|
+| `/rad-brainstorm` | Talks through what you're building until the goals hold up, and scribes a Requirements doc as consensus forms. | [Brainstorm](planning.md#brainstorm-align-and-create-requirements) |
+| `/rad-plan` | Turns approved requirements into a Master Plan, then explodes it into phases and tasks. Asks you for review intensity and task size on the way. | [Master Plan](planning.md#master-plan-creating-an-execution-plan) |
+| `/rad-execute` | Runs the plan. Also what you type to resume one that stopped partway. | [Starting a run](pipeline.md#starting-a-run) |
+| `/rad-amend` | Changes a plan execution has already sealed — adds a phase or task, rewrites one that hasn't run, or drops one. Works mid-run and after the project completed. | [Amendments](amendments.md) |
+| `/rad-project` | Answers what projects exist, what state each is in, how they relate, and where a project's worktrees are. Also creates the links between them. | [Seeing the graph](projects.md#seeing-the-graph) |
+| `/rad-session` | Saves this conversation's progress against a project, resumes a previously saved session, or lists a project's saved sessions with their activity trail. Fires from plain language too — no slash command required. | [Sessions](sessions.md) |
+| `/rad-repo` | Registers repositories and repo-groups, and answers where a piece of code actually lives. | [Repository Registry](repo-registry.md) |
+| `/rad-visual-docs` | Generates a visual — a summary, a UI wireframe, or an architecture diagram — into the project folder. | [Visual Documents](visual-docs.md) |
+| `/rad-init` | Sets how much the session-start briefing shows, from full banner to off. | [Ambient Awareness](ambient-awareness.md#setting-the-level) |
+| `/rad-communication` | Switches how the agent talks to you, or turns the feature off. | [Communication Styles](communication-styles.md) |
+| `/rad-ui-start` | Starts the dashboard and hands back its URL. | [Dashboard](dashboard.md) |
+| `/rad-ui-status` | Reports whether the dashboard is running. | [Dashboard](dashboard.md) |
+| `/rad-ui-stop` | Stops the dashboard. | [Dashboard](dashboard.md) |
+| `/rad-portfolio` | Starts a long-running initiative, orients you in one that already exists, and records what each iteration actually delivered. | — |
+| `/rad-help` | Accesses the documentation that ships with your install — a walkthrough of Rad Orc, a tour of what you can do, or an answer about any command. | [Rad Orc README](../README.md#help-when-you-want-it) |
 
-**When to use it** — Use it before non-trivial work to decide whether the work warrants a project series and to gather linked PRDs, design docs, or screenshots that the planners will read.  It is highly recommended you start every project with a brainstorming session.  It's not required, but it will greatly help you align your intent to produce the best possible planning documents when running `/rad-plan` later.
+Three of those carry a project from idea to merged code: `/rad-brainstorm`, then `/rad-plan`, then
+`/rad-execute`, in that order. `/rad-amend` is the fourth on that path but only sometimes — it's how
+you change the plan once running it has already begun. The rest are there when you want them — the
+registry ones early, `/rad-session` any time you want to save, resume, or list a session's
+progress, the dashboard whenever you'd rather watch a run than read it, and `/rad-init` and
+`/rad-communication` once to set a preference you'll rarely revisit.
 
-**What it produces** — a draft `{NAME}-REQUIREMENTS.md` at the project root, scribed via `/rad-create-plans` as consensus forms.  It can be linked to a project series (should you choose to create one), and relevant docs and additional context are linked into it for `/rad-plan` to build on.
+## The ones agents load
 
-### /rad-plan
+You don't invoke these. An agent reaches for one when it's doing the job that skill describes — the
+orchestrator loads its playbook, a coder loads the coding workflow, a reviewer loads the review
+standard. They're listed so that a name you see in a log or a slash menu isn't a mystery.
 
-**What it does** — Starts the full planning pipeline from an existing requirements document. Invoking it is itself the approval act; you then pick a review-intensity tier (`extra-high`, `high`, `medium`, `low`) and a Phase/Task Size (`Small`, `Medium`, `Large`, `Extra Large`, or `Custom` prose) in a single batched prompt. The planner then builds the Master Plan and the execution plan from the approved requirements.
+| Skill | Who loads it | What it governs |
+|---|---|---|
+| `rad-orchestration` | the orchestrator | How to drive the pipeline — signal an event, resolve the action that comes back, spawn who it names. See [What's driving the run](pipeline.md#whats-driving-the-run). |
+| `rad-create-plans` | the main agent, while planning or amending | How the Requirements doc, the Master Plan, and an amendment get written, and what has to be in each. See [Document Types](document-types.md). |
+| `rad-execute-coding-task` | coders | The coding workflow, and the engineer's charter every coder is held to. See [The skills they run](subagents.md#the-skills-they-run). |
+| `rad-code-review` | reviewers | The two lenses a review looks through and how findings become a verdict. See [The skills they run](subagents.md#the-skills-they-run). |
+| `rad-source-control` | the main agent and coders | Commits, pull requests, and creating or cleaning up a project's worktrees. See [Source Control](source-control.md). |
+| `rad-log-error` | the orchestrator | Appending to the project's error log when the pipeline reports a failure. See [The error log](document-types.md#the-error-log). |
 
-The tier governs review depth — `extra-high` runs per-task code review plus phase review plus final review; `low` runs final review only; `high` and `medium` are intermediate. Phase/Task Size independently governs task scope and phase scope, with its own `(Recommended)` default (`Large`) unrelated to the chosen tier.
+These are also the honest answer to "what is the agent actually doing right now." A run isn't
+improvising — at every step something is following one of the skills listed above.
 
-**When to use it** — Use it after `/rad-brainstorm` has scribed a requirements document, when you want planning ceremony plus the review depth your project needs.
+## Your own skills
 
-**How to use it** — Type `/rad-plan <PROJECT-NAME>` once a requirements document exists for that project.  If none exists yet, `/rad-plan` points you to `/rad-brainstorm` to create one — that's where you bring your prompt and links to any additional documents, resources, or images for the requirements.
+Skills aren't only ours. If your repo has its own — a testing convention, a component pattern, a
+house style — the planner collects them while the plan is being written and folds what they say into
+the tasks that need it.
 
-**What it produces** — `{NAME}-MASTER-PLAN.md` and the per-phase and per-task files under `phases/` and `tasks/`, built from the approved `{NAME}-REQUIREMENTS.md`.
+That's the route that works, and it's worth knowing it's the only one: a coding agent can't load one
+of your skills mid-task. For how they get mined and applied, see:
+[How skills are applied](planning.md#how-skills-are-applied). For why the subagents can't reach them
+directly, see:
+[Your own skills reach them through the plan](subagents.md#your-own-skills-reach-them-through-the-plan).
 
-### /rad-execute
+>Note: Skills in your repo whose names start with `rad-` are skipped when the planner collects them,
+so the system never confuses one of yours for one of its own. Pick a different prefix and it'll be
+found.
 
-**What it does** — Runs the approved plan, deciding run location from where you're standing. Invoked from the main clone, it launches a fresh worktree and branch then begins execution there. Invoked from inside an existing worktree, it runs in place after a confirmation. This will begin the coding and code review process, so be sure you've thoroughly read your plans before you use this command.
+---
 
-**When to use it** — Use it after the plan is approved. Run it from the main clone to get an isolated worktree + branch; run it from inside a worktree to execute in place.
-
-**How to use it** - `/rad-execute <PROJECT-NAME>`.  If you don't provide a project name, you will be prompted to select a project.  You must make sure you've already created a plan with `/rad-plan` as a prerequisite to using this command.
-
-**What it produces** — Your final code output.  During the process, you will also see code review documents as you iterate through phases and tasks.
-
-## User-invocable UI skills
-
-Three skills control the dashboard UI lifecycle:
-
-- `rad-ui-start` — launch the dashboard
-- `rad-ui-stop` — stop the dashboard
-- `rad-ui-status` — show the dashboard's status
-
-On a plugin install, invoke them with the namespaced slash form: `/rad-orchestration:rad-ui-start`, `/rad-orchestration:rad-ui-stop`, `/rad-orchestration:rad-ui-status`. See [plugins.md](plugins.md) for the full slash-command surface.
+**Read Next:** [Planning](planning.md) · [Execution Pipeline](pipeline.md) ·
+[Amendments](amendments.md) · [Subagents](subagents.md) · [Projects](projects.md) ·
+[Dashboard](dashboard.md) · [Docs Viewer](docs-viewer.md)
