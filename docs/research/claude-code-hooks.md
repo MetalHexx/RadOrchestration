@@ -13,7 +13,7 @@
 
 ## What this adds over the telemetry research doc
 
-The companion [`~/.radorc/projects/TELEMETRY/claude-code-telemetry.md`](../../../.radorc/projects/TELEMETRY/claude-code-telemetry.md) documents the **full** telemetry surface — on-disk JSONL `message.usage` shape, the OTel metric/event/trace catalog, and a §6 hooks summary. Treat it as the baseline. **This document goes deep on one decision the baseline only summarizes: whether to drive capture from hooks, which hooks, and exactly what data a hook hands a shell script on stdin** — because the TELEMETRY-1 design uses a hook as its capture trigger and we needed to know whether hooks make file-scraping unnecessary (they do not) or merely better-triggered (they do).
+The companion `~/.radorc/projects/TELEMETRY/claude-code-telemetry.md` documents the **full** telemetry surface — on-disk JSONL `message.usage` shape, the OTel metric/event/trace catalog, and a §6 hooks summary. Treat it as the baseline. **This document goes deep on one decision the baseline only summarizes: whether to drive capture from hooks, which hooks, and exactly what data a hook hands a shell script on stdin** — because the TELEMETRY-1 design uses a hook as its capture trigger and we needed to know whether hooks make file-scraping unnecessary (they do not) or merely better-triggered (they do).
 
 The central question this resolves: **"hooks vs. files" is a false dichotomy for token data.** Every hook payload includes `transcript_path` — the path to the very JSONL we scrape. The honest framing is **hook = trigger + file locator; file = source of truth for tokens.**
 

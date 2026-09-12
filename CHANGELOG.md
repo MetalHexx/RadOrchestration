@@ -10,6 +10,114 @@ _(none)_
 
 ---
 
+## v1.0.0-alpha.14 — 2026-09-08
+
+### What's New
+
+**Session tracking — save a conversation and pick it back up**
+- Ask in plain language ("save this session", "what was I working on") or use `/rad-session`.
+- The pipeline also records automatically as it works, so most of the trail builds itself.
+- Every project now has an **Overview** page listing its documents and its session history, with how long you were actively working in each one.
+- **Continue Session** reopens a saved conversation in a fresh terminal; **View Telemetry** jumps to its costs.
+- Special Note: Copilot in VS Code isn't covered — it has no resume path.
+
+**A help system that ships with your install**
+- The full documentation set now lands on your machine with every install, so it works offline and always matches the version you have.
+- Read it in the dashboard via the question-mark icon — real pages with working links, screenshots, and deep links you can bookmark or share.
+- `/rad-help` answers questions from those docs conversationally, offers a guided tour, or walks you through building something small to learn the ropes. `/rad-help <skill-name>` explains any skill.
+
+**Amendments — change an already-approved plan in place**
+- `/rad-amend <PROJECT>` adds, revises, or drops phases and tasks on a project that's already planned, mid-run, halted, or even already completed.
+- **Anything already done stays done.**
+- You get a link to read the amendment before approving it, and an optional subagent reviewer can audit it first.
+
+**Communication styles — tune how the agent talks to you**
+- Four styles ship — High-Level, Direct, Caveman, and Socratic — off by default. `/rad-communication` switches or enables them.
+- Talk to the skill to craft your own. Your styles survive upgrades untouched.
+- A style governs tone and pacing only, never what the agent does or the shape of code, docs, plans, and reviews.
+
+**Delete a project**
+- A trash control in the project header, with a confirmation that itemizes what will be removed and what's protected.
+- Repositories you registered yourself are never removed, and you can keep a worktree a related project is still using.
+- Also available as `radorch project delete`, with `--preview`.
+- Special Note: there is no undo. The preview is the safeguard.
+
+**Ambient Awareness Preamble Verbosity**
+- Four levels — `verbose`, `minimal`, `silent`, `off` — set from the dashboard or with `/rad-init <level>`.
+- `minimal` and `silent` change what you see; the agent still gets everything.
+- Only `off` saves some tokens, but your agent will no longer be aware of the world around it.
+- `/rad-init` on its own loads the full briefing manually whenever you want it, without changing your setting.
+
+**Smaller additions**
+- `/rad-execute` now asks which workspace to use when starting fresh, naming the base branch before anything is created — closing a case where follow-up work could branch off a place you didn't expect.
+- `/rad-plan` can re-run its audit when the first pass turns up an unusual number of problems, up to three passes, instead of finalizing on faith.
+- A new **Work Graph** page draws your projects and the relationships between them, filterable and shareable by URL. **Early preview, development still underway** — it's a snapshot at page load rather than a live view, and the page may change shape between releases.
+- Coder and reviewer agents can now drive a real browser using Claude in Chrome, the Playwright MCP, or the Chrome DevTools MCP, so a task can include end-to-end or visual verification.
+
+**Portfolios — early preview**
+- `/rad-portfolio` gives long-running initiatives a home: a place to hold the design record for work that spans months and many sessions, so decisions don't get re-litigated every time a fresh session starts. Iterations are ordinary projects that run through the normal pipeline.
+- **This is an early preview and development is still underway.** The shape of the feature is still moving, its documentation page hasn't been written yet, and details may change between releases. It's included so you can try it and tell us what's missing — not because it's finished.
+
+### What's Fixed
+
+**The dashboard document viewer is genuinely live**
+- Documents now update as they're written instead of needing a refresh, newly created ones open on the first click, and your scroll position survives an update.
+
+**Every surface reports the same project state**
+- The same project could read "Complete" in one place and "Pending Review" in another. There's now one vocabulary used everywhere — project list, project page, work graph, CLI, and the session briefing.
+
+**Planning and review correctness**
+- The final reviewer could be handed a commit range that missed an amendment's work entirely; it's now derived from real git history and halts loudly if it can't be trusted.
+- Master Plans that numbered tasks continuously across phases were silently accepted and later crashed. They're now rejected at plan time with a clear message.
+- Looking up a repository's own skills was broken end to end, so a repo's conventions never reached a coder. It now resolves repositories by registered name.
+
+**Fewer wasted turns and stalled runs**
+- The pipeline now hands the orchestrator ready-to-run commands instead of a sentence it had to assemble, which used to cause rejected guesses and retries on nearly every run.
+- Fixed a bogus "no task is in progress" error when completing a code review, and plan-explosion parse failures that never signalled at all.
+
+**The config panel no longer breaks on an upgraded install**
+- It rendered blank — and failed to save — on an install that upgraded into the new settings.
+
+### Changes
+
+**The session briefing now defaults to `minimal`**
+- Fresh installs get the one-line form, which now names the project you're standing in — the part that actually changes session to session.
+- **An existing setting is never touched.** The new default only reaches a fresh install.
+
+**Session start tells you where you're standing**
+- The briefing names the project whose workspace you're in, its branch and repos, and related projects sharing it — and says nothing in a plain clone.
+
+**The dashboard opens on Overview**
+- Projects open on Overview rather than the pipeline graph, with a header toggle that remembers your choice. This replaces the old launch screen.
+
+**The dashboard config panel was reshaped**
+- Two new sections: Ambient Awareness and Communication Style.
+- **Raw YAML editing is gone**, and with it the Human Gates section. Those settings still work at their current values, but changing them is now a file edit.
+
+**The dashboard's terminal launch buttons are hidden**
+- As built they always opened Claude Code in a shared folder with none of the project's code in front of it, and Copilot was unreachable from the dashboard. Approve Plan and Approve Final Review are untouched.
+
+**The final approval gate now offers two choices**
+- Approve, or request changes in your own words — the agent decides whether that's a corrective or an amendment, and tells you what a change would cost before you choose.
+
+**The Source Control panel was rebuilt**
+- Cleaner styling that reads as part of the page, readable labels at any width, and worktree or in-place location reported per repo rather than one verdict for the whole project.
+
+**The orchestrator no longer repairs pipeline state on its own**
+- On stale state it halts, explains the diagnosis and the options, and lets you choose. Starting, resuming, and recovering all route through `/rad-execute`.
+
+**The documentation was rewritten from the ground up**
+- The docs had last been accurate several releases earlier. Every page was rewritten or replaced, and a number of claims that were simply untrue are corrected.
+
+**Command-line output**
+- `radorch project list` and `project show` now lead with the project's state. Anything parsing that text will need updating.
+- `radorch config` became a command group — the read is now `radorch config get`.
+
+**Upgrade notes**
+- Changes to agent instructions and shipped documentation take effect after you reinstall or upgrade.
+- Auto-updates for third-party marketplaces are **off by default** in Claude Code, so you may be silently pinned to an old version. Enabling it is worth doing once.
+- Projects already underway keep the workflow they started with.
+
 ## v1.0.0-alpha.13 — 2026-08-10
 
 ### What's New
@@ -62,7 +170,6 @@ _(none)_
   - They get no workspace, no branch, and no pull request.
 - Planning is now hardened and will stop if a repo is listed as changing but no task actually changes it.
 - Brainstorming will now confirm if a repo is only for reference as a front gate.
-- Thank you [@jackie-lowry_radancy](https://github.com/jackie-lowry_radancy) for the tremendous help and feedback which helped identify this scenario.
 
 **Multi-repo reviews**
 - Repos are now included in project code reviews to reinforce that corrective tasks write to the correct repo.
@@ -75,8 +182,8 @@ _(none)_
 
 ### Changes
 
-**The plugin marketplace moved to Radancy**
-- Plugins are now available from our new [Radancy Marketplace](https://github.com/radancy-pe/rai-ops-plugin-marketplace)
+**The plugin marketplace moved**
+- Plugins are now available from our new [rad-orc-marketplace](https://github.com/MetalHexx/rad-orc-marketplace)
 - Instructions can be found in the repo's README.md.
 
 **Launching sessions**
@@ -96,10 +203,6 @@ _(none)_
 - Projects already underway keep the workflow they started with, so "Final Review" corrective tasks only work going forward on new projects.
 - Changes to agent instructions take effect after you reinstall or upgrade.
 - Be sure to enable auto-updates in Claude Code to receive new Rad Orc plug-in updates automatically.
-
-### Special Thanks
-
-- [@jackie-lowry_radancy](https://github.com/jackie-lowry_radancy) — for comprehensive testing of Rad Orc across this release. Several of the fixes above were surfaced by that testing, and the feedback made them sharper.
 
 ## v1.0.0-alpha.12 — 2026-07-29
 

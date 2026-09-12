@@ -1,78 +1,132 @@
 # Configuration
 
-`orchestration.yml` is the single configuration file for the orchestration system. It lives at `~/.radorc/orchestration.yml`. The file controls pipeline limits, human-gate behavior, and source-control automation. Sensible defaults ship out of the box; most users never need to edit it.
+Most people never open this page, and that's by design — Rad Orc ships with defaults that work. But
+sooner or later you'll want commits to stop asking, or the session banner to quiet down, or more
+retries before a stuck task gives up.
 
-## orchestration.yml
+There are **nine settings**. All of them live in one file, and you shouldn't have to touch that file.
 
-The full canonical shape with default values:
+## Change it in the dashboard
 
-```yaml
-# orchestration.yml
-version: "1.0"
-package_version: 1.3.1
-default_template: ask
-limits:
-  max_retries_per_task: 5
-  max_consecutive_review_rejections: 3
-human_gates:
-  after_planning: true
-  execution_mode: "ask"
-  after_final_review: true
-source_control:
-  auto_commit: "ask"
-  auto_pr: "ask"
-```
+Click the gear in the top-right corner of the dashboard. Everything is in one panel, grouped, with a
+short explanation behind the `?` next to each field.
 
-Edit the file in place, or use the dashboard's gear panel (see [dashboard.md](dashboard.md)) for an interactive UI.
+<img src="../assets/config-gear-panel.png" width="340" alt="The dashboard configuration panel, showing seven groups of settings">
 
-### version
+Change what you want and hit **Save** — it stays greyed out until something actually changes, so you
+can't save by accident. The panel writes the file for you, which is the point: no YAML, no typos, no
+wondering whether `ask` needed quotes.
 
-Configuration schema version. Always `"1.0"` for this release.
+> **One thing to know if you've hand-edited the file.** Saving from the panel rewrites the whole
+> thing, so any comments you added yourself are lost. Your settings all survive — including the ones
+> the panel doesn't display — but the notes you left next to them don't.
 
-### package_version
+## What you can set
 
-The rad-orchestration package version that wrote this file. Updated automatically on install and upgrade.
+| Setting | Default | What it does |
+|---|---|---|
+| **Max Retries per Task** | `5` | How many times a task can be reworked before the run stops and asks for help. [Below](#limitsmax_retries_per_task) |
+| **Auto Commit** | `ask` | Whether finished work gets committed automatically. [Below](#source_controlauto_commit) |
+| **Auto PR** | `ask` | Whether a draft pull request opens when the run finishes. [Below](#source_controlauto_pr) |
+| **Default Template** | `ask` | How much review a new project gets. `ask` means you pick during planning. See [Review intensity](pipeline.md#review-intensity) |
+| **Verbosity Level** | `minimal` | How much of the session-start briefing you see. See [Setting the level](ambient-awareness.md#setting-the-level) |
+| **Observability · Enabled** | `on` | Records what your agents cost, locally. See [Observability](observability.md) |
+| **UI Port** | `1337` | Where the dashboard listens. See [Running it](dashboard.md#running-it) |
+| **Communication Style · Enabled** | `off` | Whether a style shapes how your agent talks. See [Trying one](communication-styles.md#trying-one-and-keeping-it) |
+| **Communication Style · Style** | `high-level` | Which style, once enabled. |
 
-### default_template
-
-Default review-intensity tier the planner proposes when starting a new project. Accepts `ask`, `extra-high`, `high`, `medium`, or `low`. The default `ask` defers the choice to project-creation time. Tier names map to the four templates under `~/.radorc/templates/`.
+Six of those are the front door to a feature with its own page. The three below have no page of their
+own, so this is where they're explained.
 
 ### limits.max_retries_per_task
 
-Maximum automatic retries before the pipeline escalates a stuck task to a human. Default `5`; integer.
+When a review asks for changes, the pipeline sends the work back to a coder to fix. This is the budget
+for that loop — how many corrective attempts it gets before the run halts and waits for you.
 
-### limits.max_consecutive_review_rejections
+The default of `5` is generous on purpose. A task that can't get past review in five attempts usually
+has a problem no sixth attempt will fix: a requirement that contradicts itself, or a test that was
+wrong to begin with. Halting puts it in front of you while the context is still fresh.
 
-Maximum review rejections before the pipeline escalates to a human gate. Default `3`; integer.
-
-### human_gates.after_planning
-
-Gate the pipeline for human approval after the Master Plan is authored. Default `true`. This gate is always enforced unless explicitly overridden per project.
-
-### human_gates.execution_mode
-
-Granularity of execution-time human gates. Accepts `ask`, `phase`, `task`, or `autonomous`. `ask` prompts at execution start; `phase` gates between phases; `task` gates between tasks; `autonomous` runs without gates. Default `ask`.
-
-### human_gates.after_final_review
-
-Gate the pipeline for human approval after the comprehensive review and before commit or PR creation. Default `true`. Always enforced.
+Raise it if your work is genuinely fiddly and you'd rather the agent keep grinding. Lower it to `2`
+or `3` if you'd rather be interrupted early than pay for attempts that were never going to land.
 
 ### source_control.auto_commit
 
-Behavior for automatic commits at the end of each approved task or phase. Accepts `always` (commit without prompting), `ask` (prompt before each project run), or `never` (skip commits). Default `ask`.
+Whether each finished task gets committed as it completes.
+
+| Value | What happens |
+|---|---|
+| `always` | Commits as it goes, no prompting |
+| `ask` | Asks once when the run starts, then follows that answer for the rest of the run |
+| `never` | Nothing is committed; the work piles up in your working tree |
+
+**Leave this on.** Commits aren't just bookkeeping here — they're what gives each review something to
+look at. Task review reads the commits from that task, phase review reads the phase, final review
+reads the whole project. With `never`, all three reviews fall back to whatever is sitting in the
+working tree, so they all end up reading the same undifferentiated pile and the distinction between
+them collapses.
+
+See [Commits](source-control.md#commits) for what the commits themselves look like.
 
 ### source_control.auto_pr
 
-Behavior for automatic pull-request creation after final approval. Accepts `always`, `ask`, or `never`. Default `ask`.
+Same three values, for opening a pull request when the project finishes. Pull requests are always
+opened as drafts, and always on GitHub. See [Pull requests](source-control.md#pull-requests).
 
-## Process Templates
+## When a change takes effect
 
-The review-intensity tier (`extra-high`, `high`, `medium`, `low`) and the Phase/Task Size are selected at planning time, not in `orchestration.yml`. See [pipeline.md](pipeline.md#process-templates).
+Mostly: immediately. The pipeline re-reads your settings at every step, so a change you make now
+applies to the very next thing that happens — including in a project that's already running. That's
+useful when a run is halfway through and you want to raise the retry budget rather than start over.
 
-## State and Snapshots
+Two things behave differently, and both are deliberate:
 
-`state.json` is the resumable record of a project. It lives at `~/.radorc/projects/{PROJECT-NAME}/state.json` and tracks project identity, planning progress, phase and task state, review verdicts, and source-control references. The pipeline writes it after every action.
+- **`auto_commit` and `auto_pr` set to `ask`** get resolved once, when the run starts. You answer the
+  question, and that answer holds for the rest of the run. Changing the setting mid-run won't move
+  a run that already asked you. See [Set your commit and PR preference once](pipeline.md#set-your-commit-and-pr-preference-once).
+- **The review template** is copied into the project when you plan it, and that copy is what the
+  project uses for the rest of its life. Changing `default_template` — or even upgrading Rad Orc —
+  can't reach a project that's already been planned. See [Review intensity](pipeline.md#review-intensity).
 
-When a project is created, the pipeline copies `limits`, `human_gates`, and `source_control` modes out of `orchestration.yml` into `state.json` and locks them in. Subsequent runs read from the snapshot, not from `orchestration.yml`. Editing `orchestration.yml` mid-project has no effect on that project; new values apply only to projects created afterward.
+## Editing the file directly
 
-The selected process template is similarly snapshotted into the project folder as `template.yml`. The template in effect when the project was created stays in effect for its entire lifetime.
+The file is `~/.radorc/orchestration.yml`, and this is all of it:
+
+```yaml
+version: "1.0"
+default_template: ask
+limits:
+  max_retries_per_task: 5
+human_gates:
+  after_planning: true
+  execution_mode: autonomous
+  after_final_review: true
+source_control:
+  auto_commit: ask
+  auto_pr: ask
+telemetry:
+  enabled: true
+ambient_awareness:
+  verbosity: minimal
+ui:
+  port: 1337
+communication_style:
+  enabled: false
+  selected: high-level.md
+```
+
+Two blocks appear here that the gear panel doesn't show, and neither is something you need:
+
+- **`version`** is the format version of the file itself. Leave it alone.
+- **`human_gates`** controls where the pipeline stops to ask for your approval. The shipped values
+  produce the behavior described in [Execution Pipeline](pipeline.md) — you approve the plan by
+  running it, and you sign off at the end. Leave these alone too; the gates are explained where you
+  encounter them, not here.
+
+Changes are picked up on the next pipeline step, so there's nothing to restart — except the
+dashboard, if you changed its port.
+
+---
+
+**Read Next:** [Execution Pipeline](pipeline.md) · [Dashboard](dashboard.md) ·
+[Getting Started](getting-started.md) · [Docs Viewer](docs-viewer.md)

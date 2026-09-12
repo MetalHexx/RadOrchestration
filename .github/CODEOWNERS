@@ -1,0 +1,11 @@
+# Code owners for this repository.
+#
+# @MetalHexx is requested for review on every pull request. GitHub holds
+# that request until a PR is out of draft, so pipeline PRs — which always open
+# as drafts — trigger it on promotion rather than on creation.
+#
+# This file on its own only requests a review. What makes the review blocking is
+# the repository ruleset "Require code owner review on default branch". Change
+# one without the other and the guarantee quietly disappears.
+
+*   @MetalHexx
